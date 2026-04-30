@@ -50,9 +50,11 @@ impl crate::app::App {
                         "已删除定时任务: {}",
                         prompt_preview
                     )));
-                // 列表为空时关闭面板
+                // 列表为空时关闭面板，清理面板元数据
                 if panel.tasks.is_empty() {
                     self.cron.cron_panel = None;
+                    self.core.panel_selection.clear();
+                    self.core.panel_area = None;
                 }
             }
         }

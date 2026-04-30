@@ -149,7 +149,7 @@ pub async fn next_event(app: &mut App) -> Result<Option<Action>> {
                                     Err(e) => {
                                         let msg = MessageViewModel::from_base_message(
                                             &BaseMessage::system(format!(
-                                                "Setup save failed: {}",
+                                                "配置保存失败: {}",
                                                 e
                                             )),
                                             &[],
