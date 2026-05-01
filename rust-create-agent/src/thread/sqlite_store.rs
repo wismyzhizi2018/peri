@@ -96,6 +96,7 @@ fn meta_from_row(
     created_at: String,
     updated_at: String,
     message_count: i64,
+    content_size: i64,
 ) -> Result<ThreadMeta> {
     Ok(ThreadMeta {
         id,
@@ -104,6 +105,7 @@ fn meta_from_row(
         created_at: created_at.parse::<DateTime<Utc>>()?,
         updated_at: updated_at.parse::<DateTime<Utc>>()?,
         message_count: message_count as usize,
+        content_size: content_size as u64,
     })
 }
 
@@ -234,7 +236,9 @@ impl ThreadStore for SqliteThreadStore {
         let meta = tokio::task::spawn_blocking(move || -> Result<ThreadMeta> {
             let conn = conn.lock();
             conn.query_row(
-                "SELECT id, title, cwd, created_at, updated_at, message_count FROM threads WHERE id = ?1",
+                "SELECT t.id, t.title, t.cwd, t.created_at, t.updated_at, t.message_count,
+                        (SELECT COALESCE(SUM(LENGTH(m.content)), 0) FROM messages m WHERE m.thread_id = t.id) as content_size
+                 FROM threads t WHERE t.id = ?1",
                 params![id],
                 |row| {
                     Ok((
@@ -244,12 +248,13 @@ impl ThreadStore for SqliteThreadStore {
                         row.get::<_, String>(3)?,
                         row.get::<_, String>(4)?,
                         row.get::<_, i64>(5)?,
+                        row.get::<_, i64>(6)?,
                     ))
                 },
             )
             .map_err(|e| anyhow::anyhow!(e))
-            .and_then(|(id, title, cwd, created_at, updated_at, mc)| {
-                meta_from_row(id, title, cwd, created_at, updated_at, mc)
+            .and_then(|(id, title, cwd, created_at, updated_at, mc, cs)| {
+                meta_from_row(id, title, cwd, created_at, updated_at, mc, cs)
             })
         })
         .await??;
@@ -282,8 +287,9 @@ impl ThreadStore for SqliteThreadStore {
         let metas = tokio::task::spawn_blocking(move || -> Result<Vec<ThreadMeta>> {
             let conn = conn.lock();
             let mut stmt = conn.prepare(
-                "SELECT id, title, cwd, created_at, updated_at, message_count
-                 FROM threads ORDER BY updated_at DESC",
+                "SELECT t.id, t.title, t.cwd, t.created_at, t.updated_at, t.message_count,
+                        (SELECT COALESCE(SUM(LENGTH(m.content)), 0) FROM messages m WHERE m.thread_id = t.id) as content_size
+                 FROM threads t ORDER BY t.updated_at DESC",
             )?;
             let metas: Result<Vec<ThreadMeta>> = stmt
                 .query_map(params![], |row| {
@@ -294,12 +300,13 @@ impl ThreadStore for SqliteThreadStore {
                         row.get::<_, String>(3)?,
                         row.get::<_, String>(4)?,
                         row.get::<_, i64>(5)?,
+                        row.get::<_, i64>(6)?,
                     ))
                 })?
                 .map(|r| {
-                    let (id, title, cwd, created_at, updated_at, mc) =
+                    let (id, title, cwd, created_at, updated_at, mc, cs) =
                         r.map_err(|e| anyhow::anyhow!(e))?;
-                    meta_from_row(id, title, cwd, created_at, updated_at, mc)
+                    meta_from_row(id, title, cwd, created_at, updated_at, mc, cs)
                 })
                 .collect();
             metas

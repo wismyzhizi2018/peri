@@ -220,7 +220,22 @@ impl App {
                 .unwrap_or_default()
         });
         let filtered: Vec<_> = threads.into_iter().filter(|t| t.cwd == cwd).collect();
-        self.core.thread_browser = Some(ThreadBrowser::new(filtered, self.thread_store.clone()));
+
+        // 检测当前 cwd 的 git 分支
+        let branch = std::process::Command::new("git")
+            .args(["rev-parse", "--abbrev-ref", "HEAD"])
+            .current_dir(&self.cwd)
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        self.core.thread_browser = Some(ThreadBrowser::new(
+            filtered,
+            self.thread_store.clone(),
+            branch,
+        ));
     }
 }
 

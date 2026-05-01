@@ -169,6 +169,15 @@ impl ThreadStore for FilesystemThreadStore {
     async fn list_threads(&self) -> Result<Vec<ThreadMeta>> {
         let mut metas = self.read_index().await?;
         metas.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        // 计算 content_size（从 messages.jsonl 文件大小）
+        for meta in &mut metas {
+            let msg_path = self.messages_path(&meta.id);
+            if msg_path.exists() {
+                if let Ok(file_meta) = tokio::fs::metadata(&msg_path).await {
+                    meta.content_size = file_meta.len();
+                }
+            }
+        }
         Ok(metas)
     }
 

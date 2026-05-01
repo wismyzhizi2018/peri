@@ -1,32 +1,81 @@
 use super::{ThreadId, ThreadMeta, ThreadStore};
+use perihelion_widgets::InputState;
 use std::sync::Arc;
 
 /// TUI 内 Thread 历史浏览面板
 pub struct ThreadBrowser {
+    /// 全量 thread 列表（按 updated_at 降序）
     pub threads: Vec<ThreadMeta>,
-    /// 当前光标位置（0 = 新建对话，1+ = 历史 thread）
+    /// 当前光标位置（指向过滤后列表的索引）
     pub cursor: usize,
     pub store: Arc<dyn ThreadStore>,
     /// 内容滚动偏移
     pub scroll_offset: u16,
     /// 是否处于删除确认状态
     pub confirm_delete: bool,
+    /// 搜索输入状态
+    pub search_query: InputState,
+    /// 搜索框是否聚焦
+    pub search_focused: bool,
+    /// 当前 cwd 的 git 分支
+    pub branch: Option<String>,
+    /// 过滤后的索引映射（存储 threads 中的原始索引）
+    filtered_indices: Vec<usize>,
 }
 
 impl ThreadBrowser {
-    pub fn new(threads: Vec<ThreadMeta>, store: Arc<dyn ThreadStore>) -> Self {
+    pub fn new(
+        threads: Vec<ThreadMeta>,
+        store: Arc<dyn ThreadStore>,
+        branch: Option<String>,
+    ) -> Self {
+        let filtered_indices: Vec<usize> = (0..threads.len()).collect();
         Self {
             threads,
             cursor: 0,
             store,
             scroll_offset: 0,
             confirm_delete: false,
+            search_query: InputState::new(),
+            search_focused: true,
+            branch,
+            filtered_indices,
         }
     }
 
-    /// 条目总数 = 1（新建）+ 历史数量
+    /// 过滤后的 thread 总数
     pub fn total(&self) -> usize {
-        1 + self.threads.len()
+        self.filtered_indices.len()
+    }
+
+    /// 全量 thread 总数
+    pub fn total_all(&self) -> usize {
+        self.threads.len()
+    }
+
+    /// 重新计算过滤索引
+    pub fn refresh_filter(&mut self) {
+        let query = self.search_query.value().to_lowercase();
+        self.filtered_indices = if query.is_empty() {
+            (0..self.threads.len()).collect()
+        } else {
+            self.threads
+                .iter()
+                .enumerate()
+                .filter(|(_, t)| {
+                    t.title
+                        .as_deref()
+                        .unwrap_or("")
+                        .to_lowercase()
+                        .contains(&query)
+                })
+                .map(|(i, _)| i)
+                .collect()
+        };
+        // 光标修正
+        if self.cursor >= self.filtered_indices.len() {
+            self.cursor = self.filtered_indices.len().saturating_sub(1);
+        }
     }
 
     pub fn move_cursor(&mut self, delta: isize) {
@@ -37,32 +86,22 @@ impl ThreadBrowser {
         self.cursor = ((self.cursor as isize + delta).rem_euclid(total as isize)) as usize;
     }
 
-    /// 当前光标是否指向「新建对话」
-    pub fn is_new(&self) -> bool {
-        self.cursor == 0
-    }
-
-    /// 获取光标指向的历史 thread（cursor == 0 时返回 None）
+    /// 获取光标指向的过滤后 thread
     pub fn selected_thread(&self) -> Option<&ThreadMeta> {
-        if self.cursor == 0 {
-            None
-        } else {
-            self.threads.get(self.cursor - 1)
-        }
+        self.filtered_indices
+            .get(self.cursor)
+            .and_then(|&idx| self.threads.get(idx))
     }
 
-    /// 获取光标指向的 ThreadId（新建时返回 None）
+    /// 获取光标指向的 ThreadId
     pub fn selected_id(&self) -> Option<&ThreadId> {
         self.selected_thread().map(|t| &t.id)
     }
 
     /// 删除光标所在的历史 thread（同步，block_in_place），返回被删除的对话标题
     pub fn delete_selected(&mut self) -> Option<String> {
-        if self.cursor == 0 {
-            return None;
-        }
-        let idx = self.cursor - 1;
-        let Some(meta) = self.threads.get(idx) else {
+        let &orig_idx = self.filtered_indices.get(self.cursor)?;
+        let Some(meta) = self.threads.get(orig_idx) else {
             return None;
         };
         let id = meta.id.clone();
@@ -74,15 +113,20 @@ impl ThreadBrowser {
                 .is_ok()
         });
         if ok {
-            self.threads.remove(idx);
-            // 光标修正：删完后保持在有效范围内
-            let total = self.total();
-            if self.cursor >= total {
-                self.cursor = total.saturating_sub(1);
-            }
+            self.threads.remove(orig_idx);
+            // 重建过滤索引
+            self.refresh_filter();
             Some(title)
         } else {
             None
         }
+    }
+
+    /// 获取过滤后的 thread 列表引用
+    pub fn filtered_threads(&self) -> Vec<&ThreadMeta> {
+        self.filtered_indices
+            .iter()
+            .filter_map(|&idx| self.threads.get(idx))
+            .collect()
     }
 }

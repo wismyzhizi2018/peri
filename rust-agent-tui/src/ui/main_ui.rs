@@ -123,8 +123,9 @@ pub fn render(f: &mut Frame, app: &mut App) {
 fn active_panel_height(app: &App, screen_height: u16, screen_width: u16) -> u16 {
     let max_h = screen_height * 3 / 5; // 最多占 60% 屏高
     let raw = if let Some(panel) = &app.core.thread_browser {
-        let base = (panel.total() as u16 + 4).max(6);
-        // 确认删除提示需要额外 2 行（空行 + 提示文本）
+        // 搜索框 3 行 + 空行 1 + items * 3 (标题+元数据+空行) + 快捷键 1 + 边框 2
+        let items = panel.total() as u16;
+        let base = (items * 3 + 7).max(9);
         if panel.confirm_delete { base + 2 } else { base }
     } else if let Some(panel) = &app.core.login_panel {
         let n = panel.providers.len() as u16;

@@ -716,6 +716,118 @@ fn handle_thread_browser(app: &mut App, input: Input) {
         return;
     }
 
+    // 搜索框聚焦时的输入处理
+    let search_focused = app
+        .core
+        .thread_browser
+        .as_ref()
+        .map_or(false, |b| b.search_focused);
+
+    if search_focused {
+        match input {
+            Input {
+                key: Key::Char('c'),
+                ctrl: true,
+                ..
+            } => {}
+            Input { key: Key::Esc, .. } => {
+                if let Some(b) = app.core.thread_browser.as_mut() {
+                    if !b.search_query.value().is_empty() {
+                        // 清空搜索
+                        b.search_query.set_value(String::new());
+                        b.refresh_filter();
+                    } else {
+                        // 关闭面板
+                        app.core.thread_browser = None;
+                        app.core.panel_selection.clear();
+                        app.core.panel_area = None;
+                    }
+                }
+            }
+            Input {
+                key: Key::Char('v'),
+                ctrl: true,
+                ..
+            } => {
+                if let Ok(text) = arboard::Clipboard::new().and_then(|mut cb| cb.get_text()) {
+                    if let Some(b) = app.core.thread_browser.as_mut() {
+                        b.search_query.paste(&text);
+                        b.refresh_filter();
+                    }
+                }
+            }
+            Input {
+                key: Key::Char(c),
+                ..
+            } => {
+                if let Some(b) = app.core.thread_browser.as_mut() {
+                    b.search_query.insert(c);
+                    b.refresh_filter();
+                }
+            }
+            Input {
+                key: Key::Backspace,
+                ..
+            } => {
+                if let Some(b) = app.core.thread_browser.as_mut() {
+                    b.search_query.backspace();
+                    b.refresh_filter();
+                }
+            }
+            Input {
+                key: Key::Delete, ..
+            } => {
+                if let Some(b) = app.core.thread_browser.as_mut() {
+                    b.search_query.delete();
+                    b.refresh_filter();
+                }
+            }
+            Input {
+                key: Key::Left, ..
+            } => {
+                if let Some(b) = app.core.thread_browser.as_mut() {
+                    b.search_query.cursor_left();
+                }
+            }
+            Input {
+                key: Key::Right, ..
+            } => {
+                if let Some(b) = app.core.thread_browser.as_mut() {
+                    b.search_query.cursor_right();
+                }
+            }
+            Input { key: Key::Home, .. } => {
+                if let Some(b) = app.core.thread_browser.as_mut() {
+                    b.search_query.cursor_home();
+                }
+            }
+            Input { key: Key::End, .. } => {
+                if let Some(b) = app.core.thread_browser.as_mut() {
+                    b.search_query.cursor_end();
+                }
+            }
+            // ↓ / Tab 切换到列表模式
+            Input { key: Key::Down, .. } | Input { key: Key::Tab, .. } => {
+                if let Some(b) = app.core.thread_browser.as_mut() {
+                    b.search_focused = false;
+                }
+            }
+            // Enter：打开选中的 thread
+            Input {
+                key: Key::Enter, ..
+            } => {
+                if let Some(b) = app.core.thread_browser.as_mut() {
+                    if let Some(id) = b.selected_id().cloned() {
+                        app.open_thread_with_feedback(id);
+                    }
+                }
+            }
+            _ => {}
+        }
+        return;
+    }
+
+    // 列表模式
     match input {
         Input {
             key: Key::Char('c'),
@@ -723,7 +835,7 @@ fn handle_thread_browser(app: &mut App, input: Input) {
             ..
         } => {}
         Input { key: Key::Esc, .. } => {
-            // Esc 关闭面板，回到当前对话
+            // Esc 关闭面板
             app.core.thread_browser = None;
             app.core.panel_selection.clear();
             app.core.panel_area = None;
@@ -731,24 +843,36 @@ fn handle_thread_browser(app: &mut App, input: Input) {
         Input { key: Key::Up, .. } => {
             if let Some(b) = app.core.thread_browser.as_mut() {
                 b.move_cursor(-1);
+                // 每个 item 占 3 视觉行（标题 + 元数据 + 空行）
+                let visual_row = b.cursor as u16 * 3;
+                // panel_area 已经是 list_area（不含搜索框），减去快捷键 1 行
+                let visible = app
+                    .core
+                    .panel_area
+                    .map(|a| a.height.saturating_sub(1))
+                    .unwrap_or(10);
                 b.scroll_offset =
-                    crate::app::ensure_cursor_visible(b.cursor as u16, b.scroll_offset, 10);
+                    crate::app::ensure_cursor_visible(visual_row, b.scroll_offset, visible);
             }
         }
         Input { key: Key::Down, .. } => {
             if let Some(b) = app.core.thread_browser.as_mut() {
                 b.move_cursor(1);
+                let visual_row = b.cursor as u16 * 3;
+                let visible = app
+                    .core
+                    .panel_area
+                    .map(|a| a.height.saturating_sub(1))
+                    .unwrap_or(10);
                 b.scroll_offset =
-                    crate::app::ensure_cursor_visible(b.cursor as u16, b.scroll_offset, 10);
+                    crate::app::ensure_cursor_visible(visual_row, b.scroll_offset, visible);
             }
         }
         Input {
             key: Key::Enter, ..
         } => {
             if let Some(b) = app.core.thread_browser.as_mut() {
-                if b.is_new() {
-                    app.new_thread();
-                } else if let Some(id) = b.selected_id().cloned() {
+                if let Some(id) = b.selected_id().cloned() {
                     app.open_thread_with_feedback(id);
                 }
             }
@@ -759,10 +883,19 @@ fn handle_thread_browser(app: &mut App, input: Input) {
             ..
         } => {
             if let Some(b) = app.core.thread_browser.as_mut() {
-                // 仅在选中历史对话时（cursor > 0）才进入确认状态
-                if b.cursor > 0 {
+                if b.total() > 0 {
                     b.confirm_delete = true;
                 }
+            }
+        }
+        // / 或 Tab 切换到搜索框
+        Input {
+            key: Key::Char('/'),
+            ..
+        }
+        | Input { key: Key::Tab, .. } => {
+            if let Some(b) = app.core.thread_browser.as_mut() {
+                b.search_focused = true;
             }
         }
         _ => {}

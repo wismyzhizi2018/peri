@@ -15,6 +15,9 @@ pub struct ThreadMeta {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub message_count: usize,
+    /// 消息内容总字节数（由 list_threads 查询时计算）
+    #[serde(default)]
+    pub content_size: u64,
 }
 
 impl ThreadMeta {
@@ -27,6 +30,7 @@ impl ThreadMeta {
             created_at: now,
             updated_at: now,
             message_count: 0,
+            content_size: 0,
         }
     }
 }
