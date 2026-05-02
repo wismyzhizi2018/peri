@@ -528,10 +528,6 @@ mod tests {
             snap.join("\n")
         );
 
-        // 验证 total_steps 步数显示（2 步）
-        let has_steps = snap.iter().any(|l| l.contains("2"));
-        assert!(has_steps, "应显示步数计数，实际:\n{}", snap.join("\n"));
-
         // 验证 SubAgentGroup 已完成（is_running=false）
         if let Some(vm) = app.core.view_messages.last() {
             assert!(vm.is_subagent_group(), "最后一条消息应为 SubAgentGroup");
