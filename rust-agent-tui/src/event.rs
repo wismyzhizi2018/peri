@@ -248,7 +248,19 @@ pub async fn next_event(app: &mut App) -> Result<Option<Action>> {
 
             // /memory 面板优先处理
             if app.memory_panel.is_some() {
-                handle_memory_panel(app, input);
+                handle_memory_panel(app, &input);
+                // Enter 时打开编辑器（避免借用冲突，Enter 在 handle_memory_panel 中不处理）
+                if matches!(
+                    input,
+                    Input {
+                        key: Key::Enter,
+                        ..
+                    }
+                ) {
+                    if let Err(e) = app.memory_panel_open_editor() {
+                        tracing::error!("Failed to open editor: {}", e);
+                    }
+                }
                 return Ok(Some(Action::Redraw));
             }
 
@@ -1324,11 +1336,11 @@ fn handle_status_panel(app: &mut App, input: Input) {
     }
 }
 
-fn handle_memory_panel(app: &mut App, input: Input) {
+fn handle_memory_panel(app: &mut App, input: &Input) {
     let Some(panel) = app.memory_panel.as_mut() else {
         return;
     };
-    match input {
+    match *input {
         Input { key: Key::Up, .. } => {
             panel.move_cursor_up();
         }
@@ -1338,13 +1350,7 @@ fn handle_memory_panel(app: &mut App, input: Input) {
         Input {
             key: Key::Enter, ..
         } => {
-            // 标记需要打开编辑器 — 需要特别处理
-            // 在 handle_memory_panel 返回后由 main loop 处理
-            // 这里先 drop borrow
-            drop(panel);
-            if let Err(e) = app.memory_panel_open_editor() {
-                tracing::error!("Failed to open editor: {}", e);
-            }
+            // 由调用方处理打开编辑器（避免借用冲突），此处不执行操作
         }
         Input { key: Key::Esc, .. } => {
             app.memory_panel = None;

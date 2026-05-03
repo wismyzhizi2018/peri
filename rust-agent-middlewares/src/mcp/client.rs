@@ -764,7 +764,7 @@ impl McpClientPool {
                 h.peer = None;
             }
         }
-        for (name, mut svc) in self.services.lock().await.drain() {
+        for (_name, mut svc) in self.services.lock().await.drain() {
             let _ = svc.close_with_timeout(SHUTDOWN_TIMEOUT).await;
         }
     }

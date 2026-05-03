@@ -365,6 +365,7 @@ fn remove_server_from_config_with_paths(
     Ok(())
 }
 
+#[cfg(test)]
 fn test_config() -> McpServerConfig {
     McpServerConfig {
         command: None,
