@@ -27,7 +27,7 @@ pub async fn run_acp_mode(_cwd: String, model_override: Option<String>) -> Resul
         }),
     );
 
-    let permission_mode = SharedPermissionMode::new(PermissionMode::Default);
+    let permission_mode = SharedPermissionMode::new(PermissionMode::AutoMode);
 
     let session_mgr = SessionManager::new(
         thread_store,

@@ -50,19 +50,19 @@ fn mgr() -> &'static SessionManager {
 fn build_session_mode_state(session: &AcpSession) -> SessionModeState {
     let current = match session.permission_mode.load() {
         PermissionMode::Default => "default",
-        PermissionMode::DontAsk => "ask",
-        PermissionMode::AcceptEdit => "plan",
+        PermissionMode::DontAsk => "dontAsk",
+        PermissionMode::AcceptEdit => "acceptEdits",
         PermissionMode::AutoMode => "auto",
-        PermissionMode::Bypass => "code",
+        PermissionMode::Bypass => "bypass",
     };
     let mut state = SessionModeState::new(
         SessionModeId::new(current),
         vec![
-            SessionMode::new(SessionModeId::new("code"), "Code").description("Full tool access, no approval needed"),
-            SessionMode::new(SessionModeId::new("default"), "Default").description("Approval for sensitive tools"),
-            SessionMode::new(SessionModeId::new("plan"), "Plan").description("Allow file edits, plan mode"),
-            SessionMode::new(SessionModeId::new("ask"), "Ask").description("Agent answers only, no tool execution"),
             SessionMode::new(SessionModeId::new("auto"), "Auto").description("LLM classifier decides approval"),
+            SessionMode::new(SessionModeId::new("default"), "Default").description("Approval for sensitive tools"),
+            SessionMode::new(SessionModeId::new("acceptEdits"), "Accept Edits").description("Allow file edits without approval"),
+            SessionMode::new(SessionModeId::new("dontAsk"), "Don't Ask").description("Agent answers only, no tool execution"),
+            SessionMode::new(SessionModeId::new("bypass"), "Bypass").description("Full tool access, no approval needed"),
         ],
     );
     let _ = &mut state; // silence non-exhaustive warnings
@@ -88,21 +88,21 @@ fn build_config_options(session: &AcpSession) -> Vec<agent_client_protocol::sche
     // 1. Mode selector
     let current_mode = match session.permission_mode.load() {
         PermissionMode::Default => "default",
-        PermissionMode::DontAsk => "ask",
-        PermissionMode::AcceptEdit => "plan",
+        PermissionMode::DontAsk => "dontAsk",
+        PermissionMode::AcceptEdit => "acceptEdits",
         PermissionMode::AutoMode => "auto",
-        PermissionMode::Bypass => "code",
+        PermissionMode::Bypass => "bypass",
     };
     let mode_option = agent_client_protocol::schema::SessionConfigOption::select(
         SessionConfigId::new("mode"),
         "Mode",
         SessionConfigValueId::new(current_mode),
         vec![
-            SessionConfigSelectOption::new(SessionConfigValueId::new("code"), "Code"),
-            SessionConfigSelectOption::new(SessionConfigValueId::new("default"), "Default"),
-            SessionConfigSelectOption::new(SessionConfigValueId::new("plan"), "Plan"),
-            SessionConfigSelectOption::new(SessionConfigValueId::new("ask"), "Ask"),
             SessionConfigSelectOption::new(SessionConfigValueId::new("auto"), "Auto"),
+            SessionConfigSelectOption::new(SessionConfigValueId::new("default"), "Default"),
+            SessionConfigSelectOption::new(SessionConfigValueId::new("acceptEdits"), "Accept Edits"),
+            SessionConfigSelectOption::new(SessionConfigValueId::new("dontAsk"), "Don't Ask"),
+            SessionConfigSelectOption::new(SessionConfigValueId::new("bypass"), "Bypass"),
         ],
     )
     .category(SessionConfigOptionCategory::Mode)
@@ -508,10 +508,10 @@ pub async fn handle_set_mode(
     let session_id = req.session_id.0.as_ref();
 
     let mode = match mode_id {
-        "code" => PermissionMode::Bypass,
+        "bypass" => PermissionMode::Bypass,
         "default" => PermissionMode::Default,
-        "plan" => PermissionMode::AcceptEdit,
-        "ask" => PermissionMode::DontAsk,
+        "acceptEdits" => PermissionMode::AcceptEdit,
+        "dontAsk" => PermissionMode::DontAsk,
         "auto" => PermissionMode::AutoMode,
         other => {
             tracing::warn!(mode_id = other, "Unknown mode, ignoring");
@@ -575,10 +575,10 @@ pub async fn handle_set_config_option(
         match config_id {
             "mode" => {
                 let mode = match value_id {
-                    "code" => PermissionMode::Bypass,
+                    "bypass" => PermissionMode::Bypass,
                     "default" => PermissionMode::Default,
-                    "plan" => PermissionMode::AcceptEdit,
-                    "ask" => PermissionMode::DontAsk,
+                    "acceptEdits" => PermissionMode::AcceptEdit,
+                    "dontAsk" => PermissionMode::DontAsk,
                     "auto" => PermissionMode::AutoMode,
                     other => {
                         tracing::warn!(mode_id = other, "Unknown mode in config_option");
@@ -768,9 +768,9 @@ mod tests {
     #[test]
     fn test_new_session_response_serialization() {
         let modes = SessionModeState::new(
-            SessionModeId::new("default"),
+            SessionModeId::new("auto"),
             vec![
-                SessionMode::new(SessionModeId::new("code"), "Code"),
+                SessionMode::new(SessionModeId::new("auto"), "Auto"),
                 SessionMode::new(SessionModeId::new("default"), "Default"),
             ],
         );

@@ -105,7 +105,7 @@ impl SessionManager {
             state_messages: Vec::new(),
             created_at: Utc::now(),
             model_alias,
-            permission_mode: SharedPermissionMode::new(PermissionMode::Default),
+            permission_mode: SharedPermissionMode::new(PermissionMode::AutoMode),
             thinking,
         };
 
@@ -122,7 +122,7 @@ impl SessionManager {
             state_messages: Vec::new(),
             created_at: Utc::now(),
             model_alias: self.inner.zen_config.config.active_alias.clone(),
-            permission_mode: SharedPermissionMode::new(PermissionMode::Default),
+            permission_mode: SharedPermissionMode::new(PermissionMode::AutoMode),
             thinking: self.inner.zen_config.config.thinking.clone(),
         }
     }
