@@ -6,7 +6,10 @@ impl App {
         if self.sessions[self.active].core.input_history.first() == Some(&text) {
             return;
         }
-        self.sessions[self.active].core.input_history.insert(0, text);
+        self.sessions[self.active]
+            .core
+            .input_history
+            .insert(0, text);
         self.sessions[self.active].core.input_history.truncate(200);
     }
 
@@ -54,15 +57,22 @@ impl App {
 
     fn restore_history_to_textarea(&mut self) {
         if let Some(idx) = self.sessions[self.active].core.history_index {
-            if let Some(text) = self.sessions[self.active].core.input_history.get(idx).cloned() {
-                self.sessions[self.active].core.textarea = build_textarea(self.sessions[self.active].core.loading);
+            if let Some(text) = self.sessions[self.active]
+                .core
+                .input_history
+                .get(idx)
+                .cloned()
+            {
+                self.sessions[self.active].core.textarea =
+                    build_textarea(self.sessions[self.active].core.loading);
                 self.sessions[self.active].core.textarea.insert_str(&text);
             }
         }
     }
 
     fn restore_draft(&mut self) {
-        self.sessions[self.active].core.textarea = build_textarea(self.sessions[self.active].core.loading);
+        self.sessions[self.active].core.textarea =
+            build_textarea(self.sessions[self.active].core.loading);
         if let Some(draft) = self.sessions[self.active].core.draft_input.take() {
             self.sessions[self.active].core.textarea.insert_str(&draft);
         }

@@ -54,8 +54,8 @@ use rust_create_agent::agent::react::AgentInput;
 use rust_create_agent::agent::AgentCancellationToken;
 use rust_create_agent::messages::{BaseMessage, ContentBlock, MessageContent};
 use tokio::sync::mpsc;
-use tui_textarea::TextArea;
 use tracing::Instrument;
+use tui_textarea::TextArea;
 
 use crate::config::ZenConfig;
 use crate::thread::{SqliteThreadStore, ThreadBrowser, ThreadId, ThreadMeta, ThreadStore};
@@ -185,8 +185,7 @@ impl App {
 
         let (bg_event_tx, bg_event_rx) = tokio::sync::mpsc::channel(32);
 
-        let initial_session =
-            ChatSession::new(cwd.clone(), command_registry, skills);
+        let initial_session = ChatSession::new(cwd.clone(), command_registry, skills);
 
         Self {
             sessions: vec![initial_session],
@@ -365,8 +364,14 @@ impl App {
                 self.sessions[self.active].agent.last_task_duration = Some(start.elapsed());
             }
             let vm = MessageViewModel::system("⚠ 已强制中断（后台任务可能仍在运行）".to_string());
-            self.sessions[self.active].core.view_messages.push(vm.clone());
-            let _ = self.sessions[self.active].core.render_tx.send(RenderEvent::AddMessage(vm));
+            self.sessions[self.active]
+                .core
+                .view_messages
+                .push(vm.clone());
+            let _ = self.sessions[self.active]
+                .core
+                .render_tx
+                .send(RenderEvent::AddMessage(vm));
         }
     }
 

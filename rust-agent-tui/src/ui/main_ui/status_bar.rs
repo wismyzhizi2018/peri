@@ -77,33 +77,12 @@ fn render_first_row(f: &mut Frame, app: &App, area: Rect) {
         spans.push(Span::styled(format!(" {}", app.model_name), style));
     }
 
-    // Session 标签页指示器
-    if app.sessions.len() > 1 {
-        spans.push(Span::styled(" │ ", Style::default().fg(theme::MUTED)));
-        for (i, _) in app.sessions.iter().enumerate() {
-            if i > 0 {
-                spans.push(Span::raw(" "));
-            }
-            let is_active = i == app.active;
-            let style = if is_active {
-                Style::default()
-                    .fg(theme::THINKING)
-                    .add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
-            } else {
-                Style::default().fg(theme::MUTED)
-            };
-            spans.push(Span::styled(format!("{}", i + 1), style));
-        }
-        spans.push(Span::styled(
-            " Ctrl+N/P:切换 Ctrl+W:关闭",
-            Style::default().fg(theme::MUTED),
-        ));
-    }
-
     // 上下文使用率
     {
         let tracker = &app.sessions[app.active].agent.session_token_tracker;
-        if let Some(pct) = tracker.context_usage_percent(app.sessions[app.active].agent.context_window) {
+        if let Some(pct) =
+            tracker.context_usage_percent(app.sessions[app.active].agent.context_window)
+        {
             let used = tracker.estimated_context_tokens().unwrap_or(0);
             let total = app.sessions[app.active].agent.context_window;
             let color = if pct >= 85.0 {
@@ -208,7 +187,10 @@ fn render_second_row(f: &mut Frame, app: &App, area: Rect) {
     if let Some(until) = app.sessions[app.active].core.copy_message_until {
         if std::time::Instant::now() < until {
             left_spans.push(Span::styled(
-                format!(" 已复制 {} 个字符", app.sessions[app.active].core.copy_char_count),
+                format!(
+                    " 已复制 {} 个字符",
+                    app.sessions[app.active].core.copy_char_count
+                ),
                 Style::default().fg(theme::MUTED),
             ));
             has_content = true;
@@ -327,7 +309,11 @@ fn render_second_row(f: &mut Frame, app: &App, area: Rect) {
                     key!["↑↓" => ":移动  ", "Enter" => ":确认  ", "Ctrl+D" => ":删除  ", "Esc" => ":关闭  ", "/" => ":搜索"]
                 }
             } else {
-                key!["/" => "命令  ", "Alt+Enter" => ":换行"]
+                if app.sessions.len() > 1 {
+                    key!["/" => "命令  ", "Ctrl+N/P" => ":切换Session  ", "Ctrl+W" => ":关闭"]
+                } else {
+                    key!["/" => "命令  ", "Alt+Enter" => ":换行"]
+                }
             }
         }
     };

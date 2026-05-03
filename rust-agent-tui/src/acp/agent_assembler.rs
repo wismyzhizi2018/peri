@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use rust_agent_middlewares::agent_define::AgentOverrides;
 use rust_agent_middlewares::prelude::*;
 use rust_agent_middlewares::tools::TodoItem;
 use rust_create_agent::agent::events::AgentEventHandler;
@@ -26,6 +27,8 @@ pub struct AgentAssembleConfig {
     pub cancel: AgentCancellationToken,
     pub cron_scheduler:
         Option<Arc<parking_lot::Mutex<rust_agent_middlewares::cron::CronScheduler>>>,
+    /// Agent overrides from CLI --agent (persona, tone, proactiveness)
+    pub agent_overrides: Option<AgentOverrides>,
 }
 
 pub fn assemble_agent(
@@ -42,7 +45,20 @@ pub fn assemble_agent(
         event_handler,
         cancel,
         cron_scheduler,
+        agent_overrides,
     } = config;
+
+    // Apply agent overrides to system prompt
+    let system_prompt = agent_overrides.as_ref().map_or_else(
+        || system_prompt.clone(),
+        |ov| {
+            crate::prompt::build_system_prompt(
+                Some(ov),
+                &cwd,
+                crate::prompt::PromptFeatures::detect(),
+            )
+        },
+    );
 
     let provider_for_factory = provider.clone();
 

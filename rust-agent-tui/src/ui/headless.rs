@@ -133,7 +133,10 @@ mod tests {
         // 使用 ASCII 内容避免 CJK 宽字符在 buffer 中的空格填充问题
         let vm = MessageViewModel::user("hello from user".into());
         app.sessions[app.active].core.view_messages.push(vm.clone());
-        let _ = app.sessions[app.active].core.render_tx.send(RenderEvent::AddMessage(vm));
+        let _ = app.sessions[app.active]
+            .core
+            .render_tx
+            .send(RenderEvent::AddMessage(vm));
         notified.await;
         handle
             .terminal
@@ -162,13 +165,20 @@ mod tests {
         tokio::join!(n1, n2);
 
         // 验证 RenderCache 有内容
-        let lines_before = app.sessions[app.active].core.render_cache.read().total_lines;
+        let lines_before = app.sessions[app.active]
+            .core
+            .render_cache
+            .read()
+            .total_lines;
         assert!(lines_before > 0, "清空前应有内容");
 
         // 注册监听后发送 Clear，确保不错过通知
         let notified_clear = handle.render_notify.notified();
         app.sessions[app.active].core.view_messages.clear();
-        let _ = app.sessions[app.active].core.render_tx.send(RenderEvent::Clear);
+        let _ = app.sessions[app.active]
+            .core
+            .render_tx
+            .send(RenderEvent::Clear);
         notified_clear.await;
 
         // 验证 RenderCache 已清空
@@ -719,7 +729,11 @@ mod tests {
             .unwrap();
 
         // Done 触发 reconcile_tail 从 completed 重建，应包含 Human + AI 两条消息
-        assert_eq!(app.sessions[app.active].core.view_messages.len(), 2, "应有 2 条消息（Human+AI）");
+        assert_eq!(
+            app.sessions[app.active].core.view_messages.len(),
+            2,
+            "应有 2 条消息（Human+AI）"
+        );
         assert!(
             app.sessions[app.active].core.view_messages[1].is_assistant(),
             "第二条应为 AssistantBubble"
@@ -894,7 +908,10 @@ mod tests {
             let notified = handle.render_notify.notified();
             let vm = MessageViewModel::user(format!("message line {}", i));
             app.sessions[app.active].core.view_messages.push(vm.clone());
-            let _ = app.sessions[app.active].core.render_tx.send(RenderEvent::AddMessage(vm));
+            let _ = app.sessions[app.active]
+                .core
+                .render_tx
+                .send(RenderEvent::AddMessage(vm));
             notified.await;
         }
 
@@ -960,7 +977,10 @@ mod tests {
             let notified = handle.render_notify.notified();
             let vm = MessageViewModel::user(format!("padding line {}", i));
             app.sessions[app.active].core.view_messages.push(vm.clone());
-            let _ = app.sessions[app.active].core.render_tx.send(RenderEvent::AddMessage(vm));
+            let _ = app.sessions[app.active]
+                .core
+                .render_tx
+                .send(RenderEvent::AddMessage(vm));
             notified.await;
         }
 
@@ -998,7 +1018,10 @@ mod tests {
             let notified = handle.render_notify.notified();
             let vm = MessageViewModel::user(format!("padding {}", i));
             app.sessions[app.active].core.view_messages.push(vm.clone());
-            let _ = app.sessions[app.active].core.render_tx.send(RenderEvent::AddMessage(vm));
+            let _ = app.sessions[app.active]
+                .core
+                .render_tx
+                .send(RenderEvent::AddMessage(vm));
             notified.await;
         }
 
@@ -1125,7 +1148,8 @@ mod tests {
             },
         ]);
         let prompt = AskUserBatchPrompt::from_request(req);
-        app.sessions[app.active].agent.interaction_prompt = Some(crate::app::InteractionPrompt::Questions(prompt));
+        app.sessions[app.active].agent.interaction_prompt =
+            Some(crate::app::InteractionPrompt::Questions(prompt));
 
         handle
             .terminal
@@ -1664,10 +1688,13 @@ mod tests {
     async fn test_spinner_shows_verb_in_status_bar() {
         let (mut app, mut handle) = crate::app::App::new_headless(120, 30);
         // 添加一条消息，否则 render_messages 会走 welcome 分支提前 return
-        app.sessions[app.active].core
+        app.sessions[app.active]
+            .core
             .view_messages
             .push(crate::app::MessageViewModel::user("hello".into()));
-        app.sessions[app.active].spinner_state.set_verb(Some("Searching code"));
+        app.sessions[app.active]
+            .spinner_state
+            .set_verb(Some("Searching code"));
         app.sessions[app.active].core.loading = true;
 
         handle
@@ -1853,8 +1880,14 @@ mod tests {
 
         // 模拟用户发送消息
         let user_vm = MessageViewModel::user("my question".into());
-        app.sessions[app.active].core.view_messages.push(user_vm.clone());
-        let _ = app.sessions[app.active].core.render_tx.send(RenderEvent::AddMessage(user_vm));
+        app.sessions[app.active]
+            .core
+            .view_messages
+            .push(user_vm.clone());
+        let _ = app.sessions[app.active]
+            .core
+            .render_tx
+            .send(RenderEvent::AddMessage(user_vm));
 
         let n1 = handle.render_notify.notified();
         let n2 = handle.render_notify.notified();
@@ -1899,10 +1932,17 @@ mod tests {
 
         // 第一轮：用户 → AI
         // 模拟 submit_message：先记录 round_start_vm_idx，再 push Human VM
-        app.sessions[app.active].core.round_start_vm_idx = app.sessions[app.active].core.view_messages.len();
+        app.sessions[app.active].core.round_start_vm_idx =
+            app.sessions[app.active].core.view_messages.len();
         let user1 = MessageViewModel::user("turn1".into());
-        app.sessions[app.active].core.view_messages.push(user1.clone());
-        let _ = app.sessions[app.active].core.render_tx.send(RenderEvent::AddMessage(user1));
+        app.sessions[app.active]
+            .core
+            .view_messages
+            .push(user1.clone());
+        let _ = app.sessions[app.active]
+            .core
+            .render_tx
+            .send(RenderEvent::AddMessage(user1));
 
         let n1 = handle.render_notify.notified();
         let n2 = handle.render_notify.notified();
@@ -1917,10 +1957,17 @@ mod tests {
 
         // 第二轮：用户 → AI
         // 模拟 submit_message：先记录 round_start_vm_idx，再 push Human VM
-        app.sessions[app.active].core.round_start_vm_idx = app.sessions[app.active].core.view_messages.len();
+        app.sessions[app.active].core.round_start_vm_idx =
+            app.sessions[app.active].core.view_messages.len();
         let user2 = MessageViewModel::user("turn2".into());
-        app.sessions[app.active].core.view_messages.push(user2.clone());
-        let _ = app.sessions[app.active].core.render_tx.send(RenderEvent::AddMessage(user2));
+        app.sessions[app.active]
+            .core
+            .view_messages
+            .push(user2.clone());
+        let _ = app.sessions[app.active]
+            .core
+            .render_tx
+            .send(RenderEvent::AddMessage(user2));
 
         let n3 = handle.render_notify.notified();
         let n4 = handle.render_notify.notified();
@@ -2039,7 +2086,11 @@ mod tests {
             .view_messages
             .iter()
             .any(|m| matches!(m, MessageViewModel::ToolBlock { .. }));
-        let has_assistant = app.sessions[app.active].core.view_messages.iter().any(|m| m.is_assistant());
+        let has_assistant = app.sessions[app.active]
+            .core
+            .view_messages
+            .iter()
+            .any(|m| m.is_assistant());
         assert!(has_tool, "应有 ToolBlock");
         assert!(has_assistant, "应有 AssistantBubble");
         assert!(handle.contains("result is here"), "应显示 AI 回复");
@@ -2192,7 +2243,11 @@ mod tests {
             .take_while(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
             .collect();
         assert_eq!(skill_name, "review");
-        let skill_found = app.sessions[app.active].core.skills.iter().find(|s| s.name == skill_name);
+        let skill_found = app.sessions[app.active]
+            .core
+            .skills
+            .iter()
+            .find(|s| s.name == skill_name);
         assert!(skill_found.is_some(), "应找到 review Skill");
     }
 
@@ -2201,7 +2256,10 @@ mod tests {
         let (mut app, _handle) = App::new_headless(120, 30);
 
         app.sessions[app.active].core.textarea = crate::app::build_textarea(false);
-        app.sessions[app.active].core.textarea.insert_str("/nonexistent");
+        app.sessions[app.active]
+            .core
+            .textarea
+            .insert_str("/nonexistent");
 
         // 模拟 Enter 处理逻辑
         let text: String = app.sessions[app.active].core.textarea.lines().join("\n");
@@ -2217,7 +2275,11 @@ mod tests {
             .chars()
             .take_while(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
             .collect();
-        let skill_found = app.sessions[app.active].core.skills.iter().find(|s| s.name == skill_name);
+        let skill_found = app.sessions[app.active]
+            .core
+            .skills
+            .iter()
+            .find(|s| s.name == skill_name);
         assert!(skill_found.is_none(), "不应找到 nonexistent Skill");
     }
 
@@ -2627,8 +2689,14 @@ mod tests {
             },
         };
         app.zen_config = Some(cfg);
-        app.sessions[app.active].core.model_panel = Some(ModelPanel::from_config(app.zen_config.as_ref().unwrap()));
-        app.sessions[app.active].core.model_panel.as_mut().unwrap().active_tab = AliasTab::Sonnet;
+        app.sessions[app.active].core.model_panel =
+            Some(ModelPanel::from_config(app.zen_config.as_ref().unwrap()));
+        app.sessions[app.active]
+            .core
+            .model_panel
+            .as_mut()
+            .unwrap()
+            .active_tab = AliasTab::Sonnet;
 
         app.model_panel_confirm();
 
@@ -2643,7 +2711,10 @@ mod tests {
             "反馈消息应包含模型名 'Sonnet'，实际: {}",
             msg_text
         );
-        assert!(app.sessions[app.active].core.model_panel.is_none(), "确认后面板应关闭");
+        assert!(
+            app.sessions[app.active].core.model_panel.is_none(),
+            "确认后面板应关闭"
+        );
     }
 
     /// Login 面板激活 Provider 后应显示"已激活"反馈消息
@@ -2674,9 +2745,15 @@ mod tests {
             },
         };
         app.zen_config = Some(cfg);
-        app.sessions[app.active].core.login_panel = Some(LoginPanel::from_config(app.zen_config.as_ref().unwrap()));
+        app.sessions[app.active].core.login_panel =
+            Some(LoginPanel::from_config(app.zen_config.as_ref().unwrap()));
         // 光标移到第二个 Provider
-        app.sessions[app.active].core.login_panel.as_mut().unwrap().cursor = 1;
+        app.sessions[app.active]
+            .core
+            .login_panel
+            .as_mut()
+            .unwrap()
+            .cursor = 1;
 
         app.login_panel_select_provider();
 
@@ -2691,7 +2768,10 @@ mod tests {
             "反馈消息应包含 Provider 名 'Provider2'，实际: {}",
             msg_text
         );
-        assert!(app.sessions[app.active].core.login_panel.is_none(), "激活后面板应关闭");
+        assert!(
+            app.sessions[app.active].core.login_panel.is_none(),
+            "激活后面板应关闭"
+        );
     }
 
     // ─── Design Review 第24轮：Welcome Card 模型信息 + Thread Browser 消息数 ────

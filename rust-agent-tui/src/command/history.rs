@@ -14,9 +14,12 @@ impl Command for HistoryCommand {
 
     fn execute(&self, app: &mut App, _args: &str) {
         if app.sessions[app.active].core.loading {
-            app.sessions[app.active].core.view_messages.push(MessageViewModel::system(
-                "Agent 运行中，无法打开历史面板".to_string(),
-            ));
+            app.sessions[app.active]
+                .core
+                .view_messages
+                .push(MessageViewModel::system(
+                    "Agent 运行中，无法打开历史面板".to_string(),
+                ));
             return;
         }
         app.open_thread_browser();

@@ -29,7 +29,10 @@ impl App {
             return vec![];
         }
         let prefix = first_line.trim_start_matches('/');
-        let cmd_candidates: Vec<_> = self.sessions[self.active].core.command_registry.match_prefix(prefix);
+        let cmd_candidates: Vec<_> = self.sessions[self.active]
+            .core
+            .command_registry
+            .match_prefix(prefix);
         let skill_candidates: Vec<_> = self.sessions[self.active]
             .core
             .skills
@@ -63,7 +66,10 @@ impl App {
 
         if let Some(name) = selected_name {
             self.sessions[self.active].core.textarea = build_textarea(false);
-            self.sessions[self.active].core.textarea.insert_str(format!("/{} ", name));
+            self.sessions[self.active]
+                .core
+                .textarea
+                .insert_str(format!("/{} ", name));
             self.sessions[self.active].core.hint_cursor = None;
         }
     }
@@ -87,12 +93,22 @@ mod tests {
         let (mut app, _handle) = crate::app::App::new_headless(80, 24);
         app.sessions[app.active].core.textarea = build_textarea(false);
         app.sessions[app.active].core.textarea.insert_str("/");
-        app.sessions[app.active].core.skills.push(make_skill("aaa-skill"));
-        app.sessions[app.active].core.skills.push(make_skill("zzz-skill"));
+        app.sessions[app.active]
+            .core
+            .skills
+            .push(make_skill("aaa-skill"));
+        app.sessions[app.active]
+            .core
+            .skills
+            .push(make_skill("zzz-skill"));
 
         let count = app.hint_candidates_count();
         // 命令数 + 2 技能，但最多 8 项
-        let cmd_count = app.sessions[app.active].core.command_registry.match_prefix("").len();
+        let cmd_count = app.sessions[app.active]
+            .core
+            .command_registry
+            .match_prefix("")
+            .len();
         let expected = cmd_count + 2;
         assert_eq!(count, expected, "/ 前缀应返回命令数 + Skills 数");
     }
@@ -102,8 +118,14 @@ mod tests {
         let (mut app, _handle) = crate::app::App::new_headless(80, 24);
         app.sessions[app.active].core.textarea = build_textarea(false);
         app.sessions[app.active].core.textarea.insert_str("/mo");
-        app.sessions[app.active].core.skills.push(make_skill("commit"));
-        app.sessions[app.active].core.skills.push(make_skill("model-skill"));
+        app.sessions[app.active]
+            .core
+            .skills
+            .push(make_skill("commit"));
+        app.sessions[app.active]
+            .core
+            .skills
+            .push(make_skill("model-skill"));
 
         let count = app.hint_candidates_count();
         assert!(
@@ -117,7 +139,10 @@ mod tests {
         let (mut app, _handle) = crate::app::App::new_headless(80, 24);
         app.sessions[app.active].core.textarea = build_textarea(false);
         app.sessions[app.active].core.textarea.insert_str("#skill");
-        app.sessions[app.active].core.skills.push(make_skill("skill"));
+        app.sessions[app.active]
+            .core
+            .skills
+            .push(make_skill("skill"));
 
         let count = app.hint_candidates_count();
         assert_eq!(count, 0, "# 前缀不再产生候选");
@@ -166,7 +191,10 @@ mod tests {
         app.sessions[app.active].core.hint_cursor = Some(0);
 
         app.hint_complete();
-        assert_eq!(app.sessions[app.active].core.hint_cursor, None, "补全后 hint_cursor 应为 None");
+        assert_eq!(
+            app.sessions[app.active].core.hint_cursor, None,
+            "补全后 hint_cursor 应为 None"
+        );
     }
 
     #[tokio::test]
@@ -174,7 +202,10 @@ mod tests {
         let (mut app, _handle) = crate::app::App::new_headless(80, 24);
         app.sessions[app.active].core.textarea = build_textarea(false);
         app.sessions[app.active].core.textarea.insert_str("/aaa");
-        app.sessions[app.active].core.skills.push(make_skill("aaa-skill"));
+        app.sessions[app.active]
+            .core
+            .skills
+            .push(make_skill("aaa-skill"));
 
         // 找到 aaa-skill 在排序后的索引
         let items = app.build_hint_items();

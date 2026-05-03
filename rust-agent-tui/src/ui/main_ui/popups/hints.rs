@@ -33,7 +33,10 @@ pub(crate) fn render_unified_hint(f: &mut Frame, app: &App, input_area: Rect) {
     }
 
     let prefix = first_line.trim_start_matches('/');
-    let cmd_candidates: Vec<(&str, &str)> = app.sessions[app.active].core.command_registry.match_prefix(prefix);
+    let cmd_candidates: Vec<(&str, &str)> = app.sessions[app.active]
+        .core
+        .command_registry
+        .match_prefix(prefix);
     let skill_candidates: Vec<_> = app.sessions[app.active]
         .core
         .skills

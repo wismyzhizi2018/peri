@@ -35,14 +35,16 @@ impl App {
             "high" => "High",
             _ => "Medium",
         };
-        self.sessions[self.active].core
+        self.sessions[self.active]
+            .core
             .view_messages
             .push(MessageViewModel::system(format!(
                 "模型已切换为: {} ({} effort)",
                 alias_label, effort_display
             )));
         if let Err(e) = Self::save_config(cfg, self.config_path_override.as_deref()) {
-            self.sessions[self.active].core
+            self.sessions[self.active]
+                .core
                 .view_messages
                 .push(MessageViewModel::system(format!("配置保存失败: {}", e)));
         }
@@ -58,7 +60,8 @@ impl App {
     /// 打开 /login 面板（同时关闭 model 面板，实现互斥）
     pub fn open_login_panel(&mut self) {
         let cfg = self.zen_config.get_or_insert_with(ZenConfig::default);
-        self.sessions[self.active].core.login_panel = Some(login_panel::LoginPanel::from_config(cfg));
+        self.sessions[self.active].core.login_panel =
+            Some(login_panel::LoginPanel::from_config(cfg));
         // 互斥：关闭其他面板
         self.sessions[self.active].core.model_panel = None;
         self.sessions[self.active].core.config_panel = None;
@@ -86,7 +89,8 @@ impl App {
         };
         panel.select_provider(cfg);
         if !selected_name.is_empty() {
-            self.sessions[self.active].core
+            self.sessions[self.active]
+                .core
                 .view_messages
                 .push(MessageViewModel::system(format!(
                     "已激活 Provider: {}",
@@ -94,7 +98,8 @@ impl App {
                 )));
         }
         if let Err(e) = Self::save_config(cfg, self.config_path_override.as_deref()) {
-            self.sessions[self.active].core
+            self.sessions[self.active]
+                .core
                 .view_messages
                 .push(MessageViewModel::system(format!("配置保存失败: {}", e)));
         }
@@ -116,9 +121,12 @@ impl App {
             return;
         };
         if !panel.apply_edit(cfg) {
-            self.sessions[self.active].core.view_messages.push(MessageViewModel::system(
-                "保存失败：Provider 名称不能为空".to_string(),
-            ));
+            self.sessions[self.active]
+                .core
+                .view_messages
+                .push(MessageViewModel::system(
+                    "保存失败：Provider 名称不能为空".to_string(),
+                ));
             return;
         }
         let action = if is_new { "新建" } else { "保存" };
@@ -127,14 +135,16 @@ impl App {
         } else {
             edit_name
         };
-        self.sessions[self.active].core
+        self.sessions[self.active]
+            .core
             .view_messages
             .push(MessageViewModel::system(format!(
                 "已{} Provider: {}",
                 action, display
             )));
         if let Err(e) = Self::save_config(cfg, self.config_path_override.as_deref()) {
-            self.sessions[self.active].core
+            self.sessions[self.active]
+                .core
                 .view_messages
                 .push(MessageViewModel::system(format!("配置保存失败: {}", e)));
         }
@@ -159,7 +169,8 @@ impl App {
             .unwrap_or_default();
         panel.confirm_delete(cfg);
         if !deleted_name.is_empty() {
-            self.sessions[self.active].core
+            self.sessions[self.active]
+                .core
                 .view_messages
                 .push(MessageViewModel::system(format!(
                     "已删除 Provider: {}",
@@ -167,7 +178,8 @@ impl App {
                 )));
         }
         if let Err(e) = Self::save_config(cfg, self.config_path_override.as_deref()) {
-            self.sessions[self.active].core
+            self.sessions[self.active]
+                .core
                 .view_messages
                 .push(MessageViewModel::system(format!("配置保存失败: {}", e)));
         }
@@ -182,7 +194,8 @@ impl App {
     /// 打开 /config 面板
     pub fn open_config_panel(&mut self) {
         let cfg = self.zen_config.get_or_insert_with(ZenConfig::default);
-        self.sessions[self.active].core.config_panel = Some(config_panel::ConfigPanel::from_config(cfg));
+        self.sessions[self.active].core.config_panel =
+            Some(config_panel::ConfigPanel::from_config(cfg));
         // 互斥：关闭其他面板
         self.sessions[self.active].core.login_panel = None;
         self.sessions[self.active].core.model_panel = None;
@@ -203,11 +216,13 @@ impl App {
         };
         panel.apply_edit(cfg);
         if let Err(e) = Self::save_config(cfg, self.config_path_override.as_deref()) {
-            self.sessions[self.active].core
+            self.sessions[self.active]
+                .core
                 .view_messages
                 .push(MessageViewModel::system(format!("配置保存失败: {}", e)));
         } else {
-            self.sessions[self.active].core
+            self.sessions[self.active]
+                .core
                 .view_messages
                 .push(MessageViewModel::system("配置已保存".to_string()));
         }
@@ -314,7 +329,10 @@ impl App {
 
     /// 打开 /agents 面板（传入扫描到的 agent 列表）
     pub fn open_agent_panel(&mut self, agents: Vec<AgentItem>) {
-        self.sessions[self.active].core.agent_panel = Some(AgentPanel::new(agents, self.sessions[self.active].agent.agent_id.clone()));
+        self.sessions[self.active].core.agent_panel = Some(AgentPanel::new(
+            agents,
+            self.sessions[self.active].agent.agent_id.clone(),
+        ));
     }
 
     /// 关闭 /agents 面板（不选择任何 agent）
@@ -361,13 +379,17 @@ impl App {
 
         if is_none {
             self.set_agent_id(None);
-            self.sessions[self.active].core.view_messages.push(MessageViewModel::system(
-                "Agent 已重置（未设置 agent_id）".to_string(),
-            ));
+            self.sessions[self.active]
+                .core
+                .view_messages
+                .push(MessageViewModel::system(
+                    "Agent 已重置（未设置 agent_id）".to_string(),
+                ));
         } else if let Some(id) = agent_id {
             self.set_agent_id(Some(id.clone()));
             let name = agent_name.unwrap_or_else(|| id.clone());
-            self.sessions[self.active].core
+            self.sessions[self.active]
+                .core
                 .view_messages
                 .push(MessageViewModel::system(format!(
                     "Agent 已切换为: {} ({})",
@@ -390,12 +412,16 @@ impl App {
 impl App {
     /// 向事件队列注入 AgentEvent（测试用）
     pub fn push_agent_event(&mut self, event: AgentEvent) {
-        self.sessions[self.active].agent.agent_event_queue.push(event);
+        self.sessions[self.active]
+            .agent
+            .agent_event_queue
+            .push(event);
     }
 
     /// 批量处理队列中所有待处理事件，复用 handle_agent_event 逻辑
     pub fn process_pending_events(&mut self) {
-        let events: Vec<AgentEvent> = std::mem::take(&mut self.sessions[self.active].agent.agent_event_queue);
+        let events: Vec<AgentEvent> =
+            std::mem::take(&mut self.sessions[self.active].agent.agent_event_queue);
         for event in events {
             let (_updated, should_break, should_return) = self.handle_agent_event(event);
             if should_return || should_break {

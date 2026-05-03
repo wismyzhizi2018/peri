@@ -31,8 +31,8 @@ pub fn render(f: &mut Frame, app: &mut App) {
         let outer = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(1),       // session 列区域
-                Constraint::Length(3),    // 共享状态栏
+                Constraint::Min(1),    // session 列区域
+                Constraint::Length(3), // 共享状态栏
             ])
             .split(area);
 
@@ -71,12 +71,33 @@ fn render_session_column(
     let prev_active = app.active;
     app.active = session_idx;
 
+    // 多 session 模式：外层 block 作为聚焦指示
+    let area = if app.sessions.len() > 1 {
+        let border_color = if is_active {
+            theme::ACCENT
+        } else {
+            theme::BORDER_DIM
+        };
+        let outer_block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(border_color));
+        let inner = outer_block.inner(area);
+        f.render_widget(outer_block, area);
+        inner
+    } else {
+        area
+    };
+
     // 动态输入框高度
     let line_count = app.sessions[session_idx].core.textarea.lines().len() as u16;
     let input_height = (line_count + 2).min(area.height * 2 / 5).max(3);
 
     // 附件栏高度
-    let attachment_height: u16 = if app.sessions[session_idx].core.pending_attachments.is_empty() {
+    let attachment_height: u16 = if app.sessions[session_idx]
+        .core
+        .pending_attachments
+        .is_empty()
+    {
         0
     } else {
         3
@@ -172,7 +193,9 @@ fn render_session_column(
         height: 1,
     };
     let prompt_color = if is_active { theme::TEXT } else { theme::MUTED };
-    let prompt_style = Style::default().fg(prompt_color).add_modifier(Modifier::BOLD);
+    let prompt_style = Style::default()
+        .fg(prompt_color)
+        .add_modifier(Modifier::BOLD);
     f.render_widget(Paragraph::new("❯").style(prompt_style), prompt_area);
 
     if is_active {
@@ -256,11 +279,14 @@ fn active_panel_height(app: &App, screen_height: u16, screen_width: u16) -> u16 
             .map(|p| p.entries.len())
             .unwrap_or(0);
         (items as u16 * 2 + 4).max(6)
-    } else if let Some(crate::app::InteractionPrompt::Approval(p)) = &app.sessions[app.active].agent.interaction_prompt {
+    } else if let Some(crate::app::InteractionPrompt::Approval(p)) =
+        &app.sessions[app.active].agent.interaction_prompt
+    {
         (p.items.len() as u16 * 2 + 5).max(5)
     } else if app.oauth_prompt.is_some() {
         9 // 标题1 + 提示1 + URL1 + 空行1 + 输入框1 + 错误1 + 快捷键1 + 边框2
-    } else if let Some(crate::app::InteractionPrompt::Questions(p)) = &app.sessions[app.active].agent.interaction_prompt
+    } else if let Some(crate::app::InteractionPrompt::Questions(p)) =
+        &app.sessions[app.active].agent.interaction_prompt
     {
         let cur = &p.questions[p.active_tab];
         // 自适应高度：考虑文本自动换行
@@ -313,10 +339,13 @@ fn render_messages(f: &mut Frame, app: &mut App, header_area: Rect, messages_are
     // 计算 loading spinner 行（Claude Code 风格：✻ verb (Xm Xs · ↓ X.Xk tokens)）
     // compact 时紫色，其余橙色；loading 结束后显示总结行：✻ Brewed for Xm Xs
     let spinner_line: Option<Line<'static>> = if app.sessions[app.active].core.loading {
-        let frame = perihelion_widgets::spinner::animation::tick_to_frame(app.sessions[app.active].spinner_state.tick());
+        let frame = perihelion_widgets::spinner::animation::tick_to_frame(
+            app.sessions[app.active].spinner_state.tick(),
+        );
         let verb = app.sessions[app.active].spinner_state.verb();
-        let elapsed =
-            perihelion_widgets::spinner::animation::format_elapsed(app.sessions[app.active].spinner_state.elapsed_ms());
+        let elapsed = perihelion_widgets::spinner::animation::format_elapsed(
+            app.sessions[app.active].spinner_state.elapsed_ms(),
+        );
         let tokens = app.sessions[app.active].spinner_state.displayed_tokens();
 
         let is_compact = verb.starts_with("压缩上下文");
@@ -336,9 +365,15 @@ fn render_messages(f: &mut Frame, app: &mut App, header_area: Rect, messages_are
         }
         parts.push(Span::styled(")", gray));
         Some(Line::from(parts))
-    } else if app.sessions[app.active].spinner_state.last_summary_elapsed_ms() > 0 {
+    } else if app.sessions[app.active]
+        .spinner_state
+        .last_summary_elapsed_ms()
+        > 0
+    {
         let elapsed = perihelion_widgets::spinner::animation::format_elapsed(
-            app.sessions[app.active].spinner_state.last_summary_elapsed_ms(),
+            app.sessions[app.active]
+                .spinner_state
+                .last_summary_elapsed_ms(),
         );
         Some(Line::from(Span::styled(
             format!("  ✻  Brewed for {elapsed}"),
@@ -377,7 +412,14 @@ fn render_messages(f: &mut Frame, app: &mut App, header_area: Rect, messages_are
         };
 
         // Vec::clone() 是浅克隆，只复制指针+容量+长度头（3个 usize），不复制 Line 内容
-        (cache.lines.clone(), total_lines, max_scroll, off, new_follow, ver)
+        (
+            cache.lines.clone(),
+            total_lines,
+            max_scroll,
+            off,
+            new_follow,
+            ver,
+        )
     };
     // 在 cache read guard 释放后写入
     app.sessions[app.active].core.last_render_version = last_render_version;

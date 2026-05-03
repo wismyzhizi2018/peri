@@ -41,6 +41,9 @@ enum Commands {
         /// 模型名称/别名
         #[arg(long)]
         model: Option<String>,
+        /// Agent 类型（从 .claude/agents/ 中选择，如 code-reviewer、explorer）
+        #[arg(short = 'g', long)]
+        agent: Option<String>,
     },
 }
 
@@ -96,11 +99,11 @@ fn main() -> Result<()> {
 
     match cli.command {
         None => run_tui(cli.approve),
-        Some(Commands::Acp { cwd, model }) => {
+        Some(Commands::Acp { cwd, model, agent }) => {
             let rt = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()?;
-            rt.block_on(rust_agent_tui::acp::run_acp_mode(cwd, model))
+            rt.block_on(rust_agent_tui::acp::run_acp_mode(cwd, model, agent))
         }
     }
 }
@@ -230,8 +233,13 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 // 无用户事件（poll 超时）：在阻塞结束后重新读取缓存版本
                 // 这样能捕获渲染线程在等待期间发出的更新
                 let cache_version = app.sessions[app.active].core.render_cache.read().version;
-                let cache_updated = cache_version != app.sessions[app.active].core.last_render_version;
-                if cache_updated || agent_updated || bg_updated || app.sessions[app.active].core.loading {
+                let cache_updated =
+                    cache_version != app.sessions[app.active].core.last_render_version;
+                if cache_updated
+                    || agent_updated
+                    || bg_updated
+                    || app.sessions[app.active].core.loading
+                {
                     terminal.draw(|f| ui::main_ui::render(f, &mut app))?;
                 }
             }
@@ -246,7 +254,11 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     }
 
     // 等待最后一次 Langfuse flush 完成，防止 runtime drop 前 batcher 数据丢失
-    if let Some(handle) = app.sessions[app.active].langfuse.langfuse_flush_handle.take() {
+    if let Some(handle) = app.sessions[app.active]
+        .langfuse
+        .langfuse_flush_handle
+        .take()
+    {
         let _ = handle.await;
     }
 

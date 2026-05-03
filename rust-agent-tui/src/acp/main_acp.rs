@@ -3,7 +3,8 @@ use std::sync::Arc;
 use agent_client_protocol::{on_receive_dispatch, on_receive_request, Agent};
 use agent_client_protocol_tokio::Stdio;
 use anyhow::Result;
-use rust_agent_middlewares::prelude::{PermissionMode, SharedPermissionMode};
+use rust_agent_middlewares::agent_define::AgentDefineMiddleware;
+use rust_agent_middlewares::prelude::*;
 use rust_create_agent::thread::{SqliteThreadStore, ThreadStore};
 
 use super::dispatch;
@@ -12,11 +13,28 @@ use super::session::SessionManager;
 use crate::app::agent::LlmProvider;
 use crate::config;
 
-pub async fn run_acp_mode(_cwd: String, model_override: Option<String>) -> Result<()> {
+pub async fn run_acp_mode(
+    _cwd: String,
+    model_override: Option<String>,
+    agent_type: Option<String>,
+) -> Result<()> {
     let _telemetry = rust_create_agent::telemetry::init_tracing("peri-acp");
 
     let zen_config = Arc::new(config::load().unwrap_or_default());
     let provider = resolve_provider(&zen_config, model_override.as_deref());
+
+    // Load agent overrides if agent_type is specified
+    let agent_overrides = agent_type
+        .as_deref()
+        .and_then(|id| AgentDefineMiddleware::load_overrides(&_cwd, id));
+
+    if let Some(ref id) = agent_type {
+        if agent_overrides.is_none() {
+            tracing::warn!(agent_type = %id, "Agent type not found in .claude/agents/, using default");
+        } else {
+            tracing::info!(agent_type = %id, "Loaded agent type overrides");
+        }
+    }
 
     let thread_store: Arc<dyn ThreadStore> =
         Arc::new(SqliteThreadStore::default_path().unwrap_or_else(|_| {
@@ -26,7 +44,13 @@ pub async fn run_acp_mode(_cwd: String, model_override: Option<String>) -> Resul
 
     let permission_mode = SharedPermissionMode::new(PermissionMode::AutoMode);
 
-    let session_mgr = SessionManager::new(thread_store, provider, zen_config, permission_mode);
+    let session_mgr = SessionManager::new(
+        thread_store,
+        provider,
+        zen_config,
+        permission_mode,
+        agent_overrides,
+    );
 
     dispatch::init_session_manager(session_mgr);
 

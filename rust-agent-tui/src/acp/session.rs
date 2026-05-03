@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use dashmap::DashMap;
+use rust_agent_middlewares::agent_define::AgentOverrides;
 use rust_agent_middlewares::prelude::{PermissionMode, SharedPermissionMode};
 use rust_create_agent::messages::BaseMessage;
 use rust_create_agent::thread::{ThreadId, ThreadMeta, ThreadStore};
@@ -31,6 +32,8 @@ struct SessionManagerInner {
     provider: LlmProvider,
     zen_config: Arc<ZenConfig>,
     permission_mode: Arc<SharedPermissionMode>,
+    /// Global agent overrides from CLI --agent flag (applied to all sessions)
+    pub agent_overrides: Option<AgentOverrides>,
 }
 
 #[derive(Clone)]
@@ -44,6 +47,7 @@ impl SessionManager {
         provider: LlmProvider,
         zen_config: Arc<ZenConfig>,
         permission_mode: Arc<SharedPermissionMode>,
+        agent_overrides: Option<AgentOverrides>,
     ) -> Self {
         Self {
             inner: Arc::new(SessionManagerInner {
@@ -52,6 +56,7 @@ impl SessionManager {
                 provider,
                 zen_config,
                 permission_mode,
+                agent_overrides,
             }),
         }
     }
@@ -165,6 +170,10 @@ impl SessionManager {
 
     pub fn thread_store(&self) -> &Arc<dyn ThreadStore> {
         &self.inner.thread_store
+    }
+
+    pub fn agent_overrides(&self) -> Option<&AgentOverrides> {
+        self.inner.agent_overrides.as_ref()
     }
 
     pub async fn load_thread_messages(

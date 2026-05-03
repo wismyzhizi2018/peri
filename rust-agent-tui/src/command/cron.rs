@@ -27,7 +27,10 @@ impl Command for CronCommand {
         if tasks.is_empty() {
             let vm = MessageViewModel::system("无定时任务".to_string());
             app.sessions[app.active].core.view_messages.push(vm.clone());
-            let _ = app.sessions[app.active].core.render_tx.send(RenderEvent::AddMessage(vm));
+            let _ = app.sessions[app.active]
+                .core
+                .render_tx
+                .send(RenderEvent::AddMessage(vm));
             return;
         }
 

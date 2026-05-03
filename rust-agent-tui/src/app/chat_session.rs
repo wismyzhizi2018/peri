@@ -1,10 +1,10 @@
 use rust_agent_middlewares::prelude::SkillMetadata;
 use rust_agent_middlewares::prelude::TodoItem;
 
+use super::langfuse_state::LangfuseState;
 use super::AgentComm;
 use super::AppCore;
 use crate::command::CommandRegistry;
-use super::langfuse_state::LangfuseState;
 use crate::thread::ThreadId;
 
 /// 独立聊天会话：封装一个对话的完整 UI 状态、Agent 通信状态和持久化上下文。
@@ -20,11 +20,7 @@ pub struct ChatSession {
 }
 
 impl ChatSession {
-    pub fn new(
-        cwd: String,
-        command_registry: CommandRegistry,
-        skills: Vec<SkillMetadata>,
-    ) -> Self {
+    pub fn new(cwd: String, command_registry: CommandRegistry, skills: Vec<SkillMetadata>) -> Self {
         let (render_tx, render_cache, render_notify) =
             crate::ui::render_thread::spawn_render_thread(80);
         Self {

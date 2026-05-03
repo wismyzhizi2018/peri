@@ -40,6 +40,9 @@ pub const DIM: Color = Color::Rgb(80, 80, 80);
 /// 中性灰 — 空闲边框 #505050
 pub const BORDER: Color = Color::Rgb(80, 80, 80);
 
+/// 暗灰 — 非活跃 session 分隔线 #2A2A30
+pub const BORDER_DIM: Color = Color::Rgb(42, 42, 48);
+
 /// 激活边框 — 输入框/当前 panel focus 状态
 pub const BORDER_ACTIVE: Color = ACCENT;
 

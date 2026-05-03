@@ -22,7 +22,10 @@ impl Command for LoopCommand {
                     .to_string(),
             );
             app.sessions[app.active].core.view_messages.push(vm.clone());
-            let _ = app.sessions[app.active].core.render_tx.send(RenderEvent::AddMessage(vm));
+            let _ = app.sessions[app.active]
+                .core
+                .render_tx
+                .send(RenderEvent::AddMessage(vm));
             return;
         }
 
