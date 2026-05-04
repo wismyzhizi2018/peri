@@ -5,7 +5,7 @@
 | 组件 | 类型 | 职责 |
 |------|------|------|
 | `rust-create-agent` | 核心库 | ReAct 执行器、LLM 适配层、Middleware trait、工具系统、消息类型、线程持久化（SQLite + Filesystem）、遥测（OTel） |
-| `rust-agent-middlewares` | 中间件库 | 文件系统、终端、HITL（含 SharedPermissionMode/Auto 分类器）、SubAgent、Skills、SkillPreload、AgentsMd、AgentDefine、Todo、PrependSystem、AskUser、CronMiddleware、grep 进程内搜索 等具体实现 |
+| `rust-agent-middlewares` | 中间件库 | 文件系统、终端、HITL（含 SharedPermissionMode/Auto 分类器）、SubAgent、Skills、SkillPreload、AgentsMd、AgentDefine、Todo、CronMiddleware、MCP（Client 连接池、OAuth 2.0、工具桥接）、grep 进程内搜索 等具体实现 |
 | `rust-agent-tui` | 可执行文件 | 基于 ratatui 的交互式 TUI，异步渲染、多会话管理、HITL/AskUser 弹窗、配置面板、Langfuse 追踪 |
 
 ## Workspace 依赖关系
@@ -58,7 +58,7 @@ src/
 │   └── provider.rs       — ToolProvider trait（批量动态提供工具）
 ├── thread/
 │   ├── store.rs          — ThreadStore trait（异步，list/get/create/append/delete）
-│   ├── sqlite_store.rs   — SqliteThreadStore：WAL 模式，parking_lot::Mutex 串行写
+│   ├── sqlite_store.rs   — SqliteThreadStore：sqlx SqlitePool 连接池，WAL 模式，原生 async
 │   ├── filesystem.rs     — FilesystemThreadStore：文件系统持久化备选实现
 │   └── types.rs          — ThreadId（UUID v7）、ThreadMeta
 ├── hitl/                 — HitlDecision 枚举（Approve/Edit/Reject/Respond）、HitlHandler trait、BatchItem
@@ -78,6 +78,13 @@ src/
 │   ├── terminal.rs       — TerminalMiddleware（bash 工具，120s 超时，跨平台）
 │   ├── prepend_system.rs — PrependSystemMiddleware（before_agent 注入 system prompt）
 │   └── todo.rs           — TodoMiddleware（after_tool 解析 TodoWrite，推送 channel）
+├── mcp/                   — McpMiddleware（config/transport/client/tool_bridge/resource_tool/middleware）
+│   ├── config.rs         — 双层配置加载合并（全局 settings.json + 项目 .mcp.json），${VAR} 展开
+│   ├── transport.rs      — stdio（子进程）/ StreamableHTTP（远程）传输工厂
+│   ├── client.rs         — McpClientPool 连接池管理
+│   ├── tool_bridge.rs    — MCP 工具 → BaseTool 桥接
+│   ├── resource_tool.rs  — mcp_read_resource 工具
+│   └── middleware.rs     — Middleware trait 实现
 ├── hitl/
 │   ├── mod.rs            — HumanInTheLoopMiddleware（before_tool 拦截 + requires_approval 判断）
 │   ├── shared_mode.rs    — SharedPermissionMode (Arc<AtomicU8> 无锁共享权限模式)
@@ -187,6 +194,7 @@ src/
 | `LlmCallStart` | LLM 调用开始 | step + messages 快照 + tools 定义（Langfuse） |
 | `LlmCallEnd` | LLM 调用结束 | step + model + output + TokenUsage（Langfuse） |
 | `LlmRetrying` | LLM 重试中 | attempt, max_attempts, delay_ms, error |
+| `BackgroundTaskCompleted` | 后台 agent 任务完成 | task_id, agent_name, success, output, tool_calls_count, duration_ms |
 
 ### TUI AgentEvent（应用层，扩展变体）
 
@@ -301,8 +309,10 @@ LlmCallEnd 携带 usage
 5. FilesystemMiddleware       ← 提供 6 个文件系统工具
 6. TerminalMiddleware         ← 提供 bash 工具
 7. TodoMiddleware             ← after_tool 解析 TodoWrite 结果
-8. HumanInTheLoopMiddleware   ← before_tool 拦截敏感工具
-9. SubAgentMiddleware         ← 提供 Agent 工具
+8. CronMiddleware             ← cron_register/cron_list/cron_remove
+9. HumanInTheLoopMiddleware   ← before_tool 拦截敏感工具
+10. SubAgentMiddleware         ← 提供 Agent 工具（支持 fork/normal/background 三路径）
+11. McpMiddleware             ← MCP 工具和资源注入（仅 pool 初始化成功时注册）
 [ReActAgent.with_system_prompt()] ← system prompt 固定在 run_before_agent 之后 prepend，不依赖中间件顺序
 
 子 Agent（SubAgentTool 内部组装）：
@@ -349,4 +359,4 @@ rust-create-agent（tracing spans）
 ```
 
 ---
-*最后更新: 2026-04-30 — 由 15 个 feature 归档批量更新*
+*最后更新: 2026-05-04 — 由 feature_20260504_F001_sqlx-migration 归档时更新*

@@ -12,6 +12,15 @@
 
 | Feature ID | 摘要 | 领域 | 归档日期 |
 |-----------|------|------|----------|
+| [feature_20260503_F002_multi-agent-design](../archive/feature_20260503_F002_multi-agent-design/) | Fork 路径继承父 agent 上下文 + Agent prompt 指导扩写 | agent | 2026-05-04 |
+| [feature_20260503_F001_mcp-oauth-auth](../archive/feature_20260503_F001_mcp-oauth-auth/) | MCP HTTP 传输层集成 OAuth 2.0（PKCE + Token 持久化 + 混合回调） | mcp | 2026-05-04 |
+| [feature_20260503_F001_cc-commands-alignment](../archive/feature_20260503_F001_cc-commands-alignment/) | 新增 /config /cost /context /memory 四个命令 + Command alias 机制 | tui | 2026-05-04 |
+| [feature_20260502_F002_mcp-management](../archive/feature_20260502_F002_mcp-management/) | MCP 连接池后台初始化 + /mcp 运行时管理面板 | mcp | 2026-05-04 |
+| [feature_20260502_F001_mcp-middleware](../archive/feature_20260502_F001_mcp-middleware/) | MCP Client 中间件（stdio/HTTP 传输、工具桥接、双层配置） | mcp | 2026-05-04 |
+| [feature_20260501_F001_color-system-refactor](../archive/feature_20260501_F001_color-system-refactor/) | TUI 配色对齐 Claude Code Dark 主题 + 清理 28 处硬编码颜色 | tui | 2026-05-04 |
+| [feature_20260430_F001_align-claude-code-tools](../archive/feature_20260430_F001_align-claude-code-tools/) | 10 个工具名称和参数结构完全对齐 Claude Code | agent | 2026-05-04 |
+| [feature_20260503_F003_background-agent](../archive/feature_20260503_F003_background-agent/) | Agent 工具支持后台执行，主 agent 不阻塞，完成后通知注入 | agent | 2026-05-04 |
+| [feature_20260504_F001_sqlx-migration](../archive/feature_20260504_F001_sqlx-migration/) | 线程持久化层从 rusqlite 同步迁移到 sqlx 原生异步 | storage | 2026-05-04 |
 | [feature_20260430_F003_replace-grep-with-ripgrep](../archive/feature_20260430_F003_replace-grep-with-ripgrep/) | 用 grep+grep-regex crate 替换外部 rg 进程调用 | file-search | 2026-04-30 |
 | [feature_20260430_F002_reconcile-on-done-interrupted](../archive/feature_20260430_F002_reconcile-on-done-interrupted/) | Done/Interrupted 事件触发尾部重建确保流式与恢复路径一致 | message-pipeline | 2026-04-30 |
 | [feature_20260430_F001_system-prompt-restructure](../archive/feature_20260430_F001_system-prompt-restructure/) | 系统提示词拆分为独立段落文件并支持 Feature 条件注入 | system-prompt | 2026-04-30 |
@@ -92,8 +101,10 @@
 
 ## 领域索引
 
-- [agent](./domains/agent.md) — Agent 核心（ReAct 执行器、消息系统、工具抽象、持久化）— 13 features
-- [tui](./domains/tui.md) — TUI 界面（渲染、交互、命令、面板）— 26 features
+- [storage](./domains/storage.md) — 存储基础设施（sqlx 异步数据库连接池、线程持久化）— 1 feature
+- [agent](./domains/agent.md) — Agent 核心（ReAct 执行器、消息系统、工具抽象、持久化）— 16 features
+- [tui](./domains/tui.md) — TUI 界面（渲染、交互、命令、面板）— 29 features
+- [mcp](./domains/mcp.md) — MCP 集成（Client 中间件、连接池、OAuth 2.0、运行时管理）— 3 features
 - [relay-server](./domains/relay-server.md) — Relay Server（WebSocket 中继、远程控制）— 12 features
 - [langfuse](./domains/langfuse.md) — 可观测性（Langfuse 全链路追踪、Session/Trace/Generation/Tool 层级）— 8 features
 - [model-config](./domains/model-config.md) — 模型配置（Provider 自包含模型名、/login 与 /model 分离）— 1 feature
@@ -111,4 +122,4 @@
 - [code-architecture](./domains/code-architecture.md) — 代码架构（Relay 移除等结构性变更）— 1 feature
 
 ---
-*最后更新: 2026-04-30 — 由 15 个 feature 归档批量更新*
+*最后更新: 2026-05-04 — 由 feature_20260504_F001_sqlx-migration 归档时更新*

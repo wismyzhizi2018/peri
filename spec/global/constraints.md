@@ -8,7 +8,8 @@
 - **异步运行时:** tokio 1.x（`features = ["full"]`）
 - **HTTP 客户端:** reqwest 0.12（json + stream features）
 - **序列化:** serde 1.x + serde_json 1.x
-- **数据库:** rusqlite 0.31（bundled SQLite，WAL 模式）
+- **数据库:** sqlx 0.8（runtime-tokio + sqlite，SqlitePool 连接池，WAL 模式）
+- **MCP Client:** rmcp 1.6.0（stdio + Streamable HTTP 传输，auth feature 启用 OAuth 2.0）
 - **TUI 框架:** ratatui ≥0.30 + ratatui-textarea 0.8 + pulldown-cmark 0.12 + arboard 3（剪贴板）+ png 0.17（RGBA→PNG）+ base64 0.22 + langfuse-client（workspace 内 crate，Langfuse V4 客户端，替代 langfuse-ergonomic）
 - **perihelion-widgets**（独立 widget crate，BorderedPanel/ScrollableArea/SelectableList/MarkdownRenderer 等 11 组件）
 - **syntect 5**（代码语法高亮，feature flag `markdown-highlight` 控制）
@@ -66,4 +67,4 @@
 - **SubAgent 防递归:** `Agent` 工具始终从子 Agent 工具集中排除自身，防止无限递归
 
 ---
-*最后更新: 2026-04-30 — 由 15 个 feature 归档批量更新*
+*最后更新: 2026-05-04 — 由 feature_20260504_F001_sqlx-migration 归档时更新*

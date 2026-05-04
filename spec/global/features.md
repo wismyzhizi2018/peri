@@ -30,12 +30,16 @@
 - **Full Compact:** 9 段结构化摘要模板，工具对完整性保护，PTL 降级重试
 - **LLM 重试:** RetryableLLM<L> 装饰器，指数退避+25%随机抖动，LlmRetrying 事件通知
 - **进程内文件搜索:** grep+grep-regex crate 替代外部 rg 进程，WalkParallel 多线程并行，15 秒超时
+- **MCP 中间件:** McpMiddleware 作为 MCP Client 连接外部服务器（stdio/HTTP），`mcp__{server}__{tool}` 动态工具注册，`mcp_read_resource` 资源读取工具，双层配置合并（全局 settings.json + 项目 .mcp.json），${VAR} 环境变量展开
+- **MCP 运行时管理:** /mcp 面板（Browse/Tools/Resources 三视图），后台连接池初始化不阻塞 TUI，重连/删除服务器
+- **MCP OAuth 2.0:** rmcp auth feature + AuthClient，Authorization Code + PKCE 流程，401 自动触发，Token 持久化 ~/.zen-code/oauth_tokens.json（0600），混合回调（本地 HTTP → TUI 手动粘贴）
+- **工具名称对齐 Claude Code:** 10 个内置工具名称完全对齐（Read/Write/Edit/Glob/Grep/Agent 等），Grep 重构为结构化接口，HITL 默认审批清单同步更新
 
 ## TUI 界面（rust-agent-tui）
 
 - **多会话历史:** `SqliteThreadStore` 持久化会话，`/history` 面板浏览（j/k 导航，d 删除，Enter 打开，Esc 新建）
 - **模型别名映射:** Opus/Sonnet/Haiku 三级别名，`/model` 三 Tab 面板，`/model <alias>` 快捷切换
-- **TUI 命令:** `/clear` 清空消息、`/help` 命令列表、`/compact` 上下文压缩
+- **TUI 命令:** `/clear` 清空消息、`/help` 命令列表、`/compact` 上下文压缩、`/config` 全局配置、`/cost` 费用统计、`/context` 上下文使用率、`/memory` 编辑 CLAUDE.md、`/mcp` MCP 管理面板；Command trait 支持 alias 机制
 - **Skills 补全:** 输入 `#` 触发 Skills 浮层，Tab 导航，Enter 补全为 `#skill-name`；发送含 `#skill-name` 的消息时自动通过 `SkillPreloadMiddleware` 将 skill 全文注入 agent state（fake Read 工具调用序列）
 - **HITL 弹窗:** `ApprovalNeeded` 事件触发审批弹窗，展示工具名称和参数，支持 Approve / Edit / Reject / Respond
 - **AskUser 弹窗:** `AskUserBatch` 事件触发问答弹窗，支持批量问题，单选/多选
@@ -64,13 +68,14 @@
 - **鼠标文字选区:** TextSelection 模块管理拖拽状态，WrappedLineInfo 换行映射，Ctrl+C 优先级链（选区复制>中断>退出），REVERSED 反色高亮
 - **Skills / 触发:** Skills 触发键从 # 统一到 / 前缀，提示浮层合并命令组+Skills 组，命令优先
 - **5 级权限模式:** Default/AcceptEdits/Auto/BypassPermissions/DontAsk，Shift+Tab 循环切换，Arc<AtomicU8> 无锁共享，状态栏实时显示
+- **Background Agent:** Agent 工具 `run_in_background` 参数触发后台执行，最多 3 并发，`mpsc::unbounded_channel` 通知，完成后 Human 消息注入，主 agent Done 后自动 continuation，ToolBlock 样式显示，状态栏 `[BG: N]` 指示器
 
 ## 基础设施
 
-- **SQLite 线程持久化:** WAL 模式，`parking_lot::Mutex<Connection>` 串行写，`append_messages` 事务保证 crash-safe，`StateSnapshot` 事件驱动增量写入
+- **SQLite 线程持久化:** sqlx SqlitePool(max=5) 原生异步连接池，WAL 模式，`append_messages` 事务保证 crash-safe，`StateSnapshot` 事件驱动增量写入
 - **OpenTelemetry 追踪:** 内置 OTLP HTTP 导出，`OTEL_EXPORTER_OTLP_ENDPOINT` 环境变量控制开关，tracing-opentelemetry 桥接，兼容 Jaeger
 - **结构化日志:** `RUST_LOG` 级别控制，`RUST_LOG_FORMAT=json` 切换 JSON 格式
 - **配置持久化:** `~/.zen-code/settings.json` 存储 Provider/Model 配置，`AppConfig` 统一读写，`env` 字段替代 .env 文件注入环境变量
 
 ---
-*最后更新: 2026-04-30 — 由 15 个 feature 归档批量更新*
+*最后更新: 2026-05-04 — 由 feature_20260504_F001_sqlx-migration 归档时更新*
