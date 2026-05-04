@@ -280,16 +280,17 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
 
-    async fn make_store() -> SqliteThreadStore {
+    async fn make_store() -> (SqliteThreadStore, tempfile::TempDir) {
         let dir = tempdir().unwrap();
-        SqliteThreadStore::new(dir.path().join("test.db"))
+        let store = SqliteThreadStore::new(dir.path().join("test.db"))
             .await
-            .unwrap()
+            .unwrap();
+        (store, dir)
     }
 
     #[tokio::test]
     async fn test_create_append_load() {
-        let store = make_store().await;
+        let (store, _dir) = make_store().await;
         let meta = ThreadMeta::new("/tmp");
         let id = store.create_thread(meta).await.unwrap();
 
@@ -304,7 +305,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_list_threads_order() {
-        let store = make_store().await;
+        let (store, _dir) = make_store().await;
 
         let m1 = ThreadMeta::new("/a");
         let id1 = store.create_thread(m1).await.unwrap();
@@ -328,7 +329,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_thread_cascade() {
-        let store = make_store().await;
+        let (store, _dir) = make_store().await;
         let meta = ThreadMeta::new("/tmp");
         let id = store.create_thread(meta).await.unwrap();
         store
@@ -350,7 +351,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_message_order_after_multiple_appends() {
-        let store = make_store().await;
+        let (store, _dir) = make_store().await;
         let meta = ThreadMeta::new("/tmp");
         let id = store.create_thread(meta).await.unwrap();
 
@@ -376,7 +377,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_title_auto_set() {
-        let store = make_store().await;
+        let (store, _dir) = make_store().await;
         let meta = ThreadMeta::new("/tmp");
         let id = store.create_thread(meta).await.unwrap();
 
