@@ -450,8 +450,8 @@ mod tests {
             env: HashMap::new(),
         };
         let env = build_env(&node_env, &ctx);
-        // Should contain at least PATH
-        assert!(env.contains_key("PATH"));
+        // Should contain at least PATH (case-insensitive on Windows)
+        assert!(env.keys().any(|k| k.eq_ignore_ascii_case("PATH")));
     }
 
     #[test]
@@ -619,9 +619,13 @@ mod tests {
     #[tokio::test]
     async fn test_execute_shell_command_custom_shell() {
         let env = HashMap::new();
-        // Override shell to "bash -c"
+        // Use platform-appropriate shell for the override
+        #[cfg(target_os = "windows")]
+        let shell = "cmd /C";
+        #[cfg(not(target_os = "windows"))]
+        let shell = "bash -c";
         let result =
-            execute_shell_command("echo custom_shell_test", &env, Some(10), Some("bash -c")).await;
+            execute_shell_command("echo custom_shell_test", &env, Some(10), Some(shell)).await;
         assert!(result.is_ok());
         let (code, stdout, _stderr) = result.unwrap();
         assert_eq!(code, 0);

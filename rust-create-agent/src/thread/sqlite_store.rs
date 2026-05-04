@@ -4,7 +4,6 @@ use chrono::{DateTime, Utc};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use crate::messages::BaseMessage;
 use crate::thread::{ThreadId, ThreadMeta, ThreadStore};
@@ -25,11 +24,12 @@ impl SqliteThreadStore {
             std::fs::create_dir_all(parent)
                 .with_context(|| format!("创建目录失败: {}", parent.display()))?;
         }
-        let options =
-            SqliteConnectOptions::from_str(&format!("sqlite://{}?mode=rwc", db_path.display()))?
-                .pragma("journal_mode", "WAL")
-                .pragma("synchronous", "NORMAL")
-                .pragma("foreign_keys", "ON");
+        let options = SqliteConnectOptions::new()
+            .filename(&db_path)
+            .create_if_missing(true)
+            .pragma("journal_mode", "WAL")
+            .pragma("synchronous", "NORMAL")
+            .pragma("foreign_keys", "ON");
         let pool = SqlitePoolOptions::new()
             .max_connections(5)
             .connect_with(options)

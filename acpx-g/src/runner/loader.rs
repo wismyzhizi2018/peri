@@ -431,7 +431,9 @@ level: "info"
     fn test_resolve_path_relative() {
         let base = Path::new("/workflows");
         let result = resolve_path("./notify.yaml", base);
-        assert_eq!(result, "/workflows/./notify.yaml");
+        // Normalize separators for cross-platform comparison
+        let expected = PathBuf::from("/workflows").join("./notify.yaml");
+        assert_eq!(PathBuf::from(&result), expected);
     }
 
     #[test]
