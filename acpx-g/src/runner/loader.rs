@@ -158,7 +158,13 @@ fn expand_references<'a>(
 
                     // We can't modify nodes already in expanded_nodes or inlined_nodes yet,
                     // so defer: rewire after all nodes collected
-                    expanded_nodes.push((inlined_nodes, ref_node.id.clone(), exit_ids));
+                    expanded_nodes.push((inlined_nodes, ref_node.id.clone(), exit_ids.clone()));
+
+                    // Record output forwarding: ref_id -> exit node IDs
+                    // so downstream can reference needs.<ref_id>.outputs.*
+                    if !exit_ids.is_empty() {
+                        wf.output_forward.insert(ref_node.id.clone(), exit_ids);
+                    }
                 }
                 other => {
                     expanded_nodes.push((vec![other], String::new(), vec![]));

@@ -156,8 +156,18 @@ async fn execute_dag(
                 Ok(Ok(outputs)) => {
                     let nid = node_id(&nodes[idx]).to_string();
                     if !outputs.is_empty() {
-                        completed_outputs.insert(nid, outputs);
+                        completed_outputs.insert(nid.clone(), outputs);
                     }
+
+                    // Forward outputs to reference node ID if this is an exit node
+                    for (ref_id, exit_ids) in &wf.output_forward {
+                        if exit_ids.contains(&nid) {
+                            if let Some(exit_outputs) = completed_outputs.get(&nid) {
+                                completed_outputs.insert(ref_id.clone(), exit_outputs.clone());
+                            }
+                        }
+                    }
+
                     completed.insert(idx);
                 }
                 Ok(Err(e)) => {

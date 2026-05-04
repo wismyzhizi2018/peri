@@ -10,6 +10,10 @@ use crate::runner::template::interpolate_map;
 use crate::runner::template::TemplateContext;
 use crate::schema::{NodeDef, Platform};
 
+/// Environment variable name pointing to the output file for dynamic outputs.
+/// Shell scripts can write `key=value` lines to this file to set outputs at runtime.
+const ACPX_OUTPUT_ENV: &str = "ACPX_OUTPUT";
+
 /// Maximum stdout/stderr length stored per node (256 KB).
 /// Longer output is truncated with a marker.
 const MAX_STORED_OUTPUT: usize = 256 * 1024;
@@ -91,16 +95,22 @@ pub async fn execute_node(
         }
     };
 
-    if result.is_ok() {
-        let outputs = get_node_outputs(node, ctx);
-        if !outputs.is_empty() {
-            let outputs_json = serde_json::to_string(&outputs)?;
-            NodeRun::update_outputs(pool, &node_run_id, &outputs_json).await?;
+    match result {
+        Ok(dynamic_outputs) => {
+            // Static outputs from YAML (template-interpolated)
+            let mut outputs = get_node_outputs(node, ctx);
+            // Dynamic outputs from $ACPX_OUTPUT file override static ones
+            for (k, v) in dynamic_outputs {
+                outputs.insert(k, v);
+            }
+            if !outputs.is_empty() {
+                let outputs_json = serde_json::to_string(&outputs)?;
+                NodeRun::update_outputs(pool, &node_run_id, &outputs_json).await?;
+            }
+            Ok(outputs)
         }
-        return Ok(outputs);
+        Err(e) => Err(e),
     }
-
-    result.map(|_| HashMap::new())
 }
 
 fn get_node_outputs(node: &NodeDef, ctx: &TemplateContext) -> HashMap<String, String> {
@@ -119,10 +129,13 @@ struct AttemptResult {
     exit_code: i64,
     stdout: String,
     stderr: String,
+    /// Dynamic outputs parsed from $ACPX_OUTPUT file.
+    dynamic_outputs: HashMap<String, String>,
 }
 
 /// Generic retry loop: execute a command with exponential backoff.
 /// Accumulates stdout/stderr across attempts and persists state to DB.
+/// Returns dynamic outputs from the successful attempt.
 async fn execute_with_retry(
     pool: &SqlitePool,
     node_run_id: &str,
@@ -130,7 +143,7 @@ async fn execute_with_retry(
     execute_fn: impl Fn() -> std::pin::Pin<
         Box<dyn std::future::Future<Output = anyhow::Result<AttemptResult>> + Send>,
     >,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<HashMap<String, String>> {
     let max_attempts = retries.unwrap_or(0) + 1;
     let mut last_error = None;
     let mut accumulated_stdout = String::new();
@@ -171,7 +184,7 @@ async fn execute_with_retry(
                 .await?;
 
                 if result.exit_code == 0 {
-                    return Ok(());
+                    return Ok(result.dynamic_outputs);
                 }
                 last_error = Some(anyhow::anyhow!(
                     "command exited with code {}\nstderr: {}",
@@ -212,23 +225,39 @@ async fn run_shell(
     timeout_secs: Option<u64>,
     retries: Option<u32>,
     shell_override: Option<&str>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<HashMap<String, String>> {
     let script = script.to_string();
     let env = env.clone();
     let shell_override = shell_override.map(|s| s.to_string());
 
     execute_with_retry(pool, node_run_id, retries, move || {
         let script = script.clone();
-        let env = env.clone();
+        let mut env = env.clone();
         let shell_override = shell_override.clone();
         Box::pin(async move {
+            // Create a temp file for dynamic outputs ($ACPX_OUTPUT)
+            let output_path =
+                std::env::temp_dir().join(format!("acpx-output-{}", uuid::Uuid::new_v4()));
+            env.insert(
+                ACPX_OUTPUT_ENV.to_string(),
+                output_path.to_string_lossy().to_string(),
+            );
+
             let (exit_code, stdout, stderr) =
                 execute_shell_command(&script, &env, timeout_secs, shell_override.as_deref())
                     .await?;
+
+            // Parse dynamic outputs from the temp file
+            let dynamic_outputs = parse_output_file(&output_path.to_string_lossy());
+
+            // Clean up the temp file
+            let _ = std::fs::remove_file(&output_path);
+
             Ok(AttemptResult {
                 exit_code,
                 stdout,
                 stderr,
+                dynamic_outputs,
             })
         })
     })
@@ -301,7 +330,7 @@ async fn run_agent(
     env: &HashMap<String, String>,
     timeout_secs: Option<u64>,
     retries: Option<u32>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<HashMap<String, String>> {
     let prompt = prompt.to_string();
     let agent_name = agent_name.map(|s| s.to_string());
     let model = model.map(|s| s.to_string());
@@ -328,6 +357,7 @@ async fn run_agent(
                 exit_code,
                 stdout,
                 stderr,
+                dynamic_outputs: HashMap::new(),
             })
         })
     })
@@ -417,6 +447,28 @@ fn node_id(node: &NodeDef) -> &str {
         NodeDef::Agent(n) => &n.id,
         NodeDef::Reference(n) => &n.id,
     }
+}
+
+/// Parse `$ACPX_OUTPUT` file: each line should be `key=value`.
+/// Lines without `=` or empty lines are skipped. Only the last value for a
+/// given key is kept (later lines override earlier ones).
+fn parse_output_file(path: &str) -> HashMap<String, String> {
+    let content = match std::fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(_) => return HashMap::new(),
+    };
+
+    let mut outputs = HashMap::new();
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if let Some((key, value)) = line.split_once('=') {
+            outputs.insert(key.trim().to_string(), value.trim().to_string());
+        }
+    }
+    outputs
 }
 
 #[cfg(test)]
@@ -653,5 +705,69 @@ mod tests {
     #[test]
     fn test_max_stored_output_constant() {
         assert_eq!(MAX_STORED_OUTPUT, 256 * 1024);
+    }
+
+    #[test]
+    fn test_parse_output_file_basic() {
+        let path = std::env::temp_dir().join(format!("acpx-test-{}", uuid::Uuid::new_v4()));
+        std::fs::write(&path, "workdir=./workspace/abc123\nstatus=ok\n").unwrap();
+        let outputs = parse_output_file(path.to_str().unwrap());
+        let _ = std::fs::remove_file(&path);
+        assert_eq!(outputs.get("workdir").unwrap(), "./workspace/abc123");
+        assert_eq!(outputs.get("status").unwrap(), "ok");
+    }
+
+    #[test]
+    fn test_parse_output_file_empty() {
+        let path = std::env::temp_dir().join(format!("acpx-test-{}", uuid::Uuid::new_v4()));
+        std::fs::write(&path, "").unwrap();
+        let outputs = parse_output_file(path.to_str().unwrap());
+        let _ = std::fs::remove_file(&path);
+        assert!(outputs.is_empty());
+    }
+
+    #[test]
+    fn test_parse_output_file_missing() {
+        let outputs = parse_output_file("/nonexistent/path");
+        assert!(outputs.is_empty());
+    }
+
+    #[test]
+    fn test_parse_output_file_skips_invalid_lines() {
+        let path = std::env::temp_dir().join(format!("acpx-test-{}", uuid::Uuid::new_v4()));
+        std::fs::write(&path, "valid=yes\nno_equals_line\n\nalso_valid=42\n").unwrap();
+        let outputs = parse_output_file(path.to_str().unwrap());
+        let _ = std::fs::remove_file(&path);
+        assert_eq!(outputs.len(), 2);
+        assert_eq!(outputs.get("valid").unwrap(), "yes");
+        assert_eq!(outputs.get("also_valid").unwrap(), "42");
+    }
+
+    #[test]
+    fn test_parse_output_file_last_wins() {
+        let path = std::env::temp_dir().join(format!("acpx-test-{}", uuid::Uuid::new_v4()));
+        std::fs::write(&path, "key=first\nkey=second\n").unwrap();
+        let outputs = parse_output_file(path.to_str().unwrap());
+        let _ = std::fs::remove_file(&path);
+        assert_eq!(outputs.len(), 1);
+        assert_eq!(outputs.get("key").unwrap(), "second");
+    }
+
+    #[tokio::test]
+    async fn test_execute_shell_command_dynamic_outputs() {
+        let output_path = std::env::temp_dir().join(format!("acpx-test-{}", uuid::Uuid::new_v4()));
+        let mut env = HashMap::new();
+        env.insert(
+            ACPX_OUTPUT_ENV.to_string(),
+            output_path.to_str().unwrap().to_string(),
+        );
+        let script = "echo 'workdir=./workspace/test-uuid' >> $ACPX_OUTPUT";
+        let result = execute_shell_command(script, &env, Some(10), None).await;
+        assert!(result.is_ok());
+        let (code, _stdout, _stderr) = result.unwrap();
+        assert_eq!(code, 0);
+        let outputs = parse_output_file(output_path.to_str().unwrap());
+        let _ = std::fs::remove_file(&output_path);
+        assert_eq!(outputs.get("workdir").unwrap(), "./workspace/test-uuid");
     }
 }

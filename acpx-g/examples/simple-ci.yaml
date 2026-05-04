@@ -7,6 +7,7 @@ description: "simple test for reference and agent node"
 
 references:
     setup: "./setup.yml"
+    copy-workspace: "./copy-workspace.yaml"
 
 defaults:
     retry: 1
@@ -22,10 +23,22 @@ nodes:
       type: reference
       ref: setup
 
-    # Agent: wraps acpx CLI
-    - id: acpx
+    # 复制目录，agent 在复制的 workspace 中执行
+    # 展开后生成: copy-workspace/copy
+    - id: copy-workspace
+      type: reference
+      ref: copy-workspace
+      with:
+          copyDir: "./.tmp"
+          outputDir: "./workspace"
+      depends:
+          - do-setup
+
+    # Agent: 直接引用 copy-workspace 的 workdir 输出
+    - id: agent-run
       type: agent
-      prompt: "say hello to me"
-      agent: ccb
-      model: haiku
-      depends: [do-setup]
+      prompt: "使用 bash cwd 一下"
+      agent: opencode
+      cwd: "{{ needs.copy-workspace.outputs.workdir }}"
+      depends:
+          - copy-workspace

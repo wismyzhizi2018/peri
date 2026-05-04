@@ -120,6 +120,13 @@ pub struct Workflow {
     /// reference expansion. Not serialized in YAML.
     #[serde(skip)]
     pub reference_inputs: HashMap<String, HashMap<String, String>>,
+
+    /// Runtime-only: maps reference node ID to its exit node IDs.
+    /// Used to forward exit node outputs back to the reference node ID
+    /// so downstream templates can reference `needs.<ref_id>.outputs.*`.
+    /// Populated by the loader during reference expansion.
+    #[serde(skip)]
+    pub output_forward: HashMap<String, Vec<String>>,
 }
 
 // ─── Input Definition ─────────────────────────────────────────────
