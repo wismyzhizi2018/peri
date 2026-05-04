@@ -209,7 +209,6 @@ mod tests {
 
     #[test]
     fn test_interpolate_nested_node_id() {
-        let ctx = make_ctx();
         // Reference-expanded node IDs with "/" prefix
         let mut needs_outputs = HashMap::new();
         let mut outputs = HashMap::new();

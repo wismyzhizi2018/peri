@@ -441,4 +441,146 @@ level: "info"
         let result = resolve_path("https://example.com/wf.yaml", base);
         assert_eq!(result, "https://example.com/wf.yaml");
     }
+
+    #[test]
+    fn test_find_exit_nodes() {
+        use crate::schema::{ExecConfig, ShellNode};
+        let nodes = vec![
+            NodeDef::Shell(ShellNode {
+                id: "a".into(),
+                run: crate::schema::ScriptSource::Inline("echo a".into()),
+                depends: vec![],
+                outputs: Default::default(),
+                env: Default::default(),
+                continue_on_error: false,
+                exec: ExecConfig {
+                    timeout: None,
+                    retry: None,
+                    shell: None,
+                },
+            }),
+            NodeDef::Shell(ShellNode {
+                id: "b".into(),
+                run: crate::schema::ScriptSource::Inline("echo b".into()),
+                depends: vec!["a".into()],
+                outputs: Default::default(),
+                env: Default::default(),
+                continue_on_error: false,
+                exec: ExecConfig {
+                    timeout: None,
+                    retry: None,
+                    shell: None,
+                },
+            }),
+        ];
+        let exits = find_exit_nodes(&nodes);
+        assert_eq!(exits, vec!["b"]);
+    }
+
+    #[test]
+    fn test_find_exit_nodes_parallel() {
+        use crate::schema::{ExecConfig, ShellNode};
+        let nodes = vec![
+            NodeDef::Shell(ShellNode {
+                id: "x".into(),
+                run: crate::schema::ScriptSource::Inline("echo".into()),
+                depends: vec![],
+                outputs: Default::default(),
+                env: Default::default(),
+                continue_on_error: false,
+                exec: ExecConfig {
+                    timeout: None,
+                    retry: None,
+                    shell: None,
+                },
+            }),
+            NodeDef::Shell(ShellNode {
+                id: "y".into(),
+                run: crate::schema::ScriptSource::Inline("echo".into()),
+                depends: vec![],
+                outputs: Default::default(),
+                env: Default::default(),
+                continue_on_error: false,
+                exec: ExecConfig {
+                    timeout: None,
+                    retry: None,
+                    shell: None,
+                },
+            }),
+        ];
+        let mut exits = find_exit_nodes(&nodes);
+        exits.sort();
+        assert_eq!(exits, vec!["x", "y"]);
+    }
+
+    #[test]
+    fn test_prefix_id() {
+        use crate::schema::{ExecConfig, ShellNode};
+        let node = NodeDef::Shell(ShellNode {
+            id: "build".into(),
+            run: crate::schema::ScriptSource::Inline("echo".into()),
+            depends: vec![],
+            outputs: Default::default(),
+            env: Default::default(),
+            continue_on_error: false,
+            exec: ExecConfig {
+                timeout: None,
+                retry: None,
+                shell: None,
+            },
+        });
+        let result = prefix_id(node, "ci/");
+        assert_eq!(node_id(&result), "ci/build");
+    }
+
+    #[test]
+    fn test_rewire_depends() {
+        use crate::schema::{ExecConfig, ShellNode};
+        let mut node = NodeDef::Shell(ShellNode {
+            id: "deploy".into(),
+            run: crate::schema::ScriptSource::Inline("echo".into()),
+            depends: vec!["ref1".into()],
+            outputs: Default::default(),
+            env: Default::default(),
+            continue_on_error: false,
+            exec: ExecConfig {
+                timeout: None,
+                retry: None,
+                shell: None,
+            },
+        });
+        let mut replacements = HashMap::new();
+        replacements.insert("ref1".into(), vec!["ci/build".into(), "ci/test".into()]);
+        rewire_depends(&mut node, &replacements);
+        assert_eq!(node_depends(&node), &["ci/build", "ci/test"]);
+    }
+
+    #[test]
+    fn test_rewire_depends_no_match() {
+        use crate::schema::{ExecConfig, ShellNode};
+        let mut node = NodeDef::Shell(ShellNode {
+            id: "x".into(),
+            run: crate::schema::ScriptSource::Inline("echo".into()),
+            depends: vec!["a".into()],
+            outputs: Default::default(),
+            env: Default::default(),
+            continue_on_error: false,
+            exec: ExecConfig {
+                timeout: None,
+                retry: None,
+                shell: None,
+            },
+        });
+        rewire_depends(&mut node, &HashMap::new());
+        assert_eq!(node_depends(&node), &["a"]);
+    }
+
+    #[test]
+    fn test_with_value_to_map_number_and_bool() {
+        let yaml = "count: 42\nflag: true";
+        let value: serde_yaml::Value = serde_yaml::from_str(yaml).unwrap();
+        let map = with_value_to_map(&value);
+        assert_eq!(map.get("count").unwrap(), "42");
+        assert_eq!(map.get("flag").unwrap(), "true");
+    }
 }

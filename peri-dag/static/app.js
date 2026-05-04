@@ -103,7 +103,9 @@ async function loadTemplates() {
     const tpls = d.templates || [];
     allTemplates = tpls;
     if (!tpls.length) {
-      el.innerHTML = '<div class="template-empty">No templates found<br><span style="font-size:11px">use --workflow-dir to watch a directory</span></div>';
+      el.innerHTML = '<div class="template-empty">No templates found<br><span style="font-size:11px">Start with: peri-dag --workflow-dir ./examples</span></div>';
+      document.getElementById('graph-placeholder').textContent = 'Add a workflow directory to get started';
+      document.getElementById('log-panel').innerHTML = '<div class="log-empty">Workflow logs will appear here</div>';
       return;
     }
     el.innerHTML = tpls.map(t => `
@@ -154,14 +156,28 @@ function runTemplateFromCard(name) {
 }
 
 async function runTemplate(name) {
-  // Collect inputs from the preview form
+  // Collect inputs from the preview form with validation
   const inputsEl = document.getElementById('preview-inputs');
   const inputs = {};
+  let valid = true;
   if (inputsEl) {
     inputsEl.querySelectorAll('input[data-input-key]').forEach(inp => {
+      inp.style.borderColor = '';
       const key = inp.dataset.inputKey;
-      if (inp.value.trim()) inputs[key] = inp.value.trim();
+      const label = inp.closest('.input-field')?.querySelector('label');
+      const isRequired = label && label.querySelector('.req');
+      if (!inp.value.trim() && isRequired) {
+        inp.style.borderColor = '#cf222e';
+        valid = false;
+      } else if (inp.value.trim()) {
+        inputs[key] = inp.value.trim();
+      }
     });
+  }
+
+  if (!valid) {
+    showToast('Please fill in all required inputs', 'error');
+    return;
   }
 
   try {
@@ -320,8 +336,8 @@ function renderGraph(nodes, runCtx) {
 
     let clickAttr = '';
     let subText = esc(n.node_type) + ' \u00b7 ' + statusLabel(status);
-    if (!isPreview && n.id) {
-      clickAttr = ` onclick="jumpToLog('${n.id}')"`;
+    if (!isPreview && n.node_id) {
+      clickAttr = ` onclick="jumpToLog('${cssEsc(n.node_id)}')"`;
       if (n.exit_code != null) subText += ' exit=' + n.exit_code;
     }
 
@@ -400,8 +416,8 @@ function renderLogs(run) {
         bodyContent = '<div style="font-size:11px;color:var(--text2);padding:8px">No output</div>';
       }
 
-      return `<div class="${sectionClass}" data-node="${n.id}">
-        <div class="log-header" onclick="toggleLog(this, '${n.id}')">
+      return `<div class="${sectionClass}" data-node="${cssEsc(n.node_id)}">
+        <div class="log-header" onclick="toggleLog(this, '${n.node_id}')">
           <span class="left"><b>${esc(n.node_id)}</b> <span style="color:var(--text2)">${n.node_type}</span></span>
           <span class="right">
             ${statusBadge(n.status)}
@@ -410,13 +426,13 @@ function renderLogs(run) {
             ${n.started_at ? `<span>${fmtDuration(n.started_at, n.finished_at)}</span>` : ''}
           </span>
         </div>
-        <div class="${bodyClass}" id="log-body-${n.id}">${bodyContent}</div>
+        <div class="${bodyClass}" id="${domId(n.node_id)}">${bodyContent}</div>
       </div>`;
     }).join('');
 }
 
 function toggleLog(header, nodeId) {
-  const body = document.getElementById('log-body-' + nodeId);
+  const body = document.getElementById(domId(nodeId));
   if (!body) return;
   if (!body.classList.contains('open')) {
     body.classList.add('open');
@@ -427,12 +443,15 @@ function toggleLog(header, nodeId) {
 }
 
 // Escape a string for use in CSS attribute selectors
-function cssEsc(s) { return s.replace(/([\\"]/g, '\\$1'); }
+function cssEsc(s) { return s.replace(/([\\"])/g, '\\$1'); }
 
-async function fetchLogs(nodeRunId, el) {
+// Sanitize node_id for use as a DOM id (replace / with -)
+function domId(nodeId) { return 'log-' + nodeId.replace(/[^a-zA-Z0-9_-]/g, '_'); }
+
+async function fetchLogs(nodeId, el) {
   if (!selectedRunId) return;
   try {
-    const r = await fetch(`${API_WF}/${selectedRunId}/nodes/${nodeRunId}/logs`);
+    const r = await fetch(`${API_WF}/${selectedRunId}/nodes/${encodeURIComponent(nodeId)}/logs`);
     const d = await r.json();
     let html = '';
     if (d.error_message) html += `<div class="log-error-banner">${esc(d.error_message)}</div>`;

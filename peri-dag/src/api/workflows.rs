@@ -229,31 +229,23 @@ pub async fn get_workflow(
 
 pub async fn get_node_logs(
     State(state): State<Arc<AppState>>,
-    Path((run_id, node_run_id)): Path<(String, String)>,
+    Path((run_id, node_id)): Path<(String, String)>,
 ) -> impl IntoResponse {
-    match NodeRun::find_by_id(&state.pool, &node_run_id).await {
-        Ok(Some(node)) => {
-            if node.run_id != run_id {
-                return (
-                    StatusCode::NOT_FOUND,
-                    Json(serde_json::json!({"error": "node not found in this run"})),
-                );
-            }
-            (
-                StatusCode::OK,
-                Json(serde_json::json!({
-                    "node_id": node.node_id,
-                    "status": node.status,
-                    "attempt": node.attempt,
-                    "stdout": node.stdout,
-                    "stderr": node.stderr,
-                    "exit_code": node.exit_code,
-                })),
-            )
-        }
+    match NodeRun::find_by_run_and_node(&state.pool, &run_id, &node_id).await {
+        Ok(Some(node)) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "node_id": node.node_id,
+                "status": node.status,
+                "attempt": node.attempt,
+                "stdout": node.stdout,
+                "stderr": node.stderr,
+                "exit_code": node.exit_code,
+            })),
+        ),
         Ok(None) => (
             StatusCode::NOT_FOUND,
-            Json(serde_json::json!({"error": "node not found"})),
+            Json(serde_json::json!({"error": "node not found in this run"})),
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -502,6 +494,34 @@ mod tests {
             make_input_def(InputType::String, false, None),
         );
         let result = validate_inputs(&declared, &None).unwrap();
-        assert!(result.get("extra").is_none());
+        assert!(!result.contains_key("extra"));
+    }
+
+    #[test]
+    fn test_validate_inputs_empty_declared() {
+        let result = validate_inputs(&HashMap::new(), &None).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_validate_inputs_extra_provided_ignored() {
+        let declared = HashMap::new();
+        let mut provided = HashMap::new();
+        provided.insert("unknown_key".to_string(), "value".to_string());
+        let result = validate_inputs(&declared, &Some(provided)).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_validate_inputs_negative_number() {
+        let mut declared = HashMap::new();
+        declared.insert(
+            "val".to_string(),
+            make_input_def(InputType::Number, true, None),
+        );
+        let mut provided = HashMap::new();
+        provided.insert("val".to_string(), "-3.14".to_string());
+        let result = validate_inputs(&declared, &Some(provided)).unwrap();
+        assert_eq!(result.get("val").unwrap(), "-3.14");
     }
 }
