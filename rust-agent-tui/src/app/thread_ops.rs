@@ -84,6 +84,7 @@ impl App {
         self.sessions[self.active].agent.pending_ask_user = None;
         self.sessions[self.active].agent.cancel_token = None;
         self.sessions[self.active].agent.agent_rx = None;
+        self.sessions[self.active].core.last_submitted_text = None;
     }
 
     /// 恢复历史 thread：加载消息，关闭 browser
@@ -161,6 +162,8 @@ impl App {
         self.sessions[self.active].core.thread_browser = None;
         self.sessions[self.active].langfuse.langfuse_session = None;
         self.sessions[self.active].core.last_human_message = None;
+        self.sessions[self.active].core.last_submitted_text = None;
+        self.sessions[self.active].core.pre_submit_state_len = 0;
 
         self.reset_agent_session();
 

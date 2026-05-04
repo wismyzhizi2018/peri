@@ -23,6 +23,10 @@ impl App {
             return;
         }
 
+        // 记录提交前的状态长度，用于中断时回滚 agent_state_messages
+        self.sessions[self.active].core.pre_submit_state_len =
+            self.sessions[self.active].agent.agent_state_messages.len();
+
         self.push_input_history(input.clone());
 
         // 消费待发送附件
@@ -39,6 +43,7 @@ impl App {
         let user_vm = MessageViewModel::user(display.clone());
         self.apply_pipeline_action(PipelineAction::AddMessage(user_vm));
         self.sessions[self.active].core.last_human_message = Some(display);
+        self.sessions[self.active].core.last_submitted_text = Some(input.clone());
         self.set_loading(true);
         self.sessions[self.active].core.scroll_offset = u16::MAX;
         self.sessions[self.active].core.scroll_follow = true;
@@ -74,6 +79,7 @@ impl App {
         // 防御性重置：上次 agent 任务若 SubAgentEnd 因通道溢出被丢弃，
         // subagent_depth 会永久 > 0，导致所有后续 TokenUsageUpdate 被过滤（ctx 显示为 0）
         self.sessions[self.active].agent.subagent_depth = 0;
+        self.sessions[self.active].agent.agent_replied = false;
         // 清理后台任务 continuation 状态（用户主动发消息时覆盖自动 continuation）
         self.sessions[self.active].agent.agent_done_pending_bg = false;
         self.sessions[self.active].agent.pending_bg_continuation = None;
@@ -572,6 +578,7 @@ impl App {
                 input,
             } => {
                 self.sessions[self.active].agent.retry_status = None;
+                self.sessions[self.active].agent.agent_replied = true;
                 self.sessions[self.active].agent.tool_call_count += 1;
                 // 跨切面：spinner
                 self.sessions[self.active]
@@ -627,6 +634,7 @@ impl App {
             }
             AgentEvent::AssistantChunk(chunk) => {
                 self.sessions[self.active].agent.retry_status = None;
+                self.sessions[self.active].agent.agent_replied = true;
                 // 跨切面：spinner
                 self.sessions[self.active]
                     .spinner_state
@@ -722,20 +730,74 @@ impl App {
                 for action in actions {
                     self.apply_pipeline_action(action);
                 }
-                // reconcile 尾部重建：中断场景同样需要确保一致性
-                let (prefix_len, tail_vms) = self.sessions[self.active]
-                    .core
-                    .pipeline
-                    .reconcile_tail(self.sessions[self.active].core.round_start_vm_idx);
-                self.apply_pipeline_action(PipelineAction::RebuildAll {
-                    prefix_len,
-                    tail_vms,
-                });
-                // 系统消息由 agent_ops 直接显示
-                let vm = MessageViewModel::system(
-                    "⚠ 已中断（工具调用已以 error 结尾，消息已保存，可继续发送恢复）".to_string(),
-                );
-                self.apply_pipeline_action(PipelineAction::AddMessage(vm));
+
+                let agent_replied = self.sessions[self.active].agent.agent_replied;
+                if !agent_replied {
+                    // Agent 尚未回复，恢复用户文本到输入框
+                    // 不走 reconcile_tail（它会从 completed 中找到 Human 消息并重新渲染），
+                    // 直接截断到 round_start 并清除 pipeline。
+                    if let Some(text) = self.sessions[self.active].core.last_submitted_text.take() {
+                        let round_start = self.sessions[self.active].core.round_start_vm_idx;
+                        // 截断 view_messages（移除本轮 Human 消息）
+                        self.sessions[self.active]
+                            .core
+                            .view_messages
+                            .truncate(round_start);
+                        let _ = self.sessions[self.active]
+                            .core
+                            .render_tx
+                            .send(RenderEvent::LoadHistory(
+                                self.sessions[self.active].core.view_messages.clone(),
+                            ));
+                        // 截断 agent_state_messages（回滚 StateSnapshot 扩展的内容）
+                        let pre_len = self.sessions[self.active].core.pre_submit_state_len;
+                        self.sessions[self.active]
+                            .agent
+                            .agent_state_messages
+                            .truncate(pre_len);
+                        // 恢复文本到输入框
+                        let mut ta = crate::app::build_textarea(false);
+                        ta.insert_str(text.clone());
+                        self.sessions[self.active].core.textarea = ta;
+                        // 清除 pending 缓冲
+                        self.sessions[self.active].core.pending_messages.clear();
+                        // 清除 sticky header
+                        self.sessions[self.active].core.last_human_message = None;
+                        // 清除 pipeline 状态（completed 中含本轮 Human 消息）
+                        self.sessions[self.active].core.pipeline.done();
+                        let restored = self.sessions[self.active]
+                            .agent
+                            .agent_state_messages
+                            .clone();
+                        self.sessions[self.active]
+                            .core
+                            .pipeline
+                            .restore_completed(restored);
+                        let vm = MessageViewModel::system(
+                            "⚠ 已中断（输入已恢复到输入框）".to_string(),
+                        );
+                        self.apply_pipeline_action(PipelineAction::AddMessage(vm));
+                    } else {
+                        let vm = MessageViewModel::system(
+                            "⚠ 已中断".to_string(),
+                        );
+                        self.apply_pipeline_action(PipelineAction::AddMessage(vm));
+                    }
+                } else {
+                    // Agent 已回复部分内容，走正常的 reconcile 尾部重建
+                    let (prefix_len, tail_vms) = self.sessions[self.active]
+                        .core
+                        .pipeline
+                        .reconcile_tail(self.sessions[self.active].core.round_start_vm_idx);
+                    self.apply_pipeline_action(PipelineAction::RebuildAll {
+                        prefix_len,
+                        tail_vms,
+                    });
+                    let vm = MessageViewModel::system(
+                        "⚠ 已中断（工具调用已以 error 结尾，消息已保存，可继续发送恢复）".to_string(),
+                    );
+                    self.apply_pipeline_action(PipelineAction::AddMessage(vm));
+                }
                 (true, false, false)
             }
             AgentEvent::Error(ref e) => {

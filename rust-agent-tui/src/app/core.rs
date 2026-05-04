@@ -28,6 +28,10 @@ pub struct AppCore {
     pub scroll_follow: bool,
     pub show_tool_messages: bool,
     pub pending_messages: Vec<String>,
+    /// 最近一次提交的用户文本（用于 Ctrl+C 中断时恢复到输入框）
+    pub last_submitted_text: Option<String>,
+    /// submit_message 前 agent_state_messages 的长度（用于中断时截断回滚）
+    pub pre_submit_state_len: usize,
     pub render_tx: mpsc::UnboundedSender<RenderEvent>,
     pub render_cache: Arc<RwLock<RenderCache>>,
     pub render_notify: Arc<Notify>,
@@ -99,6 +103,8 @@ impl AppCore {
             scroll_follow: true,
             show_tool_messages: false,
             pending_messages: Vec::new(),
+            last_submitted_text: None,
+            pre_submit_state_len: 0,
             render_tx,
             render_cache,
             render_notify,

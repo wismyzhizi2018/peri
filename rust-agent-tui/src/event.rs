@@ -372,6 +372,13 @@ pub async fn next_event(app: &mut App) -> Result<Option<Action>> {
                     return Ok(Some(Action::Quit))
                 }
 
+                // ESC during loading: 清除缓冲的 pending_messages
+                Input { key: Key::Esc, .. } if app.sessions[app.active].core.loading => {
+                    if !app.sessions[app.active].core.pending_messages.is_empty() {
+                        app.sessions[app.active].core.pending_messages.clear();
+                    }
+                }
+
                 // Up：浮层导航 > 历史恢复（仅首行）> textarea 光标
                 Input { key: Key::Up, .. } if !app.sessions[app.active].core.loading => {
                     let hint_count = app.hint_candidates_count();

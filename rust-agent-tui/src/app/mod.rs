@@ -363,15 +363,83 @@ impl App {
             if let Some(start) = self.sessions[self.active].agent.task_start_time {
                 self.sessions[self.active].agent.last_task_duration = Some(start.elapsed());
             }
-            let vm = MessageViewModel::system("⚠ 已强制中断（后台任务可能仍在运行）".to_string());
-            self.sessions[self.active]
-                .core
-                .view_messages
-                .push(vm.clone());
-            let _ = self.sessions[self.active]
-                .core
-                .render_tx
-                .send(RenderEvent::AddMessage(vm));
+
+            // 如果 agent 尚未回复，恢复用户文本到输入框
+            if !self.sessions[self.active].agent.agent_replied {
+                if let Some(text) = self.sessions[self.active].core.last_submitted_text.take() {
+                    let round_start = self.sessions[self.active].core.round_start_vm_idx;
+                    self.sessions[self.active]
+                        .core
+                        .view_messages
+                        .truncate(round_start);
+                    {
+                        let remaining = self.sessions[self.active]
+                            .core
+                            .view_messages
+                            .clone();
+                        let _ = self.sessions[self.active]
+                            .core
+                            .render_tx
+                            .send(RenderEvent::LoadHistory(remaining));
+                    }
+                    // 截断 agent_state_messages（回滚 StateSnapshot 扩展的内容）
+                    let pre_len = self.sessions[self.active].core.pre_submit_state_len;
+                    self.sessions[self.active]
+                        .agent
+                        .agent_state_messages
+                        .truncate(pre_len);
+                    // 清除 pipeline 状态
+                    self.sessions[self.active].core.pipeline.done();
+                    let restored = self.sessions[self.active]
+                        .agent
+                        .agent_state_messages
+                        .clone();
+                    self.sessions[self.active]
+                        .core
+                        .pipeline
+                        .restore_completed(restored);
+                    let mut ta = build_textarea(false);
+                    ta.insert_str(text.clone());
+                    self.sessions[self.active].core.textarea = ta;
+                    self.sessions[self.active].core.pending_messages.clear();
+                    self.sessions[self.active].core.last_human_message = None;
+                    let vm = MessageViewModel::system(
+                        "⚠ 已强制中断（输入已恢复到输入框）".to_string(),
+                    );
+                    self.sessions[self.active]
+                        .core
+                        .view_messages
+                        .push(vm.clone());
+                    let _ = self.sessions[self.active]
+                        .core
+                        .render_tx
+                        .send(RenderEvent::AddMessage(vm));
+                } else {
+                    let vm = MessageViewModel::system(
+                        "⚠ 已强制中断（后台任务可能仍在运行）".to_string(),
+                    );
+                    self.sessions[self.active]
+                        .core
+                        .view_messages
+                        .push(vm.clone());
+                    let _ = self.sessions[self.active]
+                        .core
+                        .render_tx
+                        .send(RenderEvent::AddMessage(vm));
+                }
+            } else {
+                let vm = MessageViewModel::system(
+                    "⚠ 已强制中断（后台任务可能仍在运行）".to_string(),
+                );
+                self.sessions[self.active]
+                    .core
+                    .view_messages
+                    .push(vm.clone());
+                let _ = self.sessions[self.active]
+                    .core
+                    .render_tx
+                    .send(RenderEvent::AddMessage(vm));
+            }
         }
     }
 
@@ -389,16 +457,9 @@ impl App {
         }
     }
 
-    /// 更新输入框标题以反映缓冲消息数量
+    /// 重建输入框（pending_messages 现在由 UI 层直接渲染，不再使用 textarea title）
     pub fn update_textarea_hint(&mut self) {
-        let s = self.active_mut();
-        let count = s.core.pending_messages.len();
-        let hint = if count > 0 {
-            format!("已缓冲 {} 条消息，完成后自动发送…", count)
-        } else {
-            String::new()
-        };
-        s.core.textarea = build_textarea_with_hint(s.core.loading, &hint);
+        // 不再需要更新 textarea title，pending_messages 在输入框上方渲染
     }
 
     /// 设置当前 Agent 的 ID（用于 AgentDefineMiddleware）

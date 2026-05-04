@@ -62,6 +62,9 @@ pub struct AgentComm {
     /// Agent 已完成（Done/Error）但仍有后台任务在运行，
     /// 此时 agent_rx 保持存活以接收 BackgroundTaskCompleted 事件
     pub agent_done_pending_bg: bool,
+    /// 本轮 agent 是否已产生回复（收到 TextChunk/ToolStart/AssistantChunk），
+    /// 用于 Ctrl+C 中断时判断是否恢复用户文本
+    pub agent_replied: bool,
 }
 
 impl Default for AgentComm {
@@ -88,6 +91,7 @@ impl Default for AgentComm {
             tool_call_count: 0,
             pending_bg_continuation: None,
             agent_done_pending_bg: false,
+            agent_replied: false,
         }
     }
 }

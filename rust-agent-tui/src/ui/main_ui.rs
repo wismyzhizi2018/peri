@@ -92,6 +92,14 @@ fn render_session_column(
     let line_count = app.sessions[session_idx].core.textarea.lines().len() as u16;
     let input_height = (line_count + 2).min(area.height * 2 / 5).max(3);
 
+    // 缓冲消息高度（loading 时在输入框上方显示待发送消息）
+    let pending_count = app.sessions[session_idx].core.pending_messages.len();
+    let queued_height: u16 = if pending_count > 0 && app.sessions[session_idx].core.loading {
+        (pending_count as u16).min(3)
+    } else {
+        0
+    };
+
     // 附件栏高度
     let attachment_height: u16 = if app.sessions[session_idx]
         .core
@@ -127,6 +135,7 @@ fn render_session_column(
             Constraint::Min(1),
             Constraint::Length(attachment_height),
             Constraint::Length(panel_height),
+            Constraint::Length(queued_height),
             Constraint::Length(input_height),
             Constraint::Length(status_bar_height),
         ])
@@ -179,33 +188,78 @@ fn render_session_column(
         }
     }
 
+    // 缓冲消息预览（loading 时在输入框上方显示待发送消息）
+    if queued_height > 0 {
+        let queued_area = chunks[4];
+        let msgs = &app.sessions[session_idx].core.pending_messages;
+        let visible_count = (pending_count).min(queued_height as usize);
+        let dim_style = Style::default().fg(theme::MUTED);
+        for (i, msg) in msgs.iter().take(visible_count).enumerate() {
+            let line_area = Rect {
+                x: queued_area.x + 2,
+                y: queued_area.y + i as u16,
+                width: queued_area.width.saturating_sub(2),
+                height: 1,
+            };
+            // 截断到可用宽度（字符级安全）
+            let max_chars = line_area.width as usize;
+            let display: String = msg.chars().take(max_chars.saturating_sub(3)).collect();
+            let suffix = if msg.chars().count() > max_chars.saturating_sub(3) {
+                "…"
+            } else {
+                ""
+            };
+            f.render_widget(
+                Paragraph::new(format!("{}{}", display, suffix)).style(dim_style),
+                line_area,
+            );
+        }
+        if pending_count > visible_count {
+            let more_area = Rect {
+                x: queued_area.x + 2,
+                y: queued_area.y + visible_count as u16,
+                width: queued_area.width.saturating_sub(2),
+                height: 1,
+            };
+            f.render_widget(
+                Paragraph::new(format!("… +{} more", pending_count - visible_count)).style(dim_style),
+                more_area,
+            );
+        }
+    }
+
     // 输入框（直接渲染，不 clone/set_block，避免 tui_textarea 内部状态丢失）
-    f.render_widget(&app.sessions[session_idx].core.textarea, chunks[4]);
-    app.sessions[session_idx].core.textarea_area = Some(chunks[4]);
+    f.render_widget(&app.sessions[session_idx].core.textarea, chunks[5]);
+    app.sessions[session_idx].core.textarea_area = Some(chunks[5]);
 
     // ❯ 前缀
-    let prompt_x = chunks[4].x;
-    let prompt_y = chunks[4].y + 1;
+    let prompt_x = chunks[5].x;
+    let prompt_y = chunks[5].y + 1;
     let prompt_area = Rect {
         x: prompt_x,
         y: prompt_y,
         width: 2,
         height: 1,
     };
-    let prompt_color = if is_active { theme::TEXT } else { theme::MUTED };
+    let loading = app.sessions[session_idx].core.loading;
+    let prompt_color = if !is_active || loading {
+        theme::MUTED
+    } else {
+        theme::TEXT
+    };
     let prompt_style = Style::default()
         .fg(prompt_color)
-        .add_modifier(Modifier::BOLD);
+        .add_modifier(if loading { Modifier::empty() } else { Modifier::BOLD });
     f.render_widget(Paragraph::new("❯").style(prompt_style), prompt_area);
 
     if is_active {
         // 统一命令/Skills 提示条
-        popups::hints::render_unified_hint(f, app, chunks[4]);
+        popups::hints::render_unified_hint(f, app, chunks[5]);
     }
 
     // 单 session 模式下渲染状态栏
     if app.sessions.len() == 1 {
-        status_bar::render_status_bar(f, app, chunks[5]);
+        status_bar::render_status_bar(f, app, chunks[6]);
     }
 
     // 恢复原始 active
