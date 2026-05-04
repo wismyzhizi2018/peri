@@ -840,7 +840,7 @@ fn validate_inputs(
                     let lower = val.to_lowercase();
                     if !matches!(lower.as_str(), "true" | "false" | "1" | "0" | "yes" | "no") {
                         anyhow::bail!(
-                            "input '{}' must be a boolean (true/false), got '{}'",
+                            "input '{}' must be a boolean (accepted: true, false, yes, no, 1, 0), got '{}'",
                             key,
                             val
                         );

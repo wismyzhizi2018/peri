@@ -23,6 +23,7 @@ pub fn validate_workflow(wf: &Workflow) -> anyhow::Result<()> {
     }
 
     // Validate node IDs are non-empty, use safe characters, and nodes don't depend on themselves
+    let mut seen_ids = std::collections::HashSet::new();
     for node in &wf.nodes {
         let id = match node {
             NodeDef::Shell(n) => &n.id,
@@ -43,6 +44,9 @@ pub fn validate_workflow(wf: &Workflow) -> anyhow::Result<()> {
                 id
             );
         }
+        if !seen_ids.insert(id.clone()) {
+            anyhow::bail!("duplicate node id '{}'", id);
+        }
         let depends = match node {
             NodeDef::Shell(n) => &n.depends,
             NodeDef::Agent(n) => &n.depends,
@@ -61,6 +65,30 @@ pub fn validate_workflow(wf: &Workflow) -> anyhow::Result<()> {
                     "dependency '{}' in node '{}' contains invalid characters",
                     dep,
                     id
+                );
+            }
+        }
+    }
+
+    // Validate all depends reference existing node IDs
+    for node in &wf.nodes {
+        let id = match node {
+            NodeDef::Shell(n) => &n.id,
+            NodeDef::Agent(n) => &n.id,
+            NodeDef::Reference(n) => &n.id,
+        };
+        let depends = match node {
+            NodeDef::Shell(n) => &n.depends,
+            NodeDef::Agent(n) => &n.depends,
+            NodeDef::Reference(n) => &n.depends,
+        };
+        for dep in depends.iter() {
+            if !seen_ids.contains(dep) {
+                anyhow::bail!(
+                    "node '{}' depends on '{}', which does not exist. Available nodes: {}",
+                    id,
+                    dep,
+                    seen_ids.iter().cloned().collect::<Vec<_>>().join(", ")
                 );
             }
         }
@@ -945,5 +973,41 @@ nodes:
             }
             _ => panic!("expected agent node"),
         }
+    }
+
+    #[test]
+    fn test_parse_workflow_duplicate_node_id() {
+        let yaml = r#"
+name: test
+version: "1.0"
+nodes:
+  - id: build
+    type: shell
+    run: echo first
+  - id: build
+    type: shell
+    run: echo second
+"#;
+        let err = parse_workflow(yaml).unwrap_err();
+        assert!(err.to_string().contains("duplicate node id 'build'"));
+    }
+
+    #[test]
+    fn test_parse_workflow_depends_nonexistent_node() {
+        let yaml = r#"
+name: test
+version: "1.0"
+nodes:
+  - id: build
+    type: shell
+    run: echo build
+  - id: deploy
+    type: shell
+    depends: [build, test]
+    run: echo deploy
+"#;
+        let err = parse_workflow(yaml).unwrap_err();
+        assert!(err.to_string().contains("does not exist"));
+        assert!(err.to_string().contains("'test'"));
     }
 }

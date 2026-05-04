@@ -559,8 +559,27 @@ async function cancelRun(runId) {
   }
 }
 
-async function rerunRun(runId) {
-  try {
+function rerunRun(runId) {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const dialog = document.createElement('div');
+  dialog.className = 'confirm-dialog';
+  dialog.innerHTML = `
+    <div class="confirm-title">Re-run Workflow</div>
+    <div class="confirm-msg">Create a new run with the same inputs?</div>
+    <div class="confirm-actions">
+      <button class="btn btn-sm confirm-cancel">Cancel</button>
+      <button class="btn btn-sm btn-primary confirm-ok">Re-run</button>
+    </div>`;
+  document.body.appendChild(backdrop);
+  document.body.appendChild(dialog);
+
+  const cleanup = () => { backdrop.remove(); dialog.remove(); };
+  dialog.querySelector('.confirm-cancel').addEventListener('click', cleanup);
+  backdrop.addEventListener('click', cleanup);
+  dialog.querySelector('.confirm-ok').addEventListener('click', async () => {
+    cleanup();
+    try {
     const r = await fetch(`${API_WF}/${runId}/rerun`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -578,9 +597,8 @@ async function rerunRun(runId) {
   } catch(e) {
     showToast('Network error: ' + e.message, 'error');
   }
+  });
 }
-
-function confirmDelete(runId, name) {
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
   const dialog = document.createElement('div');
