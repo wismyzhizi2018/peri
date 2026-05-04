@@ -39,6 +39,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Router
     let app = Router::new()
+        // API Docs
+        .route("/api/v1/docs", get(peri_dag::api::list_api_docs))
         // Template API
         .route("/api/v1/templates", get(peri_dag::api::list_templates))
         .route(

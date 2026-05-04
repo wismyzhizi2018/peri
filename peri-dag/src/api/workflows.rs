@@ -121,6 +121,100 @@ pub async fn create_and_start_run(
     Ok(run_id)
 }
 
+// ─── GET /api/v1/docs ────────────────────────────────────────────
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ApiEndpoint {
+    pub method: String,
+    pub path: String,
+    pub description: String,
+    pub params: Vec<ApiParam>,
+    pub curl: String,
+    pub response: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ApiParam {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub param_type: String,
+    pub description: String,
+}
+
+pub async fn list_api_docs() -> impl IntoResponse {
+    let endpoints = vec![
+        ApiEndpoint {
+            method: "POST".into(),
+            path: "/api/v1/workflows".into(),
+            description: "Submit a workflow YAML for execution. Returns the created run ID.".into(),
+            params: vec![
+                ApiParam { name: "yaml".into(), param_type: "string".into(), description: "Required. Workflow YAML content.".into() },
+                ApiParam { name: "inputs".into(), param_type: "object".into(), description: "Optional. Key-value inputs for template variables.".into() },
+            ],
+            curl: r#"curl -X POST http://$HOST/api/v1/workflows \
+  -H 'Content-Type: application/json' \
+  -d '{"yaml": "name: hello\nversion: \"1.0\"\nnodes:\n  - id: greet\n    type: shell\n    run: echo hello"}'"#.into(),
+            response: r#"{ "run_id": "019...", "status": "pending" }"#.into(),
+            category: Some("workflows".into()),
+        },
+        ApiEndpoint {
+            method: "GET".into(),
+            path: "/api/v1/workflows".into(),
+            description: "List recent workflow runs (last 50).".into(),
+            params: vec![],
+            curl: "curl http://$HOST/api/v1/workflows".into(),
+            response: r#"{ "runs": [{ "id": "...", "workflow_name": "hello", "status": "success", ... }] }"#.into(),
+            category: Some("workflows".into()),
+        },
+        ApiEndpoint {
+            method: "GET".into(),
+            path: "/api/v1/workflows/{run_id}".into(),
+            description: "Get a single run with all node details, status, stdout, and stderr.".into(),
+            params: vec![],
+            curl: "curl http://$HOST/api/v1/workflows/{run_id}".into(),
+            response: r#"{ "id": "...", "status": "success", "nodes": [{ "node_id": "greet", "status": "success", "stdout": "hello\n" }] }"#.into(),
+            category: Some("workflows".into()),
+        },
+        ApiEndpoint {
+            method: "GET".into(),
+            path: "/api/v1/workflows/{run_id}/nodes/{node_id}/logs".into(),
+            description: "Get logs for a specific node in a run. Uses the node's business ID (not DB id).".into(),
+            params: vec![],
+            curl: "curl http://$HOST/api/v1/workflows/{run_id}/nodes/greet/logs".into(),
+            response: r#"{ "node_id": "greet", "status": "success", "stdout": "hello\n", "stderr": null, "exit_code": 0 }"#.into(),
+            category: Some("workflows".into()),
+        },
+        ApiEndpoint {
+            method: "GET".into(),
+            path: "/api/v1/templates".into(),
+            description: "List all workflow templates discovered from the watched directory.".into(),
+            params: vec![],
+            curl: "curl http://$HOST/api/v1/templates".into(),
+            response: r#"{ "templates": [{ "name": "ci-pipeline", "version": "1.0", "node_count": 4, "inputs": {...} }] }"#.into(),
+            category: Some("templates".into()),
+        },
+        ApiEndpoint {
+            method: "POST".into(),
+            path: "/api/v1/templates/{name}/run".into(),
+            description: "Run a template by name. Optionally pass inputs for template variables.".into(),
+            params: vec![
+                ApiParam { name: "inputs".into(), param_type: "object".into(), description: "Optional. Key-value inputs matching the template's declared inputs.".into() },
+            ],
+            curl: r#"curl -X POST http://$HOST/api/v1/templates/{name}/run \
+  -H 'Content-Type: application/json' \
+  -d '{"inputs": {}}'"#.into(),
+            response: r#"{ "run_id": "019...", "status": "pending", "template": "ci-pipeline" }"#.into(),
+            category: Some("templates".into()),
+        },
+    ];
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({ "endpoints": endpoints })),
+    )
+}
+
 // ─── POST /api/v1/workflows ──────────────────────────────────────
 
 pub async fn submit_workflow(

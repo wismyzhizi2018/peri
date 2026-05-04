@@ -119,6 +119,7 @@ async function loadTemplates() {
         </div>
         <div class="template-actions">
           <button class="btn btn-primary btn-sm run-btn" data-name="${esc(t.name)}">&#9654; Run</button>
+          <button class="btn btn-sm api-btn" data-name="${esc(t.name)}">API</button>
         </div>
       </div>
     `).join('');
@@ -131,6 +132,12 @@ async function loadTemplates() {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         runTemplateFromCard(btn.dataset.name);
+      });
+    });
+    el.querySelectorAll('.api-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showTemplateApi(btn.dataset.name);
       });
     });
 
@@ -494,96 +501,6 @@ function fmtDuration(start, end) {
 }
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function basename(p) { return (p||'').split('/').pop(); }
-
-// ── API Docs Modal ──────────────────────────────────────────────────
-function toggleApiDocs() {
-  const modal = document.getElementById('api-modal');
-  const open = modal.style.display === 'none';
-  modal.style.display = open ? '' : 'none';
-  if (open && !modal.dataset.loaded) {
-    renderApiDocs();
-    modal.dataset.loaded = '1';
-  }
-}
-
-function curlBlock(code) {
-  const id = 'curl-' + Math.random().toString(36).slice(2, 8);
-  return `<div class="api-curl"><button class="curl-copy" data-curl="${esc(code)}" onclick="copyCurl(this)">Copy</button>${esc(code)}</div>`;
-}
-
-function copyCurl(btn) {
-  const text = btn.dataset.curl;
-  if (!text) return;
-  navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard', 'success'));
-}
-
-function renderApiDocs() {
-  const H = location.host;
-  document.getElementById('api-docs-body').innerHTML = `
-    <div class="api-section">
-      <h3><span class="method method-post">POST</span> /api/v1/workflows</h3>
-      <p>Submit a workflow YAML for execution. Returns the created run ID.</p>
-      <table class="api-param-table">
-        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-        <tr><td><code>yaml</code></td><td>string</td><td>Required. Workflow YAML content.</td></tr>
-        <tr><td><code>inputs</code></td><td>object</td><td>Optional. Key-value inputs for template variables.</td></tr>
-      </table>
-      ${curlBlock(`curl -X POST http://${H}/api/v1/workflows \\
-  -H 'Content-Type: application/json' \\
-  -d '{"yaml": "name: hello\\nversion: \\"1.0\\"\\nnodes:\\n  - id: greet\\n    type: shell\\n    run: echo hello"}'`)}
-      <div class="api-response">// Response 201
-{ "run_id": "019...", "status": "pending" }</div>
-    </div>
-
-    <div class="api-section">
-      <h3><span class="method method-get">GET</span> /api/v1/workflows</h3>
-      <p>List recent workflow runs (last 50).</p>
-      ${curlBlock(`curl http://${H}/api/v1/workflows`)}
-      <div class="api-response">// Response 200
-{ "runs": [{ "id": "...", "workflow_name": "hello", "status": "success", ... }] }</div>
-    </div>
-
-    <div class="api-section">
-      <h3><span class="method method-get">GET</span> /api/v1/workflows/:run_id</h3>
-      <p>Get a single run with all node details, status, stdout, and stderr.</p>
-      ${curlBlock(`curl http://${H}/api/v1/workflows/{run_id}`)}
-      <div class="api-response">// Response 200
-{ "id": "...", "status": "success", "nodes": [{ "node_id": "greet", "status": "success", "stdout": "hello\\n" }] }</div>
-    </div>
-
-    <div class="api-section">
-      <h3><span class="method method-get">GET</span> /api/v1/workflows/:run_id/nodes/:node_id/logs</h3>
-      <p>Get logs for a specific node in a run. Uses the node's business ID (not DB id).</p>
-      ${curlBlock(`curl http://${H}/api/v1/workflows/{run_id}/nodes/greet/logs`)}
-      <div class="api-response">// Response 200
-{ "node_id": "greet", "status": "success", "stdout": "hello\\n", "stderr": null, "exit_code": 0 }</div>
-    </div>
-
-    <div class="api-section">
-      <h3><span class="method method-get">GET</span> /api/v1/templates</h3>
-      <p>List all workflow templates discovered from the watched directory.</p>
-      ${curlBlock(`curl http://${H}/api/v1/templates`)}
-      <div class="api-response">// Response 200
-{ "templates": [{ "name": "ci-pipeline", "version": "1.0", "node_count": 4, "inputs": {...} }] }</div>
-    </div>
-
-    <div class="api-section">
-      <h3><span class="method method-post">POST</span> /api/v1/templates/:name/run</h3>
-      <p>Run a template by name. Optionally pass inputs for template variables.</p>
-      <table class="api-param-table">
-        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-        <tr><td><code>inputs</code></td><td>object</td><td>Optional. Key-value inputs matching the template's declared inputs.</td></tr>
-      </table>
-      ${curlBlock(`curl -X POST http://${H}/api/v1/templates/ci-pipeline/run \\
-  -H 'Content-Type: application/json' \\
-  -d '{"inputs": {"tag": "v1.2.3", "env": "staging"}}'`)}
-      ${curlBlock(`# Run without inputs
-curl -X POST http://${H}/api/v1/templates/simple-ci/run`}
-      <div class="api-response">// Response 201
-{ "run_id": "019...", "status": "pending", "template": "ci-pipeline" }</div>
-    </div>
-  `;
-}
 
 // ── Init ────────────────────────────────────────────────────────────
 loadTemplates();
