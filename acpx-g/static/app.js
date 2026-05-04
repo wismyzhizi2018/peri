@@ -544,19 +544,39 @@ async function fetchLogs(nodeId, el) {
 
 // ── Run Actions ──────────────────────────────────────────────────────
 async function cancelRun(runId) {
-  try {
-    const r = await fetch(`${API_WF}/${runId}/cancel`, { method: 'POST' });
-    if (r.ok) {
-      showToast('Workflow cancelled', 'success');
-      selectRun(runId);
-      loadRuns();
-    } else {
-      const d = await r.json();
-      showToast(d.error || 'Failed to cancel', 'error');
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const dialog = document.createElement('div');
+  dialog.className = 'confirm-dialog';
+  dialog.innerHTML = `
+    <div class="confirm-title">Cancel Workflow</div>
+    <div class="confirm-msg">Cancel this running workflow? Running nodes will be terminated and pending nodes will be skipped.</div>
+    <div class="confirm-actions">
+      <button class="btn btn-sm confirm-cancel">Keep Running</button>
+      <button class="btn btn-sm btn-danger confirm-ok">Cancel Workflow</button>
+    </div>`;
+  document.body.appendChild(backdrop);
+  document.body.appendChild(dialog);
+
+  const cleanup = () => { backdrop.remove(); dialog.remove(); };
+  dialog.querySelector('.confirm-cancel').addEventListener('click', cleanup);
+  backdrop.addEventListener('click', cleanup);
+  dialog.querySelector('.confirm-ok').addEventListener('click', async () => {
+    cleanup();
+    try {
+      const r = await fetch(`${API_WF}/${runId}/cancel`, { method: 'POST' });
+      if (r.ok) {
+        showToast('Workflow cancelled', 'success');
+        selectRun(runId);
+        loadRuns();
+      } else {
+        const d = await r.json();
+        showToast(d.error || 'Failed to cancel', 'error');
+      }
+    } catch(e) {
+      showToast('Network error: ' + e.message, 'error');
     }
-  } catch(e) {
-    showToast('Network error: ' + e.message, 'error');
-  }
+  });
 }
 
 function rerunRun(runId) {
@@ -599,6 +619,8 @@ function rerunRun(runId) {
   }
   });
 }
+
+function confirmDelete(runId, name) {
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
   const dialog = document.createElement('div');
