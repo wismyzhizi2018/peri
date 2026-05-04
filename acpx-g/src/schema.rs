@@ -108,6 +108,10 @@ pub struct Workflow {
     #[serde(default)]
     pub references: HashMap<String, String>,
 
+    /// 工作流级超时（秒）。None 表示无限制。
+    #[serde(default)]
+    pub timeout: Option<u64>,
+
     /// 节点列表。
     pub nodes: Vec<NodeDef>,
 

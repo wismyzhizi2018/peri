@@ -142,6 +142,7 @@ async fn run_scan(
                     name: name.clone(),
                     version,
                     description: wf.description.clone(),
+                    timeout: wf.timeout,
                     node_count: wf.nodes.len(),
                     file_path: file_path.clone(),
                     nodes: tpl_nodes,

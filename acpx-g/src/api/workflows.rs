@@ -41,6 +41,7 @@ pub struct WorkflowTemplate {
     pub name: String,
     pub version: String,
     pub description: Option<String>,
+    pub timeout: Option<u64>,
     pub node_count: usize,
     pub file_path: String,
     pub nodes: Vec<TemplateNodeInfo>,
