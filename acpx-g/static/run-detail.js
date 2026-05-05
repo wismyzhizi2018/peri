@@ -331,6 +331,7 @@ function renderTopology(run) {
     const displayId = id.length > maxTextLen ? id.substring(0, maxTextLen - 1) + '…' : id;
 
     svg += `<g class="topo-node-group" style="cursor:pointer;" onclick="showNodeLogDetail('${escapeHtml(id)}')">`;
+    svg += `<title>${escapeHtml(id)} — ${statusText(node.status)}</title>`;
     svg += pulseCircle;
     svg += `<rect x="${x}" y="${y}" width="${NODE_W}" height="${NODE_H}" rx="10" fill="#FFFFFF" stroke="${color}" stroke-width="${isRunning ? 2 : 1.5}" filter="url(#topoShadow)" ${animStyle}/>`;
     svg += statusDot;
@@ -427,6 +428,7 @@ async function showNodeLogDetail(nodeId) {
   title.textContent = `节点日志: ${nodeId}`;
 
   body.innerHTML = '<div style="padding:20px;display:flex;justify-content:center;"><div class="spinner-lg"></div></div>';
+  body.scrollTop = 0;
 
   // Highlight in context list
   document.querySelectorAll('.context-node-item').forEach(el => {

@@ -28,7 +28,10 @@ async function api(path, options = {}) {
 }
 
 // ── Toast System ──────────────────────────────────────────
-function showToast(message, type = 'info', duration = 3000) {
+function showToast(message, type = 'info', duration = null) {
+  if (duration === null) {
+    duration = type === 'error' ? 5000 : type === 'warning' ? 4000 : 3000;
+  }
   const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;

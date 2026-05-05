@@ -84,3 +84,7 @@
 ## R28 — Design Review Round 6 (用户思维)
 
 全局 Escape 键关闭模态框、YAML 导入成功/失败区分 toast 提示、运行详情页标题包含工作流名称。
+
+## R29 — Design Review Round 7 (用户思维)
+
+运行记录页有运行中工作流时自动每 10 秒刷新、节点日志切换时重置滚动位置、错误/警告 toast 延长显示时间（5s/4s）、拓扑图节点添加 hover tooltip 显示完整 ID。

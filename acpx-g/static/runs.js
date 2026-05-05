@@ -53,6 +53,7 @@ let runsState = {
   view: 'table',
   statusFilter: 'all',
   searchQuery: '',
+  autoRefreshTimer: null,
 };
 
 function initRuns() {
@@ -98,6 +99,7 @@ async function loadRuns(page) {
     renderRunsContent();
     renderRunsPagination();
     updateSidebarStatus();
+    scheduleAutoRefresh();
   } catch (e) {
     content.innerHTML = `
       <div class="empty-state">
@@ -309,4 +311,39 @@ function updateSidebarStatus() {
   const runningCount = runsState.runs.filter(r => r.status === 'running').length;
   const el = document.getElementById('statusRunningCount');
   if (el) el.textContent = runningCount;
+}
+
+function scheduleAutoRefresh() {
+  if (runsState.autoRefreshTimer) {
+    clearInterval(runsState.autoRefreshTimer);
+    AppState.pollTimers = AppState.pollTimers.filter(t => t !== runsState.autoRefreshTimer);
+    runsState.autoRefreshTimer = null;
+  }
+  const hasRunning = runsState.runs.some(r => r.status === 'running' || r.status === 'pending');
+  if (hasRunning) {
+    const timer = setInterval(() => {
+      if (AppState.currentPage !== 'runs') {
+        clearInterval(timer);
+        AppState.pollTimers = AppState.pollTimers.filter(t => t !== timer);
+        return;
+      }
+      loadRunsSilent(runsState.page);
+    }, 10000);
+    runsState.autoRefreshTimer = timer;
+    AppState.pollTimers.push(timer);
+  }
+}
+
+async function loadRunsSilent(page) {
+  try {
+    const data = await api(`${API_WF}?page=${page}&per_page=${runsState.perPage}`);
+    runsState.runs = data.runs || [];
+    runsState.total = data.total || 0;
+    renderRunsContent();
+    renderRunsPagination();
+    updateSidebarStatus();
+    scheduleAutoRefresh();
+  } catch (_) {
+    // Silent refresh — don't disrupt user with error toasts
+  }
 }
