@@ -264,6 +264,9 @@ function initEditor() {
 
   loadDraft();
   loadEditorTemplates();
+
+  // Fix initial layout after draft import — Drawflow may render nodes in wrong positions
+  setTimeout(() => editorAutoLayout(), 200);
 }
 
 function editorKeyHandler(e) {
@@ -643,7 +646,6 @@ function importFromYaml(yamlStr) {
 
     setTimeout(() => editorAutoLayout(), 100);
     updateYamlFromCanvas(); clearHistory(); pushHistory(); saveDraft();
-    showToast('工作流导入成功', 'success');
   } catch (e) {
     showToast('导入失败: ' + e.message, 'error');
   }
@@ -756,7 +758,7 @@ function editorValidate() {
     showToast(`${errors.length} 个验证错误`, 'error');
   } else {
     const yaml = exportToYaml();
-    fetch('/api/v1/workflows/validate', {
+    fetch('./api/v1/workflows/validate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ yaml }),
@@ -849,6 +851,7 @@ function doImportYaml() {
   if (!yaml?.trim()) { showToast('请粘贴 YAML 内容', 'error'); return; }
   closeImportModal();
   importFromYaml(yaml);
+  showToast('工作流导入成功', 'success');
 }
 
 async function editorSave() {
@@ -857,7 +860,7 @@ async function editorSave() {
   const yaml = exportToYaml();
   const name = wfMeta.name || 'untitled';
   try {
-    const result = await api('/api/v1/templates/save', {
+    const result = await api('./api/v1/templates/save', {
       method: 'POST',
       body: JSON.stringify({ name, yaml }),
     });
@@ -879,7 +882,7 @@ async function editorRun() {
   const payload = { yaml };
   if (wfBaseDir) payload.base_dir = wfBaseDir;
   try {
-    const result = await api('/api/v1/workflows', { method: 'POST', body: JSON.stringify(payload) });
+    const result = await api('./api/v1/workflows', { method: 'POST', body: JSON.stringify(payload) });
     showToast('工作流已启动: ' + result.run_id, 'success');
     location.hash = '#run/' + result.run_id;
   } catch (e) {
@@ -1101,7 +1104,7 @@ function highlightEditorTemplate() {
 async function loadTemplateToEditor(name) {
   if (!name) return;
   try {
-    const result = await api(`/api/v1/templates/${encodeURIComponent(name)}/yaml`);
+    const result = await api(`./api/v1/templates/${encodeURIComponent(name)}/yaml`);
     if (result.yaml) {
       importFromYaml(result.yaml);
       highlightEditorTemplate();

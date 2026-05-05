@@ -1,88 +1,104 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ACPX-G — 工作流引擎</title>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ACPX-G — 工作流引擎</title>
+        <!-- Icons -->
+        <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
-<!-- Fonts -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/style.css" />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
+        <!-- Editor libs -->
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/drawflow@0.0.59/dist/drawflow.min.css"
+        />
+        <script src="https://unpkg.com/drawflow@0.0.59/dist/drawflow.min.js"></script>
 
-<!-- Icons -->
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+        <!-- Utils -->
+        <script src="https://unpkg.com/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+        <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
 
-<!-- Editor libs -->
-<link rel="stylesheet" href="https://unpkg.com/drawflow@0.0.59/dist/drawflow.min.css" />
-<script src="https://unpkg.com/drawflow@0.0.59/dist/drawflow.min.js"></script>
+        <!-- App styles -->
+        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="editor.css" />
+        <link rel="stylesheet" href="runs.css" />
+        <link rel="stylesheet" href="run-detail.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <!-- ==================== TOP BAR ==================== -->
+            <header class="topbar">
+                <div class="topbar-brand">
+                    <div class="topbar-brand-icon">G</div>
+                    <span class="topbar-brand-text">ACPX-G</span>
+                </div>
 
-<!-- Utils -->
-<script src="https://unpkg.com/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
-<script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+                <div class="topbar-tabs">
+                    <button class="topbar-tab active" data-page="editor">
+                        <i
+                            data-lucide="workflow"
+                            style="width: 14px; height: 14px"
+                        ></i>
+                        <span>工作流编辑器</span>
+                    </button>
+                    <button class="topbar-tab" data-page="runs">
+                        <i
+                            data-lucide="list"
+                            style="width: 14px; height: 14px"
+                        ></i>
+                        <span>运行记录</span>
+                    </button>
+                </div>
 
-<!-- App styles -->
-<link rel="stylesheet" href="style.css" />
-<link rel="stylesheet" href="editor.css" />
-<link rel="stylesheet" href="runs.css" />
-<link rel="stylesheet" href="run-detail.css" />
-</head>
-<body>
-<div class="shell">
-  <!-- ==================== TOP BAR ==================== -->
-  <header class="topbar">
-    <div class="topbar-brand">
-      <div class="topbar-brand-icon">G</div>
-      <span class="topbar-brand-text">ACPX-G</span>
-    </div>
+                <div class="topbar-spacer"></div>
 
-    <div class="topbar-tabs">
-      <button class="topbar-tab active" data-page="editor">
-        <i data-lucide="workflow" style="width:14px;height:14px"></i>
-        <span>工作流编辑器</span>
-      </button>
-      <button class="topbar-tab" data-page="runs">
-        <i data-lucide="list" style="width:14px;height:14px"></i>
-        <span>运行记录</span>
-      </button>
-    </div>
+                <button
+                    class="btn btn-ghost btn-sm"
+                    id="navApiDocs"
+                    style="gap: 4px"
+                >
+                    <i
+                        data-lucide="book-open"
+                        style="width: 14px; height: 14px"
+                    ></i>
+                    <span>API 文档</span>
+                </button>
+            </header>
 
-    <div class="topbar-spacer"></div>
+            <!-- Content -->
+            <div class="content" id="content">
+                <!-- Pages rendered dynamically by app.js -->
+            </div>
+        </div>
 
-    <button class="btn btn-ghost btn-sm" id="navApiDocs" style="gap:4px;">
-      <i data-lucide="book-open" style="width:14px;height:14px"></i>
-      <span>API 文档</span>
-    </button>
-  </header>
+        <!-- Toast Container -->
+        <div class="toast-container" id="toastContainer"></div>
 
-  <!-- Content -->
-  <div class="content" id="content">
-    <!-- Pages rendered dynamically by app.js -->
-  </div>
-</div>
+        <!-- Modal Overlay -->
+        <div class="modal-overlay" id="modalOverlay">
+            <div class="modal" id="modalContent"></div>
+        </div>
 
-<!-- Toast Container -->
-<div class="toast-container" id="toastContainer"></div>
+        <!-- API Docs Modal -->
+        <div class="modal-overlay" id="apiDocsOverlay">
+            <div class="modal modal-lg">
+                <div class="modal-header">
+                    <span class="modal-title">API 文档</span>
+                    <button class="modal-close" id="apiDocsClose">
+                        <i
+                            data-lucide="x"
+                            style="width: 16px; height: 16px"
+                        ></i>
+                    </button>
+                </div>
+                <div class="modal-body" id="apiDocsBody"></div>
+            </div>
+        </div>
 
-<!-- Modal Overlay -->
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal" id="modalContent"></div>
-</div>
-
-<!-- API Docs Modal -->
-<div class="modal-overlay" id="apiDocsOverlay">
-  <div class="modal modal-lg">
-    <div class="modal-header">
-      <span class="modal-title">API 文档</span>
-      <button class="modal-close" id="apiDocsClose"><i data-lucide="x" style="width:16px;height:16px"></i></button>
-    </div>
-    <div class="modal-body" id="apiDocsBody"></div>
-  </div>
-</div>
-
-<script src="app.js"></script>
-<script src="api-docs.js"></script>
-<script src="editor.js"></script>
-<script src="runs.js"></script>
-<script src="run-detail.js"></script>
-</body>
+        <script src="app.js"></script>
+        <script src="api-docs.js"></script>
+        <script src="editor.js"></script>
+        <script src="runs.js"></script>
+        <script src="run-detail.js"></script>
+    </body>
 </html>

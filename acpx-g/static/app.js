@@ -2,8 +2,8 @@
 // ACPX-G — App Shell (SPA Router + Global State + Toast + Modal)
 // ============================================================
 
-const API_WF = '/api/v1/workflows';
-const API_TPL = '/api/v1/templates';
+const API_WF = './api/v1/workflows';
+const API_TPL = './api/v1/templates';
 
 // ── Global State ──────────────────────────────────────────
 const AppState = {

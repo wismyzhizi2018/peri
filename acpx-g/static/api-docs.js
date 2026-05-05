@@ -8,7 +8,7 @@ function curlBlock(code) {
 
 async function fetchApiEndpoints() {
   if (_apiEndpoints) return _apiEndpoints;
-  const data = await api('/api/v1/docs');
+  const data = await api('./api/v1/docs');
   _apiEndpoints = data.endpoints || [];
   return _apiEndpoints;
 }

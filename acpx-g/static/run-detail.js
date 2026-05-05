@@ -227,10 +227,9 @@ function renderTopology(run) {
 
   nodes.forEach(n => g.setNode(n.node_id, { width: NODE_W, height: NODE_H }));
   nodes.forEach(n => {
-    try {
-      const deps = JSON.parse(n.depends || '[]');
-      deps.forEach(dep => { if (g.node(dep)) g.setEdge(dep, n.node_id); });
-    } catch (e) {}
+    const raw = n.depends || [];
+    const deps = Array.isArray(raw) ? raw : (typeof raw === 'string' ? JSON.parse(raw || '[]') : []);
+    deps.forEach(dep => { if (g.node(dep)) g.setEdge(dep, n.node_id); });
   });
 
   dagre.layout(g);
@@ -257,7 +256,7 @@ function renderTopology(run) {
   const oy = -bounds.y1 + pad + (svgH - contentH) / 2;
 
   const statusColors = {
-    pending: '#94A3B8', running: '#10B981', success: '#10B981',
+    pending: '#94A3B8', running: '#F59E0B', success: '#10B981',
     failed: '#EF4444', cancelled: '#F97316', skipped: '#CBD5E1',
   };
 
@@ -286,7 +285,7 @@ function renderTopology(run) {
     const toNode = nodes.find(n => n.node_id === w);
     const isActive = fromNode?.status === 'success' && (toNode?.status === 'success' || toNode?.status === 'running');
 
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${isActive ? 'stroke="url(#lineGradActive)" stroke-width="2"' : 'class="topo-line"'}/>`;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${isActive ? 'stroke="#6366F1" stroke-width="2" stroke-opacity="0.7"' : 'class="topo-line"'}/>`;
   });
 
   // Nodes
@@ -363,7 +362,7 @@ function renderContextPanel(run) {
   // Node List
   const listEl = document.getElementById('contextNodeList');
   if (listEl) {
-    listEl.innerHTML = nodes.map(n => `
+    listEl.innerHTML = nodes.slice().reverse().map(n => `
       <div class="context-node-item ${runDetailState.selectedNodeId === n.node_id ? 'selected' : ''}" onclick="showNodeLogDetail('${escapeHtml(n.node_id)}')" style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;border-bottom:1px solid var(--border-subtle);">
         <span class="status-dot ${statusClass(n.status)}" style="width:6px;height:6px;"></span>
         <span style="flex:1;font-size:12px;color:var(--text-primary);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(n.node_id)}</span>
@@ -410,7 +409,7 @@ async function showNodeLogDetail(nodeId) {
   });
 
   try {
-    const logs = await api(`${API_WF}/${run.id}/nodes/${nodeId}/logs`);
+    const logs = await api(`${API_WF}/${run.id}/nodes/${encodeURIComponent(nodeId)}/logs`);
     const node = (run.nodes || []).find(n => n.node_id === nodeId);
 
     let html = '';
