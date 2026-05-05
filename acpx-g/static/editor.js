@@ -155,6 +155,8 @@ function renderEditorPage() {
 
 // ── Editor Init ─────────────────────────────────────────────────────
 function destroyEditor() {
+  clearTimeout(debounceTimer);
+  clearTimeout(draftTimer);
   if (dfEditor) {
     try { dfEditor.destroy(); } catch (_) {}
     dfEditor = null;
@@ -1229,7 +1231,7 @@ function loadDraft() {
       Object.entries(draft.idMap.toBiz || {}).forEach(([k, v]) => dfIdToBizId.set(k, v));
       Object.entries(draft.idMap.toDf || {}).forEach(([k, v]) => bizIdToDfId.set(k, v));
     }
-    nodeIdCounter = draft.counter || nodeStore.size;
+    nodeIdCounter = draft.counter ?? nodeStore.size;
     updateYamlFromCanvas(); displayValidation([]); pushHistory();
   } catch (e) { /* corrupt draft */ }
 }
