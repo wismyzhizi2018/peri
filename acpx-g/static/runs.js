@@ -240,7 +240,7 @@ function renderRunsCards(container, runs) {
         <div class="run-card" data-run-id="${escapeHtml(r.id)}">
           <div class="run-card-top">
             <div class="run-card-icon ${statusClass(r.status)}">
-              <i data-lucide="${r.status === 'running' ? 'loader' : r.status === 'success' ? 'check' : r.status === 'failed' ? 'x' : 'clock'}" style="width:18px;height:18px"></i>
+              <i data-lucide="${r.status === 'running' ? 'loader' : r.status === 'success' ? 'check' : r.status === 'failed' ? 'x' : r.status === 'cancelled' ? 'octagon' : r.status === 'skipped' ? 'minus' : 'clock'}" style="width:18px;height:18px"></i>
             </div>
             <div class="run-card-info">
               <div class="run-card-name">${escapeHtml(r.workflow_name)}</div>

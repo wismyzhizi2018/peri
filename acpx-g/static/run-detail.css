@@ -234,3 +234,14 @@
   stroke-width: 1.5;
   stroke-opacity: 0.6;
 }
+
+/* ─── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .run-detail-layout {
+    grid-template-columns: 1fr;
+  }
+  .session-stats-row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}

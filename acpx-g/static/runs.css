@@ -52,6 +52,7 @@
 .run-card-icon.failed  { background: rgba(239, 68, 68, 0.12); color: var(--status-error); }
 .run-card-icon.cancelled { background: rgba(249, 115, 22, 0.12); color: var(--status-cancelled); }
 .run-card-icon.pending { background: rgba(148, 163, 184, 0.12); color: var(--status-pending); }
+.run-card-icon.skipped { background: rgba(203, 213, 225, 0.12); color: var(--status-skipped); }
 
 .run-card-info {
   flex: 1;
@@ -88,6 +89,7 @@
 .run-card-status.failed    { background: rgba(239, 68, 68, 0.12); color: var(--status-error); }
 .run-card-status.cancelled { background: rgba(249, 115, 22, 0.12); color: var(--status-cancelled); }
 .run-card-status.pending   { background: rgba(148, 163, 184, 0.12); color: var(--status-pending); }
+.run-card-status.skipped   { background: rgba(203, 213, 225, 0.12); color: var(--status-skipped); }
 
 .run-card-stats {
   padding: 0 16px 12px;

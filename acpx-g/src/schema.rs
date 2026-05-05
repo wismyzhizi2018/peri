@@ -866,6 +866,45 @@ nodes:
     }
 
     #[test]
+    fn test_parse_workflow_per_node_exec_config() {
+        let yaml = r#"
+name: test
+version: "1.0"
+nodes:
+  - id: fast
+    type: shell
+    run: echo fast
+  - id: slow
+    type: shell
+    run: echo slow
+    timeout: 120
+    retry: 3
+    shell: "zsh -c"
+    continue_on_error: true
+"#;
+        let wf = parse_workflow(yaml).unwrap();
+        assert_eq!(wf.nodes.len(), 2);
+        match &wf.nodes[0] {
+            NodeDef::Shell(n) => {
+                assert!(n.exec.timeout.is_none());
+                assert!(n.exec.retry.is_none());
+                assert!(n.exec.shell.is_none());
+                assert!(!n.continue_on_error);
+            }
+            _ => panic!("expected shell node"),
+        }
+        match &wf.nodes[1] {
+            NodeDef::Shell(n) => {
+                assert_eq!(n.exec.timeout, Some(120));
+                assert_eq!(n.exec.retry, Some(3));
+                assert_eq!(n.exec.shell.as_deref(), Some("zsh -c"));
+                assert!(n.continue_on_error);
+            }
+            _ => panic!("expected shell node"),
+        }
+    }
+
+    #[test]
     fn test_parse_workflow_empty_node_id() {
         let yaml = r#"
 name: test
