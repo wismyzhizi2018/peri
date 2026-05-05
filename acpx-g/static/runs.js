@@ -222,6 +222,8 @@ function renderRunsCards(container, runs) {
             <span class="run-card-time">${relativeTime(r.started_at || r.created_at)}</span>
             <div style="display:flex;gap:4px;">
               ${r.status === 'running' ? `<button class="btn btn-sm btn-danger-ghost" onclick="event.stopPropagation();cancelRun('${escapeHtml(r.id)}')">取消</button>` : ''}
+              ${r.status === 'success' || r.status === 'failed' || r.status === 'cancelled' ? `<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();rerunRun('${escapeHtml(r.id)}')">重跑</button>` : ''}
+              <button class="btn btn-sm btn-danger-ghost" onclick="event.stopPropagation();deleteRun('${escapeHtml(r.id)}')" title="删除"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>
               <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();location.hash='#run/${escapeHtml(r.id)}'">
                 详情 <i data-lucide="arrow-right" style="width:12px;height:12px"></i>
               </button>

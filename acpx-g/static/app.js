@@ -43,13 +43,15 @@ function showToast(message, type = 'info', duration = 3000) {
   toast.innerHTML = `
     <i data-lucide="${iconMap[type] || 'info'}" class="toast-icon"></i>
     <span class="toast-message">${escapeHtml(message)}</span>
-    <button class="toast-close" onclick="dismissToast(this.parentElement)">
+    <button class="toast-close">
       <i data-lucide="x" style="width:14px;height:14px"></i>
     </button>
   `;
 
   container.appendChild(toast);
   lucide.createIcons({ nodes: [toast] });
+
+  toast.querySelector('.toast-close').addEventListener('click', () => dismissToast(toast));
 
   setTimeout(() => dismissToast(toast), duration);
 }
@@ -114,6 +116,12 @@ function navigate(page, params = {}) {
   // Destroy editor when navigating away
   if (page !== 'editor' && typeof destroyEditor === 'function') {
     destroyEditor();
+  }
+
+  // Clean up run-detail Escape handler
+  if (page !== 'run-detail' && AppState._runDetailEscHandler) {
+    document.removeEventListener('keydown', AppState._runDetailEscHandler);
+    AppState._runDetailEscHandler = null;
   }
 
   // Update tab active state

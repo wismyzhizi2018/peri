@@ -60,3 +60,7 @@
 | R17  | 131    | timeout |
 | R18  | 146    | 条件执行 |
 | R21  | 155    | 敏感输入遮蔽 |
+
+## R23 — Design Review (用户思维)
+
+修复拓扑实时指示器双重 display 属性 bug、卡片视图补充删除/重跑按钮、节点列表高亮改用 data-node-id 替代 onclick.toString()、Toast 关闭按钮去除内联 onclick、节点日志复制按钮改用 data-log-id、运行详情页 Escape 键返回列表、修复失败统计图标重复 style 属性。

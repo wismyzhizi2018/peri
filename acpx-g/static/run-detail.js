@@ -27,7 +27,7 @@ function renderRunDetailPage(runId) {
         <div class="card" id="topologyCard">
           <div class="card-header">
             <span class="card-title">DAG 拓扑</span>
-            <span id="topologyLive" style="font-size:11px;color:var(--status-active);display:flex;align-items:center;gap:4px;display:none;">
+            <span id="topologyLive" style="font-size:11px;color:var(--status-active);display:none;align-items:center;gap:4px;">
               <span style="width:6px;height:6px;border-radius:50%;background:var(--status-active);animation:dot-breathe 2s ease-in-out infinite;"></span>
               实时
             </span>
@@ -72,6 +72,16 @@ function renderRunDetailPage(runId) {
 
 function initRunDetail(runId) {
   loadRunDetail(runId);
+
+  // Escape key navigates back to runs list
+  const escHandler = (e) => {
+    if (e.key === 'Escape' && AppState.currentPage === 'run-detail') {
+      location.hash = '#runs';
+    }
+  };
+  document.addEventListener('keydown', escHandler);
+  // Store handler ref so we can clean up on navigate away
+  AppState._runDetailEscHandler = escHandler;
 }
 
 async function loadRunDetail(runId) {
@@ -184,7 +194,7 @@ function renderRunDetailStats(run) {
       </div>
     </div>
     <div class="session-stat">
-      <div class="session-stat-icon ${failedCount ? '' : ''}"><i data-lucide="x-circle" style="width:12px;height:12px" ${failedCount ? 'style="color:var(--status-error)"' : ''}></i></div>
+      <div class="session-stat-icon"><i data-lucide="x-circle" style="width:12px;height:12px;${failedCount ? 'color:var(--status-error)' : ''}"></i></div>
       <div>
         <div class="session-stat-label">失败</div>
         <div class="session-stat-value">${failedCount}</div>
@@ -363,7 +373,7 @@ function renderContextPanel(run) {
   const listEl = document.getElementById('contextNodeList');
   if (listEl) {
     listEl.innerHTML = nodes.slice().reverse().map(n => `
-      <div class="context-node-item ${runDetailState.selectedNodeId === n.node_id ? 'selected' : ''}" onclick="showNodeLogDetail('${escapeHtml(n.node_id)}')" style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;border-bottom:1px solid var(--border-subtle);">
+      <div class="context-node-item ${runDetailState.selectedNodeId === n.node_id ? 'selected' : ''}" data-node-id="${escapeHtml(n.node_id)}" onclick="showNodeLogDetail('${escapeHtml(n.node_id)}')" style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;border-bottom:1px solid var(--border-subtle);">
         <span class="status-dot ${statusClass(n.status)}" style="width:6px;height:6px;"></span>
         <span style="flex:1;font-size:12px;color:var(--text-primary);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(n.node_id)}</span>
         <span style="font-size:10px;color:var(--text-dim);">${nodeTypeLabel(n.node_type)}</span>
@@ -405,7 +415,7 @@ async function showNodeLogDetail(nodeId) {
 
   // Highlight in context list
   document.querySelectorAll('.context-node-item').forEach(el => {
-    el.classList.toggle('selected', el.onclick?.toString().includes(nodeId));
+    el.classList.toggle('selected', el.dataset.nodeId === nodeId);
   });
 
   try {
@@ -419,9 +429,9 @@ async function showNodeLogDetail(nodeId) {
         <div style="border-bottom:1px solid var(--border-subtle);">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border-subtle);">
             <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dim);">STDOUT</span>
-            <button class="code-copy-btn" onclick="copyToClipboard(this.closest('div').nextElementSibling.textContent)">复制</button>
+            <button class="code-copy-btn log-copy-btn" data-log-id="log-stdout">复制</button>
           </div>
-          <pre class="node-log-pre">${escapeHtml(logs.stdout)}</pre>
+          <pre class="node-log-pre" id="log-stdout">${escapeHtml(logs.stdout)}</pre>
         </div>`;
     }
 
@@ -430,9 +440,9 @@ async function showNodeLogDetail(nodeId) {
         <div style="border-bottom:1px solid var(--border-subtle);">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border-subtle);">
             <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--status-error);">STDERR</span>
-            <button class="code-copy-btn" onclick="copyToClipboard(this.closest('div').nextElementSibling.textContent)">复制</button>
+            <button class="code-copy-btn log-copy-btn" data-log-id="log-stderr">复制</button>
           </div>
-          <pre class="node-log-pre node-log-stderr">${escapeHtml(logs.stderr)}</pre>
+          <pre class="node-log-pre node-log-stderr" id="log-stderr">${escapeHtml(logs.stderr)}</pre>
         </div>`;
     }
 
@@ -451,6 +461,15 @@ async function showNodeLogDetail(nodeId) {
     }
 
     body.innerHTML = html;
+
+    // Bind log copy buttons
+    body.querySelectorAll('.log-copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.dataset.logId;
+        const pre = targetId ? document.getElementById(targetId) : null;
+        if (pre) copyToClipboard(pre.textContent);
+      });
+    });
   } catch (e) {
     body.innerHTML = `<div style="padding:20px;text-align:center;color:var(--status-error);font-size:12px;">${escapeHtml(e.message)}</div>`;
   }
