@@ -100,3 +100,7 @@
 ## R32 — Design Review Round 10 (用户思维)
 
 运行详情 context 面板（节点列表/操作按钮/ID 复制/拓扑 SVG）全部改用事件委托替代内联 onclick、导入成功后清空 textarea 防止误操作。
+
+## R33 — Design Review Round 11 (用户思维)
+
+运行记录页表格行/卡片/操作按钮/分页全部改用事件委托替代内联 onclick（消除前端最后一批内联处理器）、删除当前页最后一条记录后自动回退前一页。

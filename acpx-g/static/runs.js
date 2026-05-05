@@ -82,6 +82,31 @@ function initRuns() {
     });
   });
 
+  // Event delegation for table/card rows and action buttons
+  document.getElementById('runsContent')?.addEventListener('click', (e) => {
+    const actionBtn = e.target.closest('[data-action]');
+    if (actionBtn) {
+      e.stopPropagation();
+      const action = actionBtn.dataset.action;
+      const runId = actionBtn.dataset.runId;
+      if (action === 'cancel') cancelRun(runId);
+      else if (action === 'rerun') rerunRun(runId);
+      else if (action === 'delete') deleteRun(runId);
+      else if (action === 'detail') location.hash = '#run/' + runId;
+      return;
+    }
+    const row = e.target.closest('[data-run-id]');
+    if (row?.dataset.runId) location.hash = '#run/' + row.dataset.runId;
+  });
+
+  // Event delegation for pagination
+  document.getElementById('runsPagination')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-page]');
+    if (btn && !btn.disabled && btn.dataset.page) {
+      loadRuns(Number(btn.dataset.page));
+    }
+  });
+
   loadRuns(1);
 }
 
@@ -179,7 +204,7 @@ function renderRunsTable(container, runs) {
         </thead>
         <tbody>
           ${runs.map(r => `
-            <tr onclick="location.hash='#run/${escapeHtml(r.id)}'">
+            <tr data-run-id="${escapeHtml(r.id)}">
               <td>
                 <div style="font-weight:500;color:var(--text-bright);font-family:var(--font-display);">${escapeHtml(r.workflow_name)}</div>
                 <div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-top:2px;">v${escapeHtml(r.workflow_version || '1.0')}</div>
@@ -195,9 +220,9 @@ function renderRunsTable(container, runs) {
               <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${formatDuration(r.started_at, r.finished_at)}</td>
               <td>
                 <div style="display:flex;gap:4px;">
-                  ${r.status === 'running' ? `<button class="table-action" title="取消" onclick="event.stopPropagation();cancelRun('${escapeHtml(r.id)}')"><i data-lucide="square" style="width:14px;height:14px"></i></button>` : ''}
-                  ${r.status === 'success' || r.status === 'failed' || r.status === 'cancelled' ? `<button class="table-action" title="重新运行" onclick="event.stopPropagation();rerunRun('${escapeHtml(r.id)}')"><i data-lucide="rotate-cw" style="width:14px;height:14px"></i></button>` : ''}
-                  <button class="table-action" title="删除" onclick="event.stopPropagation();deleteRun('${escapeHtml(r.id)}')"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
+                  ${r.status === 'running' ? `<button class="table-action" title="取消" data-action="cancel" data-run-id="${escapeHtml(r.id)}"><i data-lucide="square" style="width:14px;height:14px"></i></button>` : ''}
+                  ${r.status === 'success' || r.status === 'failed' || r.status === 'cancelled' ? `<button class="table-action" title="重新运行" data-action="rerun" data-run-id="${escapeHtml(r.id)}"><i data-lucide="rotate-cw" style="width:14px;height:14px"></i></button>` : ''}
+                  <button class="table-action" title="删除" data-action="delete" data-run-id="${escapeHtml(r.id)}"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
                 </div>
               </td>
             </tr>
@@ -212,7 +237,7 @@ function renderRunsCards(container, runs) {
   container.innerHTML = `
     <div class="run-card-grid">
       ${runs.map(r => `
-        <div class="run-card" onclick="location.hash='#run/${escapeHtml(r.id)}'">
+        <div class="run-card" data-run-id="${escapeHtml(r.id)}">
           <div class="run-card-top">
             <div class="run-card-icon ${statusClass(r.status)}">
               <i data-lucide="${r.status === 'running' ? 'loader' : r.status === 'success' ? 'check' : r.status === 'failed' ? 'x' : 'clock'}" style="width:18px;height:18px"></i>
@@ -236,10 +261,10 @@ function renderRunsCards(container, runs) {
           <div class="run-card-footer">
             <span class="run-card-time">${relativeTime(r.started_at || r.created_at)}</span>
             <div style="display:flex;gap:4px;">
-              ${r.status === 'running' ? `<button class="btn btn-sm btn-danger-ghost" onclick="event.stopPropagation();cancelRun('${escapeHtml(r.id)}')">取消</button>` : ''}
-              ${r.status === 'success' || r.status === 'failed' || r.status === 'cancelled' ? `<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();rerunRun('${escapeHtml(r.id)}')">重跑</button>` : ''}
-              <button class="btn btn-sm btn-danger-ghost" onclick="event.stopPropagation();deleteRun('${escapeHtml(r.id)}')" title="删除"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>
-              <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();location.hash='#run/${escapeHtml(r.id)}'">
+              ${r.status === 'running' ? `<button class="btn btn-sm btn-danger-ghost" data-action="cancel" data-run-id="${escapeHtml(r.id)}">取消</button>` : ''}
+              ${r.status === 'success' || r.status === 'failed' || r.status === 'cancelled' ? `<button class="btn btn-sm btn-ghost" data-action="rerun" data-run-id="${escapeHtml(r.id)}">重跑</button>` : ''}
+              <button class="btn btn-sm btn-danger-ghost" data-action="delete" data-run-id="${escapeHtml(r.id)}" title="删除"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>
+              <button class="btn btn-sm btn-ghost" data-action="detail" data-run-id="${escapeHtml(r.id)}">
                 详情 <i data-lucide="arrow-right" style="width:12px;height:12px"></i>
               </button>
             </div>
@@ -258,16 +283,16 @@ function renderRunsPagination() {
   if (totalPages <= 1) { el.innerHTML = ''; return; }
 
   let html = '';
-  html += `<button class="pagination-btn" onclick="loadRuns(${runsState.page - 1})" ${runsState.page <= 1 ? 'disabled' : ''}><i data-lucide="chevron-left" style="width:14px;height:14px"></i></button>`;
+  html += `<button class="pagination-btn" data-page="${runsState.page - 1}" ${runsState.page <= 1 ? 'disabled' : ''}><i data-lucide="chevron-left" style="width:14px;height:14px"></i></button>`;
 
   const start = Math.max(1, runsState.page - 2);
   const end = Math.min(totalPages, runsState.page + 2);
   for (let i = start; i <= end; i++) {
-    html += `<button class="pagination-btn ${i === runsState.page ? 'active' : ''}" onclick="loadRuns(${i})">${i}</button>`;
+    html += `<button class="pagination-btn ${i === runsState.page ? 'active' : ''}" data-page="${i}">${i}</button>`;
   }
 
   html += `<span class="pagination-info">共 ${runsState.total} 条</span>`;
-  html += `<button class="pagination-btn" onclick="loadRuns(${runsState.page + 1})" ${runsState.page >= totalPages ? 'disabled' : ''}><i data-lucide="chevron-right" style="width:14px;height:14px"></i></button>`;
+  html += `<button class="pagination-btn" data-page="${runsState.page + 1}" ${runsState.page >= totalPages ? 'disabled' : ''}><i data-lucide="chevron-right" style="width:14px;height:14px"></i></button>`;
 
   el.innerHTML = html;
   lucide.createIcons({ nodes: [el] });
@@ -300,7 +325,12 @@ async function deleteRun(id) {
     try {
       await api(`${API_WF}/${id}`, { method: 'DELETE' });
       showToast('运行记录已删除', 'success');
-      loadRuns(runsState.page);
+      // If we deleted the last item on the current page, go back one page
+      const remaining = getFilteredRuns().filter(r => r.id !== id);
+      const totalPages = Math.ceil((runsState.total - 1) / runsState.perPage);
+      const targetPage = (!remaining.length && runsState.page > 1 && runsState.page > totalPages)
+        ? runsState.page - 1 : runsState.page;
+      loadRuns(targetPage);
     } catch (e) {
       showToast(e.message, 'error');
     }
