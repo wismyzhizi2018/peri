@@ -12,6 +12,7 @@ let redoStack = [];
 const MAX_HISTORY = 50;
 let lastValidationErrors = [];
 let debounceTimer = null;
+let draftTimer = null;
 let _restoringSnapshot = false;
 
 const dfIdToBizId = new Map();
@@ -1191,8 +1192,8 @@ async function loadTemplateToEditor(name) {
 
 // ── Draft ─────────────────────────────────────────────────────────────
 function saveDraft() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => {
     try {
       localStorage.setItem('acpx-editor-draft', JSON.stringify({
         meta: wfMeta,
