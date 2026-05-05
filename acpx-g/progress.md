@@ -68,3 +68,7 @@
 ## R24 — Design Review Round 2 (用户思维)
 
 修复搜索/过滤后分页总数不更新、run-detail 轮询定时器未纳入全局清理导致页面切换泄漏、confirmDialog 关闭/取消按钮去除内联 onclick、加载失败时隐藏骨架屏和布局区、编辑器加载模板增加未保存确认。
+
+## R25 — Design Review Round 3 (用户思维)
+
+工作流设置弹窗 6 处内联 onclick 替换为 addEventListener、YAML 应用后自动验证并提示错误数、运行详情 ID 可点击复制完整值、验证错误徽章可点击查看详情（title+toast）、筛选无结果区分"无数据"与"无匹配"两种空状态文案。

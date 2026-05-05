@@ -141,11 +141,14 @@ function renderRunsContent() {
   const runs = getFilteredRuns();
 
   if (!runs.length) {
+    const hasFilters = runsState.statusFilter !== 'all' || runsState.searchQuery;
+    const emptyTitle = hasFilters ? '没有匹配的记录' : '暂无运行记录';
+    const emptyDesc = hasFilters ? '尝试调整筛选条件或搜索关键词' : '提交工作流后，运行记录将显示在这里';
     content.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-icon"><i data-lucide="inbox" style="width:28px;height:28px"></i></div>
-        <div class="empty-state-title">暂无运行记录</div>
-        <div class="empty-state-desc">提交工作流后，运行记录将显示在这里</div>
+        <div class="empty-state-icon"><i data-lucide="${hasFilters ? 'search' : 'inbox'}" style="width:28px;height:28px"></i></div>
+        <div class="empty-state-title">${emptyTitle}</div>
+        <div class="empty-state-desc">${emptyDesc}</div>
       </div>`;
     lucide.createIcons({ nodes: [content] });
     return;

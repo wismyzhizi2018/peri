@@ -10,6 +10,7 @@ let nodeIdCounter = 0;
 let historyStack = [];
 let redoStack = [];
 const MAX_HISTORY = 50;
+let lastValidationErrors = [];
 let debounceTimer = null;
 
 const dfIdToBizId = new Map();
@@ -655,6 +656,12 @@ function applyYamlChanges() {
   const ta = document.getElementById('yaml-code-editor');
   if (!ta) return;
   importFromYaml(ta.value);
+  const errors = validateWorkflow();
+  if (errors.length) {
+    showToast(`${errors.length} 个验证错误`, 'error');
+  } else {
+    showToast('YAML 已应用到画布', 'success');
+  }
 }
 
 // ── Auto Layout ──────────────────────────────────────────────────────
@@ -741,14 +748,23 @@ function validateWorkflow() {
 }
 
 function displayValidation(errors) {
+  lastValidationErrors = errors || [];
   const statusEl = document.getElementById('validation-status');
   if (!statusEl) return;
   if (!errors.length) {
     statusEl.className = 'validation-ok';
     statusEl.textContent = '无错误';
+    statusEl.title = '';
+    statusEl.style.cursor = 'default';
   } else {
     statusEl.className = 'validation-err';
     statusEl.textContent = `${errors.length} 个错误`;
+    statusEl.title = errors.join('\n');
+    statusEl.style.cursor = 'pointer';
+    // Show errors list on click
+    statusEl.onclick = () => {
+      showToast(errors.join('; '), 'error', 5000);
+    };
   }
 }
 
@@ -945,7 +961,7 @@ function showWorkflowSettings() {
   openModal(`
     <div class="modal-header">
       <span class="modal-title">工作流设置</span>
-      <button class="modal-close" onclick="closeModal()"><i data-lucide="x" style="width:16px;height:16px"></i></button>
+      <button class="modal-close" id="wsCloseBtn"><i data-lucide="x" style="width:16px;height:16px"></i></button>
     </div>
     <div class="modal-body" style="max-height:60vh;">
       <div class="prop-section">
@@ -964,31 +980,37 @@ function showWorkflowSettings() {
       <div class="prop-section">
         <div class="prop-section-title">输入参数</div>
         <div class="kv-list" id="ws-inputs">${inputRows}</div>
-        <button class="kv-add" onclick="addSettingsInputRow('ws-inputs')">+ 添加参数</button>
+        <button class="kv-add" id="wsAddInput">+ 添加参数</button>
       </div>
       <div class="prop-section">
         <div class="prop-section-title">环境变量</div>
         <div class="kv-list" id="ws-env">${envRows}</div>
-        <button class="kv-add" onclick="addSettingsKvRow('ws-env')">+ 添加变量</button>
+        <button class="kv-add" id="wsAddEnv">+ 添加变量</button>
       </div>
       <div class="prop-section">
         <div class="prop-section-title">引用</div>
         <div class="kv-list" id="ws-refs">${refRows}</div>
-        <button class="kv-add" onclick="addSettingsKvRow('ws-refs')">+ 添加引用</button>
+        <button class="kv-add" id="wsAddRef">+ 添加引用</button>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
-      <button class="btn btn-primary" onclick="saveWorkflowSettings()">保存设置</button>
+      <button class="btn btn-secondary" id="wsCancelBtn">取消</button>
+      <button class="btn btn-primary" id="wsSaveBtn">保存设置</button>
     </div>
   `);
 
+  // Bind buttons after modal renders
+  document.getElementById('wsCloseBtn')?.addEventListener('click', closeModal);
+  document.getElementById('wsCancelBtn')?.addEventListener('click', closeModal);
+  document.getElementById('wsSaveBtn')?.addEventListener('click', saveWorkflowSettings);
+  document.getElementById('wsAddInput')?.addEventListener('click', () => addSettingsInputRow('ws-inputs'));
+  document.getElementById('wsAddEnv')?.addEventListener('click', () => addSettingsKvRow('ws-env'));
+  document.getElementById('wsAddRef')?.addEventListener('click', () => addSettingsKvRow('ws-refs'));
+
   // Bind remove buttons in settings modal
-  setTimeout(() => {
-    document.querySelectorAll('#modalContent .kv-remove').forEach(btn => {
-      btn.addEventListener('click', () => btn.closest('.kv-row')?.remove());
-    });
-  }, 0);
+  document.querySelectorAll('#modalContent .kv-remove').forEach(btn => {
+    btn.addEventListener('click', () => btn.closest('.kv-row')?.remove());
+  });
 }
 
 function addSettingsInputRow(containerId) {

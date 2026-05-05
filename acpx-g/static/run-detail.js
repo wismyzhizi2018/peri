@@ -344,7 +344,7 @@ function renderContextPanel(run) {
       <div class="context-info-row"><span class="context-info-label">工作流</span><span class="context-info-value">${escapeHtml(run.workflow_name)}</span></div>
       <div class="context-info-row"><span class="context-info-label">版本</span><span class="context-info-value">v${escapeHtml(run.workflow_version || '1.0')}</span></div>
       <div class="context-info-row"><span class="context-info-label">状态</span><span class="context-info-value" style="color:${run.status === 'success' ? 'var(--status-active)' : run.status === 'failed' ? 'var(--status-error)' : 'var(--text-bright)'}">${statusText(run.status)}</span></div>
-      <div class="context-info-row"><span class="context-info-label">ID</span><span class="context-info-value" style="font-size:10px;">${escapeHtml(run.id?.substring(0, 12))}...</span></div>
+      <div class="context-info-row"><span class="context-info-label">ID</span><span class="context-info-value" style="font-size:10px;cursor:pointer;" title="点击复制完整 ID" onclick="copyToClipboard('${escapeHtml(run.id)}')">${escapeHtml(run.id?.substring(0, 12))}...</span></div>
     `;
   }
 
