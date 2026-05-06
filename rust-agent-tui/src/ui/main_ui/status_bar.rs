@@ -269,7 +269,7 @@ fn render_second_row(f: &mut Frame, app: &App, area: Rect) {
                         key!["↑↓" => ":切换字段  ", "←→/Space" => ":切换Type  ", "Enter" => ":保存  ", "Ctrl+V" => ":粘贴  ", "Esc" => ":取消"]
                     }
                     LoginPanelMode::Browse => {
-                        key!["Enter" => ":编辑  ", "Ctrl+N" => ":新建  ", "Ctrl+D" => ":删除  ", "Esc" => ":关闭"]
+                        key!["Enter" => ":选中  ", "Tab" => ":编辑  ", "Ctrl+N" => ":新建  ", "Ctrl+D" => ":删除  ", "Esc" => ":关闭"]
                     }
                 }
             } else if app.mcp_panel.is_some() {
