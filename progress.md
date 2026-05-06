@@ -1,5 +1,17 @@
 # Design Review Progress
 
+## 2026-05-07 第39轮：plugin installer 测试补充 + loader 可见性收紧 + 警告消除
+
+为 cleanup_orphaned_plugins 补充 6 个异步测试覆盖完整生命周期（无缓存、旧孤儿删除、近期保留、已安装保护、空目录清理、无标记不删除）；为 sanitize_plugin_id 补充 3 个测试、match_project_path 补充 6 个测试。将 loader 中 4 个 extract_* 函数从 pub 收紧为 pub(crate)，移除 mod.rs 中未使用 re-export。声明 integration feature 消除 unexpected_cfgs 警告。测试总数 478。
+
+## 2026-05-07 第38轮：FilesystemThreadStore 测试补充 + 警告清理
+
+为关键数据持久化组件 FilesystemThreadStore 补充 13 个测试：CRUD 生命周期（create/append/load_meta/update_meta/list/delete）、边界场景（空消息、不存在 thread）、extract_title 纯函数（文本提取、50字符截断）。清理 filesystem.rs 测试未使用 import、subagent 测试 cloned_ref_to_slice_refs。测试总数 1403。
+
+消除全部 9 个 clippy 警告：filesystem.rs 两处 sort_by 改为 sort_by_key(Reverse)；installer.rs 移除未使用 StdDuration；loader.rs PluginCommand 移至测试模块 import、CommandFrontmatter 改为 pub；render_state.rs if let 替代 is_some+unwrap、match guard 替代嵌套 if；types.rs 移除未使用 Path。1390 测试通过。
+
+将 `fetch_github` 改为构造 URL 后委托 `fetch_git`，消除约 50 行重复的 git clone/pull 逻辑；将 `try_load_cache`/`extract_name` 改为 pub 直接暴露，删除无意义的 `_wrapper` 包装方法；为 `parse_marketplace_input` 补充 10 个单元测试覆盖 GitHub shorthand/URL/SSH/本地路径/NPM 等格式。修复 clippy 警告：`map_identity`(installer.rs 3处)、`double_ended_iterator_last`(marketplace.rs/panel_ops.rs)、`collapsible_match`(event.rs)、`unnecessary_unwrap`(event.rs)、`redundant_closure`(event.rs)、`useless_conversion`(re_inject.rs/message_render.rs)。`InstallScope` 改为 derive Default。1390 测试全通过。
+
 ## 2026-05-02 第35轮：修复 CI 失败的 test_subagent_group_basic 测试
 
 测试 `test_subagent_group_basic` 断言渲染快照中包含步数数字 "2"，但 SubAgentGroup 渲染不显示 total_steps，导致 CI 失败。移除了基于渲染输出的步数断言，保留内部状态的 total_steps 验证（已有 assert_eq!(*total_steps, 2)）。全量测试 293 通过，0 失败。
