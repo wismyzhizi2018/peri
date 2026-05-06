@@ -689,8 +689,7 @@ pub async fn next_event(app: &mut App) -> Result<Option<Action>> {
             let text = text.replace('\r', "\n");
 
             // setup_wizard 打开时粘贴到当前字段
-            if app.setup_wizard.is_some() {
-                let wizard = app.setup_wizard.as_mut().unwrap();
+            if let Some(wizard) = &mut app.setup_wizard {
                 wizard.paste_text(&text);
                 return Ok(Some(Action::Redraw));
             }
@@ -1791,19 +1790,15 @@ fn handle_mcp_panel(app: &mut App, input: Input) {
             key: Key::Char('r'),
             ctrl: true,
             ..
-        } => {
-            if is_server_list {
-                app.mcp_panel_reconnect();
-            }
+        } if is_server_list => {
+            app.mcp_panel_reconnect();
         }
         Input {
             key: Key::Char('d'),
             ctrl: true,
             ..
-        } => {
-            if is_server_list {
-                app.mcp_panel_request_delete();
-            }
+        } if is_server_list => {
+            app.mcp_panel_request_delete();
         }
         _ => {}
     }
@@ -1846,7 +1841,7 @@ fn handle_plugin_panel(app: &mut App, input: Input) {
                     // 异步执行卸载，传递正确的 project_dir
                     let claude_dir = rust_agent_middlewares::plugin::claude_home();
                     let tx = app.bg_event_tx.clone();
-                    let project_dir = project_path.map(|p| std::path::PathBuf::from(p));
+                    let project_dir = project_path.map(std::path::PathBuf::from);
                     tokio::spawn(async move {
                         let result = rust_agent_middlewares::plugin::uninstall_plugin(
                             &plugin_id,

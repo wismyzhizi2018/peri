@@ -348,7 +348,7 @@ pub fn save_known_marketplaces(
     use crate::plugin::MarketplaceManager;
     let mut obj = serde_json::Map::new();
     for mkt in marketplaces {
-        let name = MarketplaceManager::extract_name_wrapper(&mkt.source);
+        let name = MarketplaceManager::extract_name(&mkt.source);
 
         // 手动构建 JSON 对象，移除 null 值
         let mut entry = serde_json::Map::new();

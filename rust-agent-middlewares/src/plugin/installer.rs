@@ -340,10 +340,7 @@ pub async fn uninstall_plugin(
     claude_dir: &Path,
     project_dir: Option<&Path>,
 ) -> Result<(), InstallerError> {
-    let (name, marketplace) = plugin_id
-        .split_once('@')
-        .map(|(n, m)| (n, m))
-        .unwrap_or((plugin_id, ""));
+    let (name, marketplace) = plugin_id.split_once('@').unwrap_or((plugin_id, ""));
 
     let plugins_path = claude_dir.join("plugins").join("installed_plugins.json");
     let mut installed = load_installed_plugins(Some(&plugins_path))?;
@@ -474,10 +471,7 @@ pub async fn update_plugin(
     claude_dir: &Path,
     project_dir: Option<&Path>,
 ) -> Result<InstalledPlugin, InstallerError> {
-    let (name, marketplace) = plugin_id
-        .split_once('@')
-        .map(|(n, m)| (n, m))
-        .unwrap_or((plugin_id, ""));
+    let (name, marketplace) = plugin_id.split_once('@').unwrap_or((plugin_id, ""));
 
     let plugins_path = claude_dir.join("plugins").join("installed_plugins.json");
     let installed = load_installed_plugins(Some(&plugins_path))?;
@@ -531,11 +525,7 @@ pub async fn check_updates(
     let mut result = Vec::new();
 
     for plugin in &installed.plugins {
-        let (name, marketplace) = plugin
-            .id
-            .split_once('@')
-            .map(|(n, m)| (n, m))
-            .unwrap_or((&plugin.id, ""));
+        let (name, marketplace) = plugin.id.split_once('@').unwrap_or((&plugin.id, ""));
 
         if !manifest_cache.contains_key(marketplace) {
             if let Ok(manifest) = get_marketplace_manifest(marketplace, marketplace_cache_dir) {

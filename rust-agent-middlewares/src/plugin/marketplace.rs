@@ -90,55 +90,11 @@ async fn fetch_github(
     cache_base: &Path,
     auto_update: bool,
 ) -> Result<MarketplaceManifest, MarketplaceError> {
-    let cache_dir = cache_base.join(name);
-
-    if !cache_dir.exists() {
-        let output = tokio::time::timeout(
-            std::time::Duration::from_secs(30),
-            tokio::process::Command::new("git")
-                .args([
-                    "clone",
-                    "--depth",
-                    "1",
-                    &format!("https://github.com/{repo}.git"),
-                    &cache_dir.display().to_string(),
-                ])
-                .output(),
-        )
-        .await
-        .map_err(|e| MarketplaceError::GitFailed(format!("clone 超时: {e}")))?
-        .map_err(|e| MarketplaceError::GitFailed(format!("clone 执行失败: {e}")))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(MarketplaceError::GitFailed(format!("clone 失败: {stderr}")));
-        }
-    } else if auto_update {
-        let output = tokio::time::timeout(
-            std::time::Duration::from_secs(30),
-            tokio::process::Command::new("git")
-                .args(["-C", &cache_dir.display().to_string(), "pull", "--ff-only"])
-                .output(),
-        )
-        .await
-        .map_err(|e| MarketplaceError::GitFailed(format!("pull 超时: {e}")))?
-        .map_err(|e| MarketplaceError::GitFailed(format!("pull 执行失败: {e}")))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            warn!("git pull 失败 '{}', 回退到缓存: {stderr}", repo);
-            // fall through to read cache
-        }
-    }
-
-    let manifest_path =
-        find_marketplace_json(&cache_dir).ok_or_else(|| MarketplaceError::ManifestNotFound {
-            path: cache_dir.display().to_string(),
-        })?;
-    read_manifest_from_path(&manifest_path)
+    let url = format!("https://github.com/{repo}.git");
+    fetch_git(name, &url, cache_base, auto_update).await
 }
 
-/// 克通用的 git 仓库（任意 git URL）
+/// 通用的 git 仓库（任意 git URL）
 async fn fetch_git(
     name: &str,
     url: &str,
@@ -361,7 +317,7 @@ impl MarketplaceManager {
         }
     }
 
-    fn try_load_cache(
+    pub fn try_load_cache(
         &self,
         source: &MarketplaceSource,
         name: &str,
@@ -399,7 +355,7 @@ impl MarketplaceManager {
         })
     }
 
-    fn extract_name(source: &MarketplaceSource) -> String {
+    pub fn extract_name(source: &MarketplaceSource) -> String {
         match source {
             MarketplaceSource::GitHub { repo } => {
                 repo.split('/').next_back().unwrap_or(repo).to_string()
@@ -416,7 +372,7 @@ impl MarketplaceManager {
                 .ok()
                 .and_then(|u| {
                     u.path_segments()
-                        .and_then(|segs| segs.last().map(|s| s.to_string()))
+                        .and_then(|mut segs| segs.next_back().map(|s| s.to_string()))
                 })
                 .map(|s| s.trim_end_matches(".json").to_string())
                 .unwrap_or_else(|| "url-marketplace".into()),
@@ -565,20 +521,6 @@ impl MarketplaceManager {
 
     pub fn entries(&self) -> &[MarketplaceEntry] {
         &self.entries
-    }
-
-    /// 公共包装：从缓存加载 manifest
-    pub fn try_load_cache_wrapper(
-        &self,
-        source: &MarketplaceSource,
-        name: &str,
-    ) -> Option<MarketplaceManifest> {
-        self.try_load_cache(source, name)
-    }
-
-    /// 公共包装：从 source 提取 marketplace 名称
-    pub fn extract_name_wrapper(source: &MarketplaceSource) -> String {
-        Self::extract_name(source)
     }
 
     pub fn update_entry(
@@ -1146,5 +1088,74 @@ mod tests {
         assert_eq!(manager.entries[0].status, MarketplaceStatus::Fresh);
         assert!(manager.entries[0].manifest.is_some());
         assert!(manager.entries[0].last_updated.is_some());
+    }
+
+    // ─── parse_marketplace_input tests ───────────────────────────────────
+
+    #[test]
+    fn test_parse_input_empty() {
+        assert!(parse_marketplace_input("").is_err());
+        assert!(parse_marketplace_input("  ").is_err());
+    }
+
+    #[test]
+    fn test_parse_input_github_shorthand() {
+        let result = parse_marketplace_input("owner/repo").unwrap();
+        assert!(matches!(result, MarketplaceSource::GitHub { ref repo } if repo == "owner/repo"));
+    }
+
+    #[test]
+    fn test_parse_input_github_url() {
+        let result = parse_marketplace_input("https://github.com/owner/repo").unwrap();
+        assert!(matches!(result, MarketplaceSource::GitHub { ref repo } if repo == "owner/repo"));
+
+        let result2 = parse_marketplace_input("https://github.com/owner/repo.git").unwrap();
+        assert!(matches!(result2, MarketplaceSource::GitHub { ref repo } if repo == "owner/repo"));
+    }
+
+    #[test]
+    fn test_parse_input_ssh_url() {
+        let result = parse_marketplace_input("git@github.com:owner/repo.git").unwrap();
+        assert!(matches!(result, MarketplaceSource::GitHub { .. }));
+    }
+
+    #[test]
+    fn test_parse_input_http_url() {
+        let result = parse_marketplace_input("https://example.com/marketplace.json").unwrap();
+        assert!(
+            matches!(result, MarketplaceSource::Url { ref url } if url == "https://example.com/marketplace.json")
+        );
+    }
+
+    #[test]
+    fn test_parse_input_local_directory() {
+        let result = parse_marketplace_input("./path/to/marketplace").unwrap();
+        assert!(matches!(result, MarketplaceSource::Directory { .. }));
+    }
+
+    #[test]
+    fn test_parse_input_local_file() {
+        let result = parse_marketplace_input("./path/to/marketplace.json").unwrap();
+        assert!(matches!(result, MarketplaceSource::File { .. }));
+    }
+
+    #[test]
+    fn test_parse_input_npm_scoped() {
+        let result = parse_marketplace_input("@scope/my-plugin").unwrap();
+        assert!(
+            matches!(result, MarketplaceSource::Npm { ref package } if package == "@scope/my-plugin")
+        );
+    }
+
+    #[test]
+    fn test_parse_input_npm_unscoped() {
+        let result = parse_marketplace_input("my-plugin").unwrap();
+        assert!(matches!(result, MarketplaceSource::Npm { ref package } if package == "my-plugin"));
+    }
+
+    #[test]
+    fn test_parse_input_absolute_path() {
+        let result = parse_marketplace_input("/absolute/path/to/dir").unwrap();
+        assert!(matches!(result, MarketplaceSource::Directory { .. }));
     }
 }

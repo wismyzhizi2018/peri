@@ -157,17 +157,12 @@ pub enum MarketplaceSource {
     Npm { package: String },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum InstallScope {
+    #[default]
     User,
     Project,
     Local,
-}
-
-impl Default for InstallScope {
-    fn default() -> Self {
-        InstallScope::User
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

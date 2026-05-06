@@ -426,7 +426,7 @@ impl App {
         }
 
         for km in &all_known {
-            let name = MarketplaceManager::extract_name_wrapper(&km.source);
+            let name = MarketplaceManager::extract_name(&km.source);
 
             // 优先从 install_location 加载，如果不存在则使用默认路径
             // 注意：Url 类型的 install_location 指向 .json 文件，其他类型指向目录
@@ -445,7 +445,7 @@ impl App {
                     find_marketplace_json(cache_path).and_then(|p| read_manifest_from_path(&p).ok())
                 }
             } else {
-                mgr.try_load_cache_wrapper(&km.source, &name)
+                mgr.try_load_cache(&km.source, &name)
             };
 
             let (status, plugin_count) = if let Some(ref manifest) = cached_manifest {
@@ -552,7 +552,7 @@ impl App {
         }
 
         // 提取名称
-        let name = MarketplaceManager::extract_name_wrapper(&source);
+        let name = MarketplaceManager::extract_name(&source);
 
         // 创建新条目（初始状态：install_location 和 last_updated 为空）
         let new_entry = KnownMarketplace {
@@ -643,12 +643,12 @@ impl App {
                     }
                     MarketplaceSource::Git { url } => url
                         .split('/')
-                        .last()
+                        .next_back()
                         .and_then(|s| s.strip_suffix(".git"))
                         .unwrap_or("marketplace")
                         .to_string(),
                     MarketplaceSource::Url { url } => {
-                        let last = url.split('/').last().unwrap_or("marketplace");
+                        let last = url.split('/').next_back().unwrap_or("marketplace");
                         last.strip_suffix(".json").unwrap_or(last).to_string()
                     }
                     MarketplaceSource::File { path } => std::path::Path::new(path)
