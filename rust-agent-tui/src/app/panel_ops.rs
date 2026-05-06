@@ -110,7 +110,7 @@ impl App {
         self.close_login_panel();
     }
 
-    /// 保存 Login 面板的编辑/新建内容到 ZenConfig
+    /// 保存 Login 面板的编辑/新建内容到 ZenConfig，自动激活并关闭面板
     pub fn login_panel_apply_edit(&mut self) {
         let Some(panel) = self.sessions[self.active].core.login_panel.as_mut() else {
             return;
@@ -129,18 +129,20 @@ impl App {
                 ));
             return;
         }
-        let action = if is_new { "新建" } else { "保存" };
         let display = if edit_name.is_empty() {
             "Provider".to_string()
         } else {
             edit_name
         };
+        // 自动激活保存的 provider
+        panel.select_provider(cfg);
         self.sessions[self.active]
             .core
             .view_messages
             .push(MessageViewModel::system(format!(
-                "已{} Provider: {}",
-                action, display
+                "已{}并激活 Provider: {}",
+                if is_new { "新建" } else { "保存" },
+                display
             )));
         if let Err(e) = Self::save_config(cfg, self.config_path_override.as_deref()) {
             self.sessions[self.active]
@@ -152,6 +154,7 @@ impl App {
             self.provider_name = p.display_name().to_string();
             self.model_name = p.model_name().to_string();
         }
+        self.close_login_panel();
     }
 
     /// 确认删除光标处的 Provider
