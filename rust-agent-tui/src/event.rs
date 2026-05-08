@@ -193,7 +193,10 @@ pub async fn next_event(app: &mut App) -> Result<Option<Action>> {
                     {
                         match action {
                             crate::app::setup_wizard::SetupWizardAction::SaveAndClose => {
-                                let wizard = app.setup_wizard.take().unwrap();
+                                let wizard = app
+                                    .setup_wizard
+                                    .take()
+                                    .expect("setup_wizard must be Some (checked above)");
                                 match crate::app::setup_wizard::save_setup(&wizard) {
                                     Ok(cfg) => app.refresh_after_setup(cfg),
                                     Err(e) => {
@@ -232,7 +235,6 @@ pub async fn next_event(app: &mut App) -> Result<Option<Action>> {
                         | Some(PanelKind::Config)
                         | Some(PanelKind::ThreadBrowser)
                 ) {
-                    let _kind = session_kind.unwrap();
                     let active_idx = app.active;
                     // 临时取出 PanelManager 避免与 PanelContext 的 sessions 借用冲突
                     let mut pm = std::mem::replace(
