@@ -480,6 +480,7 @@ mod tests {
         assert!(matches!(action, HookAction::Allow));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_command_hook_exit_code_2_blocks() {
         let hook = make_command_hook("exit 2");
@@ -498,6 +499,7 @@ mod tests {
         assert!(matches!(action, HookAction::Allow));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_command_hook_json_output_continue_false() {
         let hook = make_command_hook(r#"echo '{"continue":false,"stopReason":"test stop"}'"#);
@@ -512,6 +514,7 @@ mod tests {
         ));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_command_hook_json_output_block() {
         let hook = make_command_hook(r#"echo '{"decision":"block","reason":"not allowed"}'"#);
@@ -540,6 +543,7 @@ mod tests {
         assert!(matches!(action, HookAction::Allow));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_command_hook_exit_code_2_with_stdout_reason() {
         let hook = make_command_hook("echo 'custom block reason' && exit 2");

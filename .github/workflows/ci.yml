@@ -37,26 +37,10 @@ jobs:
                   toolchain: ${{ matrix.rust }}
                   targets: ${{ matrix.target }}
 
-            - name: Cache cargo registry
-              uses: actions/cache@v4
+            - name: Cache cargo registry and build
+              uses: Swatinem/rust-cache@v2
               with:
-                  path: ~/.cargo/registry/index
-                  key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-            - name: Cache cargo bin
-              uses: actions/cache@v4
-              with:
-                  path: ~/.cargo/bin
-                  key: ${{ runner.os }}-cargo-bin-${{ hashFiles('**/Cargo.lock') }}
-
-            - name: Cache cargo build cache
-              uses: actions/cache@v4
-              with:
-                  path: target
-                  key: ${{ runner.os }}-rust-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-                  restore-keys: |
-                      ${{ runner.os }}-rust-${{ matrix.target }}-
-                      ${{ runner.os }}-rust-
+                  key: ${{ matrix.target }}
 
             - name: Build
               run: cargo build --workspace --all-targets

@@ -737,6 +737,7 @@ mod tests {
         assert!(matches!(action, HookAction::Allow));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_fire_event_once_semantic() {
         // once hook should fire only once
@@ -817,6 +818,7 @@ mod tests {
         assert!(matches!(action, HookAction::Allow));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_fire_event_block_short_circuit() {
         let hook1: HookType = serde_json::from_value(serde_json::json!({
@@ -856,6 +858,7 @@ mod tests {
         assert!(matches!(action, HookAction::Block { .. }));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_before_tool_block() {
         let hook: HookType = serde_json::from_value(serde_json::json!({
@@ -886,6 +889,7 @@ mod tests {
         }
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_before_tool_modify_input() {
         let hook: HookType = serde_json::from_value(serde_json::json!({
@@ -913,6 +917,7 @@ mod tests {
         assert_eq!(modified.input["command"], "safe-ls");
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_before_agent_fires_user_prompt_submit() {
         let hook: HookType = serde_json::from_value(serde_json::json!({
@@ -932,6 +937,7 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_before_agent_session_start_controlled_by_flag() {
         let hook: HookType = serde_json::from_value(serde_json::json!({
@@ -975,6 +981,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_before_tool_fires_permission_request() {
         // PermissionRequest hook with exit code 2 → Block
@@ -1013,6 +1020,7 @@ mod tests {
         }
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_before_tools_batch_fires_permission_request() {
         // Verify that the default before_tools_batch (which calls before_tool per call)
@@ -1049,6 +1057,7 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_before_tool_fires_both_pre_tool_use_and_permission_request() {
         // PreToolUse: allow (exit 0), PermissionRequest: block (exit 2)
@@ -1083,6 +1092,7 @@ mod tests {
     }
 
     /// End-to-end test: async PermissionRequest hook writes a marker file, verifying it actually fires.
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_async_permission_request_hook_actually_fires() {
         let marker_path = "/tmp/perihelion_async_hook_test_marker";
@@ -1128,6 +1138,7 @@ mod tests {
     }
 
     /// Verify async hook receives correct HookInput with hook_event_name = PermissionRequest
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_async_hook_receives_correct_event_name() {
         let marker_path = "/tmp/perihelion_async_hook_event_marker";
@@ -1172,6 +1183,7 @@ mod tests {
 
     /// Verify PermissionRequest DOES fire in YOLO mode for sensitive tools,
     /// but the hook returning Allow means the tool proceeds normally.
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_permission_request_fires_even_in_yolo_mode() {
         let marker_path = "/tmp/perihelion_yolo_fire_marker";
