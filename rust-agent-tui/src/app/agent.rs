@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use tokio::sync::mpsc;
+use tracing::warn;
 
 use super::interaction_broker::TuiInteractionBroker;
 pub(crate) use super::provider::LlmProvider;
@@ -358,19 +359,31 @@ pub async fn run_universal_agent(cfg: AgentRunConfig) {
         .filter(|m| !matches!(m, rust_create_agent::messages::BaseMessage::System { .. }))
         .skip(history_len)
         .collect();
-    let _ = tx.send(AgentEvent::StateSnapshot(new_msgs)).await;
+    if tx.send(AgentEvent::StateSnapshot(new_msgs)).await.is_err() {
+        warn!("agent: failed to send StateSnapshot (channel closed)");
+    }
 
     match result {
         Ok(_) => {
-            let _ = tx.send(AgentEvent::Done).await;
+            if tx.send(AgentEvent::Done).await.is_err() {
+                warn!("agent: failed to send Done (channel closed)");
+            }
         }
         Err(rust_create_agent::error::AgentError::Interrupted) => {
-            let _ = tx.send(AgentEvent::Interrupted).await;
-            let _ = tx.send(AgentEvent::Done).await;
+            if tx.send(AgentEvent::Interrupted).await.is_err() {
+                warn!("agent: failed to send Interrupted (channel closed)");
+            }
+            if tx.send(AgentEvent::Done).await.is_err() {
+                warn!("agent: failed to send Done after Interrupted (channel closed)");
+            }
         }
         Err(e) => {
-            let _ = tx.send(AgentEvent::Error(e.to_string())).await;
-            let _ = tx.send(AgentEvent::Done).await;
+            if tx.send(AgentEvent::Error(e.to_string())).await.is_err() {
+                warn!("agent: failed to send Error (channel closed)");
+            }
+            if tx.send(AgentEvent::Done).await.is_err() {
+                warn!("agent: failed to send Done after Error (channel closed)");
+            }
         }
     }
 }
@@ -555,7 +568,9 @@ pub async fn compact_task(
         biased;
         _ = cancel.cancelled() => {
             tracing::info!("compact_task: 被用户取消");
-            let _ = tx.send(super::AgentEvent::CompactError("已取消".to_string())).await;
+            if tx.send(super::AgentEvent::CompactError("已取消".to_string())).await.is_err() {
+                warn!("compact_task: failed to send CompactError (channel closed)");
+            }
             // Fire PostCompact even on cancel
             fire_standalone_lifecycle_hooks(
                 &registered_hooks,
@@ -574,7 +589,9 @@ pub async fn compact_task(
                 Ok(r) => r,
                 Err(e) => {
                     tracing::error!(error = %e, "compact_task: Full Compact 失败");
-                    let _ = tx.send(super::AgentEvent::CompactError(e.to_string())).await;
+                    if tx.send(super::AgentEvent::CompactError(e.to_string())).await.is_err() {
+                        warn!("compact_task: failed to send CompactError (channel closed)");
+                    }
                     // Fire PostCompact even on failure
                     fire_standalone_lifecycle_hooks(
                         &registered_hooks,
@@ -595,9 +612,13 @@ pub async fn compact_task(
     // 取消检查：re_inject 之前
     if cancel.is_cancelled() {
         tracing::info!("compact_task: re_inject 前被取消");
-        let _ = tx
+        if tx
             .send(super::AgentEvent::CompactError("已取消".to_string()))
-            .await;
+            .await
+            .is_err()
+        {
+            warn!("compact_task: failed to send CompactError on re_inject cancel (channel closed)");
+        }
         fire_standalone_lifecycle_hooks(
             &registered_hooks,
             HookEvent::PostCompact,
@@ -621,7 +642,9 @@ pub async fn compact_task(
         biased;
         _ = cancel.cancelled() => {
             tracing::info!("compact_task: re_inject 阶段被取消");
-            let _ = tx.send(super::AgentEvent::CompactError("已取消".to_string())).await;
+            if tx.send(super::AgentEvent::CompactError("已取消".to_string())).await.is_err() {
+                warn!("compact_task: failed to send CompactError (channel closed)");
+            }
             fire_standalone_lifecycle_hooks(
                 &registered_hooks,
                 HookEvent::PostCompact,
@@ -674,10 +697,14 @@ pub async fn compact_task(
     )
     .await;
 
-    let _ = tx
+    if tx
         .send(super::AgentEvent::CompactDone {
             summary: combined_summary,
             new_thread_id: String::new(),
         })
-        .await;
+        .await
+        .is_err()
+    {
+        warn!("compact_task: failed to send CompactDone (channel closed)");
+    }
 }
