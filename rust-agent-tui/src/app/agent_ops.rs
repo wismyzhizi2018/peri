@@ -182,7 +182,41 @@ impl App {
             .as_ref()
             .map(|pd| pd.all_agent_dirs.clone())
             .unwrap_or_default();
+        let mut plugin_hooks = self
+            .plugin_data
+            .as_ref()
+            .map(|pd| pd.all_hooks.clone())
+            .unwrap_or_default();
+        let local_hooks =
+            rust_agent_middlewares::hooks::loader::load_settings_local_hooks(&self.cwd);
+
+        // hook_groups：每组对应一个独立的 HookMiddleware 实例
+        // plugin hooks 和 settings.local hooks 分组，便于独立控制
+        let mut hook_groups: Vec<Vec<rust_agent_middlewares::hooks::RegisteredHook>> = Vec::new();
+        if !plugin_hooks.is_empty() {
+            tracing::info!(count = plugin_hooks.len(), "Registering plugin hooks");
+            hook_groups.push(std::mem::take(&mut plugin_hooks));
+        }
+        if !local_hooks.is_empty() {
+            tracing::info!(
+                count = local_hooks.len(),
+                "Registering settings.local hooks"
+            );
+            hook_groups.push(local_hooks);
+        }
+
+        // 扁平化所有 hooks 供 SubAgentTool 和 SessionEnd 使用
+        let all_hooks: Vec<rust_agent_middlewares::hooks::RegisteredHook> =
+            hook_groups.iter().flatten().cloned().collect();
+
+        tracing::info!(
+            groups = hook_groups.len(),
+            total = all_hooks.len(),
+            "Hook groups assembled for agent"
+        );
+
         let mcp_init_rx = self.mcp_init_rx.clone();
+        let hook_session_start = history.is_empty();
 
         tokio::spawn(
             async move {
@@ -224,6 +258,9 @@ impl App {
                     mcp_pool,
                     plugin_skill_dirs,
                     plugin_agent_dirs,
+                    plugin_hooks: all_hooks,
+                    hook_groups,
+                    hook_session_start,
                 })
                 .await;
             }
@@ -459,7 +496,7 @@ impl App {
                     panel.servers = self
                         .mcp_pool
                         .as_ref()
-                        .map(|p| p.server_infos())
+                        .map(|p| p.all_server_infos())
                         .unwrap_or_default();
                 }
                 let vm = MessageViewModel::system(format!("[i] OAuth 授权完成: {}", server_name));
@@ -480,7 +517,7 @@ impl App {
                     panel.servers = self
                         .mcp_pool
                         .as_ref()
-                        .map(|p| p.server_infos())
+                        .map(|p| p.all_server_infos())
                         .unwrap_or_default();
                 }
                 let vm = MessageViewModel::system(format!(
@@ -506,7 +543,7 @@ impl App {
                     panel.servers = self
                         .mcp_pool
                         .as_ref()
-                        .map(|p| p.server_infos())
+                        .map(|p| p.all_server_infos())
                         .unwrap_or_default();
                 }
                 let msg = match (action.as_str(), success) {
@@ -540,6 +577,7 @@ impl App {
                 if let Some(ref mut panel) = self.plugin_panel {
                     panel.installing.remove(&plugin_id);
                     panel.uninstalling.remove(&plugin_id);
+                    panel.marketplace_updating.remove(&plugin_id);
 
                     // 更新 discover 列表中的 installed 标记
                     match (action.as_str(), success) {
@@ -571,6 +609,48 @@ impl App {
                             if panel.cursor >= panel.current_list_len() {
                                 panel.cursor = panel.current_list_len().saturating_sub(1);
                             }
+                        }
+                        ("refresh", true) | ("add", true) => {
+                            // Marketplace 刷新/添加成功，重新加载面板数据
+                            // 保存当前面板状态
+                            let current_view = panel.view;
+                            let current_marketplace_cursor = panel.marketplace_cursor;
+                            // 重新加载面板数据
+                            self.open_plugin_panel();
+                            // 恢复面板状态
+                            if let Some(ref mut p) = self.plugin_panel {
+                                p.view = current_view;
+                                // 确保 cursor 不越界
+                                let max = p.marketplace_entries.len();
+                                p.marketplace_cursor = if current_marketplace_cursor <= max {
+                                    current_marketplace_cursor
+                                } else {
+                                    max
+                                };
+                            }
+                        }
+                        ("install_counts_refresh", _) => {
+                            // 安装量数据后台刷新完成，重新加载面板以更新排序
+                            let current_view = panel.view;
+                            let current_cursor = panel.cursor;
+                            let current_discover_cursor = panel.discover_cursor;
+                            let current_marketplace_cursor = panel.marketplace_cursor;
+                            self.open_plugin_panel();
+                            if let Some(ref mut p) = self.plugin_panel {
+                                p.view = current_view;
+                                p.cursor =
+                                    current_cursor.min(p.current_list_len().saturating_sub(1));
+                                p.discover_cursor = current_discover_cursor
+                                    .min(p.discover_filtered_plugins().len().saturating_sub(1));
+                                let max = p.marketplace_entries.len();
+                                p.marketplace_cursor = if current_marketplace_cursor <= max {
+                                    current_marketplace_cursor
+                                } else {
+                                    max
+                                };
+                            }
+                            // 不显示系统消息
+                            return (false, false, false);
                         }
                         _ => {}
                     }

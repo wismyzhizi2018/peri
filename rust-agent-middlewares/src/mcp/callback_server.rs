@@ -108,7 +108,7 @@ impl OAuthCallbackServer {
     }
 }
 
-pub fn parse_callback_url(
+pub(crate) fn parse_callback_url(
     url_path: &str,
     expected_state: &str,
 ) -> Result<(String, String), CallbackError> {

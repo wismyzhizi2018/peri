@@ -1,7 +1,48 @@
+use crate::hooks::types::HooksConfig;
 use crate::mcp::McpServerConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+
+/// plugin.json 中 mcpServers 字段的值：内联配置对象或文件路径引用
+#[derive(Debug, Clone)]
+pub enum McpServerEntry {
+    /// 内联 MCP 服务器配置
+    Config(Box<McpServerConfig>),
+    /// .mcp.json 文件路径（相对于插件根目录）
+    FilePath(String),
+}
+
+impl Serialize for McpServerEntry {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            McpServerEntry::Config(cfg) => cfg.serialize(serializer),
+            McpServerEntry::FilePath(path) => serializer.serialize_str(path),
+        }
+    }
+}
+
+impl McpServerEntry {
+    /// 如果是内联配置，返回内部 McpServerConfig 的引用
+    pub fn as_config(&self) -> Option<&McpServerConfig> {
+        match self {
+            McpServerEntry::Config(cfg) => Some(cfg),
+            McpServerEntry::FilePath(_) => None,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for McpServerEntry {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        if let Some(s) = value.as_str() {
+            return Ok(McpServerEntry::FilePath(s.to_string()));
+        }
+        let config: McpServerConfig =
+            serde_json::from_value(value).map_err(serde::de::Error::custom)?;
+        Ok(McpServerEntry::Config(Box::new(config)))
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginAuthor {
@@ -60,10 +101,10 @@ pub struct PluginManifest {
     pub commands: Option<Vec<PluginCommand>>,
     pub agents: Option<Vec<PluginAgent>>,
     pub skills: Option<Vec<String>>,
-    /// 预留字段，本次不实现
-    pub hooks: Option<serde_json::Value>,
+    /// 插件 hooks 配置
+    pub hooks: Option<HooksConfig>,
     #[serde(rename = "mcpServers")]
-    pub mcp_servers: Option<HashMap<String, McpServerConfig>>,
+    pub mcp_servers: Option<HashMap<String, McpServerEntry>>,
     #[serde(rename = "lspServers")]
     pub lsp_servers: Option<Vec<PluginLspServer>>,
     #[serde(rename = "outputStyles")]
@@ -100,11 +141,13 @@ pub struct MarketplaceManifest {
     pub allow_cross_marketplace: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "source")]
 pub enum MarketplaceSource {
     #[serde(rename = "github")]
     GitHub { repo: String },
+    #[serde(rename = "git")]
+    Git { url: String },
     #[serde(rename = "url")]
     Url { url: String },
     #[serde(rename = "file")]
@@ -115,17 +158,12 @@ pub enum MarketplaceSource {
     Npm { package: String },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum InstallScope {
+    #[default]
     User,
     Project,
     Local,
-}
-
-impl Default for InstallScope {
-    fn default() -> Self {
-        InstallScope::User
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -222,22 +260,72 @@ impl Default for InstalledPlugins {
     }
 }
 
+/// 已注册的 marketplace 配置条目
+///
+/// 与 Claude Code 的 KnownMarketplaceSchema 兼容：
+/// - source: required - marketplace 来源
+/// - installLocation: required - 本地缓存路径
+/// - lastUpdated: required - ISO 8601 时间戳
+/// - autoUpdate: optional - 是否自动更新
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KnownMarketplace {
     pub source: MarketplaceSource,
     #[serde(rename = "installLocation")]
-    pub install_location: Option<PathBuf>,
-    #[serde(default)]
-    #[serde(rename = "autoUpdate")]
+    pub install_location: String,
+    #[serde(rename = "autoUpdate", default)]
     pub auto_update: bool,
     #[serde(rename = "lastUpdated")]
+    pub last_updated: String,
+}
+
+/// 声明格式的 marketplace（用于 settings.json 的 extraKnownMarketplaces）
+///
+/// 这是意图层（intent layer）的声明，只需要 source 字段。
+/// 当 marketplace 实际安装后，会转换为 KnownMarketplace 并添加 installLocation 和 lastUpdated。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeclaredMarketplace {
+    pub source: MarketplaceSource,
+    #[serde(rename = "installLocation", default)]
+    pub install_location: Option<String>,
+    #[serde(rename = "autoUpdate", default)]
+    pub auto_update: bool,
+    #[serde(rename = "lastUpdated", default)]
     pub last_updated: Option<String>,
+}
+
+impl From<DeclaredMarketplace> for KnownMarketplace {
+    fn from(declared: DeclaredMarketplace) -> Self {
+        KnownMarketplace {
+            source: declared.source,
+            install_location: declared.install_location.unwrap_or_default(),
+            auto_update: declared.auto_update,
+            last_updated: declared.last_updated.unwrap_or_default(),
+        }
+    }
+}
+
+impl From<KnownMarketplace> for DeclaredMarketplace {
+    fn from(known: KnownMarketplace) -> Self {
+        DeclaredMarketplace {
+            source: known.source,
+            install_location: if known.install_location.is_empty() {
+                None
+            } else {
+                Some(known.install_location)
+            },
+            auto_update: known.auto_update,
+            last_updated: if known.last_updated.is_empty() {
+                None
+            } else {
+                Some(known.last_updated)
+            },
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
 
     #[test]
     fn test_plugin_manifest_minimal() {
@@ -292,10 +380,12 @@ mod tests {
         assert_eq!(manifest.skills.as_ref().unwrap().len(), 1);
         assert!(manifest.mcp_servers.is_some());
         let mcp = manifest.mcp_servers.as_ref().unwrap();
-        assert_eq!(
-            mcp.get("test-server").unwrap().command.as_deref(),
-            Some("node")
-        );
+        match mcp.get("test-server").unwrap() {
+            McpServerEntry::Config(cfg) => {
+                assert_eq!(cfg.command.as_deref(), Some("node"));
+            }
+            McpServerEntry::FilePath(_) => panic!("expected Config variant"),
+        }
         assert_eq!(manifest.lsp_servers.as_ref().unwrap().len(), 1);
         assert_eq!(manifest.channels.as_ref().unwrap().len(), 1);
         assert_eq!(manifest.options.as_ref().unwrap().len(), 1);
@@ -307,7 +397,36 @@ mod tests {
         let manifest: PluginManifest = serde_json::from_str(json).unwrap();
         let servers = manifest.mcp_servers.unwrap();
         assert!(servers.contains_key("srv"));
-        assert_eq!(servers["srv"].command.as_deref(), Some("cmd"));
+        match &servers["srv"] {
+            McpServerEntry::Config(cfg) => {
+                assert_eq!(cfg.command.as_deref(), Some("cmd"));
+            }
+            McpServerEntry::FilePath(_) => panic!("expected Config variant"),
+        }
+    }
+
+    #[test]
+    fn test_mcp_server_entry_file_path() {
+        let json = r#"{"name":"p","version":"1.0.0","mcpServers":{"srv":"./path/to/.mcp.json"}}"#;
+        let manifest: PluginManifest = serde_json::from_str(json).unwrap();
+        let servers = manifest.mcp_servers.unwrap();
+        match servers.get("srv").unwrap() {
+            McpServerEntry::FilePath(path) => assert_eq!(path, "./path/to/.mcp.json"),
+            McpServerEntry::Config(_) => panic!("expected FilePath variant"),
+        }
+    }
+
+    #[test]
+    fn test_mcp_server_entry_inline_config() {
+        let json = r#"{"name":"p","version":"1.0.0","mcpServers":{"srv":{"command":"node","args":["server.js"]}}}"#;
+        let manifest: PluginManifest = serde_json::from_str(json).unwrap();
+        let servers = manifest.mcp_servers.unwrap();
+        match servers.get("srv").unwrap() {
+            McpServerEntry::Config(cfg) => {
+                assert_eq!(cfg.command.as_deref(), Some("node"));
+            }
+            McpServerEntry::FilePath(_) => panic!("expected Config variant"),
+        }
     }
 
     #[test]
@@ -443,9 +562,22 @@ mod tests {
             MarketplaceSource::GitHub { repo } => assert_eq!(repo, "test/repo"),
             _ => panic!("expected GitHub variant"),
         }
-        assert_eq!(km.install_location.as_deref(), Some(Path::new("/tmp/test")));
+        assert_eq!(km.install_location, "/tmp/test");
         assert!(km.auto_update);
-        assert_eq!(km.last_updated.as_deref(), Some("2025-01-01T00:00:00Z"));
+        assert_eq!(km.last_updated, "2025-01-01T00:00:00Z");
+    }
+
+    #[test]
+    fn test_known_marketplace_without_auto_update() {
+        let json = r#"{
+            "source": {"source":"github","repo":"test/repo"},
+            "installLocation": "/tmp/test",
+            "lastUpdated": "2025-01-01T00:00:00Z"
+        }"#;
+        let km: KnownMarketplace = serde_json::from_str(json).unwrap();
+        assert!(!km.auto_update); // default value
+        assert_eq!(km.install_location, "/tmp/test");
+        assert_eq!(km.last_updated, "2025-01-01T00:00:00Z");
     }
 
     #[test]

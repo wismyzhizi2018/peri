@@ -1,5 +1,37 @@
 # Design Review Progress
 
+## 2026-05-07 第44轮：ContentBlock 构造方法测试补充 + compact/invariant 可见性收紧
+
+为 messages/content.rs 补充 11 个测试：image_url/image_base64 构造与 serde roundtrip、reasoning/reasoning_with_signature 访问器与签名保留、as_reasoning 对非推理变体返回 None、Document 变体 roundtrip、tool_result 错误标记、MessageContent From/default/Raw 变体。将 compact/invariant 中 MessageRound 结构体及其字段、group_messages_by_round、adjust_index_to_preserve_invariants 从 pub 收紧为 pub(crate)。测试总数从 264 增至 275。
+
+## 2026-05-07 第43轮：langfuse-client re-export 收紧 + acpx-g 重复代码消除
+
+langfuse-client：ingestion_events_to_otel 改为 pub(crate)，移除 lib.rs 中 11 个未使用 OTLP 类型 re-export（OtelAttribute/Span/Status 等）。acpx-g：消除 executor.rs 和 loader.rs 中重复定义的 node_id/node_depends 函数（共 3 处重复），统一复用 runner/mod.rs 的 pub 版本。净减 46 行，编译零警告，161 测试全通过。
+
+## 2026-05-07 第42轮：LLM adapter builder 方法测试补充
+
+为 ChatAnthropic 补充 6 个测试：with_base_url 设置与空串处理、with_extended_thinking（budget 低于 1024 钳位、有效值透传）、without_cache 关闭缓存、new 默认值验证。为 ChatOpenAI 补充 4 个测试：with_base_url、with_reasoning_effort、new 默认值（base_url/reasoning_effort）、o3 系列 context_window。避免 from_env 环境变量测试的并发安全问题。rust-create-agent 测试总数从 254 增至 264。
+
+## 2026-05-07 第41轮：widgets 死代码删除 + compact re-export 收紧
+
+删除 perihelion-widgets/render_state.rs 中 TableBuilder::render 方法（58 行，被 render_with_wrap 替代）和 make_data_line 函数（57 行，仅被已删除的 render 调用），共净减 115 行 #[allow(dead_code)] 标记的死代码。移除 compact/mod.rs 中 group_messages_by_round、adjust_index_to_preserve_invariants、MessageRound 三项无外部调用者的 re-export。全量测试通过，编译零警告。
+
+## 2026-05-07 第40轮：MCP 模块 API 可见性收紧 + 死代码清除
+
+将 mcp 模块中 10 个内部函数从 pub 收紧为 pub(crate)或 cfg(test)：config.rs 6 个（load_from_path/load_global_config/server_config_hash/expand_env_vars/expand_server_config_with_context/expand_server_config）、transport.rs build_transport、tool_bridge.rs assemble_tool_pool、callback_server.rs parse_callback_url。删除 assemble_tool_pool 死代码（22 行）和 build_transport 包装函数（测试改用 try_from）。移除 mod.rs 中 TransportConfig/TransportError 等 5 项无用 re-export。净减 27 行，编译零警告。
+
+## 2026-05-07 第39轮：plugin installer 测试补充 + loader 可见性收紧 + 警告消除
+
+为 cleanup_orphaned_plugins 补充 6 个异步测试覆盖完整生命周期（无缓存、旧孤儿删除、近期保留、已安装保护、空目录清理、无标记不删除）；为 sanitize_plugin_id 补充 3 个测试、match_project_path 补充 6 个测试。将 loader 中 4 个 extract_* 函数从 pub 收紧为 pub(crate)，移除 mod.rs 中未使用 re-export。声明 integration feature 消除 unexpected_cfgs 警告。测试总数 478。
+
+## 2026-05-07 第38轮：FilesystemThreadStore 测试补充 + 警告清理
+
+为关键数据持久化组件 FilesystemThreadStore 补充 13 个测试：CRUD 生命周期（create/append/load_meta/update_meta/list/delete）、边界场景（空消息、不存在 thread）、extract_title 纯函数（文本提取、50字符截断）。清理 filesystem.rs 测试未使用 import、subagent 测试 cloned_ref_to_slice_refs。测试总数 1403。
+
+消除全部 9 个 clippy 警告：filesystem.rs 两处 sort_by 改为 sort_by_key(Reverse)；installer.rs 移除未使用 StdDuration；loader.rs PluginCommand 移至测试模块 import、CommandFrontmatter 改为 pub；render_state.rs if let 替代 is_some+unwrap、match guard 替代嵌套 if；types.rs 移除未使用 Path。1390 测试通过。
+
+将 `fetch_github` 改为构造 URL 后委托 `fetch_git`，消除约 50 行重复的 git clone/pull 逻辑；将 `try_load_cache`/`extract_name` 改为 pub 直接暴露，删除无意义的 `_wrapper` 包装方法；为 `parse_marketplace_input` 补充 10 个单元测试覆盖 GitHub shorthand/URL/SSH/本地路径/NPM 等格式。修复 clippy 警告：`map_identity`(installer.rs 3处)、`double_ended_iterator_last`(marketplace.rs/panel_ops.rs)、`collapsible_match`(event.rs)、`unnecessary_unwrap`(event.rs)、`redundant_closure`(event.rs)、`useless_conversion`(re_inject.rs/message_render.rs)。`InstallScope` 改为 derive Default。1390 测试全通过。
+
 ## 2026-05-02 第35轮：修复 CI 失败的 test_subagent_group_basic 测试
 
 测试 `test_subagent_group_basic` 断言渲染快照中包含步数数字 "2"，但 SubAgentGroup 渲染不显示 total_steps，导致 CI 失败。移除了基于渲染输出的步数断言，保留内部状态的 total_steps 验证（已有 assert_eq!(*total_steps, 2)）。全量测试 293 通过，0 失败。

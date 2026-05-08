@@ -1,13 +1,14 @@
 use crate::messages::BaseMessage;
 
 #[derive(Debug, Clone)]
-pub struct MessageRound {
-    pub start: usize,
-    pub end: usize,
-    pub tool_call_ids: Vec<String>,
+pub(crate) struct MessageRound {
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+    #[allow(dead_code)]
+    pub(crate) tool_call_ids: Vec<String>,
 }
 
-pub fn group_messages_by_round(messages: &[BaseMessage]) -> Vec<MessageRound> {
+pub(crate) fn group_messages_by_round(messages: &[BaseMessage]) -> Vec<MessageRound> {
     let mut rounds = Vec::new();
     let mut i = 0;
     while i < messages.len() {
@@ -98,7 +99,7 @@ fn find_tool_pair_boundary(messages: &[BaseMessage], index: usize) -> (usize, us
     (ai_index, end)
 }
 
-pub fn adjust_index_to_preserve_invariants(
+pub(crate) fn adjust_index_to_preserve_invariants(
     messages: &[BaseMessage],
     start: usize,
     end: usize,

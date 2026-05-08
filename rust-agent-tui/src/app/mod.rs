@@ -3,6 +3,7 @@ pub mod agent_panel;
 pub mod chat_session;
 pub mod config_panel;
 pub mod events;
+pub mod hooks_panel;
 pub mod interaction_broker;
 pub mod login_panel;
 pub mod memory_panel;
@@ -66,6 +67,7 @@ use std::path::PathBuf;
 use crate::command::agents::AgentItem;
 pub use crate::ui::message_view::{ContentBlockView, MessageViewModel};
 pub use agent_panel::AgentPanel;
+pub use hooks_panel::HooksPanel;
 pub use model_panel::ModelPanel;
 pub use setup_wizard::SetupWizardPanel;
 use std::sync::Arc;
@@ -104,6 +106,8 @@ pub struct App {
     pub model_highlight_until: Option<std::time::Instant>,
     /// 测试时覆盖配置文件路径，防止污染全局 ~/.zen-code/settings.json
     pub config_path_override: Option<PathBuf>,
+    /// 测试时覆盖 ~/.claude/settings.json 路径，防止污染全局配置
+    pub claude_settings_override: Option<PathBuf>,
     /// MCP 连接池：首次 agent 启动时惰性初始化，App 退出时 shutdown
     pub mcp_pool: Option<Arc<rust_agent_middlewares::mcp::McpClientPool>>,
     /// MCP 后台初始化状态接收端
@@ -208,6 +212,7 @@ impl App {
             mode_highlight_until: None,
             model_highlight_until: None,
             config_path_override: None,
+            claude_settings_override: None,
             mcp_pool: None,
             mcp_init_rx: None,
             mcp_panel: None,
@@ -344,10 +349,16 @@ impl App {
                     });
                 }
             });
+
+        let claude_home = dirs_next::home_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join(".claude");
+
         tokio::spawn(async move {
             McpClientPool::run_initialize(
                 pool,
                 std::path::Path::new(&cwd),
+                &claude_home,
                 init_tx,
                 Some(oauth_cb),
             )

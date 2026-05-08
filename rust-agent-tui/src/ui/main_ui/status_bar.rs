@@ -253,6 +253,8 @@ fn render_second_row(f: &mut Frame, app: &App, area: Rect) {
         None => {
             if app.sessions[app.active].core.agent_panel.is_some() {
                 key!["↑↓" => ":选择  ", "Enter" => ":确认  ", "Esc" => ":取消"]
+            } else if app.sessions[app.active].core.hooks_panel.is_some() {
+                key!["↑↓" => ":导航  ", "Esc" => ":关闭"]
             } else if let Some(cron_panel) = &app.cron.cron_panel {
                 if cron_panel.confirm_delete {
                     key!["Enter" => ":确认  ", "其他键" => ":取消"]
@@ -307,6 +309,10 @@ fn render_second_row(f: &mut Frame, app: &App, area: Rect) {
                 use crate::app::plugin_panel::PluginPanelView;
                 if panel.confirm_delete.is_some() {
                     key!["Enter" => ":确认卸载  ", "其他键" => ":取消"]
+                } else if panel.marketplace_confirm_delete.is_some() {
+                    key!["Enter" => ":确认删除  ", "Esc" => ":取消"]
+                } else if panel.add_marketplace_active {
+                    key!["Enter" => ":添加  ", "Esc" => ":取消"]
                 } else if panel.discover_searching {
                     key!["Esc/↑↓" => ":退出搜索  ", "←→" => ":Tab  ", "Enter" => ":安装  ", "Backspace" => ":删除"]
                 } else if panel.discover_detail_index.is_some() {
@@ -319,7 +325,7 @@ fn render_second_row(f: &mut Frame, app: &App, area: Rect) {
                             key!["↑↓" => ":选择  ", "输入" => ":搜索  ", "Enter" => ":安装  ", "←→/Tab" => ":Tab  ", "Esc" => ":关闭"]
                         }
                         PluginPanelView::Marketplaces => {
-                            key!["↑↓" => ":选择  ", "←→/Tab" => ":Tab  ", "Esc" => ":关闭"]
+                            key!["↑↓" => ":选择  ", "Enter" => ":添加/更新  ", "Backspace" => ":移除  ", "←→/Tab" => ":Tab  ", "Esc" => ":关闭"]
                         }
                         _ => {
                             key!["↑↓" => ":导航  ", "Space" => ":切换  ", "Enter" => ":详情  ", "←→/Tab" => ":Tab  ", "Esc" => ":关闭"]

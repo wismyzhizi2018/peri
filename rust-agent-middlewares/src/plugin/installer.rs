@@ -340,10 +340,7 @@ pub async fn uninstall_plugin(
     claude_dir: &Path,
     project_dir: Option<&Path>,
 ) -> Result<(), InstallerError> {
-    let (name, marketplace) = plugin_id
-        .split_once('@')
-        .map(|(n, m)| (n, m))
-        .unwrap_or((plugin_id, ""));
+    let (name, marketplace) = plugin_id.split_once('@').unwrap_or((plugin_id, ""));
 
     let plugins_path = claude_dir.join("plugins").join("installed_plugins.json");
     let mut installed = load_installed_plugins(Some(&plugins_path))?;
@@ -474,10 +471,7 @@ pub async fn update_plugin(
     claude_dir: &Path,
     project_dir: Option<&Path>,
 ) -> Result<InstalledPlugin, InstallerError> {
-    let (name, marketplace) = plugin_id
-        .split_once('@')
-        .map(|(n, m)| (n, m))
-        .unwrap_or((plugin_id, ""));
+    let (name, marketplace) = plugin_id.split_once('@').unwrap_or((plugin_id, ""));
 
     let plugins_path = claude_dir.join("plugins").join("installed_plugins.json");
     let installed = load_installed_plugins(Some(&plugins_path))?;
@@ -531,11 +525,7 @@ pub async fn check_updates(
     let mut result = Vec::new();
 
     for plugin in &installed.plugins {
-        let (name, marketplace) = plugin
-            .id
-            .split_once('@')
-            .map(|(n, m)| (n, m))
-            .unwrap_or((&plugin.id, ""));
+        let (name, marketplace) = plugin.id.split_once('@').unwrap_or((&plugin.id, ""));
 
         if !manifest_cache.contains_key(marketplace) {
             if let Ok(manifest) = get_marketplace_manifest(marketplace, marketplace_cache_dir) {
@@ -571,8 +561,6 @@ pub async fn check_updates(
 /// 扫描 `~/.claude/plugins/cache/` 目录，删除标记为孤儿且超过 7 天的版本。
 /// 应在应用启动时或定期调用。
 pub async fn cleanup_orphaned_plugins(claude_dir: &Path) -> Result<usize, InstallerError> {
-    use std::time::Duration as StdDuration;
-
     const CLEANUP_AGE_MS: i64 = 7 * 24 * 60 * 60 * 1000; // 7 天
 
     let cache_dir = claude_dir.join("plugins").join("cache");
@@ -1157,6 +1145,309 @@ mod tests {
         assert_eq!(
             enabled.get("plugin-b").and_then(|v| v.as_bool()),
             Some(true)
+        );
+    }
+
+    // ── sanitize_plugin_id tests ──
+
+    #[test]
+    fn test_sanitize_plugin_id_basic() {
+        assert_eq!(sanitize_plugin_id("my-plugin_v2"), "my-plugin_v2");
+    }
+
+    #[test]
+    fn test_sanitize_plugin_id_special_chars() {
+        assert_eq!(
+            sanitize_plugin_id("plugin@marketplace"),
+            "plugin-marketplace"
+        );
+        assert_eq!(sanitize_plugin_id("a.b/c"), "a-b-c");
+        assert_eq!(sanitize_plugin_id("hello world"), "hello-world");
+    }
+
+    #[test]
+    fn test_sanitize_plugin_id_empty() {
+        assert_eq!(sanitize_plugin_id(""), "");
+    }
+
+    // ── match_project_path tests ──
+
+    #[test]
+    fn test_match_project_path_both_none() {
+        assert!(match_project_path(&None, None));
+    }
+
+    #[test]
+    fn test_match_project_path_stored_none_given_some() {
+        assert!(!match_project_path(&None, Some(Path::new("/project"))));
+    }
+
+    #[test]
+    fn test_match_project_path_given_none_stored_some() {
+        assert!(!match_project_path(&Some("/project".into()), None));
+    }
+
+    #[test]
+    fn test_match_project_path_exact_match() {
+        assert!(match_project_path(
+            &Some("/home/user/project".into()),
+            Some(Path::new("/home/user/project"))
+        ));
+    }
+
+    #[test]
+    fn test_match_project_path_suffix_match() {
+        assert!(match_project_path(
+            &Some("/home/user/project".into()),
+            Some(Path::new("project"))
+        ));
+        assert!(match_project_path(
+            &Some("project".into()),
+            Some(Path::new("/home/user/project"))
+        ));
+    }
+
+    #[test]
+    fn test_match_project_path_no_match() {
+        assert!(!match_project_path(
+            &Some("/home/user/project-a".into()),
+            Some(Path::new("/home/user/project-b"))
+        ));
+    }
+
+    // ── cleanup_orphaned_plugins tests ──
+
+    #[tokio::test]
+    async fn test_cleanup_no_cache_dir() {
+        let dir = tempdir().unwrap();
+        let result = cleanup_orphaned_plugins(dir.path()).await.unwrap();
+        assert_eq!(result, 0, "no cache dir should return 0");
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_removes_old_orphaned() {
+        let dir = tempdir().unwrap();
+        let claude_dir = dir.path();
+
+        // Create cache structure: cache/marketplace/plugin/version/
+        let version_dir = claude_dir
+            .join("plugins")
+            .join("cache")
+            .join("mkt")
+            .join("my-plugin")
+            .join("v1");
+        std::fs::create_dir_all(&version_dir).unwrap();
+
+        // Write .orphaned_at with a timestamp 8 days ago (> 7 day threshold)
+        let eight_days_ago = chrono::Utc::now() - chrono::Duration::try_days(8).unwrap();
+        std::fs::write(
+            version_dir.join(".orphaned_at"),
+            eight_days_ago.to_rfc3339(),
+        )
+        .unwrap();
+        // Set file modified time to 8 days ago
+        let eight_days_ago_time = std::time::SystemTime::UNIX_EPOCH
+            + std::time::Duration::from_millis(eight_days_ago.timestamp_millis() as u64);
+        let file_time = filetime::FileTime::from_system_time(eight_days_ago_time);
+        filetime::set_file_mtime(version_dir.join(".orphaned_at"), file_time).unwrap();
+
+        // No installed plugins → empty installed_plugins.json
+        let plugins_dir = claude_dir.join("plugins");
+        std::fs::create_dir_all(&plugins_dir).unwrap();
+        save_installed_plugins(
+            &InstalledPlugins {
+                version: 1,
+                plugins: vec![],
+            },
+            Some(&plugins_dir.join("installed_plugins.json")),
+        )
+        .unwrap();
+
+        let deleted = cleanup_orphaned_plugins(claude_dir).await.unwrap();
+        assert_eq!(deleted, 1, "should delete 1 old orphaned version");
+        assert!(!version_dir.exists(), "old orphaned dir should be removed");
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_preserves_recent_orphaned() {
+        let dir = tempdir().unwrap();
+        let claude_dir = dir.path();
+
+        let version_dir = claude_dir
+            .join("plugins")
+            .join("cache")
+            .join("mkt")
+            .join("my-plugin")
+            .join("v1");
+        std::fs::create_dir_all(&version_dir).unwrap();
+
+        // .orphaned_at 1 day ago (< 7 day threshold)
+        let one_day_ago = chrono::Utc::now() - chrono::Duration::try_days(1).unwrap();
+        std::fs::write(version_dir.join(".orphaned_at"), one_day_ago.to_rfc3339()).unwrap();
+        let one_day_ago_time = std::time::SystemTime::UNIX_EPOCH
+            + std::time::Duration::from_millis(one_day_ago.timestamp_millis() as u64);
+        let file_time = filetime::FileTime::from_system_time(one_day_ago_time);
+        filetime::set_file_mtime(version_dir.join(".orphaned_at"), file_time).unwrap();
+
+        let plugins_dir = claude_dir.join("plugins");
+        std::fs::create_dir_all(&plugins_dir).unwrap();
+        save_installed_plugins(
+            &InstalledPlugins {
+                version: 1,
+                plugins: vec![],
+            },
+            Some(&plugins_dir.join("installed_plugins.json")),
+        )
+        .unwrap();
+
+        let deleted = cleanup_orphaned_plugins(claude_dir).await.unwrap();
+        assert_eq!(deleted, 0, "recent orphaned should not be deleted");
+        assert!(
+            version_dir.exists(),
+            "recent orphaned dir should still exist"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_preserves_installed_version() {
+        let dir = tempdir().unwrap();
+        let claude_dir = dir.path();
+
+        let version_dir = claude_dir
+            .join("plugins")
+            .join("cache")
+            .join("mkt")
+            .join("my-plugin")
+            .join("v1");
+        std::fs::create_dir_all(&version_dir).unwrap();
+
+        // Mark as old orphaned
+        let eight_days_ago = chrono::Utc::now() - chrono::Duration::try_days(8).unwrap();
+        std::fs::write(
+            version_dir.join(".orphaned_at"),
+            eight_days_ago.to_rfc3339(),
+        )
+        .unwrap();
+        let eight_days_ago_time = std::time::SystemTime::UNIX_EPOCH
+            + std::time::Duration::from_millis(eight_days_ago.timestamp_millis() as u64);
+        let file_time = filetime::FileTime::from_system_time(eight_days_ago_time);
+        filetime::set_file_mtime(version_dir.join(".orphaned_at"), file_time).unwrap();
+
+        // Register as installed → should be preserved
+        let plugins_dir = claude_dir.join("plugins");
+        std::fs::create_dir_all(&plugins_dir).unwrap();
+        save_installed_plugins(
+            &InstalledPlugins {
+                version: 1,
+                plugins: vec![InstalledPlugin {
+                    id: "my-plugin@mkt".into(),
+                    name: "my-plugin".into(),
+                    version: "v1".into(),
+                    marketplace: "mkt".into(),
+                    install_path: version_dir.clone(),
+                    scope: InstallScope::User,
+                    project_path: None,
+                }],
+            },
+            Some(&plugins_dir.join("installed_plugins.json")),
+        )
+        .unwrap();
+
+        let deleted = cleanup_orphaned_plugins(claude_dir).await.unwrap();
+        assert_eq!(deleted, 0, "installed version should not be deleted");
+        assert!(
+            version_dir.exists(),
+            "installed version dir should still exist"
+        );
+        assert!(
+            !version_dir.join(".orphaned_at").exists(),
+            ".orphaned_at marker should be removed for installed version"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_removes_empty_parent_dirs() {
+        let dir = tempdir().unwrap();
+        let claude_dir = dir.path();
+
+        // Structure: cache/mkt/plugin/version/
+        let version_dir = claude_dir
+            .join("plugins")
+            .join("cache")
+            .join("mkt")
+            .join("my-plugin")
+            .join("v1");
+        std::fs::create_dir_all(&version_dir).unwrap();
+
+        let eight_days_ago = chrono::Utc::now() - chrono::Duration::try_days(8).unwrap();
+        std::fs::write(
+            version_dir.join(".orphaned_at"),
+            eight_days_ago.to_rfc3339(),
+        )
+        .unwrap();
+        let eight_days_ago_time = std::time::SystemTime::UNIX_EPOCH
+            + std::time::Duration::from_millis(eight_days_ago.timestamp_millis() as u64);
+        let file_time = filetime::FileTime::from_system_time(eight_days_ago_time);
+        filetime::set_file_mtime(version_dir.join(".orphaned_at"), file_time).unwrap();
+
+        let plugins_dir = claude_dir.join("plugins");
+        std::fs::create_dir_all(&plugins_dir).unwrap();
+        save_installed_plugins(
+            &InstalledPlugins {
+                version: 1,
+                plugins: vec![],
+            },
+            Some(&plugins_dir.join("installed_plugins.json")),
+        )
+        .unwrap();
+
+        let _deleted = cleanup_orphaned_plugins(claude_dir).await.unwrap();
+
+        let plugin_dir = claude_dir
+            .join("plugins")
+            .join("cache")
+            .join("mkt")
+            .join("my-plugin");
+        let mkt_dir = claude_dir.join("plugins").join("cache").join("mkt");
+        assert!(!plugin_dir.exists(), "empty plugin dir should be removed");
+        assert!(!mkt_dir.exists(), "empty marketplace dir should be removed");
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_orphaned_no_marker_not_deleted() {
+        let dir = tempdir().unwrap();
+        let claude_dir = dir.path();
+
+        // Version dir without .orphaned_at marker
+        let version_dir = claude_dir
+            .join("plugins")
+            .join("cache")
+            .join("mkt")
+            .join("my-plugin")
+            .join("v1");
+        std::fs::create_dir_all(&version_dir).unwrap();
+        // Write a dummy file so dir is not empty
+        std::fs::write(version_dir.join("plugin.json"), "{}").unwrap();
+
+        let plugins_dir = claude_dir.join("plugins");
+        std::fs::create_dir_all(&plugins_dir).unwrap();
+        save_installed_plugins(
+            &InstalledPlugins {
+                version: 1,
+                plugins: vec![],
+            },
+            Some(&plugins_dir.join("installed_plugins.json")),
+        )
+        .unwrap();
+
+        let deleted = cleanup_orphaned_plugins(claude_dir).await.unwrap();
+        assert_eq!(
+            deleted, 0,
+            "version without orphaned marker should not be deleted"
+        );
+        assert!(
+            version_dir.exists(),
+            "version dir without marker should still exist"
         );
     }
 }

@@ -40,8 +40,14 @@ flate2 = "1"
 tar = "0.4"
 base64 = "0.22"
 urlencoding = "2"
+shellexpand = "3"
+ipnet = "2.10"
 
 
 [dev-dependencies]
 tokio-test.workspace = true
 tempfile.workspace = true
+filetime = "0.2"
+
+[features]
+integration = []

@@ -50,11 +50,6 @@ impl TryFrom<&McpServerConfig> for TransportConfig {
     }
 }
 
-/// 构建 MCP Transport 实例
-pub fn build_transport(config: &McpServerConfig) -> Result<TransportConfig, TransportError> {
-    TransportConfig::try_from(config)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,14 +156,14 @@ mod tests {
     #[test]
     fn test_build_transport_returns_config() {
         let config = stdio_config();
-        let result = build_transport(&config);
+        let result = TransportConfig::try_from(&config);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_build_transport_invalid() {
         let config = test_config();
-        let result = build_transport(&config);
+        let result = TransportConfig::try_from(&config);
         assert!(result.is_err());
     }
 

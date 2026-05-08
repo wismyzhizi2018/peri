@@ -14,6 +14,7 @@ pub use client::{
     ClientStatus, McpClientHandle, McpClientPool, McpInitStatus, McpPoolError, OAuthStatus,
     ServerInfo,
 };
+pub(crate) use config::load_merged_config_full;
 pub use config::{
     load_merged_config, remove_server_from_config, set_server_disabled, ConfigSource,
     McpConfigError, McpConfigFile, McpServerConfig, OAuthConfig,
@@ -23,4 +24,3 @@ pub use oauth_flow::{OAuthCallbackResult, OAuthFlowError, OAuthFlowEvent, OAuthF
 pub use resource_tool::McpResourceTool;
 pub use rmcp::model::{Resource, Tool};
 pub use tool_bridge::{build_tool_bridges, McpToolBridge, ToolCallError};
-pub use transport::{TransportConfig, TransportError};

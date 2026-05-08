@@ -585,4 +585,124 @@ mod tests {
             other => panic!("应为 Unknown，实际: {:?}", other),
         }
     }
+
+    #[test]
+    fn test_content_block_image_url() {
+        let b = ContentBlock::image_url("https://example.com/img.png");
+        assert!(b.as_text().is_none());
+        assert!(b.as_tool_use().is_none());
+        assert!(b.as_reasoning().is_none());
+        // Verify roundtrip
+        let json = serde_json::to_string(&b).unwrap();
+        let b2: ContentBlock = serde_json::from_str(&json).unwrap();
+        assert_eq!(b, b2);
+    }
+
+    #[test]
+    fn test_content_block_image_base64() {
+        let b = ContentBlock::image_base64("image/png", "iVBORw0KGgo=");
+        assert!(b.as_text().is_none());
+        // Verify roundtrip
+        let json = serde_json::to_string(&b).unwrap();
+        let b2: ContentBlock = serde_json::from_str(&json).unwrap();
+        assert_eq!(b, b2);
+        assert!(json.contains("\"media_type\":\"image/png\""));
+    }
+
+    #[test]
+    fn test_content_block_reasoning() {
+        let b = ContentBlock::reasoning("thinking step by step");
+        assert_eq!(b.as_reasoning(), Some("thinking step by step"));
+        assert!(b.as_text().is_none());
+        // Roundtrip without signature
+        let json = serde_json::to_string(&b).unwrap();
+        assert!(!json.contains("signature"));
+        let b2: ContentBlock = serde_json::from_str(&json).unwrap();
+        assert_eq!(b, b2);
+    }
+
+    #[test]
+    fn test_content_block_reasoning_with_signature() {
+        let b = ContentBlock::reasoning_with_signature("deep thought", "sig_abc");
+        assert_eq!(b.as_reasoning(), Some("deep thought"));
+        // Roundtrip with signature
+        let json = serde_json::to_string(&b).unwrap();
+        assert!(json.contains("sig_abc"));
+        let b2: ContentBlock = serde_json::from_str(&json).unwrap();
+        assert_eq!(b, b2);
+    }
+
+    #[test]
+    fn test_content_block_as_reasoning_non_reasoning() {
+        let text = ContentBlock::text("hello");
+        assert!(text.as_reasoning().is_none());
+        let tool = ContentBlock::tool_use("id1", "Bash", serde_json::json!({}));
+        assert!(tool.as_reasoning().is_none());
+    }
+
+    #[test]
+    fn test_content_block_document() {
+        let b = ContentBlock::Document {
+            source: DocumentSource::Text {
+                text: "doc content".into(),
+            },
+            title: Some("My Doc".into()),
+        };
+        assert!(b.as_text().is_none());
+        assert!(b.as_reasoning().is_none());
+        let json = serde_json::to_string(&b).unwrap();
+        let b2: ContentBlock = serde_json::from_str(&json).unwrap();
+        assert_eq!(b, b2);
+    }
+
+    #[test]
+    fn test_content_block_tool_result_error() {
+        let b =
+            ContentBlock::tool_result("tu1", vec![ContentBlock::text("permission denied")], true);
+        assert!(b.as_text().is_none());
+        let json = serde_json::to_string(&b).unwrap();
+        assert!(json.contains("\"is_error\":true"));
+        let b2: ContentBlock = serde_json::from_str(&json).unwrap();
+        assert_eq!(b, b2);
+    }
+
+    #[test]
+    fn test_message_content_from_conversions() {
+        let mc: MessageContent = "hello".into();
+        assert_eq!(mc.text_content(), "hello");
+
+        let mc: MessageContent = String::from("world").into();
+        assert_eq!(mc.text_content(), "world");
+
+        let mc: MessageContent = vec![ContentBlock::text("block")].into();
+        assert_eq!(mc.text_content(), "block");
+    }
+
+    #[test]
+    fn test_message_content_default() {
+        let mc = MessageContent::default();
+        assert!(mc.is_empty());
+        assert_eq!(mc.text_content(), "");
+    }
+
+    #[test]
+    fn test_message_content_raw_tool_use_blocks() {
+        let mc = MessageContent::Raw(vec![
+            serde_json::json!({"type": "tool_use", "id": "r1", "name": "Read", "input": {}}),
+            serde_json::json!({"type": "text", "text": "result"}),
+        ]);
+        let tus = mc.tool_use_blocks();
+        assert_eq!(tus.len(), 1);
+        assert_eq!(tus[0].0, "r1");
+        assert_eq!(tus[0].1, "Read");
+    }
+
+    #[test]
+    fn test_message_content_text_content_from_raw() {
+        let mc = MessageContent::Raw(vec![
+            serde_json::json!({"type": "text", "text": "hello "}),
+            serde_json::json!({"type": "text", "text": "world"}),
+        ]);
+        assert_eq!(mc.text_content(), "hello world");
+    }
 }

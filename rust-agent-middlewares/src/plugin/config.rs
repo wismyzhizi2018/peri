@@ -1,4 +1,6 @@
-use crate::plugin::types::{InstalledPlugins, KnownMarketplace, PluginManifest};
+use crate::plugin::types::{
+    DeclaredMarketplace, InstalledPlugins, KnownMarketplace, PluginManifest,
+};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -8,9 +10,9 @@ pub struct ClaudeSettings {
     #[serde(default, deserialize_with = "deserialize_enabled_plugins")]
     #[serde(rename = "enabledPlugins")]
     pub enabled_plugins: Vec<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_known_marketplaces")]
     #[serde(rename = "extraKnownMarketplaces")]
-    pub extra_known_marketplaces: Vec<KnownMarketplace>,
+    pub extra_known_marketplaces: Vec<DeclaredMarketplace>,
 }
 
 /// 兼容 Claude Code 两种 enabledPlugins 格式：
@@ -41,6 +43,36 @@ where
                 })
                 .collect();
             Ok(ids)
+        }
+        _ => Ok(Vec::new()),
+    }
+}
+
+/// 兼容 Claude Code 两种 extraKnownMarketplaces 格式：
+/// - 数组: `[{source, installLocation, ...}]`
+/// - 对象: `{"marketplace-name": {source, installLocation, ...}}`
+fn deserialize_known_marketplaces<'de, D>(
+    deserializer: D,
+) -> Result<Vec<DeclaredMarketplace>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    match value {
+        serde_json::Value::Array(arr) => {
+            serde_json::from_value(serde_json::Value::Array(arr)).map_err(serde::de::Error::custom)
+        }
+        serde_json::Value::Object(map) => {
+            let mut result = Vec::new();
+            for (_name, entry) in map {
+                match serde_json::from_value::<DeclaredMarketplace>(entry) {
+                    Ok(mkt) => result.push(mkt),
+                    Err(e) => {
+                        tracing::warn!(error = %e, "extraKnownMarketplaces 条目解析失败，跳过");
+                    }
+                }
+            }
+            Ok(result)
         }
         _ => Ok(Vec::new()),
     }
@@ -138,7 +170,7 @@ pub fn load_installed_plugins(
         .unwrap_or_else(installed_plugins_path);
 
     // 如果文件不存在，返回默认值并尝试迁移
-    let result = if !path.exists() {
+    let mut result = if !path.exists() {
         InstalledPlugins::default()
     } else {
         let content = std::fs::read_to_string(&path).map_err(|e| PluginConfigError::ReadError {
@@ -151,10 +183,10 @@ pub fn load_installed_plugins(
         })?
     };
 
-    // 迁移：如果 installed_plugins.json 为空但 settings.json 有 enabledPlugins，
-    // 则从 enabledPlugins 回填（用于兼容 Claude Code CLI 安装的插件）。
+    // 迁移：从 settings.json 的 enabledPlugins 回填未记录的插件
+    // （用于兼容 Claude Code CLI 安装的插件）。
     // 注意：仅在非测试环境（override_path 为 None）时执行迁移，避免测试读取用户真实配置。
-    if result.plugins.is_empty() && override_path.is_none() {
+    if override_path.is_none() {
         // settings.json 在 claude_home 目录，不是 plugins 目录
         let settings_path = claude_home().join("settings.json");
         if settings_path.exists() {
@@ -176,13 +208,23 @@ pub fn load_installed_plugins(
                             _ => Vec::new(),
                         };
 
-                        if !enabled_ids.is_empty() {
+                        // 收集已记录的插件 ID
+                        let recorded_ids: std::collections::HashSet<&str> =
+                            result.plugins.iter().map(|p| p.id.as_str()).collect();
+
+                        // 只回填已启用但未记录的插件
+                        let missing_ids: Vec<&String> = enabled_ids
+                            .iter()
+                            .filter(|id| !recorded_ids.contains(id.as_str()))
+                            .collect();
+
+                        if !missing_ids.is_empty() {
                             // 创建回填条目（从缓存目录查找实际安装路径）
                             use crate::plugin::types::{InstallScope, InstalledPlugin};
                             let plugins_cache = plugin_cache_dir();
                             let mut migrated_plugins = Vec::new();
 
-                            for plugin_id in &enabled_ids {
+                            for plugin_id in &missing_ids {
                                 if let Some((name, marketplace)) = plugin_id.split_once('@') {
                                     // 扫描插件缓存目录，找到实际的插件路径
                                     let plugin_base = plugins_cache.join(marketplace).join(name);
@@ -238,7 +280,7 @@ pub fn load_installed_plugins(
                                         (found_version, found_install_path)
                                     {
                                         migrated_plugins.push(InstalledPlugin {
-                                            id: plugin_id.clone(),
+                                            id: (*plugin_id).clone(),
                                             name: name.to_string(),
                                             version,
                                             marketplace: marketplace.to_string(),
@@ -251,13 +293,11 @@ pub fn load_installed_plugins(
                             }
 
                             if !migrated_plugins.is_empty() {
-                                // 保存回填的数据
-                                let backfilled = InstalledPlugins {
-                                    version: 2,
-                                    plugins: migrated_plugins,
-                                };
-                                let _ = save_installed_plugins(&backfilled, Some(&path));
-                                return Ok(backfilled);
+                                // 将回填的插件添加到现有列表
+                                result.plugins.extend(migrated_plugins);
+                                // 保存更新后的数据
+                                let _ = save_installed_plugins(&result, Some(&path));
+                                return Ok(result);
                             }
                         }
                     }
@@ -296,10 +336,34 @@ pub fn load_known_marketplaces(
         path: path.display().to_string(),
         source: e,
     })?;
-    serde_json::from_str(&content).map_err(|e| PluginConfigError::ParseError {
-        path: path.display().to_string(),
-        source: e,
-    })
+
+    // 兼容 Claude Code CLI 的对象格式：{"marketplace-name": {...}}
+    // 以及内部数组格式：[{...}]
+    let value = serde_json::from_str::<serde_json::Value>(&content).map_err(|e| {
+        PluginConfigError::ParseError {
+            path: path.display().to_string(),
+            source: e,
+        }
+    })?;
+
+    match value {
+        serde_json::Value::Array(arr) => serde_json::from_value(serde_json::Value::Array(arr))
+            .map_err(|e| PluginConfigError::ParseError {
+                path: path.display().to_string(),
+                source: e,
+            }),
+        serde_json::Value::Object(obj) => {
+            // Claude Code CLI 格式：对象键为 marketplace 名称
+            let mut result = Vec::new();
+            for (_name, entry) in obj {
+                if let Ok(mkt) = serde_json::from_value::<KnownMarketplace>(entry) {
+                    result.push(mkt);
+                }
+            }
+            Ok(result)
+        }
+        _ => Ok(Vec::new()),
+    }
 }
 
 pub fn save_known_marketplaces(
@@ -309,10 +373,79 @@ pub fn save_known_marketplaces(
     let path = override_path
         .map(|p| p.to_path_buf())
         .unwrap_or_else(known_marketplaces_path);
-    let value = serde_json::to_value(marketplaces).map_err(|e| PluginConfigError::ParseError {
-        path: path.display().to_string(),
-        source: e,
-    })?;
+
+    // 保存为 Claude Code CLI 对象格式：{"marketplace-name": {...}}
+    use crate::plugin::MarketplaceManager;
+    let mut obj = serde_json::Map::new();
+    for mkt in marketplaces {
+        let name = MarketplaceManager::extract_name(&mkt.source);
+
+        // 手动构建 JSON 对象，移除 null 值
+        let mut entry = serde_json::Map::new();
+
+        // source
+        if let Ok(source_val) = serde_json::to_value(&mkt.source) {
+            entry.insert("source".into(), source_val);
+        }
+
+        // installLocation (required)
+        entry.insert(
+            "installLocation".into(),
+            serde_json::Value::String(mkt.install_location.clone()),
+        );
+
+        // lastUpdated (required)
+        entry.insert(
+            "lastUpdated".into(),
+            serde_json::Value::String(mkt.last_updated.clone()),
+        );
+
+        // autoUpdate (optional, 仅当为 true 时写入)
+        if mkt.auto_update {
+            entry.insert("autoUpdate".into(), serde_json::Value::Bool(true));
+        }
+
+        obj.insert(name, serde_json::Value::Object(entry));
+    }
+
+    atomic_write_json(&path, &serde_json::Value::Object(obj))
+}
+
+/// 仅更新 `~/.claude/settings.json` 中的 `enabledPlugins` 字段，保留文件中其他字段不变。
+pub fn save_claude_settings_enabled_plugins(
+    plugin_states: &[(String, bool)],
+    override_path: Option<&Path>,
+) -> Result<(), PluginConfigError> {
+    let path = override_path
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(claude_settings_path);
+
+    // 读取现有文件内容以保留 unknown fields
+    let mut value: serde_json::Value = if path.exists() {
+        let content = std::fs::read_to_string(&path).map_err(|e| PluginConfigError::ReadError {
+            path: path.display().to_string(),
+            source: e,
+        })?;
+        serde_json::from_str(&content).map_err(|e| PluginConfigError::ParseError {
+            path: path.display().to_string(),
+            source: e,
+        })?
+    } else {
+        serde_json::Value::Object(serde_json::Map::new())
+    };
+
+    // 更新 enabledPlugins 字段（Claude Code 要求对象格式: {"plugin-id": true/false, ...}）
+    let mut enabled_obj = serde_json::Map::new();
+    for (id, enabled) in plugin_states {
+        enabled_obj.insert(id.clone(), serde_json::Value::Bool(*enabled));
+    }
+    if let Some(obj) = value.as_object_mut() {
+        obj.insert(
+            "enabledPlugins".to_string(),
+            serde_json::Value::Object(enabled_obj),
+        );
+    }
+
     atomic_write_json(&path, &value)
 }
 
@@ -409,9 +542,9 @@ mod tests {
             source: MarketplaceSource::GitHub {
                 repo: "test/repo".into(),
             },
-            install_location: Some("/tmp/test".into()),
+            install_location: "/tmp/test".into(),
             auto_update: true,
-            last_updated: Some("2025-01-01".into()),
+            last_updated: "2025-01-01".into(),
         }];
         save_known_marketplaces(&marketplaces, Some(&path)).unwrap();
         let loaded = load_known_marketplaces(Some(&path)).unwrap();
@@ -440,6 +573,23 @@ mod tests {
         std::fs::write(&path, json).unwrap();
         let settings = load_claude_settings(Some(&path)).unwrap();
         assert_eq!(settings.enabled_plugins, vec!["plugin-a", "plugin-b"]);
+        assert_eq!(settings.extra_known_marketplaces.len(), 1);
+    }
+
+    #[test]
+    fn test_load_claude_settings_extra_marketplaces_object_format() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        let json = r#"{
+            "enabledPlugins": [],
+            "extraKnownMarketplaces": {
+                "superpowers-dev": {
+                    "source": {"source":"github","repo":"test/repo"}
+                }
+            }
+        }"#;
+        std::fs::write(&path, json).unwrap();
+        let settings = load_claude_settings(Some(&path)).unwrap();
         assert_eq!(settings.extra_known_marketplaces.len(), 1);
     }
 
@@ -531,6 +681,64 @@ mod tests {
         let manifest = load_plugin_manifest(dir.path()).unwrap();
         assert_eq!(manifest.name, "test");
         assert!(manifest.version.is_empty());
+    }
+
+    #[test]
+    fn test_save_claude_settings_enabled_plugins_preserves_other_fields() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        // 写入包含 enabledPlugins 和其他字段的 JSON
+        let json = r#"{
+            "env": {"KEY": "value"},
+            "model": "opus",
+            "enabledPlugins": ["a@m", "b@m"]
+        }"#;
+        std::fs::write(&path, json).unwrap();
+
+        save_claude_settings_enabled_plugins(
+            &[("a@m".into(), true), ("c@m".into(), false)],
+            Some(&path),
+        )
+        .unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&content).unwrap();
+        // 其他字段保留
+        assert_eq!(value["env"]["KEY"], "value");
+        assert_eq!(value["model"], "opus");
+        // enabledPlugins 已更新（对象格式: {"a@m": true, "c@m": false}）
+        let obj = value["enabledPlugins"].as_object().unwrap();
+        assert_eq!(obj.len(), 2);
+        assert_eq!(obj["a@m"], true);
+        assert_eq!(obj["c@m"], false);
+    }
+
+    #[test]
+    fn test_save_claude_settings_enabled_plugins_new_file() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+
+        save_claude_settings_enabled_plugins(&[("x@m".into(), false)], Some(&path)).unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&content).unwrap();
+        let obj = value["enabledPlugins"].as_object().unwrap();
+        assert_eq!(obj.len(), 1);
+        assert_eq!(obj["x@m"], false);
+    }
+
+    #[test]
+    fn test_save_claude_settings_enabled_plugins_empty_list() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        let json = r#"{"enabledPlugins": {"a@m": true}}"#;
+        std::fs::write(&path, json).unwrap();
+
+        save_claude_settings_enabled_plugins(&[], Some(&path)).unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&content).unwrap();
+        assert!(value["enabledPlugins"].as_object().unwrap().is_empty());
     }
 
     #[test]

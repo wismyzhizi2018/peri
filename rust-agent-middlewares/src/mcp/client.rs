@@ -19,6 +19,8 @@ pub enum ClientStatus {
     Failed(String),
     Disconnected,
     Disabled,
+    /// 配置存在但从未尝试连接（不在 clients 表中，仅在 configs 表中）
+    Uninitialized,
 }
 
 /// MCP 连接池初始化状态
@@ -56,6 +58,8 @@ pub struct ServerInfo {
     pub source: Option<ConfigSource>,
     /// 服务器 URL（HTTP 传输）
     pub url: Option<String>,
+    /// 插件来源标识（`"name@marketplace"`），非插件 server 为 None
+    pub plugin_source: Option<String>,
 }
 
 /// 连接池级别错误
@@ -94,6 +98,8 @@ pub struct McpClientPool {
     clients: parking_lot::RwLock<HashMap<String, Arc<McpClientHandle>>>,
     services: tokio::sync::Mutex<HashMap<String, RunningService<RoleClient, ()>>>,
     configs: parking_lot::RwLock<HashMap<String, McpServerConfig>>,
+    /// 插件来源旁路表：key 为 server name（如 `"plugin:p1:srv1"`），value 为 `"name@marketplace"`
+    plugin_sources: parking_lot::RwLock<HashMap<String, String>>,
 }
 
 const STDIO_CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
@@ -106,6 +112,7 @@ impl McpClientPool {
             clients: parking_lot::RwLock::new(HashMap::new()),
             services: tokio::sync::Mutex::new(HashMap::new()),
             configs: parking_lot::RwLock::new(HashMap::new()),
+            plugin_sources: parking_lot::RwLock::new(HashMap::new()),
         }
     }
 
@@ -114,13 +121,20 @@ impl McpClientPool {
         Self::new_pending()
     }
 
+    /// 查询指定 server 的插件来源标识，非插件 server 返回 None
+    /// key 格式为 `"plugin_name__server_name"`，返回 `"name@marketplace"`
+    pub fn plugin_source_of(&self, name: &str) -> Option<String> {
+        self.plugin_sources.read().get(name).cloned()
+    }
+
     pub async fn run_initialize(
         pool: Arc<Self>,
         cwd: &Path,
+        claude_home: &Path,
         status_tx: tokio::sync::watch::Sender<McpInitStatus>,
         oauth_event_callback: Option<Box<dyn Fn(OAuthFlowEvent) + Send + Sync>>,
     ) {
-        let config = super::load_merged_config(cwd);
+        let (config, plugin_sources) = super::load_merged_config_full(cwd, claude_home);
         let connectable = config
             .mcp_servers
             .iter()
@@ -130,6 +144,8 @@ impl McpClientPool {
             let _ = status_tx.send(McpInitStatus::Ready { total: 0 });
             return;
         }
+
+        *pool.plugin_sources.write() = plugin_sources;
 
         let token_store = Arc::new(FileCredentialStore::new());
         let mut oauth_manager: Option<OAuthFlowManager> =
@@ -766,8 +782,54 @@ impl McpClientPool {
                 oauth_status: h.oauth_status.clone(),
                 source: h.source.clone(),
                 url: h.url.clone(),
+                plugin_source: self.plugin_source_of(&h.name),
             })
             .collect()
+    }
+
+    /// 返回所有 MCP 服务器信息（合并 configs + clients）
+    ///
+    /// config 中有但 clients 中没有的 server 会被标记为 Uninitialized。
+    /// 这覆盖了连接失败后被移除、运行时新增配置、以及 disabled 后被清理等场景。
+    pub fn all_server_infos(&self) -> Vec<ServerInfo> {
+        let clients = self.clients.read();
+        let configs = self.configs.read();
+
+        let mut result: Vec<ServerInfo> = Vec::new();
+
+        // 先遍历 clients 表中的所有条目
+        for h in clients.values() {
+            result.push(ServerInfo {
+                name: h.name.clone(),
+                transport_type: if h.url.is_some() { "http" } else { "stdio" }.to_string(),
+                status: h.status.clone(),
+                tool_count: h.tools.len(),
+                resource_count: h.resources.len(),
+                oauth_status: h.oauth_status.clone(),
+                source: h.source.clone(),
+                url: h.url.clone(),
+                plugin_source: self.plugin_source_of(&h.name),
+            });
+        }
+
+        // 遍历 configs，补充 clients 中不存在的条目（标记为 Uninitialized）
+        for (name, sc) in configs.iter() {
+            if !clients.contains_key(name) {
+                result.push(ServerInfo {
+                    name: name.clone(),
+                    transport_type: if sc.url.is_some() { "http" } else { "stdio" }.to_string(),
+                    status: ClientStatus::Uninitialized,
+                    tool_count: 0,
+                    resource_count: 0,
+                    oauth_status: OAuthStatus::default(),
+                    source: sc.source.clone(),
+                    url: sc.url.clone(),
+                    plugin_source: self.plugin_source_of(name),
+                });
+            }
+        }
+
+        result
     }
 
     pub fn get_tools(&self, name: &str) -> Vec<Tool> {
@@ -841,10 +903,12 @@ impl McpClientPool {
 
     pub async fn initialize(
         cwd: &Path,
+        claude_home: &Path,
         oauth_event_callback: Option<Box<dyn Fn(OAuthFlowEvent) + Send + Sync>>,
     ) -> Self {
-        let config = super::load_merged_config(cwd);
+        let (config, plugin_sources) = super::load_merged_config_full(cwd, claude_home);
         let pool = Arc::new(Self::new_pending());
+        *pool.plugin_sources.write() = plugin_sources;
         let token_store = Arc::new(FileCredentialStore::new());
         let mut oauth_manager: Option<OAuthFlowManager> =
             oauth_event_callback.map(|cb| OAuthFlowManager::new(token_store, cb));
@@ -1011,6 +1075,7 @@ impl McpClientPool {
                 clients: parking_lot::RwLock::new(p.clients.read().clone()),
                 services: tokio::sync::Mutex::new(HashMap::new()),
                 configs: parking_lot::RwLock::new(p.configs.read().clone()),
+                plugin_sources: parking_lot::RwLock::new(p.plugin_sources.read().clone()),
             }
         })
     }
@@ -1021,13 +1086,38 @@ fn spawn_stdio_transport(
     args: &[String],
     env: &HashMap<String, String>,
 ) -> std::io::Result<rmcp::transport::child_process::TokioChildProcess> {
-    let mut child = tokio::process::Command::new(command);
-    child.args(args).envs(env);
-    child
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
-    rmcp::transport::child_process::TokioChildProcess::new(child)
+    use std::process::Stdio;
+
+    // 使用 builder 模式以获取 stderr 句柄
+    let mut cmd = tokio::process::Command::new(command);
+    cmd.args(args).envs(env);
+
+    let builder = rmcp::transport::child_process::TokioChildProcess::builder(cmd)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    let (child_process, stderr_opt) = builder.spawn()?;
+
+    // 启动后台任务消费 stderr 并记录到 tracing
+    if let Some(stderr) = stderr_opt {
+        let cmd_name = command.to_string();
+        tokio::spawn(async move {
+            use tokio::io::{AsyncBufReadExt, BufReader};
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+
+            while let Ok(Some(line)) = lines.next_line().await {
+                tracing::warn!(
+                    command = %cmd_name,
+                    stderr = %line,
+                    "MCP 子进程 stderr"
+                );
+            }
+        });
+    }
+
+    Ok(child_process)
 }
 
 fn build_http_transport(
@@ -1188,5 +1278,32 @@ mod tests {
         );
         assert!(pool.get_tools("s").is_empty());
         assert!(pool.get_tools("x").is_empty());
+    }
+
+    #[test]
+    fn test_plugin_source_of_empty_pool_returns_none() {
+        let pool = McpClientPool::new_pending();
+        assert!(pool.plugin_source_of("any").is_none());
+    }
+
+    #[test]
+    fn test_plugin_source_of_after_write_returns_value() {
+        let pool = McpClientPool::new_pending();
+        pool.plugin_sources
+            .write()
+            .insert("p1__srv1".to_string(), "p1@marketplace_a".to_string());
+        assert_eq!(
+            pool.plugin_source_of("p1__srv1"),
+            Some("p1@marketplace_a".to_string())
+        );
+    }
+
+    #[test]
+    fn test_plugin_source_of_nonexistent_returns_none() {
+        let pool = McpClientPool::new_pending();
+        pool.plugin_sources
+            .write()
+            .insert("p1__srv1".to_string(), "p1@alpha".to_string());
+        assert!(pool.plugin_source_of("nonexistent").is_none());
     }
 }

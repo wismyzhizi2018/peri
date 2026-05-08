@@ -56,65 +56,6 @@ impl TableBuilder {
         }
     }
 
-    #[allow(dead_code)]
-    fn render(self, theme: &dyn MarkdownTheme) -> Vec<Line<'static>> {
-        if self.rows.is_empty() {
-            return vec![];
-        }
-
-        let num_cols = self.rows[0].len();
-        if num_cols == 0 {
-            return vec![];
-        }
-
-        let mut col_widths = vec![0usize; num_cols];
-        for row in &self.rows {
-            for (i, cell) in row.iter().enumerate() {
-                if i < num_cols {
-                    let w: usize = cell.iter().map(|s| s.content.width()).sum();
-                    col_widths[i] = col_widths[i].max(w);
-                }
-            }
-        }
-
-        let mut lines = Vec::new();
-
-        lines.push(Line::from(make_border(
-            &col_widths,
-            '┌',
-            '┬',
-            '┐',
-            '─',
-            theme,
-        )));
-
-        for (row_idx, row) in self.rows.iter().enumerate() {
-            lines.push(make_data_line(&col_widths, row, &self.alignments, theme));
-
-            if row_idx == 0 {
-                lines.push(Line::from(make_border(
-                    &col_widths,
-                    '├',
-                    '┼',
-                    '┤',
-                    '─',
-                    theme,
-                )));
-            }
-        }
-
-        lines.push(Line::from(make_border(
-            &col_widths,
-            '└',
-            '┴',
-            '┘',
-            '─',
-            theme,
-        )));
-
-        lines
-    }
-
     /// 包装单元格文本以适应最大宽度
     fn wrap_cells(
         &self,
@@ -439,65 +380,6 @@ fn make_border(
     Span::styled(s, Style::default().fg(theme.muted()))
 }
 
-#[allow(dead_code)]
-fn make_data_line(
-    col_widths: &[usize],
-    row: &[CellContent],
-    alignments: &[Alignment],
-    theme: &dyn MarkdownTheme,
-) -> Line<'static> {
-    let mut spans: Vec<Span<'static>> = Vec::new();
-
-    spans.push(Span::styled(
-        "│".to_string(),
-        Style::default().fg(theme.muted()),
-    ));
-
-    for (i, col_w) in col_widths.iter().enumerate() {
-        spans.push(Span::raw(" "));
-
-        let cell_spans = row.get(i).cloned().unwrap_or_default();
-        let cell_char_count: usize = cell_spans.iter().map(|s| s.content.width()).sum();
-        let padding = col_w.saturating_sub(cell_char_count);
-
-        let align = alignments.get(i).copied().unwrap_or(Alignment::None);
-
-        match align {
-            Alignment::Center => {
-                let left_pad = padding / 2;
-                let right_pad = padding - left_pad;
-                if left_pad > 0 {
-                    spans.push(Span::raw(" ".repeat(left_pad)));
-                }
-                spans.extend(cell_spans);
-                if right_pad > 0 {
-                    spans.push(Span::raw(" ".repeat(right_pad)));
-                }
-            }
-            Alignment::Right => {
-                if padding > 0 {
-                    spans.push(Span::raw(" ".repeat(padding)));
-                }
-                spans.extend(cell_spans);
-            }
-            Alignment::None | Alignment::Left => {
-                spans.extend(cell_spans);
-                if padding > 0 {
-                    spans.push(Span::raw(" ".repeat(padding)));
-                }
-            }
-        }
-
-        spans.push(Span::raw(" "));
-        spans.push(Span::styled(
-            "│".to_string(),
-            Style::default().fg(theme.muted()),
-        ));
-    }
-
-    Line::from(spans)
-}
-
 // ── 渲染状态机 ────────────────────────────────────────────────────────────────
 
 pub(super) struct RenderState<'a> {
@@ -675,20 +557,16 @@ impl<'a> RenderState<'a> {
                     Style::default().fg(self.theme.list_bullet()),
                 ));
             }
-            Event::End(TagEnd::Item) => {
-                if !self.current_spans.is_empty() {
-                    self.flush_line();
-                }
+            Event::End(TagEnd::Item) if !self.current_spans.is_empty() => {
+                self.flush_line();
             }
 
             // ── 引用块 ────────────────────────────────────────────────────────
             Event::Start(Tag::BlockQuote(_)) => {
                 self.quote_depth += 1;
             }
-            Event::End(TagEnd::BlockQuote(_)) => {
-                if self.quote_depth > 0 {
-                    self.quote_depth -= 1;
-                }
+            Event::End(TagEnd::BlockQuote(_)) if self.quote_depth > 0 => {
+                self.quote_depth -= 1;
             }
 
             // ── 水平线 ────────────────────────────────────────────────────────
@@ -725,8 +603,8 @@ impl<'a> RenderState<'a> {
             Event::Code(text) => {
                 let style = Style::default().fg(self.theme.code());
                 let span = Span::styled(text.into_string(), style);
-                if self.table.is_some() {
-                    self.table.as_mut().unwrap().current_cell.push(span);
+                if let Some(table) = &mut self.table {
+                    table.current_cell.push(span);
                 } else {
                     self.current_spans.push(span);
                 }
