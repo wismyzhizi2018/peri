@@ -1,6 +1,6 @@
 use ratatui::{
     layout::Rect,
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::Paragraph,
     Frame,
@@ -56,8 +56,9 @@ pub(crate) fn render_ask_user_popup(f: &mut Frame, app: &App, area: Rect) {
     tab_state.set_active(prompt.active_tab);
     let tab_bar = TabBar::new().style(TabStyle {
         active: Style::default()
-            .fg(theme::THINKING)
-            .add_modifier(Modifier::BOLD),
+            .fg(Color::White)
+            .bg(theme::THINKING)
+            .add_modifier(Modifier::BOLD | Modifier::REVERSED),
         completed: Style::default().fg(theme::SAGE),
         incomplete: Style::default().fg(theme::MUTED),
         separator: " ",
@@ -134,6 +135,11 @@ pub(crate) fn render_ask_user_popup(f: &mut Frame, app: &App, area: Rect) {
                     Style::default().fg(theme::MUTED),
                 )));
             }
+        }
+
+        // 选项之间空一行（最后一个不加）
+        if i < option_count - 1 {
+            lines.push(Line::from(""));
         }
     }
 
