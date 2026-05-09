@@ -22,6 +22,7 @@ enum CacheFormat {
     ClaudeCode {
         #[allow(dead_code)]
         version: Option<u64>,
+        #[allow(dead_code)]
         fetched_at: Option<String>,
         counts: Vec<CachedInstallEntry>,
     },

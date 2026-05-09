@@ -20,6 +20,7 @@ pub struct SearchResult {
 /// TF-IDF 索引内部结构
 struct TfIdfIndex {
     /// 每个词在多少个文档中出现过
+    #[allow(dead_code)]
     doc_freqs: HashMap<String, usize>,
     /// 每个文档的词向量（词 → TF×IDF 权重）
     doc_vectors: HashMap<String, HashMap<String, f64>>,

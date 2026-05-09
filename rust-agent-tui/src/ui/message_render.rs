@@ -118,7 +118,7 @@ pub fn render_view_model(
             // 流式进行中：● 前缀闪烁动画（每 400ms 切换可见/暗淡）
             let indicator = if *is_streaming {
                 let tick = std::time::Instant::now().elapsed().as_millis() as u64 / 400;
-                let visible = tick % 2 == 0;
+                let visible = tick.is_multiple_of(2);
                 Span::styled(
                     "●".to_string(),
                     Style::default().fg(if visible { theme::TEXT } else { theme::DIM }),

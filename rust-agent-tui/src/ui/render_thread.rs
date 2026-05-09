@@ -200,7 +200,7 @@ impl RenderTask {
             deduped.push(line);
         }
         // 移除末尾多余空行
-        while deduped.last().map_or(false, |l| {
+        while deduped.last().is_some_and(|l| {
             l.spans.is_empty() || (l.spans.len() == 1 && l.spans[0].content.is_empty())
         }) {
             deduped.pop();
@@ -232,7 +232,7 @@ impl RenderTask {
                     // 确保新消息与上一条消息之间有空行间隔
                     //（rebuild_all 会移除末尾空行，所以 AddMessage 时需要补回）
                     let needs_gap = !cache.lines.is_empty()
-                        && cache.lines.last().map_or(true, |l| {
+                        && cache.lines.last().is_none_or(|l| {
                             !(l.spans.is_empty()
                                 || (l.spans.len() == 1 && l.spans[0].content.is_empty()))
                         });
@@ -512,7 +512,7 @@ mod tests {
         // 确认末尾无空行
         {
             let c = cache.read();
-            let last_is_empty = c.lines.last().map_or(false, |l| {
+            let last_is_empty = c.lines.last().is_some_and(|l| {
                 l.spans.is_empty() || (l.spans.len() == 1 && l.spans[0].content.is_empty())
             });
             assert!(!last_is_empty, "after rebuild_all, no trailing blank");
@@ -571,7 +571,7 @@ mod tests {
         // 确认末尾没有空行（rebuild_all 行为）
         {
             let c = cache.read();
-            let last_is_empty = c.lines.last().map_or(false, |l| {
+            let last_is_empty = c.lines.last().is_some_and(|l| {
                 l.spans.is_empty() || (l.spans.len() == 1 && l.spans[0].content.is_empty())
             });
             assert!(
