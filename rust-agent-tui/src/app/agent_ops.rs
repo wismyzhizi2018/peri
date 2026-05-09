@@ -122,7 +122,7 @@ impl App {
             .agent
             .pending_bg_continuation = None;
 
-        let (tx, rx) = mpsc::channel(64);
+        let (tx, rx) = mpsc::channel(256);
         self.session_mgr.sessions[self.session_mgr.active]
             .agent
             .agent_rx = Some(rx);
@@ -1596,7 +1596,7 @@ impl App {
                 attempt,
                 max_attempts,
                 delay_ms,
-                error: _,
+                error,
             } => {
                 self.session_mgr.sessions[self.session_mgr.active]
                     .agent
@@ -1604,6 +1604,7 @@ impl App {
                     attempt,
                     max_attempts,
                     delay_ms,
+                    error,
                 });
                 (true, false, false)
             }

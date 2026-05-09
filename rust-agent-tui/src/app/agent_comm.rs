@@ -15,6 +15,8 @@ pub struct RetryStatus {
     pub attempt: usize,
     pub max_attempts: usize,
     pub delay_ms: u64,
+    /// 最近一次重试的错误描述（供状态栏展示）
+    pub error: String,
 }
 
 /// Agent 通信状态：事件接收、交互弹窗、取消/计时

@@ -1686,6 +1686,7 @@ mod tests {
             attempt: 2,
             max_attempts: 5,
             delay_ms: 2000,
+            error: "API 错误 429: Rate limit exceeded".to_string(),
         });
 
         handle

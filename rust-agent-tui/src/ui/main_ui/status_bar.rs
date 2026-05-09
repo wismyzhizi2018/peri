@@ -120,10 +120,17 @@ fn render_first_row(f: &mut Frame, app: &App, area: Rect) {
     {
         let delay_sec = retry.delay_ms as f64 / 1000.0;
         spans.push(Span::styled(" │ ", Style::default().fg(theme::MUTED)));
+        // 截取错误信息前 60 字符用于状态栏展示
+        let err_preview: String = retry.error.chars().take(60).collect();
+        let err_display = if retry.error.chars().count() > 60 {
+            format!("{}...", err_preview)
+        } else {
+            err_preview
+        };
         spans.push(Span::styled(
             format!(
-                " ⟳ 重试 {}/{} ({:.1}s)",
-                retry.attempt, retry.max_attempts, delay_sec
+                " 重试 {}/{} ({:.1}s): {}",
+                retry.attempt, retry.max_attempts, delay_sec, err_display
             ),
             Style::default().fg(theme::WARNING),
         ));

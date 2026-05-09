@@ -138,7 +138,7 @@ pub async fn run_universal_agent(cfg: AgentRunConfig) {
             if let Some(msg) = map_executor_event(event, &cwd_for_handler) {
                 if let Err(e) = tx_event.try_send(msg) {
                     if matches!(e, tokio::sync::mpsc::error::TrySendError::Full(_)) {
-                        tracing::debug!("AgentEvent channel full, dropping event");
+                        tracing::warn!("AgentEvent channel full, dropping event");
                     }
                 }
             }
