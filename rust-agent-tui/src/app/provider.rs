@@ -197,8 +197,11 @@ impl LlmProvider {
                 thinking,
             } => {
                 let mut m = ChatOpenAI::new(api_key, model).with_base_url(base_url);
-                if let Some(t) = thinking {
+                if let Some(t) = &thinking {
                     m = m.with_reasoning_effort(t.openai_effort());
+                    if t.enabled {
+                        m = m.with_thinking_enabled();
+                    }
                 }
                 Box::new(m)
             }
