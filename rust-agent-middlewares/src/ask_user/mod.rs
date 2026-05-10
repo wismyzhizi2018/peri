@@ -60,14 +60,14 @@ pub fn parse_ask_user(tool_call: &ToolCall) -> Result<Vec<AskUserQuestionData>, 
 
 // ─── `ask_user_question` 工具定义 ─────────────────────────────────────────────
 
-/// `ask_user_question` 工具定义（对齐 Claude AskUserQuestion）
+/// `ask_user_question` tool definition (aligned with Claude AskUserQuestion)
 pub fn ask_user_tool_definition() -> rust_create_agent::tools::ToolDefinition {
     rust_create_agent::tools::ToolDefinition {
         name: "AskUserQuestion".to_string(),
-        description: "向用户批量提问并提供选项，获取用户的选择或自定义输入。\
-                      当任务需要用户提供细节、偏好或做出选择时使用。\
-                      一次调用支持 1–4 个问题，全部打包展示给用户。\
-                      每个问题提供清晰的选项列表，用户始终可以输入自定义内容。"
+        description: "Batch ask users questions with options to get their selection or custom input.\
+                      Use when a task requires users to provide details, preferences, or make choices.\
+                      One call supports 1-4 questions, all displayed together to the user.\
+                      Each question provides a clear list of options, and users can always input custom content."
             .to_string(),
         parameters: serde_json::json!({
             "type": "object",
@@ -76,22 +76,22 @@ pub fn ask_user_tool_definition() -> rust_create_agent::tools::ToolDefinition {
                     "type": "array",
                     "minItems": 1,
                     "maxItems": 4,
-                    "description": "问题列表，1–4 个问题",
+                    "description": "List of questions, 1-4 items",
                     "items": {
                         "type": "object",
                         "properties": {
                             "question": {
                                 "type": "string",
-                                "description": "向用户提出的问题，清晰具体，包含必要的上下文"
+                                "description": "The question to ask the user, clear and specific with necessary context"
                             },
                             "header": {
                                 "type": "string",
-                                "description": "问题短标签（<=12字），用于 UI Tab 显示，例如：颜色偏好、部署方式"
+                                "description": "Short header (<=12 characters) for UI Tab display, e.g.: color preference, deployment method"
                             },
                             "multiSelect": {
                                 "type": "boolean",
                                 "default": false,
-                                "description": "是否允许多选，默认 false（单选）"
+                                "description": "Whether to allow multiple selections, defaults to false (single select)"
                             },
                             "options": {
                                 "type": "array",
@@ -100,22 +100,22 @@ pub fn ask_user_tool_definition() -> rust_create_agent::tools::ToolDefinition {
                                     "properties": {
                                         "label": {
                                             "type": "string",
-                                            "description": "选项显示文本，简洁明了（1-50 字符）"
+                                            "description": "Option display text, concise and clear (1-50 characters)"
                                         },
                                         "description": {
                                             "type": "string",
-                                            "description": "选项说明，解释该选项的含义或适用场景（可选）"
+                                            "description": "Option explanation, explaining the option's meaning or applicable scenario (optional)"
                                         },
                                         "preview": {
                                             "type": "string",
-                                            "description": "预览内容，展示选项的效果或示例（可选）"
+                                            "description": "Preview content, showing the effect or example of the option (optional)"
                                         }
                                     },
                                     "required": ["label"]
                                 },
                                 "minItems": 2,
                                 "maxItems": 4,
-                                "description": "选项列表，至少 2 个，最多 4 个"
+                                "description": "Option list, at least 2 items, at most 4 items"
                             }
                         },
                         "required": ["question", "header", "options"]

@@ -2570,6 +2570,7 @@ mod tests {
         use crate::config::{PeriConfig, ProviderConfig, ThinkingConfig};
 
         let cfg = PeriConfig {
+            schema: None,
             config: AppConfig {
                 active_alias: "opus".to_string(),
                 active_provider_id: "test".to_string(),
@@ -2712,6 +2713,7 @@ mod tests {
 
         let (mut app, _handle) = App::new_headless(120, 30).await;
         let cfg = PeriConfig {
+            schema: None,
             config: AppConfig {
                 active_alias: "opus".to_string(),
                 active_provider_id: "test".to_string(),
@@ -2773,6 +2775,7 @@ mod tests {
 
         let (mut app, _handle) = App::new_headless(120, 30).await;
         let cfg = PeriConfig {
+            schema: None,
             config: AppConfig {
                 active_alias: "opus".to_string(),
                 active_provider_id: "test1".to_string(),

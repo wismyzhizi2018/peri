@@ -285,6 +285,7 @@ mod tests {
 
     fn make_config() -> PeriConfig {
         PeriConfig {
+            schema: None,
             config: AppConfig {
                 active_alias: "opus".to_string(),
                 active_provider_id: "test".to_string(),
@@ -386,6 +387,7 @@ mod tests {
     #[test]
     fn test_apply_to_config_creates_thinking_when_none() {
         let mut cfg = PeriConfig {
+            schema: None,
             config: AppConfig {
                 active_alias: "opus".to_string(),
                 active_provider_id: "test".to_string(),

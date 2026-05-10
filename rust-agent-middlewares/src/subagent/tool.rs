@@ -1327,7 +1327,7 @@ mod tests {
             ) -> rust_create_agent::error::AgentResult<Reasoning> {
                 let found = messages
                     .iter()
-                    .any(|m| m.content().contains("预加载 skill 文件"));
+                    .any(|m| m.content().contains("Preloading skill files"));
                 Ok(Reasoning::with_answer(
                     "",
                     if found {

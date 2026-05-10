@@ -17,7 +17,7 @@ use crate::skills::{list_skills, load_global_skills_dir};
 /// # 注入消息结构
 ///
 /// ```text
-/// [Human] "（系统：预加载 skill 文件）"
+/// [Human] "(System: Preloading skill files)"
 /// [Ai]    [ToolUse{Read, skill_preload_0}, ToolUse{Read, skill_preload_1}, ...]
 /// [Tool]  ToolResult{skill_preload_0, skill_0_content}
 /// [Tool]  ToolResult{skill_preload_1, skill_1_content}
@@ -118,7 +118,7 @@ impl<S: State> Middleware<S> for SkillPreloadMiddleware {
         state.prepend_message(BaseMessage::ai_from_blocks(tool_use_blocks));
 
         // Prepend Human 初始化消息（最后 prepend → 排最前）
-        state.prepend_message(BaseMessage::human("（系统：预加载 skill 文件）"));
+        state.prepend_message(BaseMessage::human("(System: Preloading skill files)"));
 
         Ok(())
     }
@@ -245,8 +245,8 @@ mod tests {
             &msgs[0]
         );
         assert!(
-            msgs[0].content().contains("预加载 skill 文件"),
-            "Human 消息内容应包含 '预加载 skill 文件'"
+            msgs[0].content().contains("Preloading skill files"),
+            "Human message content should contain 'Preloading skill files'"
         );
         // [1] Ai
         assert!(

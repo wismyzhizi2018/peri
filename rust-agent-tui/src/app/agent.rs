@@ -205,6 +205,11 @@ pub async fn run_universal_agent(cfg: AgentRunConfig) {
     // 系统提示词由 system_builder + with_system_prompt() 注入，使其在 Langfuse 中可见
     // model_alias: None 表示继承父模型；有值时通过 from_config_for_alias 解析
     let provider_clone = provider_for_factory;
+    let claude_md_excludes = peri_config
+        .config
+        .claude_md_excludes
+        .clone()
+        .unwrap_or_default();
     let config_for_factory = peri_config;
     #[allow(clippy::type_complexity)]
     let llm_factory: Arc<
@@ -281,7 +286,9 @@ pub async fn run_universal_agent(cfg: AgentRunConfig) {
         .with_system_prompt(system_prompt) // executor 内部固定 prepend，无顺序约束
         .with_tool_filter(rust_agent_middlewares::tool_search::is_deferred_tool)
         .with_shared_tools(Arc::clone(&shared_tools))
-        .add_middleware(Box::new(AgentsMdMiddleware::new()))
+        .add_middleware(Box::new(
+            AgentsMdMiddleware::new().with_excludes(claude_md_excludes),
+        ))
         .add_middleware(Box::new(AgentDefineMiddleware::new()))
         .add_middleware(Box::new(
             SkillsMiddleware::new().with_extra_dirs(plugin_skill_dirs),

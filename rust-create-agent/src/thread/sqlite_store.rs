@@ -271,6 +271,17 @@ impl ThreadStore for SqliteThreadStore {
         tx.commit().await?;
         Ok(())
     }
+
+    async fn update_title(&self, id: &ThreadId, title: &str) -> Result<()> {
+        let now = Utc::now().to_rfc3339();
+        sqlx::query("UPDATE threads SET title = ?1, updated_at = ?2 WHERE id = ?3")
+            .bind(title)
+            .bind(&now)
+            .bind(id.as_str())
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -389,5 +400,32 @@ mod tests {
         let loaded_meta = store.load_meta(&id).await.unwrap();
         assert!(loaded_meta.title.is_some());
         assert!(loaded_meta.title.unwrap().contains("这是一条测试消息"));
+    }
+
+    #[tokio::test]
+    async fn test_update_title() {
+        let (store, _dir) = make_store().await;
+        let meta = ThreadMeta::new("/tmp");
+        let id = store.create_thread(meta).await.unwrap();
+
+        store.update_title(&id, "new title").await.unwrap();
+        let loaded = store.load_meta(&id).await.unwrap();
+        assert_eq!(loaded.title.as_deref(), Some("new title"));
+    }
+
+    #[tokio::test]
+    async fn test_update_title_updates_timestamp() {
+        let (store, _dir) = make_store().await;
+        let meta = ThreadMeta::new("/tmp");
+        let id = store.create_thread(meta).await.unwrap();
+
+        let before = store.load_meta(&id).await.unwrap().updated_at;
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        store.update_title(&id, "updated").await.unwrap();
+        let after = store.load_meta(&id).await.unwrap().updated_at;
+        assert!(
+            after > before,
+            "updated_at should be newer after update_title"
+        );
     }
 }

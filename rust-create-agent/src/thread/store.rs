@@ -31,4 +31,11 @@ pub trait ThreadStore: Send + Sync {
 
     /// 删除指定 thread（包含消息和元数据）
     async fn delete_thread(&self, id: &ThreadId) -> Result<()>;
+
+    /// 更新指定 thread 的标题
+    async fn update_title(&self, id: &ThreadId, title: &str) -> Result<()> {
+        let mut meta = self.load_meta(id).await?;
+        meta.title = Some(title.to_string());
+        self.update_meta(id, meta).await
+    }
 }

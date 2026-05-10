@@ -5,6 +5,8 @@ pub mod config;
 pub mod context_cmd;
 pub mod cost;
 pub mod cron;
+pub mod doctor;
+pub mod effort;
 pub mod help;
 pub mod history;
 pub mod hooks;
@@ -15,6 +17,7 @@ pub mod memory;
 pub mod model;
 pub mod plugin;
 pub mod plugin_command;
+pub mod rename;
 pub mod split;
 
 /// 注册所有内置命令，返回配置好的 CommandRegistry
@@ -37,6 +40,9 @@ pub fn default_registry() -> CommandRegistry {
     r.register(Box::new(context_cmd::ContextCommand));
     r.register(Box::new(split::SplitCommand));
     r.register(Box::new(hooks::HooksCommand));
+    r.register(Box::new(effort::EffortCommand));
+    r.register(Box::new(rename::RenameCommand));
+    r.register(Box::new(doctor::DoctorCommand));
     r
 }
 

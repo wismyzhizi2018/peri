@@ -5,6 +5,8 @@ use std::collections::HashMap;
 /// 顶层包装（与 ~/.peri/settings.json 的 { "config": {...} } 对应）
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PeriConfig {
+    #[serde(rename = "$schema", skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
     #[serde(default)]
     pub config: AppConfig,
 }
@@ -123,6 +125,9 @@ pub struct AppConfig {
     /// 系统提示词 tone 覆盖
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tone: Option<String>,
+    /// CLAUDE.md 排除 glob 模式列表
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub claude_md_excludes: Option<Vec<String>>,
     /// 主动性级别（low/medium/high）
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub proactiveness: Option<String>,
@@ -451,5 +456,52 @@ mod tests {
             "persona should be absent when None"
         );
         assert!(!out.contains("tone"), "tone should be absent when None");
+    }
+
+    // ── PeriConfig $schema passthrough ──────────────────────────────────────
+
+    #[test]
+    fn test_peri_config_schema_roundtrip() {
+        let json = r#"{ "$schema": "https://example.com/schema.json", "config": {} }"#;
+        let cfg: PeriConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            cfg.schema.as_deref(),
+            Some("https://example.com/schema.json")
+        );
+        let out = serde_json::to_string(&cfg).unwrap();
+        assert!(out.contains("$schema"));
+    }
+
+    #[test]
+    fn test_peri_config_schema_none_absent() {
+        let cfg = PeriConfig::default();
+        let out = serde_json::to_string(&cfg).unwrap();
+        assert!(!out.contains("$schema"));
+    }
+
+    // ── AppConfig claude_md_excludes ────────────────────────────────────────
+
+    #[test]
+    fn test_app_config_claude_md_excludes_none_absent() {
+        let cfg = AppConfig::default();
+        let out = serde_json::to_string(&cfg).unwrap();
+        assert!(
+            !out.contains("claude_md_excludes"),
+            "claude_md_excludes should be absent when None"
+        );
+    }
+
+    #[test]
+    fn test_app_config_claude_md_excludes_roundtrip() {
+        let cfg = AppConfig {
+            claude_md_excludes: Some(vec!["node_modules/**".to_string()]),
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&cfg).unwrap();
+        let back: AppConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            back.claude_md_excludes,
+            Some(vec!["node_modules/**".to_string()])
+        );
     }
 }
