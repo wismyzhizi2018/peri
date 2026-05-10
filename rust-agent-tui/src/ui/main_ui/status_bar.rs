@@ -296,6 +296,7 @@ fn render_second_row(f: &mut Frame, app: &App, area: Rect) {
             desc_style,
         ),
         None => {
+            let no_mouse = app.services.mouse_available == Some(false);
             let hints = if app.session_mgr.sessions[app.session_mgr.active]
                 .session_panels
                 .is_any_open()
@@ -306,13 +307,24 @@ fn render_second_row(f: &mut Frame, app: &App, area: Rect) {
             } else if app.global_panels.is_any_open() {
                 app.global_panels.status_bar_hints()
             } else if app.session_mgr.sessions.len() > 1 {
-                vec![
-                    ("/", "命令"),
-                    ("Ctrl+N/P", ":切换Session"),
-                    ("Ctrl+W", ":关闭"),
-                ]
+                if no_mouse {
+                    vec![
+                        ("/", "命令"),
+                        ("Ctrl+N/P", ":切换Session"),
+                        ("Ctrl+W", ":关闭"),
+                        ("Ctrl+U/D", ":滚动"),
+                    ]
+                } else {
+                    vec![
+                        ("/", "命令"),
+                        ("Ctrl+N/P", ":切换Session"),
+                        ("Ctrl+W", ":关闭"),
+                    ]
+                }
             } else if app.services.quit_pending_since.is_some() {
                 vec![("Ctrl+C", ":关闭"), ("其他键", ":取消")]
+            } else if no_mouse {
+                vec![("/", "命令"), ("Alt+Enter", ":换行"), ("Ctrl+U/D", ":滚动")]
             } else {
                 vec![("/", "命令"), ("Alt+Enter", ":换行")]
             };

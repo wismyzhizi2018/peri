@@ -1117,6 +1117,7 @@ impl App {
                 model_highlight_until: None,
                 mcp_ready_shown_until: std::cell::Cell::new(None),
                 quit_pending_since: None,
+                mouse_available: None,
             },
             global_panels: PanelManager::new(),
         };

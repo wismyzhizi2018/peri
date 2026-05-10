@@ -35,4 +35,6 @@ pub struct ServiceRegistry {
     pub model_highlight_until: Option<std::time::Instant>,
     pub mcp_ready_shown_until: std::cell::Cell<Option<std::time::Instant>>,
     pub quit_pending_since: Option<std::time::Instant>,
+    /// 鼠标是否可用。`None` = 启动 probe 尚未完成，`Some(true/false)` = 已确定。
+    pub mouse_available: Option<bool>,
 }

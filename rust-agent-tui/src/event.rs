@@ -99,12 +99,37 @@ pub async fn next_event(app: &mut App) -> Result<Option<Action>> {
         }
     }
 
+    // 鼠标可用性 probe：启动后首次收到任意用户输入时判定
+    if app.services.mouse_available.is_none() {
+        // 等待首个事件（最多 1 秒），期间不计入正常 poll 超时
+        if event::poll(Duration::from_secs(1))? {
+            let ev = event::read()?;
+            if matches!(ev, Event::Mouse(_)) {
+                app.services.mouse_available = Some(true);
+            } else {
+                // 收到键盘/resize 等非鼠标事件 → 终端很可能不支持鼠标
+                //（支持鼠标的终端用户几乎必然在 1s 内触发滚轮/移动）
+                app.services.mouse_available = Some(false);
+            }
+            return handle_event(app, ev).await;
+        } else {
+            // 1 秒内无任何事件 → 无鼠标
+            app.services.mouse_available = Some(false);
+            return Ok(None);
+        }
+    }
+
     if !event::poll(Duration::from_millis(50))? {
         return Ok(None);
     }
 
     let ev = event::read()?;
 
+    handle_event(app, ev).await
+}
+
+/// 实际的事件处理逻辑（从 next_event 中提取，避免 probe 和正常路径重复）
+async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
     match ev {
         Event::Resize(_, _) => {
             // 宽度同步改由 render_messages 渲染驱动（比较 cache.width 与 text_area.width）
@@ -711,6 +736,26 @@ pub async fn next_event(app: &mut App) -> Result<Option<Action>> {
                     key: Key::PageDown, ..
                 } => {
                     for _ in 0..10 {
+                        app.scroll_down();
+                    }
+                }
+
+                // Ctrl+U / Ctrl+D：半页滚动（无需 PageUp/PageDown 物理键，MacBook 友好）
+                Input {
+                    key: Key::Char('u'),
+                    ctrl: true,
+                    ..
+                } => {
+                    for _ in 0..20 {
+                        app.scroll_up();
+                    }
+                }
+                Input {
+                    key: Key::Char('d'),
+                    ctrl: true,
+                    ..
+                } => {
+                    for _ in 0..20 {
                         app.scroll_down();
                     }
                 }
