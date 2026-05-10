@@ -370,6 +370,30 @@ impl BaseModel for ChatAnthropic {
             .collect();
 
         let (mut messages, system_from_msgs) = Self::messages_to_anthropic(&request.messages);
+
+        // 检查 assistant 消息中是否包含 thinking blocks（extended thinking 回传验证）
+        for (i, msg) in messages.iter().enumerate() {
+            if msg["role"] == "assistant" {
+                if let Some(content) = msg.get("content") {
+                    if let Some(arr) = content.as_array() {
+                        let has_thinking = arr.iter().any(|b| b["type"] == "thinking");
+                        if self.extended_thinking
+                            && !has_thinking
+                            && arr.iter().any(|b| b["type"] == "tool_use")
+                        {
+                            tracing::warn!(
+                                provider = "anthropic",
+                                msg_index = i,
+                                block_count = arr.len(),
+                                block_types = ?arr.iter().filter_map(|b| b["type"].as_str()).collect::<Vec<_>>(),
+                                "extended thinking 模式下 assistant 消息缺少 thinking block！可能导致 API 错误"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
         // 合并：消息列表中的 System（来自中间件，如 agent.md）在前，
         // request.system（BaseModelReactLLM 设置的基础提示词）在后
         let system = match (system_from_msgs, request.system) {
@@ -795,5 +819,198 @@ mod tests {
         assert_eq!(llm.thinking_effort, "medium");
         assert!(llm.enable_cache);
         assert!(llm.base_url.is_none());
+    }
+
+    /// 验证 assistant 消息含 thinking + tool_use 时，thinking blocks 被正确回传
+    ///
+    /// 场景：第一轮 API 返回 [thinking, text, tool_use]，序列化写入 state，
+    /// 第二轮构建请求时 messages_to_anthropic 应保留 thinking block。
+    #[test]
+    fn test_messages_to_anthropic_preserves_thinking_with_tool_use() {
+        // 模拟第一轮 API 响应后写入 state 的 AI 消息
+        // source_message 保留完整 blocks：thinking + text + tool_use
+        let ai_msg = BaseMessage::ai_from_blocks(vec![
+            ContentBlock::reasoning_with_signature("I need to read a file", "sig_abc123"),
+            ContentBlock::text("Let me read the file for you."),
+            ContentBlock::tool_use("tc_1", "Read", json!({"file_path": "/tmp/test.txt"})),
+        ]);
+        assert!(ai_msg.has_tool_calls());
+
+        let tool_result = BaseMessage::tool_result("tc_1", "file contents here");
+
+        let messages = vec![
+            BaseMessage::human("read /tmp/test.txt"),
+            ai_msg,
+            tool_result,
+        ];
+
+        let (msgs, _system) = ChatAnthropic::messages_to_anthropic(&messages);
+
+        // 应有 2 条消息：user(human) + user(tool_result 合并)
+        // assistant 消息应在 user 消息之前
+        let assistant_idx = msgs.iter().position(|m| m["role"] == "assistant");
+        assert!(assistant_idx.is_some(), "应有 assistant 消息");
+
+        let assistant = &msgs[assistant_idx.unwrap()];
+        let content = assistant["content"].as_array().expect("content 应为数组");
+
+        // 验证 thinking block 存在且在第一个位置
+        assert_eq!(content[0]["type"], "thinking", "第一个 block 应为 thinking");
+        assert_eq!(content[0]["thinking"], "I need to read a file");
+        assert_eq!(
+            content[0]["signature"], "sig_abc123",
+            "thinking block 应包含 signature"
+        );
+
+        // 验证 text block
+        let text_block = content.iter().find(|b| b["type"] == "text");
+        assert!(text_block.is_some(), "应有 text block");
+        assert_eq!(text_block.unwrap()["text"], "Let me read the file for you.");
+
+        // 验证 tool_use block
+        let tool_block = content.iter().find(|b| b["type"] == "tool_use");
+        assert!(tool_block.is_some(), "应有 tool_use block");
+        assert_eq!(tool_block.unwrap()["id"], "tc_1");
+        assert_eq!(tool_block.unwrap()["name"], "Read");
+    }
+
+    /// 验证 assistant 消息只有 thinking + tool_use（无 text）时也能正确保留
+    #[test]
+    fn test_messages_to_anthropic_preserves_thinking_without_text() {
+        let ai_msg = BaseMessage::ai_from_blocks(vec![
+            ContentBlock::reasoning_with_signature("just thinking", "sig_xyz"),
+            ContentBlock::tool_use("tc_2", "Bash", json!({"command": "ls"})),
+        ]);
+
+        let messages = vec![
+            BaseMessage::human("list files"),
+            ai_msg,
+            BaseMessage::tool_result("tc_2", "file1.txt\nfile2.txt"),
+        ];
+
+        let (msgs, _system) = ChatAnthropic::messages_to_anthropic(&messages);
+        let assistant = msgs.iter().find(|m| m["role"] == "assistant").unwrap();
+        let content = assistant["content"].as_array().unwrap();
+
+        assert_eq!(content[0]["type"], "thinking");
+        assert_eq!(content[0]["signature"], "sig_xyz");
+        assert_eq!(content[1]["type"], "tool_use");
+    }
+
+    /// 验证 redacted_thinking block（ContentBlock::Unknown）也能正确透传
+    #[test]
+    fn test_messages_to_anthropic_preserves_redacted_thinking() {
+        let redacted_block = json!({
+            "type": "redacted_thinking",
+            "data": "abc123"
+        });
+        let ai_msg = BaseMessage::ai_from_blocks(vec![
+            ContentBlock::Unknown(redacted_block),
+            ContentBlock::tool_use("tc_3", "Bash", json!({"command": "echo hi"})),
+        ]);
+
+        let messages = vec![
+            BaseMessage::human("say hi"),
+            ai_msg,
+            BaseMessage::tool_result("tc_3", "hi"),
+        ];
+
+        let (msgs, _system) = ChatAnthropic::messages_to_anthropic(&messages);
+        let assistant = msgs.iter().find(|m| m["role"] == "assistant").unwrap();
+        let content = assistant["content"].as_array().unwrap();
+
+        assert_eq!(content[0]["type"], "redacted_thinking");
+        assert_eq!(content[0]["data"], "abc123");
+        assert_eq!(content[1]["type"], "tool_use");
+    }
+
+    /// 端到端验证：模拟 Anthropic API 响应 → parse_content_blocks → message 构造 → 序列化回传
+    ///
+    /// 验证 thinking block 在完整链路中不丢失。
+    #[test]
+    fn test_parse_and_reserialize_thinking_with_tool_use() {
+        // 模拟 Anthropic API 返回的 content 数组（extended thinking + tool_use）
+        let api_response_blocks = vec![
+            json!({
+                "type": "thinking",
+                "thinking": "I need to check the file first",
+                "signature": "sig_12345"
+            }),
+            json!({
+                "type": "text",
+                "text": "Let me read that file."
+            }),
+            json!({
+                "type": "tool_use",
+                "id": "toolu_01",
+                "name": "Read",
+                "input": {"file_path": "/tmp/test.rs"}
+            }),
+        ];
+
+        let (blocks, tool_calls) = ChatAnthropic::parse_content_blocks(&api_response_blocks);
+
+        // 验证解析结果
+        assert_eq!(blocks.len(), 3, "应解析出 3 个 blocks");
+        assert_eq!(tool_calls.len(), 1, "应有 1 个 tool_call");
+
+        // 第一个 block 应是 Reasoning
+        match &blocks[0] {
+            ContentBlock::Reasoning { text, signature } => {
+                assert_eq!(text, "I need to check the file first");
+                assert_eq!(signature.as_deref(), Some("sig_12345"));
+            }
+            other => panic!("第一个 block 应为 Reasoning，实际为 {:?}", other),
+        }
+
+        // 模拟 invoke() 中的 message 构造逻辑（第 542-552 行）
+        let message = if !tool_calls.is_empty() {
+            let content = if let [single] = blocks.as_slice() {
+                if let Some(text) = single.as_text() {
+                    MessageContent::text(text)
+                } else {
+                    MessageContent::Blocks(blocks)
+                }
+            } else {
+                MessageContent::Blocks(blocks)
+            };
+            BaseMessage::ai_with_tool_calls(content, tool_calls)
+        } else {
+            unreachable!()
+        };
+
+        // 验证 message 的 content 类型
+        match &message {
+            BaseMessage::Ai {
+                content,
+                tool_calls,
+                ..
+            } => {
+                assert_eq!(tool_calls.len(), 1);
+                assert!(
+                    matches!(content, MessageContent::Blocks(_)),
+                    "content 应为 Blocks 类型"
+                );
+
+                // 验证 content_blocks 包含 thinking
+                let content_blocks = content.content_blocks();
+                assert_eq!(content_blocks.len(), 3);
+                assert!(matches!(&content_blocks[0], ContentBlock::Reasoning { .. }));
+            }
+            _ => panic!("应为 Ai 消息"),
+        }
+
+        // 模拟第二轮请求的序列化
+        let tool_result = BaseMessage::tool_result("toolu_01", "fn main() {}");
+        let messages = vec![BaseMessage::human("show me test.rs"), message, tool_result];
+
+        let (msgs, _system) = ChatAnthropic::messages_to_anthropic(&messages);
+        let assistant = msgs.iter().find(|m| m["role"] == "assistant").unwrap();
+        let content = assistant["content"].as_array().unwrap();
+
+        // 关键验证：thinking block 在序列化后被保留
+        assert_eq!(content[0]["type"], "thinking");
+        assert_eq!(content[0]["thinking"], "I need to check the file first");
+        assert_eq!(content[0]["signature"], "sig_12345");
     }
 }
