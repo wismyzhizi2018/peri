@@ -364,22 +364,27 @@ impl BaseModel for ChatAnthropic {
 
         let (mut messages, system_from_msgs) = Self::messages_to_anthropic(&request.messages);
 
-        // 检查 assistant 消息中是否包含 thinking blocks（extended thinking 回传验证）
-        for (i, msg) in messages.iter().enumerate() {
+        // 检查并修复：extended thinking 要求 assistant 消息必须含有 thinking block
+        // 历史消息（来自非 extended thinking 会话或跨模型迁移）可能缺少 thinking，
+        // 注入占位 thinking block 避免 API 400 错误
+        for (i, msg) in messages.iter_mut().enumerate() {
             if msg["role"] == "assistant" {
-                if let Some(content) = msg.get("content") {
-                    if let Some(arr) = content.as_array() {
+                if let Some(content) = msg.get_mut("content") {
+                    if let Some(arr) = content.as_array_mut() {
                         let has_thinking = arr.iter().any(|b| b["type"] == "thinking");
-                        if self.extended_thinking
-                            && !has_thinking
-                            && arr.iter().any(|b| b["type"] == "tool_use")
-                        {
+                        let has_tool_use = arr.iter().any(|b| b["type"] == "tool_use");
+                        if self.extended_thinking && !has_thinking && has_tool_use {
+                            arr.insert(
+                                0,
+                                json!({
+                                    "type": "thinking",
+                                    "thinking": "(thinking)"
+                                }),
+                            );
                             tracing::warn!(
                                 provider = "anthropic",
                                 msg_index = i,
-                                block_count = arr.len(),
-                                block_types = ?arr.iter().filter_map(|b| b["type"].as_str()).collect::<Vec<_>>(),
-                                "extended thinking 模式下 assistant 消息缺少 thinking block！可能导致 API 错误"
+                                "extended thinking: 注入占位 thinking block（消息不含 thinking 但有 tool_use）"
                             );
                         }
                     }
