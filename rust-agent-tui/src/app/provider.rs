@@ -188,6 +188,11 @@ impl LlmProvider {
         }
     }
 
+    /// 获取模型的上下文窗口大小（不消费 self）
+    pub fn context_window(&self) -> u32 {
+        self.clone().into_model().context_window()
+    }
+
     pub fn into_model(self) -> Box<dyn BaseModel> {
         match self {
             Self::OpenAi {

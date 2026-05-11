@@ -66,9 +66,28 @@ impl App {
             }
             AgentEvent::ContextWarning {
                 used_tokens: _,
-                total_tokens: _,
+                total_tokens,
                 percentage: _,
             } => {
+                // 从核心层同步 context_window（核心层通过 model.context_window() 获取正确值）
+                let cw = total_tokens as u32;
+                if cw > 0
+                    && self.session_mgr.sessions[self.session_mgr.active]
+                        .agent
+                        .context_window
+                        != cw
+                {
+                    tracing::debug!(
+                        old = self.session_mgr.sessions[self.session_mgr.active]
+                            .agent
+                            .context_window,
+                        new = cw,
+                        "context_window updated from core layer"
+                    );
+                    self.session_mgr.sessions[self.session_mgr.active]
+                        .agent
+                        .context_window = cw;
+                }
                 // 核心层上下文警告：触发 auto-compact 标记
                 if std::env::var("DISABLE_COMPACT").is_ok() {
                     return (true, false, false);

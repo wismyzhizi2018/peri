@@ -110,6 +110,28 @@ impl App {
             }
         };
 
+        // 从 Provider 模型获取正确的 context_window（解决第三方 Provider 默认 200k 不准确问题）
+        {
+            let model_cw = provider.context_window();
+            if model_cw > 0
+                && self.session_mgr.sessions[self.session_mgr.active]
+                    .agent
+                    .context_window
+                    != model_cw
+            {
+                tracing::debug!(
+                    old = self.session_mgr.sessions[self.session_mgr.active]
+                        .agent
+                        .context_window,
+                    new = model_cw,
+                    "context_window updated from provider model"
+                );
+                self.session_mgr.sessions[self.session_mgr.active]
+                    .agent
+                    .context_window = model_cw;
+            }
+        }
+
         // 防御性重置：上次 agent 任务若 SubAgentEnd 因通道溢出被丢弃，
         // subagent_depth 会永久 > 0，导致所有后续 TokenUsageUpdate 被过滤（ctx 显示为 0）
         self.session_mgr.sessions[self.session_mgr.active]
