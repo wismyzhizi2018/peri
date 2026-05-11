@@ -63,17 +63,192 @@ acpx-g (DAG workflow engine，独立)
 
 | 通道 | 格式 | 适用模型 |
 |------|------|---------|
-| `reasoning_content` 顶层字段 | `{"role":"assistant","content":"...","reasoning_content":"思考内容"}` | DeepSeek R1 等所有返回 `reasoning_content` 的模型，**必须回传**否则 400 |
+| `reasoning_content` 顶层字段 | `{"role":"assistant","content":"...","reasoning_content":"思考内容"}` | **所有模型**，无条件回传（无 reasoning 时为空字符串） |
 | content 数组 `thinking` 类型 | `{"type":"thinking","thinking":"思考内容"}` | deepseek-v4-pro（通过 `supports_thinking_content` 标志控制） |
-| 过滤不回传 | — | GPT-4o 等不支持 thinking 的模型 |
 
-`ChatOpenAI` 的 `supports_thinking_content` 字段控制 content 数组中是否包含 `thinking` 块，`detect_thinking_content_support()` 根据模型名自动检测（默认 false，仅 deepseek-v4 开启）。`extract_reasoning_text()` 从 `Reasoning` blocks 提取文本写入 `reasoning_content` 顶层字段，此行为对所有模型生效（不支持的字段会被忽略）。
+`ChatOpenAI` 的 `supports_thinking_content` 字段控制 content 数组中是否包含 `thinking` 块，`detect_thinking_content_support()` 根据模型名自动检测（默认 false，仅 deepseek-v4 开启）。`extract_reasoning_text()` 从 `Reasoning` blocks 提取文本写入 `reasoning_content` 顶层字段，此行为对所有模型生效（不支持的字段会被忽略）。`OpenAiAdapter::from_base_messages`（持久化层）同样回传 `reasoning_content` 顶层字段，确保跨轮次 reasoning 不丢失。
 
 **[TRAP]** DeepSeek 错误 `unknown variant 'thinking', expected 'text'`：把 `Reasoning` block 序列化为 content 数组中的 `{"type":"thinking"}` 发给了不支持的 provider。**[TRAP]** DeepSeek 错误 `reasoning_content must be passed back`：从 content 中过滤了 `Reasoning` 但没作为顶层字段回传。两个陷阱互相关联，不能只修一个。
 
-**事件系统**：核心层 `AgentEvent` 11 种变体（AiReasoning/TextChunk/ToolStart/ToolEnd/StepDone/StateSnapshot/MessageAdded/LlmCallStart/LlmCallEnd/LlmRetrying/BackgroundTaskCompleted）。TUI 层扩展 Done/Error/ApprovalNeeded/AskUserBatch 等。
+## 消息流式渲染管线
 
-**消息管线**：`MessagePipeline` 统一管理消息状态，`PipelineAction` 枚举描述 UI 变更，`reconcile_tail()` 在 Done/Interrupted 时触发尾部重建。
+### 全局架构：三层状态 + 双路径转换
+
+```
+┌──────────────┐    AgentEvent     ┌──────────────────┐   PipelineAction   ┌─────────────┐   RenderEvent   ┌──────────────┐
+│  ReAct Loop   │ ───────────────→ │  MessagePipeline  │ ─────────────────→ │  agent_ops   │ ─────────────→ │ RenderThread │
+│ (rust-create- │   mpsc(256)      │  (消息状态管理)   │                    │ (桥接层)      │   unbounded     │ (独立渲染线程)│
+│   agent)      │                  │  message_pipeline │                    │               │                  │ render_thread│
+└──────────────┘                  └──────────────────┘                    └─────────────┘                  └──────┬───────┘
+                                                                                                               │
+                                                                                                    RenderCache(RwLock)
+                                                                                                               │
+                                                                                                    terminal.draw()
+```
+
+**两条路径共享同一转换函数**：
+
+| 路径 | 场景 | 入口 |
+|------|------|------|
+| 流式路径 | LLM 实时输出 | AgentEvent → 增量更新 → reconcile_tail() → messages_to_view_models() |
+| 恢复路径 | 历史加载 | BaseMessage[] → messages_to_view_models() → LoadHistory |
+
+核心转换函数 `messages_to_view_models(base_messages, cwd)`（`message_pipeline.rs:607`）是**唯一**的 BaseMessage → MessageViewModel 转换入口，流式 reconcile 和历史恢复都经过它，保证最终显示一致。
+
+### 第一层：核心事件（AgentEvent）
+
+**核心层**（`rust-create-agent/src/agent/events.rs`）发射事件，TUI 层（`rust-agent-tui/src/app/events.rs`）定义扩展变体：
+
+| 核心事件 | 含义 | Pipeline 处理 |
+|----------|------|---------------|
+| `AssistantChunk(chunk)` | LLM 流式文本片段 | → `AppendChunk`（直通渲染层优化）或 SubAgent 内部路由 |
+| `AiReasoning(text)` | 思维链/推理内容 | → 仅缓冲，不触发 UI 更新（推理内容不实时显示） |
+| `ToolStart { id, name, input }` | 工具调用开始 | → finalize 当前 AI → `AddMessage(ToolBlock/SubAgentGroup)` |
+| `ToolEnd { id, output, is_error }` | 工具调用结束 | → `UpdateToolResult`（按 id 精确定位，支持并行） |
+| `StateSnapshot(msgs)` | 完整消息快照 | → 覆盖 `completed`，清除流式缓冲 |
+| `SubAgentStart/End` | 子 agent 生命周期 | → 路由进 SubAgentGroup VM 的 recent_messages 滑动窗口 |
+
+**TUI 扩展事件**（Pipeline 返回 `None`，由 `agent_ops` 直接处理）：`Done`、`Error`、`Interrupted`、`CompactDone/Error`、`TokenUsageUpdate`、`InteractionRequest`、`TodoUpdate`、`LlmRetrying`、`ContextWarning`、`OAuth*`、`BackgroundTaskCompleted`。
+
+### 第二层：MessagePipeline（消息状态管理）
+
+**位置**：`rust-agent-tui/src/app/message_pipeline.rs`
+
+维护规范消息状态 `completed: Vec<BaseMessage>` 和流式缓冲区：
+
+```rust
+pub struct MessagePipeline {
+    completed: Vec<BaseMessage>,           // 已完成消息（可持久化）
+    current_ai_text: String,               // 流式 AI 文本缓冲
+    current_ai_reasoning: String,          // 流式推理缓冲
+    current_ai_tool_calls: Vec<ToolCallRequest>,  // 当前轮工具调用
+    current_ai_finalized: bool,            // 当前 AI 消息是否已 finalize
+    pending_tools: HashMap<String, PendingTool>,  // 已开始未结束的工具
+    subagent_stack: Vec<SubAgentState>,    // SubAgent 执行栈
+    frozen_subagent_vms: Vec<MessageViewModel>,  // SubAgent 固化 VM
+}
+```
+
+**流式 UX 优化**：`AssistantChunk` 使用 `AppendChunk` 直接操作渲染层（避免每字符重做 markdown），但在 **finalize 边界**（`ToolStart` / `Done` / `Interrupted`）会 reconcile 最后的 AssistantBubble，确保最终状态与恢复路径完全一致。
+
+**SubAgent 滑动窗口**：SubAgent 内部事件路由进 `SubAgentGroup` VM 的 `recent_messages`（最多 4 条，FIFO 淘汰），`total_steps` 不受窗口截断影响。`SubAgentEnd` 时将完整 VM（含 recent_messages + final_result）固化到 `frozen_subagent_vms`，`Done` 时通过 `reconcile_tail_with_subagents()` 将冻结 VM 合并回重建结果，防止显示从「展开+滑动窗口」退化为「折叠+空内容」。
+
+### 第三层：PipelineAction → RenderEvent（桥接层）
+
+**位置**：`rust-agent-tui/src/app/agent_ops.rs:340-530`（`apply_pipeline_action()`）
+
+| PipelineAction | 含义 | 对应 RenderEvent | 说明 |
+|----------------|------|-------------------|------|
+| `None` | 无 UI 变化 | — | 跳过 |
+| `AddMessage(vm)` | 新增完整消息 | `AddMessage` | 用户消息、ToolStart |
+| `AppendChunk(chunk)` | 流式文本追加 | `AppendChunk` 或 `AddMessage`（首个 chunk） | 直接操作渲染层，避免 markdown 重算 |
+| `UpdateLast(vm)` | 替换最后一条 | `UpdateLastMessage` | SubAgentGroup 更新专用 |
+| `UpdateToolResult { id, vm }` | 按 id 更新工具结果 | `LoadHistory`（全量同步） | 并行工具调用时精确定位，避免互相覆盖 |
+| `RemoveLast` | 移除最后一条 | `RemoveLastMessage` | 隐藏空 AssistantBubble |
+| `RebuildAll { prefix_len, tail_vms }` | 尾部重建 | `LoadHistoryWithAnchor` | Done/Interrupted 时 reconcile 后触发 |
+
+**`RebuildAll` 滚动锚点**：通过 `wrap_map` 将当前 `scroll_offset`（视觉行号）映射到消息索引 `anchor_message_idx`，渲染线程重建后计算该消息在新布局中的视觉行起始位置，写入 `cache.scroll_anchor`，UI 线程读取后恢复滚动位置。
+
+### 第四层：RenderThread（独立渲染线程）
+
+**位置**：`rust-agent-tui/src/ui/render_thread.rs`
+
+```rust
+struct RenderTask {
+    messages: Vec<MessageViewModel>,    // 私有消息副本
+    cache: Arc<RwLock<RenderCache>>,    // 共享渲染缓存
+    notify: Arc<Notify>,                // 更新通知
+    width: u16,                         // 终端宽度
+}
+```
+
+**RenderCache**（UI 线程读取，渲染线程写入）：
+
+```rust
+pub struct RenderCache {
+    pub lines: Vec<Line<'static>>,          // 所有消息渲染后的行
+    pub message_offsets: Vec<usize>,        // 每条消息的起始行索引
+    pub total_lines: usize,                 // wrap 后的真实视觉行数
+    pub version: u64,                       // 版本号（UI 比较是否需要重绘）
+    pub wrap_map: Vec<WrappedLineInfo>,     // 每行的换行映射（用于滚动定位和文本选择）
+    pub width: u16,                         // 当前渲染宽度
+    pub scroll_anchor: Option<usize>,       // RebuildAll 后的滚动锚点
+}
+```
+
+**RenderEvent 处理**：
+
+| RenderEvent | 渲染策略 | 性能特征 |
+|-------------|---------|----------|
+| `AddMessage` | 追加消息 + 渲染最后一条 + 扩展 cache 尾部 | O(最后一条消息) |
+| `AppendChunk` | 找到最后 AssistantBubble → `append_chunk()` → 只重渲染最后一条 → `cache.lines.truncate(start) + extend` | O(最后一条消息) |
+| `StreamingDone` | 清除 `is_streaming` 标志 → 重渲染最后一条 | O(最后一条消息) |
+| `UpdateLastMessage` | 替换最后一条 → 重渲染 → truncate + extend | O(最后一条消息) |
+| `LoadHistory` | 替换全部消息 → `rebuild_all()` | O(全部消息) |
+| `LoadHistoryWithAnchor` | `rebuild_all()` + 计算锚点 | O(全部消息) |
+| `Resize` | `rebuild_all()` | O(全部消息) |
+
+**[TRAP]** `AppendChunk` 的首个 chunk：当 `view_messages` 最后一条不是 AssistantBubble 时（如首条 AI 消息），`apply_pipeline_action` 会创建新的 AssistantBubble 并发送 `AddMessage`（而非 `AppendChunk`），**但返回前不经过后续逻辑**——这是一个 early return 分支（`agent_ops.rs:374`），漏掉会导致渲染线程缺少消息。
+
+**无界 channel**：渲染事件处理耗时微秒级，不会积压。有界 channel 的 `try_send` 静默丢弃会导致渲染线程与 App 状态分叉。
+
+### 视图模型体系
+
+**MessageViewModel**（`rust-agent-tui/src/ui/message_view.rs:182`）— 7 种变体：
+
+| 变体 | 用途 | 流式行为 |
+|------|------|---------|
+| `UserBubble { content, rendered }` | 用户输入 | 不可变 |
+| `AssistantBubble { blocks, is_streaming, collapsed }` | AI 回复 | `append_chunk()` 追加文本，`dirty` 标记延迟 markdown 渲染 |
+| `ToolBlock { tool_name, tool_call_id, content, collapsed, color }` | 工具调用结果 | ToolStart 创建空内容，ToolEnd 填充 |
+| `SubAgentGroup { agent_id, task_preview, total_steps, recent_messages, is_running, final_result }` | 子 agent 执行块 | recent_messages 滑动窗口实时更新 |
+| `ToolCallGroup { category, tools, collapsed }` | 只读工具聚合 | Read/Grep/Glob/AskUserQuestion 相邻折叠 |
+| `SystemNote { content }` | 系统消息 | 不可变 |
+| `CacheWarning { content }` | 缓存率警告 | 合成 VM，不在 BaseMessage[] 中，rebuild 时丢弃 |
+
+**ContentBlockView**（3 种，AssistantBubble 的内部块）：
+
+| 变体 | 数据 | 说明 |
+|------|------|------|
+| `Text { raw, rendered, dirty }` | 原文 + markdown 渲染缓存 + 脏标记 | `dirty=true` 时延迟渲染，`ensure_rendered()` 按需调用 |
+| `Reasoning { char_count }` | 仅字数 | 不存储推理全文，只显示 "Thought for N chars" |
+| `ToolUse { name }` | 工具名 | 仅显示名称，参数在 ToolBlock 中 |
+
+**`append_chunk()` 机制**（`message_view.rs:543`）：如果最后一个 block 是 `Text`，直接 `push_str` + 标记 `dirty`；否则创建新 `Text` block。`collapsed` 状态在有内容追加时自动展开。
+
+### Done/Interrupted 时的 Reconcile 流程
+
+```
+1. pipeline.done() / pipeline.interrupt()
+   ├── finalize_current_ai()：清理流式缓冲
+   ├── 清理 pending_tools
+   └── 收集 frozen_subagent_vms
+
+2. reconcile_tail_with_subagents(round_start_vm_idx)
+   ├── 找到 completed 中最后一条 Human 消息
+   ├── messages_to_view_models(&completed[last_human..])
+   └── merge_frozen_subagents()：按位置匹配替换 SubAgentGroup 占位符
+
+3. 智能条件 RebuildAll
+   ├── 对比 reconcile 结果与当前 view_messages 尾部
+   ├── 一致 → 只发 StreamingDone（避免视觉跳动）
+   └── 不一致 → RebuildAll { prefix_len, tail_vms }
+
+4. 渲染线程处理 LoadHistoryWithAnchor
+   ├── rebuild_all()
+   ├── 计算锚点消息在新布局中的视觉行位置
+   └── cache.scroll_anchor = Some(visual_row)
+```
+
+**[TRAP]** `Interrupted`/`Error` 处理器会先完成 reconcile 并设置 `reconcile_already_done = true`，后续 `Done` 事件检测到该标记后跳过 reconcile，只发 `StreamingDone`——防止 RebuildAll 覆盖已添加的通知消息。
+
+### UI 线程与渲染线程同步
+
+**版本号机制**：`cache.version` 每次更新自增，UI 线程比较 `cache.version != last_render_version` 决定是否调用 `terminal.draw()`。
+
+**双份数据**：主线程维护 `view_messages: Vec<MessageViewModel>`（权威状态），渲染线程维护私有 `messages: Vec<MessageViewModel>`（副本），通过 `RenderEvent` channel 同步。`UpdateToolResult` 使用 `LoadHistory`（全量 clone + 发送）确保渲染线程完全同步，避免增量更新导致的状态分叉。
+
+**`parking_lot::RwLock`**：RenderCache 使用 `parking_lot::RwLock`（guard 是 `Send`），而非 `std::sync::RwLock`，确保在 async 上下文中跨 `.await` 持有 guard 不会编译失败。
 
 ## Tool Search 延迟加载
 
