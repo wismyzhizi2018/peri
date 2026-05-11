@@ -154,7 +154,13 @@ impl LspServerPool {
 
     /// 优雅关闭所有服务器
     pub async fn shutdown(&self) {
-        let servers = self.servers.read();
+        let servers: Vec<(String, Arc<LspClient>)> = {
+            let guard = self.servers.read();
+            guard
+                .iter()
+                .map(|(n, c)| (n.clone(), Arc::clone(c)))
+                .collect()
+        };
         for (name, client) in servers.iter() {
             tracing::info!(target: "lsp", server = %name, "正在关闭 LSP 服务器");
             client.shutdown().await;

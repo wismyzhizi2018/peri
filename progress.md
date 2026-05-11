@@ -1,5 +1,13 @@
 # Design Review Progress
 
+## 2026-05-11 第46轮：LSP clippy 警告清除
+
+消除 6 个 clippy 警告：shutdown 中 parking_lot guard 跨 await 改为提前 clone Arc 列表释放锁；transport.rs 和 diagnostics.rs 复杂类型提取 type alias（NotificationHandler、ErrorHandler、DiagnosticCallback）；DiagnosticsRegistry 补充 Default impl；try_restart 中 parking_lot Mutex guard 的 await_holding_lock 为误报（drop 在 await 前）添加 allow 注解；移除未使用的 NoServer 变体。perihelion-lsp 和 rust-agent-middlewares clippy 零警告（仅剩 lsp-types 外部 deprecated）。
+
+## 2026-05-11 第45轮：LSP 集成 Code Review 修复 + 测试补充
+
+对新建 perihelion-lsp crate 及 LSP middleware 集成进行 code review，修复 3 个关键 bug：dispatch loop 从未启动（_rx 被丢弃导致所有请求无响应）、did_change 中 parking_lot RwLock read→write 死锁（使用 DidChangeAction enum 同步完成版本号操作）、file:// URI 双重前缀（do_start 不再重复包装已含前缀的 root_uri）。同时修复 6 个 warning 级别问题：阻塞 I/O 改为 tokio::fs::read_to_string、documentSymbol 不再错误要求 line/character、middleware 添加 tracing 日志、initialization_options 和 max_restarts 从配置传递到 LspClient、诊断计数器在 submit_message 时重置、add_server 不再重置整个 pool 初始化状态。补充 32 个测试（formatters 24 + middleware 5 + initialize_params 3），总计 1428 测试全通过。31 文件变更，+3560 行。
+
 ## 2026-05-07 第44轮：ContentBlock 构造方法测试补充 + compact/invariant 可见性收紧
 
 为 messages/content.rs 补充 11 个测试：image_url/image_base64 构造与 serde roundtrip、reasoning/reasoning_with_signature 访问器与签名保留、as_reasoning 对非推理变体返回 None、Document 变体 roundtrip、tool_result 错误标记、MessageContent From/default/Raw 变体。将 compact/invariant 中 MessageRound 结构体及其字段、group_messages_by_round、adjust_index_to_preserve_invariants 从 pub 收紧为 pub(crate)。测试总数从 264 增至 275。

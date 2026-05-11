@@ -396,6 +396,7 @@ impl LspClient {
         *self.state.write() = ServerState::Stopped;
     }
 
+    #[allow(clippy::await_holding_lock)]
     pub async fn try_restart(&self, root_uri: &str) -> Result<(), LspError> {
         let mut count = self.restart_count.lock();
         if *count >= self.max_restarts {

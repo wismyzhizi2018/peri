@@ -8,6 +8,9 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::{mpsc, oneshot};
 
+type NotificationHandler = Box<dyn Fn(Value) + Send + Sync>;
+type ErrorHandler = Box<dyn Fn(LspError) + Send + Sync>;
+
 /// LSP 传输层：管理子进程的 stdin/stdout/stderr 管道
 pub struct LspTransport {
     child: Child,
@@ -96,8 +99,8 @@ pub struct MessageDispatcher {
     /// stdin 写入端 — 使用 tokio::sync::Mutex 以支持跨 await 持有
     stdin: tokio::sync::Mutex<Option<ChildStdin>>,
     pending: Mutex<HashMap<i64, oneshot::Sender<Result<Value, LspError>>>>,
-    notification_handlers: Mutex<HashMap<String, Box<dyn Fn(Value) + Send + Sync>>>,
-    on_error: Mutex<Option<Box<dyn Fn(LspError) + Send + Sync>>>,
+    notification_handlers: Mutex<HashMap<String, NotificationHandler>>,
+    on_error: Mutex<Option<ErrorHandler>>,
     /// read loop 任务句柄
     read_task: Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
@@ -164,14 +167,14 @@ impl MessageDispatcher {
     }
 
     /// 注册通知处理器
-    pub fn on_notification(&self, method: &str, handler: Box<dyn Fn(Value) + Send + Sync>) {
+    pub fn on_notification(&self, method: &str, handler: NotificationHandler) {
         self.notification_handlers
             .lock()
             .insert(method.to_string(), handler);
     }
 
     /// 注册错误回调
-    pub fn set_on_error(&self, handler: Box<dyn Fn(LspError) + Send + Sync>) {
+    pub fn set_on_error(&self, handler: ErrorHandler) {
         *self.on_error.lock() = Some(handler);
     }
 

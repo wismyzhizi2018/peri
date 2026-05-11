@@ -4,6 +4,8 @@ use parking_lot::{Mutex, RwLock};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
+type DiagnosticCallback = Box<dyn Fn(Vec<DiagnosticEntry>) + Send + Sync>;
+
 /// 单条诊断的精简表示
 #[derive(Debug, Clone, Serialize)]
 pub struct DiagnosticEntry {
@@ -65,7 +67,13 @@ pub struct DiagnosticsRegistry {
     /// 跨轮次已推送诊断的 key（用于去重）
     delivered: Mutex<lru::LruCache<String, HashSet<String>>>,
     /// 事件回调
-    on_update: RwLock<Option<Box<dyn Fn(Vec<DiagnosticEntry>) + Send + Sync>>>,
+    on_update: RwLock<Option<DiagnosticCallback>>,
+}
+
+impl Default for DiagnosticsRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DiagnosticsRegistry {
@@ -80,7 +88,7 @@ impl DiagnosticsRegistry {
     }
 
     /// 注册更新回调
-    pub fn on_update(&self, callback: Box<dyn Fn(Vec<DiagnosticEntry>) + Send + Sync>) {
+    pub fn on_update(&self, callback: DiagnosticCallback) {
         *self.on_update.write() = Some(callback);
     }
 

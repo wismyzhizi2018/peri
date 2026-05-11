@@ -13,8 +13,6 @@ enum LspToolError {
     MissingParam(String),
     #[error("无效的 operation: {0}")]
     InvalidOperation(String),
-    #[error("没有为该文件找到 LSP 服务器: {0}")]
-    NoServer(String),
     #[error("LSP 请求失败: {0}")]
     RequestFailed(String),
     #[error("LSP 服务器未就绪")]
