@@ -30,6 +30,9 @@ pub enum LspError {
     #[error("LSP 服务器 \"{server}\" 未就绪")]
     NotReady { server: String },
 
+    #[error("LSP 服务器连接已断开")]
+    TransportClosed,
+
     #[error("JSON-RPC 错误 (code {code}): {message}")]
     JsonRpcError { code: i64, message: String },
 

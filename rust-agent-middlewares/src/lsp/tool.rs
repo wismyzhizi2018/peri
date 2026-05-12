@@ -102,14 +102,46 @@ impl LspTool {
     }
 
     /// 获取已就绪的服务器，必要时按文件扩展名单独初始化
+    /// 如果服务器已初始化但状态为 Error，自动尝试重启
     async fn get_initialized_server(
         &self,
         file_path: &str,
     ) -> Result<Arc<perihelion_lsp::client::LspClient>, LspToolError> {
         match self.pool.server_for_file(file_path) {
             Some(s) if s.is_ready() => Ok(s),
-            Some(_) => {
-                // 服务器存在但未就绪，按需初始化
+            Some(s) => {
+                // 服务器已注册但未就绪——可能是首次使用或崩溃后需要重启
+                let state = s.state();
+                if matches!(
+                    state,
+                    perihelion_lsp::client::ServerState::Error(_)
+                        | perihelion_lsp::client::ServerState::Stopped
+                ) {
+                    // 服务器崩溃或停止，尝试重启
+                    tracing::warn!(
+                        target: "lsp",
+                        server = %s.name(),
+                        state = ?state,
+                        file_path,
+                        "LSP 服务器状态异常，尝试自动重启"
+                    );
+                    let root_uri = format!("file://{}", self.pool.root_uri());
+                    match s.try_restart(&root_uri).await {
+                        Ok(()) => {
+                            tracing::info!(target: "lsp", server = %s.name(), "LSP 服务器自动重启成功");
+                            return Ok(s);
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                target: "lsp",
+                                server = %s.name(),
+                                error = %e,
+                                "LSP 服务器自动重启失败"
+                            );
+                        }
+                    }
+                }
+                // 非错误状态（Starting 等），按需初始化
                 self.pool
                     .ensure_server_for_file(file_path)
                     .await
@@ -125,6 +157,12 @@ impl LspTool {
                     .extension()
                     .and_then(|e| e.to_str())
                     .unwrap_or("(无扩展名)");
+                tracing::warn!(
+                    target: "lsp",
+                    file_path,
+                    extension = ext,
+                    "无 LSP 服务器可处理该文件扩展名"
+                );
                 Err(LspToolError::NoServerForExtension {
                     file_path: file_path.to_string(),
                     extension: ext.to_string(),
@@ -133,12 +171,45 @@ impl LspTool {
         }
     }
 
-    /// 获取任意一个已就绪的服务器
+    /// 获取任意一个已就绪的服务器，尝试重启崩溃的服务器
     async fn get_any_ready_server(
         &self,
     ) -> Result<Arc<perihelion_lsp::client::LspClient>, LspToolError> {
         if let Some(s) = self.pool.any_server() {
             return Ok(s);
+        }
+
+        // 没有就绪的服务器——检查是否有崩溃的服务器需要重启
+        let root_uri = format!("file://{}", self.pool.root_uri());
+        let servers = self.pool.all_servers();
+        for s in &servers {
+            let state = s.state();
+            if matches!(
+                state,
+                perihelion_lsp::client::ServerState::Error(_)
+                    | perihelion_lsp::client::ServerState::Stopped
+            ) {
+                tracing::warn!(
+                    target: "lsp",
+                    server = %s.name(),
+                    state = ?state,
+                    "LSP 服务器状态异常，尝试自动重启（workspaceSymbol）"
+                );
+                match s.try_restart(&root_uri).await {
+                    Ok(()) => {
+                        tracing::info!(target: "lsp", server = %s.name(), "LSP 服务器自动重启成功");
+                        return Ok(Arc::clone(s));
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            target: "lsp",
+                            server = %s.name(),
+                            error = %e,
+                            "LSP 服务器自动重启失败"
+                        );
+                    }
+                }
+            }
         }
 
         self.pool

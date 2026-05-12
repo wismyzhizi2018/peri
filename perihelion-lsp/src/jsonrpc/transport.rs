@@ -51,6 +51,17 @@ impl LspTransport {
             reason: "无法获取 stdout".to_string(),
         })?;
 
+        // 启动后立即检查进程是否存活（捕获参数错误等立即退出的情况）
+        // 对参数无效等场景，进程退出极快，try_wait 通常能立即捕获
+        if let Some(status) = child.try_wait().ok().flatten() {
+            let code = status.code().unwrap_or(-1);
+            let reason = format!("进程立即退出 (exit code: {code})，请检查命令和参数是否正确");
+            return Err(LspError::LaunchFailed {
+                server: command.to_string(),
+                reason,
+            });
+        }
+
         Ok(Self {
             child,
             stdin,
@@ -268,6 +279,24 @@ impl DispatchState {
             }
         }
     }
+
+    /// 拒绝所有待处理请求（transport EOF 或错误时调用）
+    fn reject_all_pending(&self, reason: &str) {
+        let mut pending = self.pending.lock();
+        for (_, tx) in pending.drain() {
+            let _ = tx.send(Err(LspError::RequestFailed {
+                method: "transport".to_string(),
+                reason: reason.to_string(),
+            }));
+        }
+    }
+
+    /// 调用 on_error 回调通知上层服务器断开
+    fn invoke_on_error(&self, error: LspError) {
+        if let Some(handler) = self.on_error.lock().take() {
+            handler(error);
+        }
+    }
 }
 
 /// 独立的消息分发循环——接收 Arc<DispatchState> + rx，不持有 tokio::sync::Mutex
@@ -275,4 +304,9 @@ pub async fn run_dispatch_loop(state: Arc<DispatchState>, mut rx: mpsc::Unbounde
     while let Some(msg) = rx.recv().await {
         state.dispatch(msg);
     }
+    // channel 关闭（stdout EOF 或读取错误），拒绝所有 pending 请求
+    tracing::error!(target: "lsp", "LSP transport 断开：stdout EOF，拒绝所有 pending 请求");
+    state.reject_all_pending("LSP 服务器已断开连接");
+    // 通知上层服务器断开，更新 ServerState
+    state.invoke_on_error(LspError::TransportClosed);
 }

@@ -215,7 +215,18 @@ impl LspClient {
         {
             let mut guard = self.dispatcher.lock().await;
             match guard.as_mut() {
-                Some(d) => d.send_request(&request).await?,
+                Some(d) => {
+                    if let Err(e) = d.send_request(&request).await {
+                        tracing::error!(
+                            target: "lsp",
+                            server = %self.name,
+                            method,
+                            error = %e,
+                            "LSP 请求发送失败（服务器可能已崩溃）"
+                        );
+                        return Err(e);
+                    }
+                }
                 None => {
                     return Err(LspError::NotReady {
                         server: self.name.clone(),
@@ -402,8 +413,8 @@ impl LspClient {
         *self.state.write() = ServerState::Stopped;
     }
 
-    #[allow(clippy::await_holding_lock)]
-    pub async fn try_restart(&self, root_uri: &str) -> Result<(), LspError> {
+    /// 检查重启次数限制并递增计数（同步操作，确保 parking_lot guard 不跨 await）
+    fn check_and_increment_restart(&self) -> Result<(), LspError> {
         let mut count = self.restart_count.lock();
         if *count >= self.max_restarts {
             return Err(LspError::ServerCrashed {
@@ -413,7 +424,11 @@ impl LspClient {
             });
         }
         *count += 1;
-        drop(count);
+        Ok(())
+    }
+
+    pub async fn try_restart(&self, root_uri: &str) -> Result<(), LspError> {
+        self.check_and_increment_restart()?;
 
         {
             let guard = self.dispatcher.lock().await;

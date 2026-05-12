@@ -272,6 +272,16 @@ impl LspServerPool {
         let servers = self.servers.read();
         servers.values().find(|c| c.is_ready()).cloned()
     }
+
+    /// 获取工作目录 URI
+    pub fn root_uri(&self) -> &str {
+        &self.root_uri
+    }
+
+    /// 获取所有服务器实例（用于重连等操作）
+    pub fn all_servers(&self) -> Vec<Arc<LspClient>> {
+        self.servers.read().values().cloned().collect()
+    }
 }
 
 #[cfg(test)]
