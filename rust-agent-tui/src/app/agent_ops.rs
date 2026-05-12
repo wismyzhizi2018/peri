@@ -166,8 +166,8 @@ impl App {
                             "prompt cache hit rate below threshold"
                         );
                         let percentage = (rate * 100.0) as u32;
-                        let msg = format!("Prompt cache 累计命中率 {}% < 80%", percentage);
-                        let vm = MessageViewModel::cache_warning(msg);
+                        let msg = format!("⚠ Prompt cache 累计命中率 {}% < 80%", percentage);
+                        let vm = MessageViewModel::system(msg);
                         self.apply_pipeline_action(PipelineAction::AddMessage(vm));
                     }
                 }
