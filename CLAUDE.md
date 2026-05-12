@@ -627,6 +627,14 @@ ReActAgent::new(llm)
 
 ## 开发注意事项
 
+- **BaseMessage 与 MessageViewModel 维度混淆 [TRAP]**：`MessagePipeline.completed_len_at_round_start` 追踪的是 `BaseMessage` 数组长度，但 `RebuildAll { prefix_len }` 中的 `prefix_len` 是 `MessageViewModel` 数组索引。由于 BaseMessage → MessageViewModel 不是 1:1 映射（相邻只读工具聚合为 `ToolCallGroup`、SubAgent 表示为单个 `SubAgentGroup`），两者长度可能不同。
+  - **错误模式**：使用 `completed_len_at_round_start` 作为 `prefix_len` 或用于切片 `&self.completed[completed_len_at_round_start..]`
+  - **正确做法**：
+    - `prefix_len` 应使用 `SessionMessages.round_start_vm_idx`（VM 维度）
+    - `MessagePipeline` 内部切片前必须用 `.min(self.completed.len())` 保护
+    - `MessagePipeline` 无法访问 `round_start_vm_idx` 时，使用 `prefix_len=0` 作为安全回退
+  - **历史教训**：此问题已出现两次——第一次在 `build_tail_vms()` 切片越界，第二次在 `ToolStart` 事件处理器传递错误的 `prefix_len`
+
 - **新增弹窗面板**：`Event::Paste` 独立于 key event 链，必须在该分支单独拦截；`Ctrl+V` 需在 `handle_xxx_panel` 内单独处理。
 - **EditField 导航**：`next()/prev()` 链必须与表单实际渲染字段一致。
 - **快捷键设计**：禁止使用 `Shift + 字母`（A-Z）组合。编辑状态下 `Shift+字母` 等同于输入大写字母，二者不可区分。全局操作用 `Ctrl + 字母` 或功能键，面板操作用 `↑/↓`、`Space`、`Enter`、`Esc`。

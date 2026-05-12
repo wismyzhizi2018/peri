@@ -37,10 +37,10 @@ impl TokenTracker {
 
     pub fn estimated_context_tokens(&self) -> Option<u64> {
         // input_tokens 已在 adapter 层规范化为总输入（含缓存 token），
-        // 所有 provider 统一使用 input + output。
-        self.last_usage
-            .as_ref()
-            .map(|u| u.input_tokens as u64 + u.output_tokens as u64)
+        // 即当前 prompt 的实际大小，直接反映上下文窗口占用。
+        // 不加 output_tokens：output 会在下一轮 API 调用中包含进 input_tokens，
+        // 相加会导致双重计算，使显示用量约为实际的 2 倍。
+        self.last_usage.as_ref().map(|u| u.input_tokens as u64)
     }
 
     pub fn context_usage_percent(&self, context_window: u32) -> Option<f64> {
