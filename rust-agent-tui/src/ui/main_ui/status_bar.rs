@@ -100,8 +100,8 @@ fn render_first_row(f: &mut Frame, app: &App, area: Rect) {
                 theme::SAGE
             };
             spans.push(Span::styled(" │ ", Style::default().fg(theme::MUTED)));
-            // 缓存命中率（仅当有缓存数据时显示）
-            let cache_str = match tracker.last_cache_hit_rate() {
+            // 缓存命中率（使用累计值，避免 Done 后因 last_usage 无缓存数据而消失）
+            let cache_str = match tracker.cache_hit_rate() {
                 Some(rate) => format!(" {:.0}%", rate * 100.0),
                 None => String::new(),
             };
