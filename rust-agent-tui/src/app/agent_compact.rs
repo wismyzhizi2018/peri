@@ -95,6 +95,11 @@ impl App {
             label_lines.push(format!("  ⎿  Skill: {}", skill_names.join(", ")));
         }
         let compact_label = label_lines.join("\n");
+        // 清除 ephemeral_notes，防止 compact 前的系统通知（如 CacheWarning、Error）被 saved_notes 机制保留
+        self.session_mgr.sessions[self.session_mgr.active]
+            .messages
+            .ephemeral_notes
+            .clear();
         let view_msgs = vec![MessageViewModel::system(compact_label)];
         self.apply_pipeline_action(PipelineAction::RebuildAll {
             prefix_len: 0,

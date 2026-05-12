@@ -8,6 +8,7 @@
 
 1. **删除 "正在压缩上下文…" SystemNote**（`thread_ops.rs`）：移除 compact 开始时的 `push_system_note("正在压缩上下文…")`，spinner 状态已有 "压缩上下文" 动词提示，无需额外系统消息。
 2. **简化中断提示**（`agent_ops.rs`）：将工具调用中断时的冗长提示 `"⚠ 已中断（工具调用已以 error 结尾，消息已保存，可继续发送恢复）"` 简化为 `"⚠ 已中断"`，与其他中断提示保持一致。
+3. **清除 ephemeral_notes**（`agent_compact.rs`）：在 `handle_compact_done` 触发 `RebuildAll { prefix_len: 0 }` 前先 `ephemeral_notes.clear()`，防止 CacheWarning、中断提示、Error 通知等旧的 `ephemeral_notes` 被 `saved_notes` 机制保留并重新插入到 compact 后的消息流中。
 
 ## 问题描述
 
