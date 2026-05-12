@@ -213,9 +213,12 @@ impl ChatOpenAI {
                         Self::content_to_openai(content, self.supports_thinking_content);
 
                     // 所有 assistant 消息都包含 reasoning_content 字段，确保 thinking 内容跨轮次不丢失
+                    // 同时设置 reasoning 字段（GLM 系列模型使用此字段名）
                     if tool_calls.is_empty() {
                         let mut msg = json!({ "role": "assistant", "content": serialized_content });
-                        msg["reasoning_content"] = json!(reasoning_text.as_deref().unwrap_or(""));
+                        let reasoning_val = json!(reasoning_text.as_deref().unwrap_or(""));
+                        msg["reasoning_content"] = reasoning_val.clone();
+                        msg["reasoning"] = reasoning_val;
                         result.push(msg);
                     } else {
                         let tcs: Vec<Value> = tool_calls
@@ -236,7 +239,9 @@ impl ChatOpenAI {
                             "content": serialized_content,
                             "tool_calls": tcs
                         });
-                        msg["reasoning_content"] = json!(reasoning_text.as_deref().unwrap_or(""));
+                        let reasoning_val = json!(reasoning_text.as_deref().unwrap_or(""));
+                        msg["reasoning_content"] = reasoning_val.clone();
+                        msg["reasoning"] = reasoning_val;
                         result.push(msg);
                     }
                 }
@@ -285,8 +290,12 @@ impl ChatOpenAI {
         let mut text_parts: Vec<String> = Vec::new();
 
         // 1) reasoning_content 顶层字段（deepseek-r1、某些 OpenAI o 系列）
+        //    也检查 reasoning 字段（GLM 系列模型使用此字段名）
         let mut has_top_level_reasoning = false;
-        if let Some(reasoning) = assistant_msg["reasoning_content"].as_str() {
+        let reasoning_text = assistant_msg["reasoning_content"]
+            .as_str()
+            .or_else(|| assistant_msg["reasoning"].as_str());
+        if let Some(reasoning) = reasoning_text {
             if !reasoning.is_empty() {
                 blocks.push(ContentBlock::reasoning(reasoning));
                 has_top_level_reasoning = true;
@@ -410,20 +419,44 @@ impl BaseModel for ChatOpenAI {
 
         let mut messages = self.messages_to_json(&request.messages);
 
-        // 验证消息序列不变量：每个 tool 消息前必须有 assistant with tool_calls
-        for (i, msg) in messages.iter().enumerate() {
-            if msg["role"] == "tool"
-                && (i == 0 || {
-                    let prev = &messages[i - 1];
-                    prev["role"] != "assistant" || !prev["tool_calls"].is_array()
-                })
-            {
-                tracing::error!(
-                    position = i,
-                    total = messages.len(),
-                    prev = ?messages.get(i.saturating_sub(1)).map(|m| &m["role"]),
-                    "消息序列不变量违反：tool 消息前缺少 assistant with tool_calls"
-                );
+        // 验证消息序列不变量：每段连续 tool 消息块之前必须有 assistant with tool_calls
+        // assistant(tc=2) → tool → tool 是合法的（连续 tool 消息只需要块首前面是 assistant）
+        let mut i = 0;
+        while i < messages.len() {
+            if messages[i]["role"] == "tool" {
+                // 找到连续 tool 块的起始位置
+                let block_start = i;
+                // 找到这个 tool 块前面最近的非 tool 消息
+                let prev_non_tool = if block_start > 0 {
+                    let mut j = block_start;
+                    while j > 0 && messages[j - 1]["role"] == "tool" {
+                        j -= 1;
+                    }
+                    if j > 0 {
+                        Some(&messages[j - 1])
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                let valid = prev_non_tool.map_or(false, |p| {
+                    p["role"] == "assistant" && p["tool_calls"].is_array()
+                });
+                if !valid {
+                    tracing::error!(
+                        block_start,
+                        total = messages.len(),
+                        prev_non_tool_role = ?prev_non_tool.map(|m| m["role"].as_str()),
+                        "消息序列不变量违反：连续 tool 块前缺少 assistant with tool_calls"
+                    );
+                }
+                // 跳过整个 tool 块
+                while i < messages.len() && messages[i]["role"] == "tool" {
+                    i += 1;
+                }
+            } else {
+                i += 1;
             }
         }
 

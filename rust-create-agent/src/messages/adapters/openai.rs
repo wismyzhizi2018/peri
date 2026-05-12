@@ -82,7 +82,7 @@ impl MessageAdapter for OpenAiAdapter {
                     tool_calls,
                     ..
                 } => {
-                    // 提取 reasoning 文本，回传为 reasoning_content 顶层字段
+                    // 提取 reasoning 文本，回传为 reasoning_content / reasoning 顶层字段
                     let reasoning_text = content
                         .content_blocks()
                         .iter()
@@ -94,7 +94,9 @@ impl MessageAdapter for OpenAiAdapter {
                             "role": "assistant",
                             "content": Self::content_to_openai(content)
                         });
-                        msg["reasoning_content"] = json!(reasoning_text);
+                        let rv = json!(reasoning_text);
+                        msg["reasoning_content"] = rv.clone();
+                        msg["reasoning"] = rv;
                         result.push(msg);
                     } else {
                         let tcs: Vec<Value> = tool_calls
@@ -115,7 +117,9 @@ impl MessageAdapter for OpenAiAdapter {
                             "content": Self::content_to_openai(content),
                             "tool_calls": tcs
                         });
-                        msg["reasoning_content"] = json!(reasoning_text);
+                        let rv = json!(reasoning_text);
+                        msg["reasoning_content"] = rv.clone();
+                        msg["reasoning"] = rv;
                         result.push(msg);
                     }
                 }
@@ -157,8 +161,11 @@ impl MessageAdapter for OpenAiAdapter {
                 let content_str = value["content"].as_str().unwrap_or("").to_string();
                 let mut blocks: Vec<ContentBlock> = Vec::new();
 
-                // reasoning_content（deepseek-r1 等）
-                if let Some(reasoning) = value["reasoning_content"].as_str() {
+                // reasoning_content（deepseek-r1 等）/ reasoning（GLM 系列等）
+                let reasoning_text = value["reasoning_content"]
+                    .as_str()
+                    .or_else(|| value["reasoning"].as_str());
+                if let Some(reasoning) = reasoning_text {
                     if !reasoning.is_empty() {
                         blocks.push(ContentBlock::reasoning(reasoning));
                     }
