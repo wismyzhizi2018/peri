@@ -539,10 +539,7 @@ impl App {
                     }
                 } else {
                     self.request_rebuild();
-                    let vm = MessageViewModel::system(
-                        "⚠ 已中断（工具调用已以 error 结尾，消息已保存，可继续发送恢复）"
-                            .to_string(),
-                    );
+                    let vm = MessageViewModel::system("⚠ 已中断".to_string());
                     self.apply_pipeline_action(PipelineAction::AddMessage(vm));
                     // 标记 reconcile 已完成，防止后续 Done 事件重复 RebuildAll 覆盖通知消息
                     self.session_mgr.sessions[self.session_mgr.active]

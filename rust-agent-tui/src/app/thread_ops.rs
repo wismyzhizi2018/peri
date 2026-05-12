@@ -362,7 +362,6 @@ impl App {
             .spinner_state
             .set_verb(Some("压缩上下文"));
 
-        self.push_system_note("正在压缩上下文…".to_string());
         self.render_rebuild();
 
         // 保存用户输入副本：compact 后 resubmit 用，防止 last_user_input 被 pending_messages 覆盖
