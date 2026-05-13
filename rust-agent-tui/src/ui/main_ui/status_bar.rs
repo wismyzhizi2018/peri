@@ -61,7 +61,7 @@ fn render_first_row(f: &mut Frame, app: &App, area: Rect) {
         .and_then(|n| n.to_str())
         .unwrap_or(&app.services.cwd);
     spans.push(Span::styled(
-        format!("{}", cwd_short),
+        cwd_short.to_string(),
         Style::default().fg(theme::MUTED),
     ));
 

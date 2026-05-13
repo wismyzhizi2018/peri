@@ -956,7 +956,7 @@ fn format_subagent_result(output: &rust_create_agent::agent::react::AgentOutput)
 
     // 按调用次数降序排序
     let mut tools: Vec<_> = tool_counts.into_iter().collect();
-    tools.sort_by(|a, b| b.1.cmp(&a.1));
+    tools.sort_by_key(|b| std::cmp::Reverse(b.1));
 
     // 格式化为 "Glob 5 times, Grep 12 times, Read 74 times"
     let tool_summary = tools

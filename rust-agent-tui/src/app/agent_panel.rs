@@ -165,16 +165,15 @@ impl PanelComponent for AgentPanel {
         area: Rect,
         ctx: &mut PanelContext<'_>,
     ) -> EventResult {
-        if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
-            if self
+        if mouse.kind == MouseEventKind::Down(MouseButton::Left)
+            && self
                 .list
                 .handle_mouse_click(mouse.row, mouse.column, area, 1)
-            {
-                return self.handle_key(
-                    Input::from(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
-                    ctx,
-                );
-            }
+        {
+            return self.handle_key(
+                Input::from(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+                ctx,
+            );
         }
         EventResult::NotConsumed
     }

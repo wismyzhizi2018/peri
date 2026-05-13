@@ -440,9 +440,8 @@ impl BaseModel for ChatOpenAI {
                 } else {
                     None
                 };
-                let valid = prev_non_tool.map_or(false, |p| {
-                    p["role"] == "assistant" && p["tool_calls"].is_array()
-                });
+                let valid = prev_non_tool
+                    .is_some_and(|p| p["role"] == "assistant" && p["tool_calls"].is_array());
                 if !valid {
                     tracing::error!(
                         block_start,

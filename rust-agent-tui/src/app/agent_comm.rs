@@ -10,6 +10,12 @@ use super::events::AgentEvent;
 #[allow(unused)]
 use super::InteractionPrompt;
 
+type SharedToolRegistry = std::sync::Arc<
+    parking_lot::RwLock<
+        std::collections::HashMap<String, std::sync::Arc<dyn rust_create_agent::tools::BaseTool>>,
+    >,
+>;
+
 /// LLM 重试状态（由 AgentEvent::LlmRetrying 更新）
 pub struct RetryStatus {
     pub attempt: usize,
@@ -92,16 +98,7 @@ pub struct AgentComm {
     pub tool_search_index:
         Option<std::sync::Arc<rust_agent_middlewares::tool_search::ToolSearchIndex>>,
     /// 会话级共享工具注册表（跨 submit 复用）
-    pub shared_tools: Option<
-        std::sync::Arc<
-            parking_lot::RwLock<
-                std::collections::HashMap<
-                    String,
-                    std::sync::Arc<dyn rust_create_agent::tools::BaseTool>,
-                >,
-            >,
-        >,
-    >,
+    pub shared_tools: Option<SharedToolRegistry>,
 }
 
 impl Default for AgentComm {
