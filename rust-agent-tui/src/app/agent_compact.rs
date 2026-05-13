@@ -249,7 +249,7 @@ impl App {
 
     /// 执行 micro-compact：清除旧工具结果，不调用 LLM
     pub fn start_micro_compact(&mut self) {
-        use rust_create_agent::agent::compact::micro_compact_enhanced;
+        use rust_create_agent::agent::micro_compact_enhanced;
         let config = self.get_compact_config();
         let cleared = micro_compact_enhanced(
             &config,

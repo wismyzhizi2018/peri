@@ -1698,7 +1698,7 @@ async fn test_compact_done_without_re_inject() {
 async fn test_get_compact_config_default() {
     let (app, _handle) = App::new_headless(120, 30).await;
     let config = app.get_compact_config();
-    let default = rust_create_agent::agent::compact::CompactConfig::default();
+    let default = rust_create_agent::agent::CompactConfig::default();
     assert!(config.auto_compact_enabled == default.auto_compact_enabled);
     assert!((config.auto_compact_threshold - default.auto_compact_threshold).abs() < 0.001);
 }
@@ -1707,7 +1707,7 @@ async fn test_get_compact_config_default() {
 async fn test_get_compact_config_from_settings() {
     let (mut app, _handle) = App::new_headless(120, 30).await;
     let mut zen = crate::config::types::PeriConfig::default();
-    zen.config.compact = Some(rust_create_agent::agent::compact::CompactConfig {
+    zen.config.compact = Some(rust_create_agent::agent::CompactConfig {
         auto_compact_threshold: 0.9,
         ..Default::default()
     });

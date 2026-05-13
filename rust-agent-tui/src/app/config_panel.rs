@@ -199,7 +199,7 @@ impl ConfigPanel {
         let compact = cfg
             .config
             .compact
-            .get_or_insert_with(rust_create_agent::agent::compact::CompactConfig::default);
+            .get_or_insert_with(rust_create_agent::agent::CompactConfig::default);
         compact.auto_compact_enabled = self.buf_autocompact;
         let threshold_val: u8 = self.buf_threshold.parse().unwrap_or(85).clamp(50, 99);
         compact.auto_compact_threshold = threshold_val as f64 / 100.0;

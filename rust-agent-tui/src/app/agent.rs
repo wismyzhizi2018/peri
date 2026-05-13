@@ -619,7 +619,7 @@ pub async fn compact_task(
     messages: Vec<rust_create_agent::messages::BaseMessage>,
     model: Box<dyn rust_create_agent::llm::BaseModel>,
     instructions: String,
-    config: rust_create_agent::agent::compact::CompactConfig,
+    config: rust_create_agent::agent::CompactConfig,
     cwd: String,
     tx: mpsc::Sender<super::AgentEvent>,
     cancel: AgentCancellationToken,
@@ -630,7 +630,7 @@ pub async fn compact_task(
 ) {
     use rust_agent_middlewares::hooks::middleware::fire_standalone_lifecycle_hooks;
     use rust_agent_middlewares::hooks::types::HookEvent;
-    use rust_create_agent::agent::compact::{full_compact, re_inject};
+    use rust_create_agent::agent::{full_compact, re_inject};
 
     let msg_count = messages.len();
 

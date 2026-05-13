@@ -555,7 +555,7 @@ impl App {
         }
     }
 
-    pub fn get_compact_config(&self) -> rust_create_agent::agent::compact::CompactConfig {
+    pub fn get_compact_config(&self) -> rust_create_agent::agent::CompactConfig {
         let mut config = self
             .services
             .peri_config

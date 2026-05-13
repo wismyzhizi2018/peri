@@ -119,7 +119,7 @@ pub struct AppConfig {
     pub env: Option<HashMap<String, String>>,
     /// Compact 系统配置（缺失时使用 CompactConfig::default()）
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub compact: Option<rust_create_agent::agent::compact::CompactConfig>,
+    pub compact: Option<rust_create_agent::agent::CompactConfig>,
     /// UI 语言，"auto" 自动探测系统语言
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
@@ -442,7 +442,7 @@ mod tests {
 
     #[test]
     fn test_app_config_compact_serde_roundtrip() {
-        let compact = rust_create_agent::agent::compact::CompactConfig {
+        let compact = rust_create_agent::agent::CompactConfig {
             auto_compact_enabled: false,
             auto_compact_threshold: 0.9,
             ..Default::default()
