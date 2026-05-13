@@ -1019,16 +1019,36 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                     .ui
                     .panel_area;
                 if let Some(area) = panel_area {
-                    if mouse_in_rect(&mouse, area) && app.global_panels.is_any_open() {
-                        let mut pm = std::mem::take(&mut app.global_panels);
-                        let mut ctx = PanelContext {
-                            services: &mut app.services,
-                            session_mgr: &mut app.session_mgr,
-                        };
-                        let result = pm.dispatch_scroll(-3, &mut ctx);
-                        app.global_panels = pm;
-                        if result == EventResult::Consumed {
-                            return Ok(Some(Action::Redraw));
+                    if mouse_in_rect(&mouse, area) {
+                        // Session 面板优先
+                        let sp = &app.session_mgr.sessions[app.session_mgr.active].session_panels;
+                        if sp.is_any_open() {
+                            let active_idx = app.session_mgr.active;
+                            let mut pm = std::mem::take(
+                                &mut app.session_mgr.sessions[active_idx].session_panels,
+                            );
+                            let mut ctx = PanelContext {
+                                services: &mut app.services,
+                                session_mgr: &mut app.session_mgr,
+                            };
+                            let result = pm.dispatch_scroll(-3, &mut ctx);
+                            app.session_mgr.sessions[active_idx].session_panels = pm;
+                            if result == EventResult::Consumed {
+                                return Ok(Some(Action::Redraw));
+                            }
+                        }
+                        // Global 面板
+                        if app.global_panels.is_any_open() {
+                            let mut pm = std::mem::take(&mut app.global_panels);
+                            let mut ctx = PanelContext {
+                                services: &mut app.services,
+                                session_mgr: &mut app.session_mgr,
+                            };
+                            let result = pm.dispatch_scroll(-3, &mut ctx);
+                            app.global_panels = pm;
+                            if result == EventResult::Consumed {
+                                return Ok(Some(Action::Redraw));
+                            }
                         }
                     }
                 }
@@ -1039,16 +1059,36 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                     .ui
                     .panel_area;
                 if let Some(area) = panel_area {
-                    if mouse_in_rect(&mouse, area) && app.global_panels.is_any_open() {
-                        let mut pm = std::mem::take(&mut app.global_panels);
-                        let mut ctx = PanelContext {
-                            services: &mut app.services,
-                            session_mgr: &mut app.session_mgr,
-                        };
-                        let result = pm.dispatch_scroll(3, &mut ctx);
-                        app.global_panels = pm;
-                        if result == EventResult::Consumed {
-                            return Ok(Some(Action::Redraw));
+                    if mouse_in_rect(&mouse, area) {
+                        // Session 面板优先
+                        let sp = &app.session_mgr.sessions[app.session_mgr.active].session_panels;
+                        if sp.is_any_open() {
+                            let active_idx = app.session_mgr.active;
+                            let mut pm = std::mem::take(
+                                &mut app.session_mgr.sessions[active_idx].session_panels,
+                            );
+                            let mut ctx = PanelContext {
+                                services: &mut app.services,
+                                session_mgr: &mut app.session_mgr,
+                            };
+                            let result = pm.dispatch_scroll(3, &mut ctx);
+                            app.session_mgr.sessions[active_idx].session_panels = pm;
+                            if result == EventResult::Consumed {
+                                return Ok(Some(Action::Redraw));
+                            }
+                        }
+                        // Global 面板
+                        if app.global_panels.is_any_open() {
+                            let mut pm = std::mem::take(&mut app.global_panels);
+                            let mut ctx = PanelContext {
+                                services: &mut app.services,
+                                session_mgr: &mut app.session_mgr,
+                            };
+                            let result = pm.dispatch_scroll(3, &mut ctx);
+                            app.global_panels = pm;
+                            if result == EventResult::Consumed {
+                                return Ok(Some(Action::Redraw));
+                            }
                         }
                     }
                 }
@@ -1059,19 +1099,65 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                 let panel_area = app.session_mgr.sessions[app.session_mgr.active]
                     .ui
                     .panel_area;
+                let mut mouse_consumed_by_panel = false;
                 if let Some(area) = panel_area {
-                    if mouse_in_rect(&mouse, area) && app.global_panels.is_any_open() {
-                        let mut pm = std::mem::take(&mut app.global_panels);
-                        let mut ctx = PanelContext {
-                            services: &mut app.services,
-                            session_mgr: &mut app.session_mgr,
-                        };
-                        let result = pm.dispatch_mouse(mouse, area, &mut ctx);
-                        app.global_panels = pm;
-                        if result == EventResult::Consumed {
-                            return Ok(Some(Action::Redraw));
+                    if mouse_in_rect(&mouse, area) {
+                        // Session 面板优先
+                        let sp = &app.session_mgr.sessions[app.session_mgr.active].session_panels;
+                        if sp.is_any_open() {
+                            let active_idx = app.session_mgr.active;
+                            let mut pm = std::mem::take(
+                                &mut app.session_mgr.sessions[active_idx].session_panels,
+                            );
+                            let mut ctx = PanelContext {
+                                services: &mut app.services,
+                                session_mgr: &mut app.session_mgr,
+                            };
+                            let result = pm.dispatch_mouse(mouse, area, &mut ctx);
+                            if result == EventResult::ClosePanel {
+                                pm.close();
+                                app.session_mgr.sessions[active_idx]
+                                    .ui
+                                    .panel_selection
+                                    .clear();
+                                app.session_mgr.sessions[active_idx].ui.panel_area = None;
+                            }
+                            app.session_mgr.sessions[active_idx].session_panels = pm;
+                            if result == EventResult::Consumed || result == EventResult::ClosePanel
+                            {
+                                return Ok(Some(Action::Redraw));
+                            }
                         }
+                        // Global 面板
+                        if app.global_panels.is_any_open() {
+                            let mut pm = std::mem::take(&mut app.global_panels);
+                            let mut ctx = PanelContext {
+                                services: &mut app.services,
+                                session_mgr: &mut app.session_mgr,
+                            };
+                            let result = pm.dispatch_mouse(mouse, area, &mut ctx);
+                            if result == EventResult::ClosePanel {
+                                pm.close();
+                                app.session_mgr.sessions[app.session_mgr.active]
+                                    .ui
+                                    .panel_selection
+                                    .clear();
+                                app.session_mgr.sessions[app.session_mgr.active]
+                                    .ui
+                                    .panel_area = None;
+                            }
+                            app.global_panels = pm;
+                            if result == EventResult::Consumed || result == EventResult::ClosePanel
+                            {
+                                return Ok(Some(Action::Redraw));
+                            }
+                        }
+                        // 面板区域内的点击，即使面板未消费，也阻止后续文本选区
+                        mouse_consumed_by_panel = true;
                     }
+                }
+                if mouse_consumed_by_panel {
+                    return Ok(Some(Action::Redraw));
                 }
                 // 多 session：点击非 active session 列区域时切换焦点
                 if app.session_mgr.sessions.len() > 1 {

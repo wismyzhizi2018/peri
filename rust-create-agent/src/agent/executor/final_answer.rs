@@ -6,10 +6,11 @@ use crate::messages::BaseMessage;
 
 use super::ReActAgent;
 
-/// 消费后台任务完成通知，注入到 state 中
+/// 消费后台任务完成通知，注入到 state 中供 LLM 下一轮迭代可见。
 ///
-/// 仅注入 state 供 LLM 下一轮迭代可见，不发射 MessageAdded 或 BackgroundTaskCompleted
-/// （后台任务自身已通过 event handler 发射 BackgroundTaskCompleted）
+/// 通知通过 StateSnapshot 写入 agent_state_messages（路径 A）。
+/// TUI 侧 handle_background_task_completed（路径 B）在 executor 运行期间
+/// 不再直接 push，仅在 executor 已结束时作为兜底写入。
 async fn drain_notifications<L: ReactLLM, S: State>(agent: &ReActAgent<L, S>, state: &mut S) {
     if let Some(ref rx) = agent.notification_rx {
         let mut rx_lock = rx.lock().await;
@@ -17,7 +18,7 @@ async fn drain_notifications<L: ReactLLM, S: State>(agent: &ReActAgent<L, S>, st
             let notification = if result.success {
                 format!(
                     "[后台任务 {} 已完成] Agent: {} | 工具调用: {} | 耗时: {}ms\n结果:\n{}",
-                    result.task_id,
+                    &result.task_id[..8.min(result.task_id.len())],
                     result.agent_name,
                     result.tool_calls_count,
                     result.duration_ms,
@@ -26,7 +27,9 @@ async fn drain_notifications<L: ReactLLM, S: State>(agent: &ReActAgent<L, S>, st
             } else {
                 format!(
                     "[后台任务 {} 执行失败] Agent: {}\n错误:\n{}",
-                    result.task_id, result.agent_name, result.output,
+                    &result.task_id[..8.min(result.task_id.len())],
+                    result.agent_name,
+                    result.output,
                 )
             };
             let msg = BaseMessage::human(notification);

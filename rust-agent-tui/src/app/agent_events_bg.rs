@@ -76,13 +76,21 @@ impl App {
             )
         };
 
-        // 将通知加入 agent_state_messages，使下一轮 agent 执行可见
-        self.session_mgr.sessions[self.session_mgr.active]
+        // 将通知加入 agent_state_messages，使下一轮 agent 执行可见。
+        // 仅在 executor 已结束（agent_done_pending_bg）时直接 push 作为兜底；
+        // executor 运行期间的通知由 drain_notifications → StateSnapshot 路径写入，
+        // 此处 push 会导致 agent_state_messages 中出现重复消息。
+        if self.session_mgr.sessions[self.session_mgr.active]
             .agent
-            .agent_state_messages
-            .push(rust_create_agent::messages::BaseMessage::human(
-                state_notification.as_str(),
-            ));
+            .agent_done_pending_bg
+        {
+            self.session_mgr.sessions[self.session_mgr.active]
+                .agent
+                .agent_state_messages
+                .push(rust_create_agent::messages::BaseMessage::human(
+                    state_notification.as_str(),
+                ));
+        }
 
         // 尝试在 view_messages 中找到匹配的 SubAgentGroup 并更新
         let short_id = &task_id[..8.min(task_id.len())];
