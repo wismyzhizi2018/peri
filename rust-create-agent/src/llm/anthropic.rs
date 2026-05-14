@@ -147,7 +147,7 @@ impl ChatAnthropic {
 
     fn content_to_anthropic(content: &MessageContent) -> Value {
         match content {
-            MessageContent::Text(s) => json!(s),
+            MessageContent::Text(s) => json!([{"type": "text", "text": s}]),
             MessageContent::Blocks(blocks) => {
                 let parts: Vec<Value> =
                     blocks.iter().filter_map(Self::block_to_anthropic).collect();
@@ -1129,21 +1129,17 @@ impl BaseModel for ChatAnthropic {
                                 as u32;
                         }
                     }
-                    "message_stop" => {
+                    "message_stop" if input_tokens == 0 => {
                         // stream naturally ends
                         // 最后兜底：部分代理仅在 message_stop 返回 input_tokens
-                        if input_tokens == 0 {
-                            input_tokens =
-                                parsed["usage"]["input_tokens"].as_u64().unwrap_or(0) as u32;
-                            cache_creation_input_tokens =
-                                parsed["usage"]["cache_creation_input_tokens"]
-                                    .as_u64()
-                                    .unwrap_or(0) as u32;
-                            cache_read_input_tokens = parsed["usage"]["cache_read_input_tokens"]
-                                .as_u64()
-                                .unwrap_or(0)
-                                as u32;
-                        }
+                        input_tokens = parsed["usage"]["input_tokens"].as_u64().unwrap_or(0) as u32;
+                        cache_creation_input_tokens = parsed["usage"]["cache_creation_input_tokens"]
+                            .as_u64()
+                            .unwrap_or(0)
+                            as u32;
+                        cache_read_input_tokens = parsed["usage"]["cache_read_input_tokens"]
+                            .as_u64()
+                            .unwrap_or(0) as u32;
                     }
                     _ => {}
                 }
