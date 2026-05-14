@@ -138,7 +138,6 @@ fn hook_specific_to_action(specific: &HookSpecificOutput) -> HookAction {
     }
 }
 
-
 #[cfg(test)]
 #[path = "output_parser_test.rs"]
 mod tests;

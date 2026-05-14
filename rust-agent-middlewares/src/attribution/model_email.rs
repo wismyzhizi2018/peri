@@ -33,7 +33,6 @@ pub fn get_attribution_email(model_name: &str) -> &str {
     "noreply@anthropic.com"
 }
 
-
 #[cfg(test)]
 #[path = "model_email_test.rs"]
 mod tests;

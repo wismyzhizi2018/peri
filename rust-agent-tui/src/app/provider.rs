@@ -229,7 +229,6 @@ impl LlmProvider {
     }
 }
 
-
 #[cfg(test)]
 #[path = "provider_test.rs"]
 mod tests;

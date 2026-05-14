@@ -147,7 +147,6 @@ impl<S: State> Middleware<S> for AgentDefineMiddleware {
     }
 }
 
-
 #[cfg(test)]
 #[path = "agent_define_test.rs"]
 mod tests;

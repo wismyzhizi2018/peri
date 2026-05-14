@@ -191,7 +191,6 @@ impl<'a, T> ListOverlay<'a, T> {
     }
 }
 
-
 #[cfg(test)]
 #[path = "list_overlay_test.rs"]
 mod tests;

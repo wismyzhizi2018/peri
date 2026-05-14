@@ -83,7 +83,6 @@ impl AttributionState {
     }
 }
 
-
 #[cfg(test)]
 #[path = "state_test.rs"]
 mod tests;

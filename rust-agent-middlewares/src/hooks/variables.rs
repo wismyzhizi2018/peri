@@ -76,7 +76,6 @@ fn path_to_posix(path: &Path) -> String {
     }
 }
 
-
 #[cfg(test)]
 #[path = "variables_test.rs"]
 mod tests;

@@ -368,7 +368,6 @@ pub fn extract_selected_text(
     }
 }
 
-
 #[cfg(test)]
 #[path = "text_selection_test.rs"]
 mod tests;

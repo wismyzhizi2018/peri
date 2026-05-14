@@ -50,7 +50,6 @@ impl TryFrom<&McpServerConfig> for TransportConfig {
     }
 }
 
-
 #[cfg(test)]
 #[path = "transport_test.rs"]
 mod tests;

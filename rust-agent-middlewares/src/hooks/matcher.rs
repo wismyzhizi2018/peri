@@ -72,7 +72,6 @@ fn match_tool_rule(_tool_name: &str, tool_input: &serde_json::Value, rule: &str)
     input_str.contains(rule)
 }
 
-
 #[cfg(test)]
 #[path = "matcher_test.rs"]
 mod tests;

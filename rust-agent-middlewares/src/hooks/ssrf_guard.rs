@@ -109,7 +109,6 @@ fn is_blocked_ipv6(ip: Ipv6Addr) -> bool {
     blocked_ranges.iter().any(|range| range.contains(&ip))
 }
 
-
 #[cfg(test)]
 #[path = "ssrf_guard_test.rs"]
 mod tests;

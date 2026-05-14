@@ -121,7 +121,6 @@ impl<'a> Widget for ToolCallWidget<'a> {
     }
 }
 
-
 #[cfg(test)]
 #[path = "mod_test.rs"]
 mod tests;

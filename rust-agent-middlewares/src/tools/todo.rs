@@ -187,7 +187,6 @@ impl BaseTool for TodoWriteTool {
     }
 }
 
-
 #[cfg(test)]
 #[path = "todo_test.rs"]
 mod tests;

@@ -332,7 +332,6 @@ impl Default for ToolSearchIndex {
     }
 }
 
-
 #[cfg(test)]
 #[path = "tool_index_test.rs"]
 mod tests;

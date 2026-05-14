@@ -485,7 +485,6 @@ pub fn load_plugin_manifest(plugin_dir: &Path) -> Result<PluginManifest, PluginC
     Ok(manifest)
 }
 
-
 #[cfg(test)]
 #[path = "config_test.rs"]
 mod tests;

@@ -100,7 +100,6 @@ impl SharedPermissionMode {
     }
 }
 
-
 #[cfg(test)]
 #[path = "shared_mode_test.rs"]
 mod tests;

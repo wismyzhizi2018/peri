@@ -141,7 +141,6 @@ pub(crate) fn adjust_index_to_preserve_invariants(
     (adjusted_start, adjusted_end)
 }
 
-
 #[cfg(test)]
 #[path = "invariant_test.rs"]
 mod tests;

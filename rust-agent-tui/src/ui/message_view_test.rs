@@ -1,4 +1,3 @@
-
 use super::*;
 use rust_create_agent::messages::{MessageContent, ToolCallRequest};
 use serde_json::json;

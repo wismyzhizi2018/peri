@@ -204,7 +204,6 @@ impl<T> StatefulWidget for SelectableList<'_, T> {
     }
 }
 
-
 #[cfg(test)]
 #[path = "list_test.rs"]
 mod tests;

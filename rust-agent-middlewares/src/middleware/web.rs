@@ -553,7 +553,6 @@ impl<S: State> Middleware<S> for WebMiddleware {
     }
 }
 
-
 #[cfg(test)]
 #[path = "web_test.rs"]
 mod tests;

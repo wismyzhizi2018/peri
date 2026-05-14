@@ -358,7 +358,6 @@ impl<S: State> Middleware<S> for SubAgentMiddleware {
     }
 }
 
-
 #[cfg(test)]
 #[path = "mod_test.rs"]
 mod tests;

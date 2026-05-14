@@ -245,7 +245,6 @@ impl<S: State> Middleware<S> for TerminalMiddleware {
     }
 }
 
-
 #[cfg(test)]
 #[path = "terminal_test.rs"]
 mod tests;

@@ -63,7 +63,6 @@ impl AgentError {
     }
 }
 
-
 #[cfg(test)]
 #[path = "error_test.rs"]
 mod tests;

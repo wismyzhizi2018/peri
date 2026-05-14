@@ -1,4 +1,3 @@
-
 use super::*;
 
 // ── ThinkingConfig::openai_effort ─────────────────────────────────────────

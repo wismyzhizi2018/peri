@@ -429,7 +429,6 @@ fn extract_structured_output(messages: &[BaseMessage]) -> HookAction {
     HookAction::Allow
 }
 
-
 #[cfg(test)]
 #[path = "executor_test.rs"]
 mod tests;

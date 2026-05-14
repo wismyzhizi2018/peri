@@ -317,7 +317,6 @@ impl ModelPanel {
     }
 }
 
-
 #[cfg(test)]
 #[path = "model_panel_test.rs"]
 mod tests;

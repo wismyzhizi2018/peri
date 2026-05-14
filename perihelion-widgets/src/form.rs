@@ -91,7 +91,6 @@ impl<F: FormField> FormState<F> {
     }
 }
 
-
 #[cfg(test)]
 #[path = "form_test.rs"]
 mod tests;

@@ -25,7 +25,6 @@ pub fn format_args_summary(args: &str, max_width: usize) -> String {
     }
 }
 
-
 #[cfg(test)]
 #[path = "display_test.rs"]
 mod tests;

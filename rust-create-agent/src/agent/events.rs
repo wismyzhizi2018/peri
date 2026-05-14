@@ -119,7 +119,6 @@ where
     }
 }
 
-
 #[cfg(test)]
 #[path = "events_test.rs"]
 mod tests;

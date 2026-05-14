@@ -136,7 +136,6 @@ impl<'a> ScrollableArea<'a> {
     }
 }
 
-
 #[cfg(test)]
 #[path = "scrollable_test.rs"]
 mod tests;

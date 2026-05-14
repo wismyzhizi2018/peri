@@ -130,7 +130,6 @@ impl CompactConfig {
     }
 }
 
-
 #[cfg(test)]
 #[path = "config_test.rs"]
 mod tests;

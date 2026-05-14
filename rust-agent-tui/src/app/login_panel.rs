@@ -738,7 +738,6 @@ impl PanelComponent for LoginPanel {
     }
 }
 
-
 #[cfg(test)]
 #[path = "login_panel_test.rs"]
 mod tests;

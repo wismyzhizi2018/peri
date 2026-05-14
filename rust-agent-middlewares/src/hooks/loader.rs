@@ -98,7 +98,6 @@ pub fn load_settings_local_hooks(cwd: &str) -> Vec<RegisteredHook> {
     hooks
 }
 
-
 #[cfg(test)]
 #[path = "loader_test.rs"]
 mod tests;

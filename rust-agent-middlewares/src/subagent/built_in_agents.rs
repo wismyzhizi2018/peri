@@ -45,7 +45,6 @@ static BUILT_IN_AGENTS: [BuiltInAgent; 4] = [
     },
 ];
 
-
 #[cfg(test)]
 #[path = "built_in_agents_test.rs"]
 mod tests;

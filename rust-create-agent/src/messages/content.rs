@@ -450,7 +450,6 @@ impl From<Vec<ContentBlock>> for MessageContent {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-
 #[cfg(test)]
 #[path = "content_test.rs"]
 mod tests;

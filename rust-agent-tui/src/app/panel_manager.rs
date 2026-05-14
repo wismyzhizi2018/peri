@@ -475,7 +475,6 @@ impl Default for PanelManager {
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
-
 #[cfg(test)]
 #[path = "panel_manager_test.rs"]
 mod tests;

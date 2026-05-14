@@ -488,7 +488,6 @@ impl PanelComponent for ConfigPanel {
     }
 }
 
-
 #[cfg(test)]
 #[path = "config_panel_test.rs"]
 mod tests;

@@ -88,7 +88,6 @@ pub fn parse_markdown(input: &str, theme: &dyn MarkdownTheme, max_width: usize) 
     Text::from(state.lines)
 }
 
-
 #[cfg(test)]
 #[path = "mod_test.rs"]
 mod tests;

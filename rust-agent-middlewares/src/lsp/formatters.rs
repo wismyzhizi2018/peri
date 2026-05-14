@@ -448,7 +448,6 @@ pub fn format_diagnostics(entries: &[perihelion_lsp::diagnostics::DiagnosticEntr
     lines.join("\n")
 }
 
-
 #[cfg(test)]
 #[path = "formatters_test.rs"]
 mod tests;

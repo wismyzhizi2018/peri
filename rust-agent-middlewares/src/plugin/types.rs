@@ -329,7 +329,6 @@ impl From<KnownMarketplace> for DeclaredMarketplace {
     }
 }
 
-
 #[cfg(test)]
 #[path = "types_test.rs"]
 mod tests;

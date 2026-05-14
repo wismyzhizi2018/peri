@@ -290,7 +290,6 @@ fn parse_anthropic_content(content: &Value) -> MessageContent {
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-
 #[cfg(test)]
 #[path = "anthropic_test.rs"]
 mod tests;

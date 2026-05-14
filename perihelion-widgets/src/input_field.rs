@@ -229,7 +229,6 @@ impl StatefulWidget for InputField<'_> {
     }
 }
 
-
 #[cfg(test)]
 #[path = "input_field_test.rs"]
 mod tests;

@@ -112,7 +112,6 @@ impl Default for SseParser {
     }
 }
 
-
 #[cfg(test)]
 #[path = "sse_test.rs"]
 mod tests;

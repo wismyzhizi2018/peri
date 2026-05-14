@@ -144,7 +144,6 @@ impl CronScheduler {
     }
 }
 
-
 #[cfg(test)]
 #[path = "mod_test.rs"]
 mod tests;

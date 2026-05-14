@@ -199,7 +199,6 @@ fn parse_agent_file_inner(content: &str) -> Result<ClaudeAgent, String> {
     })
 }
 
-
 #[cfg(test)]
 #[path = "claude_agent_parser_test.rs"]
 mod tests;

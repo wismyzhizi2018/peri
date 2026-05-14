@@ -437,7 +437,6 @@ pub fn spawn_render_thread(
     (tx, cache, notify)
 }
 
-
 #[cfg(test)]
 #[path = "render_thread_test.rs"]
 mod tests;

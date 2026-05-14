@@ -145,7 +145,6 @@ impl<T> Default for PanelList<T> {
     }
 }
 
-
 #[cfg(test)]
 #[path = "panel_list_test.rs"]
 mod tests;

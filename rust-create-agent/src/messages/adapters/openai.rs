@@ -249,7 +249,6 @@ fn parse_openai_content(content: &Value) -> MessageContent {
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-
 #[cfg(test)]
 #[path = "openai_test.rs"]
 mod tests;

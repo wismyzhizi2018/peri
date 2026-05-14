@@ -158,7 +158,6 @@ pub fn parse_code_from_url(url: &str) -> Result<(String, String), CallbackError>
     Ok((code, state))
 }
 
-
 #[cfg(test)]
 #[path = "callback_server_test.rs"]
 mod tests;
