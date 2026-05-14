@@ -66,6 +66,7 @@ pub fn assemble_agent(
     );
 
     let provider_for_factory = provider.clone();
+    let model_name = provider.model_name().to_string();
 
     // LLM
     let mut base_llm = BaseModelReactLLM::new(provider.into_model());
@@ -156,6 +157,9 @@ pub fn assemble_agent(
         .add_middleware(Box::new(SkillsMiddleware::new()))
         .add_middleware(Box::new(SkillPreloadMiddleware::new(preload_skills, &cwd)))
         .add_middleware(Box::new(FilesystemMiddleware::new()))
+        .add_middleware(Box::new(
+            rust_agent_middlewares::GitAttributionMiddleware::new(&model_name),
+        ))
         .add_middleware(Box::new(TerminalMiddleware::new()))
         .add_middleware(Box::new(TodoMiddleware::new(todo_tx)))
         .add_middleware(Box::new(rust_agent_middlewares::cron::CronMiddleware::new(

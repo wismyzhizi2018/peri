@@ -170,6 +170,7 @@ pub async fn run_universal_agent(cfg: AgentRunConfig) {
     );
 
     // 不使用 .with_system()，改由 with_system_prompt() 注入到 state，使 Langfuse 可见
+    let model_name = provider.model_name().to_string();
     let model = rust_create_agent::llm::RetryableLLM::new(
         BaseModelReactLLM::new(provider.into_model()).with_session_id(thread_id.to_string()),
         rust_create_agent::llm::RetryConfig::default(),
@@ -327,6 +328,9 @@ pub async fn run_universal_agent(cfg: AgentRunConfig) {
         ))
         .add_middleware(Box::new(SkillPreloadMiddleware::new(preload_skills, &cwd)))
         .add_middleware(Box::new(FilesystemMiddleware::new()))
+        .add_middleware(Box::new(
+            rust_agent_middlewares::GitAttributionMiddleware::new(&model_name),
+        ))
         .add_middleware(Box::new(TerminalMiddleware::new()))
         .add_middleware(Box::new(WebMiddleware::new()))
         .add_middleware(Box::new(TodoMiddleware::new(todo_tx)))
