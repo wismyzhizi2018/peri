@@ -1,3 +1,4 @@
+use super::cache;
 use super::*;
 
 /// 验证 cache_control 放在第一条和最后一条 user 消息上（3 断点策略）
@@ -8,7 +9,7 @@ fn test_cache_control_on_first_and_last_user_messages() {
         json!({"role": "assistant", "content": "first answer"}),
         json!({"role": "user", "content": "second question"}),
     ];
-    ChatAnthropic::apply_cache_to_messages(&mut messages);
+    cache::apply_cache_to_messages(&mut messages);
 
     // 第一条 user 消息（index 0）应被转换为 blocks 并包含 cache_control
     let content = messages[0]["content"].as_array().unwrap();
@@ -37,7 +38,7 @@ fn test_cache_control_three_user_messages_gets_second_to_last() {
         json!({"role": "assistant", "content": "a2"}),
         json!({"role": "user", "content": "q3"}),
     ];
-    ChatAnthropic::apply_cache_to_messages(&mut messages);
+    cache::apply_cache_to_messages(&mut messages);
 
     // index 0 (q1): 第一条 → 有断点
     assert_eq!(
@@ -63,7 +64,7 @@ fn test_cache_control_skips_assistant() {
         json!({"role": "assistant", "content": "assistant only"}),
         json!({"role": "user", "content": "first user"}),
     ];
-    ChatAnthropic::apply_cache_to_messages(&mut messages);
+    cache::apply_cache_to_messages(&mut messages);
 
     // assistant 消息应不变（index 0）
     assert!(messages[0]["content"].is_string());
@@ -82,7 +83,7 @@ fn test_cache_control_on_last_text_block() {
             {"type": "text", "text": "block 2"},
         ]
     })];
-    ChatAnthropic::apply_cache_to_messages(&mut messages);
+    cache::apply_cache_to_messages(&mut messages);
 
     let blocks = messages[0]["content"].as_array().unwrap();
     assert!(!blocks[0].as_object().unwrap().contains_key("cache_control"));
@@ -99,7 +100,7 @@ fn test_cache_control_skips_trailing_tool_result() {
             {"type": "tool_result", "tool_use_id": "t1", "content": "result data"}
         ]
     })];
-    ChatAnthropic::apply_cache_to_messages(&mut messages);
+    cache::apply_cache_to_messages(&mut messages);
     let blocks = messages[0]["content"].as_array().unwrap();
     assert_eq!(
         blocks[0]["cache_control"]["type"], "ephemeral",
@@ -122,7 +123,7 @@ fn test_cache_control_skips_tool_use_and_tool_result() {
             {"type": "tool_result", "tool_use_id": "t1", "content": "file contents"}
         ]
     })];
-    ChatAnthropic::apply_cache_to_messages(&mut messages);
+    cache::apply_cache_to_messages(&mut messages);
     let blocks = messages[0]["content"].as_array().unwrap();
     assert_eq!(blocks[0]["cache_control"]["type"], "ephemeral");
     assert!(!blocks[1].as_object().unwrap().contains_key("cache_control"));
@@ -139,7 +140,7 @@ fn test_cache_control_skips_all_tool_blocks() {
             {"type": "tool_result", "tool_use_id": "t2", "content": "data2"}
         ]
     })];
-    ChatAnthropic::apply_cache_to_messages(&mut messages);
+    cache::apply_cache_to_messages(&mut messages);
     let blocks = messages[0]["content"].as_array().unwrap();
     for b in blocks {
         assert!(
@@ -159,7 +160,7 @@ fn test_cache_control_skips_empty_text_block() {
             {"type": "text", "text": "real content"},
         ]
     })];
-    ChatAnthropic::apply_cache_to_messages(&mut messages);
+    cache::apply_cache_to_messages(&mut messages);
 
     let blocks = messages[0]["content"].as_array().unwrap();
     // 空 block 无 cache_control
@@ -173,7 +174,7 @@ fn test_cache_control_skips_empty_text_block() {
 fn test_cache_control_no_user_messages() {
     let mut messages = vec![json!({"role": "assistant", "content": "only assistant"})];
     let before = messages.clone();
-    ChatAnthropic::apply_cache_to_messages(&mut messages);
+    cache::apply_cache_to_messages(&mut messages);
     assert_eq!(messages, before, "无 user 消息时应不变");
 }
 
@@ -187,7 +188,7 @@ fn test_cache_control_fallback_second_to_last_tool_result() {
         json!({"role": "assistant", "content": "more"}),
         json!({"role": "user", "content": [{"type": "tool_result", "tool_use_id": "t2", "content": "data2"}]}),
     ];
-    ChatAnthropic::apply_cache_to_messages(&mut messages);
+    cache::apply_cache_to_messages(&mut messages);
     // first user (index 0) → 有断点
     assert_eq!(
         messages[0]["content"].as_array().unwrap()[0]["cache_control"]["type"],
@@ -224,7 +225,7 @@ fn test_cache_control_fallback_finds_earlier_text_user() {
         json!({"role": "assistant", "content": "answer 3"}),
         json!({"role": "user", "content": [{"type": "tool_result", "tool_use_id": "t2", "content": "data2"}]}),
     ];
-    ChatAnthropic::apply_cache_to_messages(&mut messages);
+    cache::apply_cache_to_messages(&mut messages);
     // first (index 0) → 有断点
     assert_eq!(
         messages[0]["content"].as_array().unwrap()[0]["cache_control"]["type"],
@@ -283,7 +284,7 @@ fn test_without_cache() {
 #[test]
 fn test_split_system_blocks_with_boundary() {
     let text = "static content\n\n__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__\n\ndynamic content";
-    let blocks = ChatAnthropic::split_system_blocks(text);
+    let blocks = cache::split_system_blocks(text);
     assert_eq!(blocks.len(), 2);
     assert_eq!(blocks[0].text, "static content");
     assert!(blocks[0].cache_control);
@@ -294,7 +295,7 @@ fn test_split_system_blocks_with_boundary() {
 #[test]
 fn test_split_system_blocks_without_boundary() {
     let text = "no boundary here";
-    let blocks = ChatAnthropic::split_system_blocks(text);
+    let blocks = cache::split_system_blocks(text);
     assert_eq!(blocks.len(), 1);
     assert_eq!(blocks[0].text, "no boundary here");
     assert!(!blocks[0].cache_control);
@@ -302,14 +303,14 @@ fn test_split_system_blocks_without_boundary() {
 
 #[test]
 fn test_split_system_blocks_empty() {
-    let blocks = ChatAnthropic::split_system_blocks("");
+    let blocks = cache::split_system_blocks("");
     assert!(blocks.is_empty());
 }
 
 #[test]
 fn test_split_system_blocks_empty_static_part() {
     let text = "__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__\n\ndynamic only";
-    let blocks = ChatAnthropic::split_system_blocks(text);
+    let blocks = cache::split_system_blocks(text);
     assert_eq!(blocks.len(), 1);
     assert_eq!(blocks[0].text, "dynamic only");
     assert!(!blocks[0].cache_control);
@@ -318,7 +319,7 @@ fn test_split_system_blocks_empty_static_part() {
 #[test]
 fn test_split_system_blocks_empty_dynamic_part() {
     let text = "static only\n\n__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__\n\n";
-    let blocks = ChatAnthropic::split_system_blocks(text);
+    let blocks = cache::split_system_blocks(text);
     assert_eq!(blocks.len(), 1);
     assert_eq!(blocks[0].text, "static only");
     assert!(blocks[0].cache_control);
@@ -327,7 +328,7 @@ fn test_split_system_blocks_empty_dynamic_part() {
 #[test]
 fn test_split_system_blocks_multiple_sections() {
     let text = "core rules\n\n__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__\n\ndate: 2026-05-13\n\ncwd: /tmp\n\nmiddleware content";
-    let blocks = ChatAnthropic::split_system_blocks(text);
+    let blocks = cache::split_system_blocks(text);
     assert_eq!(blocks.len(), 2);
     assert_eq!(blocks[0].text, "core rules");
     assert!(blocks[0].cache_control);
@@ -517,7 +518,7 @@ fn test_ensure_thinking_blocks_injects_for_missing() {
         }),
     ];
 
-    ChatAnthropic::ensure_thinking_blocks(&mut messages);
+    cache::ensure_thinking_blocks(&mut messages);
 
     // assistant 消息（index 1）应被注入 thinking
     let assistant = &messages[1];
@@ -538,7 +539,7 @@ fn test_ensure_thinking_blocks_skips_when_thinking_present() {
         ]
     })];
 
-    ChatAnthropic::ensure_thinking_blocks(&mut messages);
+    cache::ensure_thinking_blocks(&mut messages);
 
     let content = messages[0]["content"].as_array().unwrap();
     assert_eq!(content.len(), 2, "已有 thinking，不应注入额外的占位 block");
@@ -555,7 +556,7 @@ fn test_ensure_thinking_blocks_skips_when_redacted_thinking_present() {
         ]
     })];
 
-    ChatAnthropic::ensure_thinking_blocks(&mut messages);
+    cache::ensure_thinking_blocks(&mut messages);
 
     let content = messages[0]["content"].as_array().unwrap();
     assert_eq!(content.len(), 2, "已有 redacted_thinking，不应再注入");
@@ -568,7 +569,7 @@ fn test_ensure_thinking_blocks_ignores_non_assistant() {
         json!({"role": "assistant", "content": [{"type": "text", "text": "no thinking"}]}),
     ];
 
-    ChatAnthropic::ensure_thinking_blocks(&mut messages);
+    cache::ensure_thinking_blocks(&mut messages);
 
     // user 消息不应被修改
     assert_eq!(messages[0]["role"], "user");
@@ -590,7 +591,7 @@ fn test_ensure_thinking_blocks_string_content() {
         "content": "plain text response"
     })];
 
-    ChatAnthropic::ensure_thinking_blocks(&mut messages);
+    cache::ensure_thinking_blocks(&mut messages);
 
     let content = messages[0]["content"].as_array().unwrap();
     assert_eq!(content[0]["type"], "thinking");
@@ -621,7 +622,7 @@ fn test_ensure_thinking_blocks_mixed_messages() {
         }),
     ];
 
-    ChatAnthropic::ensure_thinking_blocks(&mut messages);
+    cache::ensure_thinking_blocks(&mut messages);
 
     // msg[1]: 已有 thinking，不应被修改
     let content1 = messages[1]["content"].as_array().unwrap();
