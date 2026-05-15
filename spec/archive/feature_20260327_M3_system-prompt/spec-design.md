@@ -1,7 +1,7 @@
 # Plan M3：消除 PrependSystemMiddleware 排序约束
 
 > 优先级：小工作量，立即消除隐患
-> 涉及 crate：rust-create-agent / rust-agent-middlewares / rust-agent-tui
+> 涉及 crate：peri-agent / peri-middlewares / peri-tui
 
 ---
 
@@ -13,7 +13,7 @@
 这是一个隐式约束，注释中虽有提示，但新增中间件时极易被破坏。
 
 ```rust
-// 当前调用方（rust-agent-tui/src/app/agent.rs）
+// 当前调用方（peri-tui/src/app/agent.rs）
 .add_middleware(Box::new(FilesystemMiddleware::new()))
 .add_middleware(Box::new(TerminalMiddleware::new()))
 .add_middleware(Box::new(TodoMiddleware::new(todo_tx)))
@@ -34,7 +34,7 @@
 **核心改动：**
 
 ```rust
-// rust-create-agent/src/agent/executor.rs
+// peri-agent/src/agent/executor.rs
 
 pub struct ReActAgent<S, L> {
     // 新增字段
@@ -96,20 +96,20 @@ fn priority(&self) -> i32 { i32::MAX }  // 永远最后执行
 
 ## 变更文件清单
 
-### 1. `rust-create-agent/src/agent/executor.rs`
+### 1. `peri-agent/src/agent/executor.rs`
 - 新增 `system_prompt: Option<String>` 字段
 - 新增 `with_system_prompt(prompt)` builder 方法
 - `execute()` 中，`run_before_agent` 之后固定 prepend system message
 
-### 2. `rust-agent-tui/src/app/agent.rs`
+### 2. `peri-tui/src/app/agent.rs`
 - 删除 `.add_middleware(Box::new(PrependSystemMiddleware::new(system_prompt)))`
 - 改为 `.with_system_prompt(system_prompt)`
 
-### 3. `rust-agent-middlewares/src/subagent/tool.rs`
+### 3. `peri-middlewares/src/subagent/tool.rs`
 - 子 agent 构建处同样替换为 `.with_system_prompt(...)`
 - `PrependSystemMiddleware` 的 import 可删除（如果无其他用途）
 
-### 4. `rust-agent-middlewares/src/middleware/prepend_system.rs`（可选）
+### 4. `peri-middlewares/src/middleware/prepend_system.rs`（可选）
 - 若无其他调用方，可标记 `#[deprecated]` 或删除
 - 建议保留并加注释：高级场景（动态 prompt 等）仍可使用中间件方式
 

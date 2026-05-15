@@ -40,7 +40,7 @@ user: [tool_result A]  ← 只有 A！B、C 的 tool_result 丢失
 
 ## 根因分析
 
-`rust-create-agent/src/agent/executor/tool_dispatch.rs`
+`peri-agent/src/agent/executor/tool_dispatch.rs`
 
 ### 核心问题：结果处理循环中的提前返回
 
@@ -138,11 +138,11 @@ if let Some(err) = deferred_error {
 
 ## 涉及文件
 
-- `rust-create-agent/src/agent/executor/tool_dispatch.rs:37` — AI 消息写入
-- `rust-create-agent/src/agent/executor/tool_dispatch.rs:152-204` — **主战场**：结果处理循环
-- `rust-create-agent/src/agent/executor/tool_dispatch.rs:57-58` — P1：取消提前返回
-- `rust-create-agent/src/agent/executor/tool_dispatch.rs:89-92` — P2：before_tool 错误传播
-- `rust-create-agent/src/llm/anthropic.rs:265-300` — Tool 消息→Anthropic user 消息合并逻辑
+- `peri-agent/src/agent/executor/tool_dispatch.rs:37` — AI 消息写入
+- `peri-agent/src/agent/executor/tool_dispatch.rs:152-204` — **主战场**：结果处理循环
+- `peri-agent/src/agent/executor/tool_dispatch.rs:57-58` — P1：取消提前返回
+- `peri-agent/src/agent/executor/tool_dispatch.rs:89-92` — P2：before_tool 错误传播
+- `peri-agent/src/llm/anthropic.rs:265-300` — Tool 消息→Anthropic user 消息合并逻辑
 
 ## 关联 Issue
 

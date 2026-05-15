@@ -15,7 +15,7 @@
 - [ ] [AUTO] 等待服务就绪: `sleep 3 && curl -s --max-time 5 http://localhost:8080/web/ | grep -c 'id="app"'`
 
 ### 测试数据准备
-- [ ] 需要一个真实 Agent 连接 Relay Server（使用 `--remote-control` 参数启动 `rust-agent-tui`）以测试 WebSocket 交互功能；纯静态文件验收项（场景1-2）无需此步骤
+- [ ] 需要一个真实 Agent 连接 Relay Server（使用 `--remote-control` 参数启动 `peri-tui`）以测试 WebSocket 交互功能；纯静态文件验收项（场景1-2）无需此步骤
 
 ---
 

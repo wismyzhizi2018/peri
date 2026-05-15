@@ -12,7 +12,7 @@
 
 - [x] [AUTO] 检查 Rust 工具链可用: `cargo --version`
 - [x] [AUTO] 编译 relay-server: `cargo build -p rust-relay-server --features server 2>&1 | grep -E "^error" | head -5`
-- [x] [AUTO] 编译 TUI: `cargo build -p rust-agent-tui 2>&1 | grep "^error" | head -5`
+- [x] [AUTO] 编译 TUI: `cargo build -p peri-tui 2>&1 | grep "^error" | head -5`
 - [x] [AUTO] 安装 node ws 模块（用于 WS 自动化测试）: `cd /tmp && npm install ws --silent && echo "ok"`
 - [x] [AUTO/SERVICE] 启动 Relay Server: `RELAY_TOKEN=test-token cargo run -p rust-relay-server --features server` (port: 8080)
 

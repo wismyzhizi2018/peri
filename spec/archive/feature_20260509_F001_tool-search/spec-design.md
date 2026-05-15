@@ -72,12 +72,12 @@ fn is_deferred_tool(tool_name: &str) -> bool {
 - 需要在 `all_tools` 构建后才能过滤，而中间件的 `collect_tools` 是构建 `all_tools` 的输入
 - 需要将 deferred tools 存入共享索引供 `ExecuteExtraTool` 查找，这个索引需要在执行器层面持有
 
-#### 2.2 ToolSearchMiddleware（在 `rust-agent-middlewares` 中）
+#### 2.2 ToolSearchMiddleware（在 `peri-middlewares` 中）
 
 虽然核心逻辑在执行器，但搜索和执行两个元工具的实现放在 middlewares crate：
 
 ```
-rust-agent-middlewares/src/tool_search/
+peri-middlewares/src/tool_search/
 ├── mod.rs              # 模块入口，导出公共接口
 ├── core_tools.rs       # CORE_TOOLS 定义 + is_deferred_tool()
 ├── search_tool.rs      # SearchExtraTools 实现

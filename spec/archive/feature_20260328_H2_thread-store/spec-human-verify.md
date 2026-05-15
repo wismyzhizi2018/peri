@@ -13,7 +13,7 @@
 ### 环境要求
 
 - [ ] [AUTO] 检查 Rust 工具链可用: `cargo --version`
-- [ ] [AUTO] 工作目录正确: `test -d rust-create-agent && test -d rust-agent-tui && echo "OK"`
+- [ ] [AUTO] 工作目录正确: `test -d peri-agent && test -d peri-tui && echo "OK"`
 - [ ] [AUTO] 全量编译通过（前置条件）: `cargo build 2>&1 | grep -E "^error" && echo "FAIL" || echo "OK"`
 
 ---
@@ -26,10 +26,10 @@
 
 - **来源:** Task 1 检查步骤 + Task 4 端到端验证
 - **操作步骤:**
-  1. [A] `grep -n "append_message" rust-create-agent/src/thread/store.rs` → 期望: 至少输出 2 行（方法定义 + 方法体内调用 `append_messages`）
-  2. [A] `grep -A3 "async fn append_message" rust-create-agent/src/thread/store.rs` → 期望: 输出中包含 `append_messages`，即默认实现正确委托给批量方法
+  1. [A] `grep -n "append_message" peri-agent/src/thread/store.rs` → 期望: 至少输出 2 行（方法定义 + 方法体内调用 `append_messages`）
+  2. [A] `grep -A3 "async fn append_message" peri-agent/src/thread/store.rs` → 期望: 输出中包含 `append_messages`，即默认实现正确委托给批量方法
 - **异常排查:**
-  - 若输出为空: 检查 `rust-create-agent/src/thread/store.rs` 是否保存正确；重新运行 Task 1 执行步骤
+  - 若输出为空: 检查 `peri-agent/src/thread/store.rs` 是否保存正确；重新运行 Task 1 执行步骤
 
 ---
 
@@ -39,7 +39,7 @@
 
 - **来源:** Task 2 检查步骤 + Task 4 端到端验证
 - **操作步骤:**
-  1. [A] `grep -n "serde(skip)\|with_persistence\|store:\|thread_id:" rust-create-agent/src/agent/state.rs` → 期望: 输出至少包含 `#[serde(skip)]`（出现在 store 和 thread_id 字段上）、`with_persistence`、`store:` 和 `thread_id:` 各 1 处以上
+  1. [A] `grep -n "serde(skip)\|with_persistence\|store:\|thread_id:" peri-agent/src/agent/state.rs` → 期望: 输出至少包含 `#[serde(skip)]`（出现在 store 和 thread_id 字段上）、`with_persistence`、`store:` 和 `thread_id:` 各 1 处以上
 - **异常排查:**
   - 若缺少 `serde(skip)`: 确认 store/thread_id 字段上方有 `#[serde(skip)]` 注解
   - 若缺少 `with_persistence`: 检查 Task 2 是否执行完毕
@@ -48,7 +48,7 @@
 
 - **来源:** Task 2 检查步骤 + Task 4 端到端验证
 - **操作步骤:**
-  1. [A] `grep -n "tokio::spawn\|append_message" rust-create-agent/src/agent/state.rs` → 期望: 输出包含 `tokio::spawn` 1 处（fire-and-forget spawn）和 `append_message` 1 处（调用 store 方法）
+  1. [A] `grep -n "tokio::spawn\|append_message" peri-agent/src/agent/state.rs` → 期望: 输出包含 `tokio::spawn` 1 处（fire-and-forget spawn）和 `append_message` 1 处（调用 store 方法）
 - **异常排查:**
   - 若 tokio::spawn 不存在: 检查 `add_message` 实现是否包含持久化分支
 
@@ -56,8 +56,8 @@
 
 - **来源:** Plan-H2-thread-store.md 注意事项 §2
 - **操作步骤:**
-  1. [A] `grep -n "with_messages" rust-create-agent/src/agent/state.rs` → 期望: 找到 `with_messages` 构造函数，其实现直接赋值 `messages` 字段，不调用 `add_message`（即加载历史不触发持久化）
-  2. [A] `grep -A8 "fn with_messages" rust-create-agent/src/agent/state.rs` → 期望: 方法体使用 `messages,` 直接赋值而非循环调用 `add_message`，确认历史消息不重复写入 DB
+  1. [A] `grep -n "with_messages" peri-agent/src/agent/state.rs` → 期望: 找到 `with_messages` 构造函数，其实现直接赋值 `messages` 字段，不调用 `add_message`（即加载历史不触发持久化）
+  2. [A] `grep -A8 "fn with_messages" peri-agent/src/agent/state.rs` → 期望: 方法体使用 `messages,` 直接赋值而非循环调用 `add_message`，确认历史消息不重复写入 DB
 - **异常排查:**
   - 若 `with_messages` 内调用了 `add_message`: 这会导致历史消息被重复写入 DB，需修复为直接赋值
 
@@ -69,7 +69,7 @@
 
 - **来源:** Task 3 检查步骤 + Task 4 端到端验证
 - **操作步骤:**
-  1. [A] `grep -rn "append_messages" rust-agent-tui/src/ && echo "FAIL: 发现残余调用" || echo "OK: 已全部清除"` → 期望: 输出 `OK: 已全部清除`（无任何匹配）
+  1. [A] `grep -rn "append_messages" peri-tui/src/ && echo "FAIL: 发现残余调用" || echo "OK: 已全部清除"` → 期望: 输出 `OK: 已全部清除`（无任何匹配）
 - **异常排查:**
   - 若发现残余调用: 查看 grep 输出中的文件行号，手动删除对应的 `append_messages` 调用块
 
@@ -77,7 +77,7 @@
 
 - **来源:** Task 3 检查步骤
 - **操作步骤:**
-  1. [A] `grep -rn "persisted_count" rust-agent-tui/src/ && echo "FAIL: 字段残余" || echo "OK: 已完全删除"` → 期望: 输出 `OK: 已完全删除`（无任何匹配）
+  1. [A] `grep -rn "persisted_count" peri-tui/src/ && echo "FAIL: 字段残余" || echo "OK: 已完全删除"` → 期望: 输出 `OK: 已完全删除`（无任何匹配）
 - **异常排查:**
   - 若发现残余: 逐一检查 `mod.rs`、`agent_ops.rs`、`thread_ops.rs`、`panel_ops.rs` 中的引用并删除
 
@@ -85,7 +85,7 @@
 
 - **来源:** Task 3 检查步骤
 - **操作步骤:**
-  1. [A] `grep -n "with_persistence" rust-agent-tui/src/app/agent.rs` → 期望: 找到 1 处，对应 `AgentState::with_messages(...).with_persistence(thread_store, thread_id)` 调用链
+  1. [A] `grep -n "with_persistence" peri-tui/src/app/agent.rs` → 期望: 找到 1 处，对应 `AgentState::with_messages(...).with_persistence(thread_store, thread_id)` 调用链
 - **异常排查:**
   - 若未找到: 检查 `run_universal_agent` 中 state 创建部分是否已链式调用 `.with_persistence`
 
@@ -93,8 +93,8 @@
 
 - **来源:** Task 3 执行步骤
 - **操作步骤:**
-  1. [A] `grep -n "thread_store\|thread_id" rust-agent-tui/src/app/agent.rs` → 期望: 在 `AgentRunConfig` 结构体定义中找到 `thread_store` 字段和 `thread_id` 字段各 1 处（定义 + 解构 + 使用共 3+ 处）
-  2. [A] `grep -n "thread_store_for_agent\|thread_id_for_agent\|thread_store:\|thread_id:" rust-agent-tui/src/app/agent_ops.rs` → 期望: 找到 submit_message 中向 AgentRunConfig 传入 `thread_store` 和 `thread_id` 的赋值行
+  1. [A] `grep -n "thread_store\|thread_id" peri-tui/src/app/agent.rs` → 期望: 在 `AgentRunConfig` 结构体定义中找到 `thread_store` 字段和 `thread_id` 字段各 1 处（定义 + 解构 + 使用共 3+ 处）
+  2. [A] `grep -n "thread_store_for_agent\|thread_id_for_agent\|thread_store:\|thread_id:" peri-tui/src/app/agent_ops.rs` → 期望: 找到 submit_message 中向 AgentRunConfig 传入 `thread_store` 和 `thread_id` 的赋值行
 - **异常排查:**
   - 若未找到: 检查 `agent_ops.rs` 中 `AgentRunConfig { ... }` 构造块是否补充了两个新字段
 
@@ -114,8 +114,8 @@
 
 - **来源:** Task 2 检查步骤 + Task 4 端到端验证
 - **操作步骤:**
-  1. [A] `cargo test -p rust-create-agent -p rust-agent-middlewares -p rust-agent-tui 2>&1 | grep -E "FAILED|test result"` → 期望: 全部输出行为 `test result: ok. N passed; 0 failed`，无任何 `FAILED` 字样
-  2. [A] `cargo test -p rust-create-agent 2>&1 | grep "test result"` → 期望: `test result: ok`，确认核心库所有原有测试（state、messages、thread 相关）无回归
+  1. [A] `cargo test -p peri-agent -p peri-middlewares -p peri-tui 2>&1 | grep -E "FAILED|test result"` → 期望: 全部输出行为 `test result: ok. N passed; 0 failed`，无任何 `FAILED` 字样
+  2. [A] `cargo test -p peri-agent 2>&1 | grep "test result"` → 期望: `test result: ok`，确认核心库所有原有测试（state、messages、thread 相关）无回归
 - **异常排查:**
   - 若 `test result: FAILED`: 运行 `cargo test -p [失败crate] 2>&1 | grep "FAILED"` 查看具体失败测试名，对应检查相关 Task
 

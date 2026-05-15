@@ -57,7 +57,7 @@
 
 ### 数据结构变更
 
-**`QuestionItem`**（`rust-create-agent/src/interaction/mod.rs`）：
+**`QuestionItem`**（`peri-agent/src/interaction/mod.rs`）：
 ```rust
 pub struct QuestionItem {
     pub id: String,
@@ -74,7 +74,7 @@ pub struct QuestionOption {
 }
 ```
 
-**`AskUserQuestionData`**（`rust-create-agent/src/ask_user/mod.rs`，TUI 桥接用）：
+**`AskUserQuestionData`**（`peri-agent/src/ask_user/mod.rs`，TUI 桥接用）：
 ```rust
 pub struct AskUserQuestionData {
     pub tool_call_id: String,
@@ -93,11 +93,11 @@ pub struct AskUserOption {
 
 ### 工具实现变更
 
-**`rust-agent-middlewares/src/ask_user/mod.rs`**：
+**`peri-middlewares/src/ask_user/mod.rs`**：
 - `ask_user_tool_definition()` 重写 Schema（见上文）
 - `parse_ask_user()` 更新：工具名检查改为 `ask_user_question`，解析 `questions` 数组，为每个 `QuestionItem` 填充 `header`
 
-**`rust-agent-middlewares/src/tools/ask_user_tool.rs`**：
+**`peri-middlewares/src/tools/ask_user_tool.rs`**：
 - `name()` 返回 `"ask_user_question"`
 - `parse_question()` 改为解析 `questions` 数组（单次调用支持多问题）
 - `invoke()` 对多问题返回可读格式：
@@ -111,7 +111,7 @@ pub struct AskUserOption {
 
 ### TUI 展示变更
 
-**`rust-agent-tui/src/ui/main_ui/popups/ask_user.rs`**：
+**`peri-tui/src/ui/main_ui/popups/ask_user.rs`**：
 
 ![TUI 弹窗展示设计](./images/01-tui-popup.png)
 
@@ -125,7 +125,7 @@ pub struct AskUserOption {
    ```
 3. **自定义输入行**：移除 `allow_custom_input` 条件，始终渲染
 
-**`rust-agent-tui/src/app/ask_user_prompt.rs`**：
+**`peri-tui/src/app/ask_user_prompt.rs`**：
 - `QuestionState::total_rows()` 始终 = 选项数 + 1（自定义输入固定存在）
 - 移除 `allow_custom_input` 字段引用，`in_custom_input` 逻辑不变
 
@@ -160,7 +160,7 @@ pub struct AskUserOption {
 
 ## 约束一致性
 
-- 遵循 Workspace 依赖方向：数据结构变更在 `rust-create-agent`，工具实现在 `rust-agent-middlewares`，展示在 `rust-agent-tui` / `rust-relay-server`
+- 遵循 Workspace 依赖方向：数据结构变更在 `peri-agent`，工具实现在 `peri-middlewares`，展示在 `peri-tui` / `rust-relay-server`
 - 使用 `thiserror` 定义库层错误，`anyhow` 传播应用层错误
 - 命名遵循 Rust 标准（`snake_case` 字段名）
 

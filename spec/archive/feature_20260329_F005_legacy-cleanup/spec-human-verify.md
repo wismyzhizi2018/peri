@@ -24,38 +24,38 @@
 #### - [x] 1.1 HitlHandler trait 定义已从核心库删除
 - **来源:** Task 1 检查步骤 / spec-design.md
 - **操作步骤:**
-  1. [A] `grep -c "trait HitlHandler" rust-create-agent/src/hitl/mod.rs` → 期望: 输出 `0`
-  2. [A] `grep -c "HitlHandler" rust-create-agent/src/hitl/mod.rs` → 期望: 输出 `0`
+  1. [A] `grep -c "trait HitlHandler" peri-agent/src/hitl/mod.rs` → 期望: 输出 `0`
+  2. [A] `grep -c "HitlHandler" peri-agent/src/hitl/mod.rs` → 期望: 输出 `0`
 - **异常排查:**
   - 如果 grep 返回 >0: 检查该行是 trait 定义还是注释/文档引用，若为 trait 定义则未完成删除
 
 #### - [x] 1.2 AskUserInvoker trait 定义已从核心库删除
 - **来源:** Task 2 检查步骤 / spec-design.md
 - **操作步骤:**
-  1. [A] `grep -c "trait AskUserInvoker" rust-create-agent/src/ask_user/mod.rs` → 期望: 输出 `0`
-  2. [A] `grep -c "AskUserInvoker" rust-create-agent/src/ask_user/mod.rs` → 期望: 输出 `0`
+  1. [A] `grep -c "trait AskUserInvoker" peri-agent/src/ask_user/mod.rs` → 期望: 输出 `0`
+  2. [A] `grep -c "AskUserInvoker" peri-agent/src/ask_user/mod.rs` → 期望: 输出 `0`
 - **异常排查:**
   - 如果 grep 返回 >0: 确认是否为 trait 定义（需删除）或注释引用（可保留）
 
 #### - [x] 1.3 核心库 prelude 不再导出旧 trait
 - **来源:** Task 2 检查步骤 / spec-design.md
 - **操作步骤:**
-  1. [A] `grep -c "HitlHandler\|AskUserInvoker" rust-create-agent/src/lib.rs` → 期望: 输出 `0`
+  1. [A] `grep -c "HitlHandler\|AskUserInvoker" peri-agent/src/lib.rs` → 期望: 输出 `0`
 - **异常排查:**
   - 如果返回 >0: 检查 prelude `pub use` 语句中是否残留旧 trait 名称
 
 #### - [x] 1.4 middlewares 不再重导出旧 trait
 - **来源:** Task 3 检查步骤 / spec-design.md
 - **操作步骤:**
-  1. [A] `grep -rn "HitlHandler\|AskUserInvoker\|AskUserHandler" --include="*.rs" rust-agent-middlewares/src/` → 期望: 返回 0 结果（空输出）
+  1. [A] `grep -rn "HitlHandler\|AskUserInvoker\|AskUserHandler" --include="*.rs" peri-middlewares/src/` → 期望: 返回 0 结果（空输出）
 - **异常排查:**
   - 如果有输出: 检查对应文件和行号，确认是重导出（需删除）还是注释引用
 
 #### - [x] 1.5 async_trait 导入已清理（核心库模块无残留消费者）
 - **来源:** Task 1 & Task 2 执行步骤
 - **操作步骤:**
-  1. [A] `grep -c "use async_trait" rust-create-agent/src/hitl/mod.rs` → 期望: 输出 `0`
-  2. [A] `grep -c "use async_trait" rust-create-agent/src/ask_user/mod.rs` → 期望: 输出 `0`
+  1. [A] `grep -c "use async_trait" peri-agent/src/hitl/mod.rs` → 期望: 输出 `0`
+  2. [A] `grep -c "use async_trait" peri-agent/src/ask_user/mod.rs` → 期望: 输出 `0`
 - **异常排查:**
   - 如果 >0: 该模块中可能还有其他 async_trait 消费者，检查后决定是否可安全删除
 
@@ -64,25 +64,25 @@
 #### - [x] 2.1 HitlDecision 和 BatchItem 在核心库中保留
 - **来源:** Task 1 检查步骤 / spec-design.md 保留类型清单
 - **操作步骤:**
-  1. [A] `grep -c "HitlDecision\|BatchItem" rust-create-agent/src/hitl/mod.rs` → 期望: 输出 >= `2`（两者各有定义行）
-  2. [A] `grep -c "HitlDecision\|BatchItem" rust-create-agent/src/lib.rs` → 期望: 输出 >= `1`（prelude 重导出）
+  1. [A] `grep -c "HitlDecision\|BatchItem" peri-agent/src/hitl/mod.rs` → 期望: 输出 >= `2`（两者各有定义行）
+  2. [A] `grep -c "HitlDecision\|BatchItem" peri-agent/src/lib.rs` → 期望: 输出 >= `1`（prelude 重导出）
 - **异常排查:**
   - 如果 =0: 数据类型被误删，需恢复
 
 #### - [x] 2.2 AskUser 数据类型在核心库中保留
 - **来源:** Task 2 检查步骤 / spec-design.md 保留类型清单
 - **操作步骤:**
-  1. [A] `grep -c "AskUserOption\|AskUserQuestionData\|AskUserBatchRequest" rust-create-agent/src/ask_user/mod.rs` → 期望: 输出 >= `3`（每个类型各有定义）
-  2. [A] `grep -c "AskUserOption\|AskUserQuestionData\|AskUserBatchRequest" rust-create-agent/src/lib.rs` → 期望: 输出 >= `1`（prelude 重导出）
+  1. [A] `grep -c "AskUserOption\|AskUserQuestionData\|AskUserBatchRequest" peri-agent/src/ask_user/mod.rs` → 期望: 输出 >= `3`（每个类型各有定义）
+  2. [A] `grep -c "AskUserOption\|AskUserQuestionData\|AskUserBatchRequest" peri-agent/src/lib.rs` → 期望: 输出 >= `1`（prelude 重导出）
 - **异常排查:**
   - 如果 =0: 数据类型被误删，需恢复
 
 #### - [x] 2.3 数据类型在 middlewares 中正确重导出（无 deprecated 标记）
 - **来源:** Task 3 执行步骤 / spec-design.md
 - **操作步骤:**
-  1. [A] `grep "pub use.*BatchItem\|pub use.*HitlDecision" rust-agent-middlewares/src/hitl/mod.rs` → 期望: 输出包含两个类型，且行首无 `#[allow(deprecated)]`
-  2. [A] `grep "pub use.*AskUser" rust-agent-middlewares/src/ask_user/mod.rs` → 期望: 包含 `AskUserBatchRequest, AskUserOption, AskUserQuestionData`，不包含 `AskUserInvoker`
-  3. [A] `grep -c "deprecated" rust-agent-middlewares/src/hitl/mod.rs` → 期望: 输出 `0`
+  1. [A] `grep "pub use.*BatchItem\|pub use.*HitlDecision" peri-middlewares/src/hitl/mod.rs` → 期望: 输出包含两个类型，且行首无 `#[allow(deprecated)]`
+  2. [A] `grep "pub use.*AskUser" peri-middlewares/src/ask_user/mod.rs` → 期望: 包含 `AskUserBatchRequest, AskUserOption, AskUserQuestionData`，不包含 `AskUserInvoker`
+  3. [A] `grep -c "deprecated" peri-middlewares/src/hitl/mod.rs` → 期望: 输出 `0`
 - **异常排查:**
   - 如果仍有 deprecated 标记: 删除对应的 `#[allow(deprecated)]` 行
 

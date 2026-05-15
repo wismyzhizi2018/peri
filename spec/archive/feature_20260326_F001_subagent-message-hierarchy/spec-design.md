@@ -15,13 +15,13 @@
 
 ### 整体策略
 
-采用纯 TUI 层感知方案（方案 A）：利用现有 `ExecutorEvent::ToolStart/ToolEnd { name: "launch_agent" }` 事件作为子 Agent 生命周期的边界信号，无需修改 `rust-create-agent` 或 `rust-agent-middlewares`。所有变更限于 `rust-agent-tui` crate。
+采用纯 TUI 层感知方案（方案 A）：利用现有 `ExecutorEvent::ToolStart/ToolEnd { name: "launch_agent" }` 事件作为子 Agent 生命周期的边界信号，无需修改 `peri-agent` 或 `peri-middlewares`。所有变更限于 `peri-tui` crate。
 
 ![事件流数据流图](./images/01-flow.png)
 
 ### 新增 TUI 事件变体
 
-在 `rust-agent-tui/src/app/events.rs` 中新增两个事件变体：
+在 `peri-tui/src/app/events.rs` 中新增两个事件变体：
 
 ```rust
 pub enum AgentEvent {
@@ -43,7 +43,7 @@ pub enum AgentEvent {
 
 ### 新增 ViewModel 变体
 
-在 `rust-agent-tui/src/ui/message_view.rs` 中新增 `SubAgentGroup` 变体：
+在 `peri-tui/src/ui/message_view.rs` 中新增 `SubAgentGroup` 变体：
 
 ```rust
 pub enum MessageViewModel {
@@ -163,7 +163,7 @@ pub enum RenderEvent {
 
 - **事件驱动 TUI 通信**（architecture.md 架构决策）：本方案完全遵守 mpsc channel + oneshot 通信模式，SubAgentGroup 通过 `RenderEvent::UpdateLastMessage` 驱动渲染，不引入共享可变状态
 - **消息不可变历史**（architecture.md）：SubAgent 内部消息不写入父 Agent 的 `AgentState`，不影响 LLM 上下文
-- **Workspace 分层**（constraints.md）：所有变更限于 `rust-agent-tui`，不依赖下层 crate 的上层模块
+- **Workspace 分层**（constraints.md）：所有变更限于 `peri-tui`，不依赖下层 crate 的上层模块
 - **Middleware Chain 模式**：无需修改 SubAgentMiddleware 或其他中间件
 
 ## 验收标准

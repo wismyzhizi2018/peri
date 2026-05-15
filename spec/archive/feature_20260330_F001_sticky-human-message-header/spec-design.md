@@ -107,7 +107,7 @@ fn render_messages(f: &mut Frame, app: &mut App, header_area: Rect, messages_are
 
 ## 约束一致性
 
-- **无新增 crate 依赖**：仅修改 `rust-agent-tui` 内部模块
+- **无新增 crate 依赖**：仅修改 `peri-tui` 内部模块
 - **不破坏现有 Layout**：Layout 约束变更完全向后兼容（`Min(1)` 保证消息区永不消失）
 - **渲染线程零侵入**：header 走主线程渲染，不影响现有 `render_thread.rs` 逻辑
 - **持久化无关**：header 显示状态不写入 SQLite，仅运行时内存状态

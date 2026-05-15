@@ -30,6 +30,6 @@
 
 ## 相关代码
 
-- `rust-agent-tui/src/ui/main_ui/status_bar.rs:104` —— 状态栏调用 `last_cache_hit_rate()`
-- `rust-create-agent/src/agent/token.rs:70-78` —— `last_cache_hit_rate()` 实现（基于 last_usage）
-- `rust-create-agent/src/agent/token.rs:57-65` —— `cache_hit_rate()` 实现（基于累计值）
+- `peri-tui/src/ui/main_ui/status_bar.rs:104` —— 状态栏调用 `last_cache_hit_rate()`
+- `peri-agent/src/agent/token.rs:70-78` —— `last_cache_hit_rate()` 实现（基于 last_usage）
+- `peri-agent/src/agent/token.rs:57-65` —— `cache_hit_rate()` 实现（基于累计值）

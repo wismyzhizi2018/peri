@@ -1,6 +1,6 @@
 # Remote Control Panel 执行计划
 
-**目标:** 为 `rust-agent-tui` 添加 TUI 内的远程控制配置界面，支持配置 URL/Token/Name 并持久化到 `settings.json`，同时支持 `--remote-control` 无参数启动自动读取配置。
+**目标:** 为 `peri-tui` 添加 TUI 内的远程控制配置界面，支持配置 URL/Token/Name 并持久化到 `settings.json`，同时支持 `--remote-control` 无参数启动自动读取配置。
 
 **技术栈:** Rust, ratatui, serde, tokio
 
@@ -12,7 +12,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/config/types.rs`
+- 修改: `peri-tui/src/config/types.rs`
 
 **执行步骤:**
 
@@ -30,10 +30,10 @@
 **检查步骤:**
 
 - [x] 验证 `RemoteControlConfig` 编译通过
-  - `cargo check -p rust-agent-tui 2>&1 | head -20`
+  - `cargo check -p peri-tui 2>&1 | head -20`
   - 预期: 无编译错误
 - [x] 运行新增单元测试
-  - `cargo test -p rust-agent-tui --lib -- config::types::tests 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- config::types::tests 2>&1 | tail -10`
   - 预期: 所有测试通过（31 passed）
 
 ---
@@ -42,8 +42,8 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/app/relay_panel.rs`
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 新建: `peri-tui/src/app/relay_panel.rs`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
 
@@ -64,10 +64,10 @@
 **检查步骤:**
 
 - [x] 验证编译通过
-  - `cargo check -p rust-agent-tui 2>&1 | head -20`
+  - `cargo check -p peri-tui 2>&1 | head -20`
   - 预期: 无编译错误
 - [x] 验证 `RelayPanel` 可从配置加载
-  - `cargo test -p rust-agent-tui --lib -- relay_panel 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- relay_panel 2>&1 | tail -10`
   - 预期: 测试通过（10 passed）
 
 ---
@@ -76,8 +76,8 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/command/relay.rs`
-- 修改: `rust-agent-tui/src/command/mod.rs`
+- 新建: `peri-tui/src/command/relay.rs`
+- 修改: `peri-tui/src/command/mod.rs`
 
 **执行步骤:**
 
@@ -91,7 +91,7 @@
 **检查步骤:**
 
 - [ ] 验证命令注册成功
-  - `cargo run -p rust-agent-tui -- --help 2>&1 || true`
+  - `cargo run -p peri-tui -- --help 2>&1 || true`
   - 预期: 编译通过（TUI 无 --help，但编译成功）
 - [ ] 验证 `/help` 包含 `/relay`
   - 需运行 TUI 后手动检查，或通过 headless 测试验证
@@ -102,7 +102,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/main.rs`
+- 修改: `peri-tui/src/main.rs`
 
 **执行步骤:**
 
@@ -116,7 +116,7 @@
 **检查步骤:**
 
 - [x] 验证参数解析逻辑
-  - `cargo test -p rust-agent-tui --lib -- parse_relay_args 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- parse_relay_args 2>&1 | tail -10`
   - 预期: 测试通过（5 passed）
 
 ---
@@ -125,7 +125,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/mod.rs` (`try_connect_relay`)
+- 修改: `peri-tui/src/app/mod.rs` (`try_connect_relay`)
 
 **执行步骤:**
 
@@ -140,10 +140,10 @@
 **检查步骤:**
 
 - [x] 验证编译通过
-  - `cargo check -p rust-agent-tui 2>&1 | head -20`
+  - `cargo check -p peri-tui 2>&1 | head -20`
   - 预期: 无编译错误
 - [x] 运行单元测试
-  - `cargo test -p rust-agent-tui --lib -- try_connect_relay 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- try_connect_relay 2>&1 | tail -10`
   - 预期: 测试通过（集成测试覆盖）
 
 ---
@@ -152,8 +152,8 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
-- 修改: `rust-agent-tui/src/ui/panels/mod.rs`（或新建 `rust-agent-tui/src/ui/panels/relay.rs`）
+- 修改: `peri-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/ui/panels/mod.rs`（或新建 `peri-tui/src/ui/panels/relay.rs`）
 
 **执行步骤:**
 
@@ -167,10 +167,10 @@
 **检查步骤:**
 
 - [x] 验证编译通过
-  - `cargo check -p rust-agent-tui 2>&1 | head -20`
+  - `cargo check -p peri-tui 2>&1 | head -20`
   - 预期: 无编译错误
 - [x] 启动 TUI 并打开 `/relay` 面板
-  - `cargo run -p rust-agent-tui 2>&1 &`
+  - `cargo run -p peri-tui 2>&1 &`
   - 预期: 面板正常渲染，无 panic
 
 ---
@@ -179,8 +179,8 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/event.rs`
-- 修改: `rust-agent-tui/src/app/panel_ops.rs`（或 `rust-agent-tui/src/app/relay_ops.rs`）
+- 修改: `peri-tui/src/event.rs`
+- 修改: `peri-tui/src/app/panel_ops.rs`（或 `peri-tui/src/app/relay_ops.rs`）
 
 **执行步骤:**
 
@@ -195,7 +195,7 @@
 **检查步骤:**
 
 - [x] 验证编译通过
-  - `cargo check -p rust-agent-tui 2>&1 | head -20`
+  - `cargo check -p peri-tui 2>&1 | head -20`
   - 预期: 无编译错误
 - [x] 手动测试键盘交互
   - 启动 TUI → `/relay` → `e` → 输入 → `Enter` → 重启 TUI → `/relay`
@@ -207,14 +207,14 @@
 
 **Prerequisites:**
 
-- Start command: `cargo run -p rust-agent-tui`
+- Start command: `cargo run -p peri-tui`
 - Test data setup: 无需特殊数据
 - 清理测试配置：`rm -f ~/.peri/settings.json`（可选）
 
 **End-to-end verification:**
 
 1. **场景 1：首次配置流程**
-   - `cargo run -p rust-agent-tui &`
+   - `cargo run -p peri-tui &`
    - 输入 `/relay` → 面板显示"无配置"
    - 按 `e` 进入编辑 → 按 `Tab` 切换字段 → 输入 URL/Token/Name
    - 按 `Enter` 保存
@@ -224,24 +224,24 @@
 
 2. **场景 2：无参数启动自动连接**
    - 已配置 `remote_control.url` 后
-   - `cargo run -p rust-agent-tui -- --remote-control 2>&1 | head -5`
+   - `cargo run -p peri-tui -- --remote-control 2>&1 | head -5`
    - Expected: TUI 消息区显示 "Relay connected (session: xxx)"
    - On failure: check Task 4 (CLI 参数), Task 5 (配置读取)
 
 3. **场景 3：CLI 参数覆盖**
-   - `cargo run -p rust-agent-tui -- --remote-control ws://temp:8080 --relay-token temp123 2>&1 | head -5`
+   - `cargo run -p peri-tui -- --remote-control ws://temp:8080 --relay-token temp123 2>&1 | head -5`
    - Expected: 连接到临时服务器，不修改配置文件
    - On failure: check Task 5 (优先级逻辑)
 
 4. **场景 4：配置不完整提示**
    - 删除 `~/.peri/settings.json` 中的 `remote_control.url`
-   - `cargo run -p rust-agent-tui -- --remote-control 2>&1 | head -5`
+   - `cargo run -p peri-tui -- --remote-control 2>&1 | head -5`
    - Expected: TUI 消息区显示 "未配置远程控制，请使用 /relay 命令配置"
    - On failure: check Task 5 (错误处理)
 
 5. **场景 5：向后兼容旧 extra 字段**
    - 手动写入 `extra.relay_url` 到 settings.json（无 `remote_control` 字段）
-   - `cargo run -p rust-agent-tui -- --remote-control 2>&1 | head -5`
+   - `cargo run -p peri-tui -- --remote-control 2>&1 | head -5`
    - Expected: 成功连接，使用 `extra` 字段配置
    - On failure: check Task 5 (fallback 逻辑)
 

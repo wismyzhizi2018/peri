@@ -82,5 +82,5 @@ msg["reasoning"] = rv;
 
 ## 相关代码
 
-- `rust-create-agent/src/llm/openai.rs` — LLM 响应解析（`parse_assistant_message`）+ 序列化回传（`messages_to_json`）+ invariant check
-- `rust-create-agent/src/messages/adapters/openai.rs` — 持久化层序列化/反序列化（`from_base_messages` / `to_base_message`）
+- `peri-agent/src/llm/openai.rs` — LLM 响应解析（`parse_assistant_message`）+ 序列化回传（`messages_to_json`）+ invariant check
+- `peri-agent/src/messages/adapters/openai.rs` — 持久化层序列化/反序列化（`from_base_messages` / `to_base_message`）

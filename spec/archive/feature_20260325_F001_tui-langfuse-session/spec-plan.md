@@ -11,7 +11,7 @@
 ### Task 1: LangfuseSession 结构 + LangfuseTracer 重构
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/langfuse/mod.rs`
+- 修改: `peri-tui/src/langfuse/mod.rs`
 
 **执行步骤:**
 
@@ -39,19 +39,19 @@
 **检查步骤:**
 
 - [x] 验证 `langfuse/mod.rs` 单独编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "error\[|^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "error\[|^error"`
   - 预期: 无 error 输出（仅此文件改动时可能有 app/mod.rs 编译错误，Task 2 完成后整体通过）
 
 - [x] 验证 `LangfuseSession::new` 签名存在
-  - `grep -n "async fn new" rust-agent-tui/src/langfuse/mod.rs`
+  - `grep -n "async fn new" peri-tui/src/langfuse/mod.rs`
   - 预期: 输出包含 `async fn new(config: LangfuseConfig, session_id: String)`
 
 - [x] 验证 `LangfuseTracer` 不再持有 `client`/`batcher` 字段
-  - `grep -n "client:\|batcher:" rust-agent-tui/src/langfuse/mod.rs | grep -v "session\."`
+  - `grep -n "client:\|batcher:" peri-tui/src/langfuse/mod.rs | grep -v "session\."`
   - 预期: 仅在 `LangfuseSession` 结构体定义行出现，不在 `LangfuseTracer` 字段中出现
 
 - [x] 验证 `on_trace_start` 签名不含 `thread_id` 参数
-  - `grep -n "fn on_trace_start" rust-agent-tui/src/langfuse/mod.rs`
+  - `grep -n "fn on_trace_start" peri-tui/src/langfuse/mod.rs`
   - 预期: 输出为 `pub fn on_trace_start(&mut self, input: &str)`
 
 ---
@@ -59,7 +59,7 @@
 ### Task 2: App Session 生命周期管理
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
 
@@ -88,27 +88,27 @@
 **检查步骤:**
 
 - [x] 验证整体编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无 error 输出
 
 - [x] 验证 clippy 无新增 warning
-  - `cargo clippy -p rust-agent-tui 2>&1 | grep -E "^warning|^error" | grep -v "Checking\|Compiling\|Finished"`
+  - `cargo clippy -p peri-tui 2>&1 | grep -E "^warning|^error" | grep -v "Checking\|Compiling\|Finished"`
   - 预期: 输出为空（或只含已有 warning，无新增）
 
 - [x] 验证 `App` 结构体含 `langfuse_session` 字段
-  - `grep -n "langfuse_session" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "langfuse_session" peri-tui/src/app/mod.rs`
   - 预期: 至少 5 行（字段声明 + new 初始化 + new_headless 初始化 + new_thread + open_thread + submit_message 懒加载）
 
 - [x] 验证 `new_thread` 包含重置
-  - `grep -A5 "fn new_thread" rust-agent-tui/src/app/mod.rs | grep langfuse_session`
+  - `grep -A5 "fn new_thread" peri-tui/src/app/mod.rs | grep langfuse_session`
   - 预期: 输出 `self.langfuse_session = None;`
 
 - [x] 验证 `open_thread` 包含重置
-  - `grep -B2 -A30 "fn open_thread\b" rust-agent-tui/src/app/mod.rs | grep langfuse_session`
+  - `grep -B2 -A30 "fn open_thread\b" peri-tui/src/app/mod.rs | grep langfuse_session`
   - 预期: 输出 `self.langfuse_session = None;`
 
 - [x] 验证 `on_trace_start` 调用不含 `thread_id` 参数
-  - `grep -n "on_trace_start" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "on_trace_start" peri-tui/src/app/mod.rs`
   - 预期: 调用形式为 `on_trace_start(input.trim())`，不含第二个参数
 
 ---
@@ -116,22 +116,22 @@
 ### Task 3: Langfuse Session 验收
 
 **前置条件:**
-- 编译命令: `cargo build -p rust-agent-tui`
-- 测试运行命令: `cargo test -p rust-agent-tui`
+- 编译命令: `cargo build -p peri-tui`
+- 测试运行命令: `cargo test -p peri-tui`
 - 可选 Langfuse 环境（仅用于端到端验证）: 配置 `LANGFUSE_PUBLIC_KEY`、`LANGFUSE_SECRET_KEY`
 
 **端到端验证:**
 
 1. ~~**编译无错误**~~
-   - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+   - `cargo build -p peri-tui 2>&1 | tail -3`
    - 结果: `Finished` ✅
 
 2. ~~**所有现有测试通过**~~
-   - `cargo test -p rust-agent-tui 2>&1 | tail -10`
+   - `cargo test -p peri-tui 2>&1 | tail -10`
    - 结果: `test result: ok. 54 passed; 0 failed` ✅
 
 3. ~~**未配置 Langfuse 时无 panic**~~
-   - `LANGFUSE_PUBLIC_KEY="" LANGFUSE_SECRET_KEY="" cargo test -p rust-agent-tui 2>&1 | grep -E "panic|FAILED"`
+   - `LANGFUSE_PUBLIC_KEY="" LANGFUSE_SECRET_KEY="" cargo test -p peri-tui 2>&1 | grep -E "panic|FAILED"`
    - 结果: 无 panic，无 FAILED ✅
 
 4. ~~**验证 `LangfuseSession` 的 `new` 为 async 且接收 session_id**~~

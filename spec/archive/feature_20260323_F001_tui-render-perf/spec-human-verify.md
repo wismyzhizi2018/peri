@@ -12,7 +12,7 @@
 
 - [ ] [AUTO] 检查 Rust 工具链可用: `rustc --version`
 - [ ] [AUTO] 检查 Cargo 可用: `cargo --version`
-- [ ] [AUTO] 编译 rust-agent-tui: `cargo build -p rust-agent-tui 2>&1 | tail -3`
+- [ ] [AUTO] 编译 peri-tui: `cargo build -p peri-tui 2>&1 | tail -3`
 - [ ] [AUTO] 检查 ANTHROPIC_API_KEY 或 OPENAI_API_KEY 已设置（至少一个）: `env | grep -E "ANTHROPIC_API_KEY|OPENAI_API_KEY" | wc -l`
 
 ### 测试数据准备
@@ -32,20 +32,20 @@
 
 - **来源:** Task 1/2 检查步骤
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"` → 期望: 无任何输出（无 error）
-  2. [A] `cargo test -p rust-agent-tui --bin agent-tui -- render_thread 2>&1 | tail -5` → 期望: 输出包含 "2 passed"，"0 failed"
-  3. [A] `cargo build -p rust-agent-tui 2>&1 | grep "Finished"` → 期望: 输出包含 "Finished"
+  1. [A] `cargo build -p peri-tui 2>&1 | grep -E "^error"` → 期望: 无任何输出（无 error）
+  2. [A] `cargo test -p peri-tui --bin agent-tui -- render_thread 2>&1 | tail -5` → 期望: 输出包含 "2 passed"，"0 failed"
+  3. [A] `cargo build -p peri-tui 2>&1 | grep "Finished"` → 期望: 输出包含 "Finished"
 - **异常排查:**
-  - 如果编译失败: 检查 `rust-agent-tui/src/ui/render_thread.rs` 是否存在，`parking_lot = "0.12"` 是否已添加到 Cargo.toml
+  - 如果编译失败: 检查 `peri-tui/src/ui/render_thread.rs` 是否存在，`parking_lot = "0.12"` 是否已添加到 Cargo.toml
   - 如果测试失败: 检查 `spawn_render_thread` 内部的 tokio::spawn 是否在 tokio runtime 中执行
 
 #### - [x] 1.2 渲染线程架构代码结构正确
 
 - **来源:** Task 3/4 检查步骤
 - **操作步骤:**
-  1. [A] `grep -c "app.view_messages" rust-agent-tui/src/ui/main_ui.rs` → 期望: 输出 `0`（render_messages 不再直接遍历 view_messages）
-  2. [A] `grep -c "last_render_version\|cache_updated\|agent_updated" rust-agent-tui/src/main.rs` → 期望: 输出 `3` 或以上（按需重绘逻辑已就位）
-  3. [A] `grep -n "render_tx" rust-agent-tui/src/app/mod.rs | wc -l` → 期望: 输出 `6` 或以上（消息路径均已发送 RenderEvent）
+  1. [A] `grep -c "app.view_messages" peri-tui/src/ui/main_ui.rs` → 期望: 输出 `0`（render_messages 不再直接遍历 view_messages）
+  2. [A] `grep -c "last_render_version\|cache_updated\|agent_updated" peri-tui/src/main.rs` → 期望: 输出 `3` 或以上（按需重绘逻辑已就位）
+  3. [A] `grep -n "render_tx" peri-tui/src/app/mod.rs | wc -l` → 期望: 输出 `6` 或以上（消息路径均已发送 RenderEvent）
 - **异常排查:**
   - 如果 app.view_messages 仍在 main_ui.rs 中: render_messages() 改造未完成，检查 Task 4
   - 如果 render_tx 引用数量不足: poll_agent() 中某些事件分支缺少 RenderEvent 发送，检查 Task 3
@@ -60,11 +60,11 @@
 
 - **来源:** Task 5 端到端验收 #1（基础部分）
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"` → 期望: 无输出（编译成功）
-  2. [H] 运行 `cargo run -p rust-agent-tui`，观察 TUI 是否正常启动，显示标题栏"🦀 Rust Agent TUI"、输入框和状态栏 → 是/否
+  1. [A] `cargo build -p peri-tui 2>&1 | grep -E "^error"` → 期望: 无输出（编译成功）
+  2. [H] 运行 `cargo run -p peri-tui`，观察 TUI 是否正常启动，显示标题栏"🦀 Rust Agent TUI"、输入框和状态栏 → 是/否
   3. [H] 观察初始系统消息是否正确显示（"Rust Agent TUI 已启动 | ... | 工作目录: ..."），无乱码、无错位 → 是/否
 - **异常排查:**
-  - 如果启动崩溃: 运行 `RUST_LOG=debug cargo run -p rust-agent-tui 2>&1 | head -30` 查看 panic 信息
+  - 如果启动崩溃: 运行 `RUST_LOG=debug cargo run -p peri-tui 2>&1 | head -30` 查看 panic 信息
   - 如果界面空白: 检查 `App::new()` 中 `spawn_render_thread` 和初始消息发送是否正常执行
 
 #### - [x] 2.2 流式输出逐字渲染正常

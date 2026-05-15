@@ -11,7 +11,7 @@
 ### Task 1: 扩展 imports 和 LangfuseTracer 结构体
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/langfuse/mod.rs`
+- 修改: `peri-tui/src/langfuse/mod.rs`
 
 **执行步骤:**
 - [x] 扩展 `langfuse_client_base::models` 的 import，新增所需类型
@@ -34,7 +34,7 @@
 
 **检查步骤:**
 - [x] 新字段和 import 不引起编译错误
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error" | head -5`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error" | head -5`
   - 预期: 无输出（若只剩后续 task 的 unused import 警告可忽略）
 
 ---
@@ -42,7 +42,7 @@
 ### Task 2: Agent Observation 生命周期（on_trace_start / on_trace_end）
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/langfuse/mod.rs`
+- 修改: `peri-tui/src/langfuse/mod.rs`
 
 **执行步骤:**
 - [x] 修改 `on_trace_start`：在 tokio::spawn 内，trace 创建之后额外创建 Agent Observation
@@ -100,7 +100,7 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep "^error" | head -5`
+  - `cargo build -p peri-tui 2>&1 | grep "^error" | head -5`
   - 预期: 无输出
 
 ---
@@ -108,7 +108,7 @@
 ### Task 3: Generation 命名修正（on_llm_end）
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/langfuse/mod.rs`
+- 修改: `peri-tui/src/langfuse/mod.rs`
 
 **执行步骤:**
 - [x] 修改 `on_llm_end` 函数签名，在 `model: &str` 后添加 `provider: &str` 参数
@@ -139,17 +139,17 @@
 
 **检查步骤:**
 - [x] 编译时确认 on_llm_end 签名变更
-  - `cargo build -p rust-agent-tui 2>&1 | grep "on_llm_end" | head -5`
+  - `cargo build -p peri-tui 2>&1 | grep "on_llm_end" | head -5`
   - 预期: 有 "expected 6 arguments" 的调用方报错（说明签名已更新，等 Task 5 修复调用方）
 - [x] 若先注释掉 app/agent.rs 的调用编译应通过
-  - 预期: `cargo build -p rust-agent-tui 2>&1 | grep "^error"` 无输出
+  - 预期: `cargo build -p peri-tui 2>&1 | grep "^error"` 无输出
 
 ---
 
 ### Task 4: Tool Observation 类型修正（on_tool_start / on_tool_end_by_name_order）
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/langfuse/mod.rs`
+- 修改: `peri-tui/src/langfuse/mod.rs`
 
 **执行步骤:**
 - [x] 重写 `on_tool_start`：删除 `Arc::clone(&self.session.client)` 行，改为 Batcher + ObservationCreate
@@ -219,7 +219,7 @@
 
 **检查步骤:**
 - [x] 编译通过（Task 4 完成后除 on_llm_end 调用方外应无错误）
-  - `cargo build -p rust-agent-tui 2>&1 | grep "^error" | grep -v "on_llm_end" | head -5`
+  - `cargo build -p peri-tui 2>&1 | grep "^error" | grep -v "on_llm_end" | head -5`
   - 预期: 无输出
 
 ---
@@ -227,7 +227,7 @@
 ### Task 5: app/agent.rs 传入 provider_name
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/agent.rs`
 
 **执行步骤:**
 - [x] 在 `provider.into_model()` 调用前提取 provider 名称
@@ -248,10 +248,10 @@
 
 **检查步骤:**
 - [x] 全量编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep "^error" | head -5`
+  - `cargo build -p peri-tui 2>&1 | grep "^error" | head -5`
   - 预期: 无输出
 - [x] 全量测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo test -p peri-tui 2>&1 | tail -5`
   - 预期: 输出包含 "test result: ok"
 
 ---
@@ -259,38 +259,38 @@
 ### Task 6: langfuse-observation-types Acceptance
 
 **Prerequisites:**
-- 编译: `cargo build -p rust-agent-tui`
-- 测试: `cargo test -p rust-agent-tui`
+- 编译: `cargo build -p peri-tui`
+- 测试: `cargo test -p peri-tui`
 - （可选）Langfuse 服务运行 + TUI 已配置 `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY`
 
 **End-to-end verification:**
 
 1. [x] 全量编译通过
-   - `cargo build -p rust-agent-tui 2>&1 | grep "^error" | wc -l`
+   - `cargo build -p peri-tui 2>&1 | grep "^error" | wc -l`
    - Expected: `0`
    - On failure: 检查 Task 1~5 的 import 和类型使用
 
 2. [x] 单元测试全部通过
-   - `cargo test -p rust-agent-tui 2>&1 | grep -E "^test result"`
+   - `cargo test -p peri-tui 2>&1 | grep -E "^test result"`
    - Expected: `test result: ok`
    - On failure: 检查 Task 3（on_llm_end 签名变更是否同步更新了调用方）
 
 3. [x] Generation name 字段验证（代码级静态检查）
-   - `grep -n "Chat{}" rust-agent-tui/src/langfuse/mod.rs`
+   - `grep -n "Chat{}" peri-tui/src/langfuse/mod.rs`
    - Expected: 至少 1 行包含 `format!("Chat{}", provider_name)` 的代码
    - On failure: 检查 Task 3 的 name 赋值逻辑
 
 4. [x] Agent Observation 创建验证（代码级静态检查）
-   - `grep -n "ObservationType::Agent" rust-agent-tui/src/langfuse/mod.rs`
+   - `grep -n "ObservationType::Agent" peri-tui/src/langfuse/mod.rs`
    - Expected: 至少 1 行（在 on_trace_start 内）
    - On failure: 检查 Task 2 的 Agent Observation 创建逻辑
 
 5. [x] Tool Observation 类型验证（代码级静态检查）
-   - `grep -n "ObservationType::Tool" rust-agent-tui/src/langfuse/mod.rs`
+   - `grep -n "ObservationType::Tool" peri-tui/src/langfuse/mod.rs`
    - Expected: 至少 1 行（在 on_tool_start 内）
    - On failure: 检查 Task 4 的工具观测类型
 
 6. [x] parent_observation_id 传递验证（代码级静态检查）
-   - `grep -n "parent_observation_id" rust-agent-tui/src/langfuse/mod.rs | wc -l`
+   - `grep -n "parent_observation_id" peri-tui/src/langfuse/mod.rs | wc -l`
    - Expected: 至少 3 行（on_trace_start Agent 创建 + on_llm_end + on_tool_start 各 1 处）
    - On failure: 检查 Task 2~4 中 parent_observation_id 字段赋值

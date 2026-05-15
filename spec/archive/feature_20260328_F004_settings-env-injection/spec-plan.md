@@ -12,7 +12,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/config/types.rs`
+- 修改: `peri-tui/src/config/types.rs`
 
 **执行步骤:**
 
@@ -31,10 +31,10 @@
 **检查步骤:**
 
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
-  - 预期: 输出无 error，显示 "Compiling rust-agent-tui" 或 "Finished"
+  - `cargo build -p peri-tui 2>&1 | tail -5`
+  - 预期: 输出无 error，显示 "Compiling peri-tui" 或 "Finished"
 - [x] 验证 serde 反序列化
-  - `cargo test -p rust-agent-tui test_app_config_env --lib 2>&1 | tail -10`
+  - `cargo test -p peri-tui test_app_config_env --lib 2>&1 | tail -10`
   - 预期: 测试通过（Task 3 添加后验证）
 
 ---
@@ -43,8 +43,8 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/main.rs`
-- 修改: `rust-agent-tui/src/config/store.rs`（可能需要导出 `config_path`）
+- 修改: `peri-tui/src/main.rs`
+- 修改: `peri-tui/src/config/store.rs`（可能需要导出 `config_path`）
 
 **执行步骤:**
 
@@ -60,10 +60,10 @@
 **检查步骤:**
 
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 无 error
 - [x] 验证 dotenvy 依赖已移除（或未被使用）
-  - `grep -n "dotenvy" rust-agent-tui/src/main.rs`
+  - `grep -n "dotenvy" peri-tui/src/main.rs`
   - 预期: 无匹配（或仅注释）
 
 ---
@@ -72,8 +72,8 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/config/types.rs`（添加测试模块）
-- 修改: `rust-agent-tui/src/main.rs`（添加测试）
+- 修改: `peri-tui/src/config/types.rs`（添加测试模块）
+- 修改: `peri-tui/src/main.rs`（添加测试）
 
 **执行步骤:**
 
@@ -88,10 +88,10 @@
 **检查步骤:**
 
 - [x] 运行 types.rs 测试
-  - `cargo test -p rust-agent-tui --lib test_app_config_env 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib test_app_config_env 2>&1 | tail -10`
   - 预期: 3 个测试通过
 - [x] 运行 main.rs 测试
-  - `cargo test -p rust-agent-tui --lib test_env_priority 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib test_env_priority 2>&1 | tail -10`
   - 预期: 测试通过
 
 ---
@@ -105,7 +105,7 @@
 **执行步骤:**
 
 - [x] 将部署方式章节中的 `.env` 文件描述替换为 `settings.json` 的 `env` 字段
-  - 原文："配置通过 `.env` 文件（`rust-agent-tui/.env`）和环境变量"
+  - 原文："配置通过 `.env` 文件（`peri-tui/.env`）和环境变量"
   - 改为："配置通过 `~/.peri/settings.json` 的 `env` 字段和环境变量"
 - [x] 更新 API Key 安全约束描述
   - 补充说明 API Key 可通过 `settings.json` 的 `env` 字段配置
@@ -126,7 +126,7 @@
 
 **Prerequisites:**
 
-- Start command: `cargo build -p rust-agent-tui --release`
+- Start command: `cargo build -p peri-tui --release`
 - Test config: 创建临时 `~/.peri/settings.json` 包含 `env` 字段
 - Environment: 清理相关环境变量（避免干扰）
 
@@ -134,24 +134,24 @@
 
 1. **env 字段注入验证** ✅
    - `cat > ~/.peri/settings.json << 'EOF'...`
-   - `TEST_ENV_VAR_123="" cargo run -p rust-agent-tui -- --help 2>&1 | head -5`
+   - `TEST_ENV_VAR_123="" cargo run -p peri-tui -- --help 2>&1 | head -5`
    - Expected: TUI 启动成功，无 panic（env 变量被注入）
    - On failure: check Task 2 [inject_env_from_settings 函数]
 
 2. **进程环境变量优先级验证** ✅
-   - `TEST_ENV_VAR_123="from_process" cargo run -p rust-agent-tui -- --help 2>&1 | head -5`
+   - `TEST_ENV_VAR_123="from_process" cargo run -p peri-tui -- --help 2>&1 | head -5`
    - Expected: TUI 启动成功，进程环境变量不被覆盖
    - On failure: check Task 2 [优先级逻辑] 或 Task 3 [test_env_priority 测试]
 
 3. **settings.json 缺失时静默跳过** ✅
    - `mv ~/.peri/settings.json ~/.peri/settings.json.bak`
-   - `cargo run -p rust-agent-tui -- --help 2>&1 | head -5`
+   - `cargo run -p peri-tui -- --help 2>&1 | head -5`
    - `mv ~/.peri/settings.json.bak ~/.peri/settings.json`
    - Expected: TUI 启动成功，无 panic
    - On failure: check Task 2 [错误处理逻辑]
 
 4. **env 字段缺失时静默跳过** ✅
    - `cat > ~/.peri/settings.json << 'EOF'...`
-   - `cargo run -p rust-agent-tui -- --help 2>&1 | head -5`
+   - `cargo run -p peri-tui -- --help 2>&1 | head -5`
    - Expected: TUI 启动成功，无 panic
    - On failure: check Task 1 [env 字段 Option 类型] 或 Task 2 [错误处理]

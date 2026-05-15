@@ -15,9 +15,9 @@
 ### Task 0: 环境准备（上）
 
 - [x] 验证 Rust 工具链可用：`rustc --version && cargo --version`
-- [x] 验证全量编译通过：`cargo build -p rust-agent-tui 2>&1 | tail -5`，预期输出包含 "Finished"
-- [x] 验证全量测试通过：`cargo test -p rust-agent-tui 2>&1 | tail -10`，预期 "test result: ok"
-- [x] 验证 clippy 无警告：`cargo clippy -p rust-agent-tui 2>&1 | grep -E "warning|error" | head -5`，预期无输出
+- [x] 验证全量编译通过：`cargo build -p peri-tui 2>&1 | tail -5`，预期输出包含 "Finished"
+- [x] 验证全量测试通过：`cargo test -p peri-tui 2>&1 | tail -10`，预期 "test result: ok"
+- [x] 验证 clippy 无警告：`cargo clippy -p peri-tui 2>&1 | grep -E "warning|error" | head -5`，预期无输出
 
 ---
 
@@ -30,13 +30,13 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/app/panel_manager.rs`
-- 新建: `rust-agent-tui/src/app/panel_component.rs`
-- 修改: `rust-agent-tui/src/app/mod.rs`（添加 module 声明 + re-export）
+- 新建: `peri-tui/src/app/panel_manager.rs`
+- 新建: `peri-tui/src/app/panel_component.rs`
+- 修改: `peri-tui/src/app/mod.rs`（添加 module 声明 + re-export）
 
 **执行步骤:**
 
-- [x] 新建 `rust-agent-tui/src/app/panel_manager.rs`，定义核心枚举和结构体
+- [x] 新建 `peri-tui/src/app/panel_manager.rs`，定义核心枚举和结构体
   - 位置: 新文件，完整内容如下
   - 在文件顶部标注 `#![allow(dead_code)]`
   - 定义 `PanelKind` 枚举（11 个变体，区分 Session/Global 作用域），附带 `priority()`、`mutex_group()`、`scope()` 方法
@@ -79,20 +79,20 @@
     use crate::config::PeriConfig;
     use crate::events::AgentEvent;
     use crate::thread::ThreadBrowser;
-    use rust_agent_middlewares::mcp::McpClientPool;
-    use rust_agent_middlewares::plugin::PluginLoadResult;
-    use rust_agent_middlewares::thread_store::ThreadStore;
+    use peri_middlewares::mcp::McpClientPool;
+    use peri_middlewares::plugin::PluginLoadResult;
+    use peri_middlewares::thread_store::ThreadStore;
     ```
 
   - 原因: 这些类型是整个面板组件化架构的类型基础，Task 2-7 将逐步为 PanelManager 填充真实行为
 
 - [x] 为 `PanelState` 实现 `Any` downcast 方法
-  - 位置: `rust-agent-tui/src/app/panel_manager.rs`，`PanelState` impl 块内
+  - 位置: `peri-tui/src/app/panel_manager.rs`，`PanelState` impl 块内
   - 添加 `fn as_any_ref(&self) -> &dyn Any` 和 `fn as_any_mut(&mut self) -> &mut dyn Any`
   - 两个方法分别对 11 个变体做 `p as &dyn Any` / `p as &mut dyn Any` 的 match
   - 原因: `PanelManager::get::<T>()` 和 `get_mut::<T>()` 在 Task 2+ 需要通过 Any trait 做 downcast 类型安全访问
 
-- [x] 新建 `rust-agent-tui/src/app/panel_component.rs`，定义 `PanelComponent` trait
+- [x] 新建 `peri-tui/src/app/panel_component.rs`，定义 `PanelComponent` trait
   - 位置: 新文件，完整内容如下
   - 在文件顶部标注 `#![allow(dead_code)]`
   - 定义 `PanelComponent` trait，supertrait 为 `Any`，包含以下方法：
@@ -128,7 +128,7 @@
 
   - 原因: `PanelComponent` 是所有面板的统一行为接口，Task 3-5 中每个面板文件将添加 `impl PanelComponent for XxxPanel`
 
-- [x] 修改 `rust-agent-tui/src/app/mod.rs`，添加模块声明和 re-export
+- [x] 修改 `peri-tui/src/app/mod.rs`，添加模块声明和 re-export
   - 位置: `mod.rs` L33（`mod panel_ops;` 之后），添加两行：
 
     ```rust
@@ -148,12 +148,12 @@
   - 原因: `panel_component` 和 `panel_manager` 需要被 event.rs、各面板文件、main_ui.rs、status_bar.rs 引用，必须 pub 声明
 
 - [x] 验证编译通过
-  - 运行: `cargo build -p rust-agent-tui 2>&1`
+  - 运行: `cargo build -p peri-tui 2>&1`
   - 预期: 编译成功，无错误。新类型标注了 `#[allow(dead_code)]`，不会有 unused 警告
   - 原因: 本 Task 目标是纯类型定义，不改变任何运行时行为
 
 - [x] 为 `PanelKind` 和 `PanelManager` 编写单元测试
-  - 测试文件: `rust-agent-tui/src/app/panel_manager.rs`（在文件底部 `#[cfg(test)] mod tests` 块中）
+  - 测试文件: `peri-tui/src/app/panel_manager.rs`（在文件底部 `#[cfg(test)] mod tests` 块中）
   - 测试场景:
     - `test_panel_kind_scope`: 验证 `PanelKind::Model.scope() == PanelScope::Session`，`PanelKind::Mcp.scope() == PanelScope::Global`
     - `test_panel_kind_priority_unique`: 收集所有 `PanelKind` 变体的 `priority()` 值，验证 11 个值互不相同且范围为 0-10
@@ -161,28 +161,28 @@
     - `test_panel_manager_new_is_empty`: `PanelManager::new().is_any_open() == false`，`active_kind() == None`
     - `test_panel_manager_open_close`: 打开一个 `PanelState::Status(StatusPanel::new())`，验证 `is_active(PanelKind::Status) == true`，关闭后 `is_any_open() == false`
     - `test_event_result_variants`: 验证 `EventResult` 的 4 个变体可以构造（`Consumed`、`NotConsumed`、`ClosePanel`、`OpenPanel(PanelKind::Model)`）
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- panel_manager::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- panel_manager::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证新文件存在且模块声明正确
-  - `grep -n "pub mod panel_component\|pub mod panel_manager" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "pub mod panel_component\|pub mod panel_manager" peri-tui/src/app/mod.rs`
   - 预期: 输出两行匹配，分别对应 L34 和 L35 附近
 - [x] 验证 PanelKind 枚举包含全部 11 个变体
-  - `grep -c "Model\|Login\|Agent\|Hooks\|Config\|ThreadBrowser\|Mcp\|Plugin\|Cron\|Status\|Memory" rust-agent-tui/src/app/panel_manager.rs | head -1`
+  - `grep -c "Model\|Login\|Agent\|Hooks\|Config\|ThreadBrowser\|Mcp\|Plugin\|Cron\|Status\|Memory" peri-tui/src/app/panel_manager.rs | head -1`
   - 预期: 匹配数 >= 11（枚举定义 + impl match 分支会重复）
 - [x] 验证 PanelState 枚举包含全部 11 个变体
-  - `grep "PanelState::" rust-agent-tui/src/app/panel_manager.rs | grep -v "//" | wc -l`
+  - `grep "PanelState::" peri-tui/src/app/panel_manager.rs | grep -v "//" | wc -l`
   - 预期: 至少 22 行（kind() 方法 11 个 + as_any_ref 11 个 + as_any_mut 11 个）
 - [x] 验证 re-export 链完整
-  - `grep "pub use panel" rust-agent-tui/src/app/mod.rs`
+  - `grep "pub use panel" peri-tui/src/app/mod.rs`
   - 预期: 输出包含 `panel_component::PanelComponent` 和 `panel_manager::{EventResult, MutexGroup, PanelContext, PanelKind, PanelManager, PanelScope, PanelState}`
 - [x] 验证全量编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 输出包含 "Finished" 且无 error
 - [x] 验证单元测试通过
-  - `cargo test -p rust-agent-tui --lib -- panel_manager::tests 2>&1 | tail -5`
+  - `cargo test -p peri-tui --lib -- panel_manager::tests 2>&1 | tail -5`
   - 预期: 输出包含 "test result: ok" 且无失败
 
 ---
@@ -196,33 +196,33 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/core.rs`（添加 `session_panels` 字段 + 初始化）
-- 修改: `rust-agent-tui/src/app/mod.rs`（添加 `global_panels` 字段 + 初始化 + `open_panel()`/`close_all_panels()` 方法）
-- 修改: `rust-agent-tui/src/app/panel_ops.rs`（9 个 `open_*`/`close_*` 方法双写 + 新增 `open_mcp_panel`/`open_cron_panel` 方法 + `new_headless` 更新）
-- 修改: `rust-agent-tui/src/app/cron_state.rs`（移除 `cron_panel` 字段）
-- 修改: `rust-agent-tui/src/app/cron_ops.rs`（改用 `global_panels.get_mut::<CronPanel>()` 访问）
-- 修改: `rust-agent-tui/src/command/mcp.rs`（改用 `open_mcp_panel()`）
-- 修改: `rust-agent-tui/src/command/cron.rs`（改用 `open_cron_panel()`）
-- 修改: `rust-agent-tui/src/app/thread_ops.rs`（改用 `open_panel()` 打开 ThreadBrowser）
-- 修改: `rust-agent-tui/src/ui/headless.rs`（`app.cron.cron_panel` 改为 `global_panels` 赋值）
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/cron.rs`（headless 测试中 `cron.cron_panel` 改为 `global_panels`）
+- 修改: `peri-tui/src/app/core.rs`（添加 `session_panels` 字段 + 初始化）
+- 修改: `peri-tui/src/app/mod.rs`（添加 `global_panels` 字段 + 初始化 + `open_panel()`/`close_all_panels()` 方法）
+- 修改: `peri-tui/src/app/panel_ops.rs`（9 个 `open_*`/`close_*` 方法双写 + 新增 `open_mcp_panel`/`open_cron_panel` 方法 + `new_headless` 更新）
+- 修改: `peri-tui/src/app/cron_state.rs`（移除 `cron_panel` 字段）
+- 修改: `peri-tui/src/app/cron_ops.rs`（改用 `global_panels.get_mut::<CronPanel>()` 访问）
+- 修改: `peri-tui/src/command/mcp.rs`（改用 `open_mcp_panel()`）
+- 修改: `peri-tui/src/command/cron.rs`（改用 `open_cron_panel()`）
+- 修改: `peri-tui/src/app/thread_ops.rs`（改用 `open_panel()` 打开 ThreadBrowser）
+- 修改: `peri-tui/src/ui/headless.rs`（`app.cron.cron_panel` 改为 `global_panels` 赋值）
+- 修改: `peri-tui/src/ui/main_ui/panels/cron.rs`（headless 测试中 `cron.cron_panel` 改为 `global_panels`）
 
 **执行步骤:**
 
 - [x] 在 `core.rs` 的 `AppCore` 中添加 `session_panels: PanelManager` 字段
-  - 位置: `rust-agent-tui/src/app/core.rs` struct 定义 L46（`model_panel` 字段之前）
+  - 位置: `peri-tui/src/app/core.rs` struct 定义 L46（`model_panel` 字段之前）
   - 在 `pub model_panel: Option<ModelPanel>` 之前插入: `pub session_panels: super::panel_manager::PanelManager,`
   - 在 `AppCore::new()` 的 `Self { ... }` 初始化块中（L98-138），在 `model_panel: None,` 之前插入: `session_panels: super::panel_manager::PanelManager::new(),`
   - 原因: `session_panels` 管理 session-scoped 面板（Model/Login/Agent/Hooks/Config/ThreadBrowser），随 session 独立生命周期
 
 - [x] 在 `mod.rs` 的 `App` 中添加 `global_panels: PanelManager` 字段
-  - 位置: `rust-agent-tui/src/app/mod.rs` struct 定义 L118（`mcp_panel` 字段之前）
+  - 位置: `peri-tui/src/app/mod.rs` struct 定义 L118（`mcp_panel` 字段之前）
   - 在 `pub mcp_panel: Option<McpPanel>,` 之前插入: `pub global_panels: super::panel_manager::PanelManager,`
   - 在 `App::new()` 的 `Self { ... }` 初始化块中（L198-228），在 `mcp_panel: None,` 之前插入: `global_panels: super::panel_manager::PanelManager::new(),`
   - 原因: `global_panels` 管理 global-scoped 面板（Mcp/Plugin/Cron/Status/Memory），跨 session 保持
 
 - [x] 在 `mod.rs` 中添加 `App::open_panel()` 方法
-  - 位置: `rust-agent-tui/src/app/mod.rs`，在 `get_current_task_duration()` 方法（L501）之后
+  - 位置: `peri-tui/src/app/mod.rs`，在 `get_current_task_duration()` 方法（L501）之后
   - 实现逻辑:
 
     ```rust
@@ -262,13 +262,13 @@
   - 原因: Ctrl+C 中断和 session 切换时需要一次性关闭所有面板
 
 - [x] 从 `CronState` 中移除 `cron_panel` 字段
-  - 位置: `rust-agent-tui/src/app/cron_state.rs` L49
+  - 位置: `peri-tui/src/app/cron_state.rs` L49
   - 将 `pub cron_panel: Option<CronPanel>,` 从 `CronState` struct 定义中删除
   - 在 `CronState::new()` 中删除 `cron_panel: None,` 初始化
   - 原因: CronPanel 迁移到 `App::global_panels` 统一管理
 
 - [x] 修改 `cron_ops.rs` 中所有 `self.cron.cron_panel` 引用，改用 `global_panels`
-  - 位置: `rust-agent-tui/src/app/cron_ops.rs` L4, L11, L18, L30, L39, L55, L65, L72
+  - 位置: `peri-tui/src/app/cron_ops.rs` L4, L11, L18, L30, L39, L55, L65, L72
   - 替换规则: `self.cron.cron_panel` 通过 `self.global_panels.get_mut::<CronPanel>()` 访问
   - `cron_panel_move_up` (L4): `if let Some(panel) = self.global_panels.get_mut::<CronPanel>() { panel.move_cursor(-1); }`
   - `cron_panel_move_down` (L11): `if let Some(panel) = self.global_panels.get_mut::<CronPanel>() { panel.move_cursor(1); }`
@@ -281,7 +281,7 @@
   - 原因: CronPanel 已从 CronState 迁移到 global_panels
 
 - [x] 新增 `open_mcp_panel()` 方法到 `panel_ops.rs`
-  - 位置: `rust-agent-tui/src/app/panel_ops.rs`，在 `close_memory_panel()` 方法（L269）之后
+  - 位置: `peri-tui/src/app/panel_ops.rs`，在 `close_memory_panel()` 方法（L269）之后
   - 实现逻辑:
 
     ```rust
@@ -334,18 +334,18 @@
   - 原因: Cron 面板原来在 `command/cron.rs` 中直接赋值 `app.cron.cron_panel`，现该字段已从 CronState 移除
 
 - [x] 修改 `command/mcp.rs` 改用 `open_mcp_panel()`
-  - 位置: `rust-agent-tui/src/command/mcp.rs` L15-35
+  - 位置: `peri-tui/src/command/mcp.rs` L15-35
   - 将 `McpCommand::execute()` 方法体替换为: `app.open_mcp_panel();`
   - 原因: 互斥逻辑统一到 `open_mcp_panel()` 内部
 
 - [x] 修改 `command/cron.rs` 改用 `open_cron_panel()`
-  - 位置: `rust-agent-tui/src/command/cron.rs` L17-38
+  - 位置: `peri-tui/src/command/cron.rs` L17-38
   - 将 `CronCommand::execute()` 方法体替换为: `app.open_cron_panel();`
   - 移除不再需要的 `use crate::app::CronPanel;` 导入
   - 原因: CronPanel 不再在 CronState 中，统一到 `open_cron_panel()`
 
 - [x] 修改 `thread_ops.rs` 的 ThreadBrowser 打开逻辑
-  - 位置: `rust-agent-tui/src/app/thread_ops.rs` L349-353
+  - 位置: `peri-tui/src/app/thread_ops.rs` L349-353
   - 将 `self.sessions[self.active].core.thread_browser = Some(ThreadBrowser::new(...))` 改为:
 
     ```rust
@@ -408,18 +408,18 @@
   - 原因: 关闭操作需同时清理 PanelManager 中的状态，保持双写一致
 
 - [x] 修改 `model_panel_confirm()` 和 `agent_panel_confirm()` 同步清理 PanelManager
-  - 位置: `rust-agent-tui/src/app/panel_ops.rs`
+  - 位置: `peri-tui/src/app/panel_ops.rs`
   - `model_panel_confirm()` L55: 在 `self.sessions[self.active].core.model_panel = None;` 之后添加 `self.sessions[self.active].core.session_panels.close_if(PanelKind::Model);`
   - `agent_panel_confirm()` L863: 在 `self.sessions[self.active].core.agent_panel = None;` 之后添加 `self.sessions[self.active].core.session_panels.close_if(PanelKind::Agent);`
   - 原因: 确认选择后关闭面板需同步清理 PanelManager
 
 - [x] 更新 `panel_ops.rs` 中 `new_headless()` 的 App 初始化
-  - 位置: `rust-agent-tui/src/app/panel_ops.rs` L993-1026（`let app = App { ... }` 块）
+  - 位置: `peri-tui/src/app/panel_ops.rs` L993-1026（`let app = App { ... }` 块）
   - 在 `mcp_panel: None,` 之前添加: `global_panels: super::panel_manager::PanelManager::new(),`
   - 原因: headless 测试的 App 构造需与生产构造保持一致（`AppCore::new()` 已包含 `session_panels` 初始化）
 
 - [x] 更新 `headless.rs` 中直接赋值 `app.cron.cron_panel` 的测试代码
-  - 位置: `rust-agent-tui/src/ui/headless.rs` L1069, L2447, L2501
+  - 位置: `peri-tui/src/ui/headless.rs` L1069, L2447, L2501
   - 将 `app.cron.cron_panel = Some(CronPanel::new(tasks))` 改为:
 
     ```rust
@@ -433,7 +433,7 @@
   - 原因: CronPanel 已从 CronState 移除到 global_panels
 
 - [x] 更新 `ui/main_ui/panels/cron.rs` 中 headless 测试的 CronPanel 赋值
-  - 位置: `rust-agent-tui/src/ui/main_ui/panels/cron.rs` L146
+  - 位置: `peri-tui/src/ui/main_ui/panels/cron.rs` L146
   - 将 `app.cron.cron_panel = Some(CronPanel::new(vec![]))` 改为:
 
     ```rust
@@ -443,40 +443,40 @@
   - 原因: 与 CronPanel 迁移保持一致
 
 - [x] 为 `open_panel()`/`close_all_panels()`/跨作用域互斥编写单元测试
-  - 测试文件: `rust-agent-tui/src/app/panel_ops.rs` 的 `#[cfg(any(test, feature = "headless"))] impl App` 块末尾
+  - 测试文件: `peri-tui/src/app/panel_ops.rs` 的 `#[cfg(any(test, feature = "headless"))] impl App` 块末尾
   - 测试场景:
     - `test_open_panel_cross_scope_mutex`: 打开 Model 面板（session）后调用 `open_panel(PanelState::Mcp(...))`，验证 `session_panels.is_any_open() == false` 且 `global_panels.is_active(PanelKind::Mcp) == true`
     - `test_open_panel_same_scope_auto_close`: 连续两次 `open_panel(PanelState::Model(...))` 和 `open_panel(PanelState::Login(...))`，验证只有最后一个面板在 `session_panels` 中
     - `test_close_all_panels`: 打开 session 和 global 面板后调用 `close_all_panels()`，验证 `session_panels.is_any_open() == false` 且 `global_panels.is_any_open() == false`
     - `test_cron_panel_in_global_panels`: 调用 `open_cron_panel()` 后，验证 `global_panels.is_active(PanelKind::Cron)` 为 true
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- test_open_panel test_close_all test_cron_panel_in_global`
+  - 运行命令: `cargo test -p peri-tui --lib -- test_open_panel test_close_all test_cron_panel_in_global`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -20`
+  - `cargo build -p peri-tui 2>&1 | tail -20`
   - 预期: 编译成功，无错误
 - [x] 验证所有现有测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | tail -30`
+  - `cargo test -p peri-tui 2>&1 | tail -30`
   - 预期: 所有测试通过，无失败
 - [x] 验证 PanelManager 字段存在于 AppCore 和 App 中
-  - `grep -n "session_panels:" rust-agent-tui/src/app/core.rs && grep -n "global_panels:" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "session_panels:" peri-tui/src/app/core.rs && grep -n "global_panels:" peri-tui/src/app/mod.rs`
   - 预期: 各输出 2 行匹配（字段声明 + 初始化）
 - [x] 验证 CronState 中不再包含 cron_panel 字段
-  - `grep -n "cron_panel" rust-agent-tui/src/app/cron_state.rs`
+  - `grep -n "cron_panel" peri-tui/src/app/cron_state.rs`
   - 预期: 无匹配（字段已移除）
 - [x] 验证 cron_ops.rs 不再引用 self.cron.cron_panel
-  - `grep -n "self.cron.cron_panel" rust-agent-tui/src/app/cron_ops.rs`
+  - `grep -n "self.cron.cron_panel" peri-tui/src/app/cron_ops.rs`
   - 预期: 无匹配
 - [x] 验证 open_panel 方法存在
-  - `grep -n "pub fn open_panel" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "pub fn open_panel" peri-tui/src/app/mod.rs`
   - 预期: 输出 1 行匹配
 - [x] 验证 headless 测试不再引用 cron.cron_panel
-  - `grep -rn "cron\.cron_panel" rust-agent-tui/src/ui/headless.rs rust-agent-tui/src/ui/main_ui/panels/cron.rs`
+  - `grep -rn "cron\.cron_panel" peri-tui/src/ui/headless.rs peri-tui/src/ui/main_ui/panels/cron.rs`
   - 预期: 无匹配
 - [x] 验证 clippy 无警告
-  - `cargo clippy -p rust-agent-tui 2>&1 | tail -10`
+  - `cargo clippy -p peri-tui 2>&1 | tail -10`
   - 预期: 无 warning 或 error
 
 ---
@@ -490,18 +490,18 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/model_panel.rs`（添加 `impl PanelComponent for ModelPanel`）
-- 修改: `rust-agent-tui/src/app/agent_panel.rs`（添加 `impl PanelComponent for AgentPanel`）
-- 修改: `rust-agent-tui/src/app/hooks_panel.rs`（添加 `impl PanelComponent for HooksPanel`）
-- 修改: `rust-agent-tui/src/app/status_panel.rs`（添加 `impl PanelComponent for StatusPanel`）
-- 修改: `rust-agent-tui/src/app/memory_panel.rs`（添加 `impl PanelComponent for MemoryPanel`）
-- 修改: `rust-agent-tui/src/event.rs`（添加 PanelManager 分发入口，5 个面板改走新路径）
-- 修改: `rust-agent-tui/src/app/panel_ops.rs`（model_panel_confirm / agent_panel_confirm 中添加 PanelManager 同步逻辑）
+- 修改: `peri-tui/src/app/model_panel.rs`（添加 `impl PanelComponent for ModelPanel`）
+- 修改: `peri-tui/src/app/agent_panel.rs`（添加 `impl PanelComponent for AgentPanel`）
+- 修改: `peri-tui/src/app/hooks_panel.rs`（添加 `impl PanelComponent for HooksPanel`）
+- 修改: `peri-tui/src/app/status_panel.rs`（添加 `impl PanelComponent for StatusPanel`）
+- 修改: `peri-tui/src/app/memory_panel.rs`（添加 `impl PanelComponent for MemoryPanel`）
+- 修改: `peri-tui/src/event.rs`（添加 PanelManager 分发入口，5 个面板改走新路径）
+- 修改: `peri-tui/src/app/panel_ops.rs`（model_panel_confirm / agent_panel_confirm 中添加 PanelManager 同步逻辑）
 
 **执行步骤:**
 
 - [x] 为 ModelPanel 实现 PanelComponent trait
-  - 位置: `rust-agent-tui/src/app/model_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
+  - 位置: `peri-tui/src/app/model_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
   - 在文件顶部添加 use 语句：
 
     ```rust
@@ -546,7 +546,7 @@
   - 原因: 消除 8 处 `unwrap()`，将面板状态操作集中到 `&mut self`，返回 `EventResult::ClosePanel` 让 PanelManager 处理关闭
 
 - [x] 为 AgentPanel 实现 PanelComponent trait
-  - 位置: `rust-agent-tui/src/app/agent_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
+  - 位置: `peri-tui/src/app/agent_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
   - 在文件顶部添加 use 语句（同 ModelPanel 模式）
   - 添加 `impl PanelComponent for AgentPanel` 块：
     - `fn kind(&self) -> PanelKind { PanelKind::Agent }`
@@ -569,7 +569,7 @@
   - 原因: 将 `agent_panel_move_up/down/confirm` 三个 App 方法内联到面板自身，消除对 `app.sessions[active].core.agent_panel.as_mut().unwrap()` 的间接访问
 
 - [x] 为 HooksPanel 实现 PanelComponent trait
-  - 位置: `rust-agent-tui/src/app/hooks_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
+  - 位置: `peri-tui/src/app/hooks_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
   - 添加 `impl PanelComponent for HooksPanel` 块：
     - `fn kind(&self) -> PanelKind { PanelKind::Hooks }`
     - `fn handle_key(&mut self, input: Input, _ctx: &mut PanelContext<'_>) -> EventResult`
@@ -586,7 +586,7 @@
   - 原因: HooksPanel 是最简单的面板之一（20 行 handler），迁移风险最低
 
 - [x] 为 StatusPanel 实现 PanelComponent trait
-  - 位置: `rust-agent-tui/src/app/status_panel.rs` 文件末尾
+  - 位置: `peri-tui/src/app/status_panel.rs` 文件末尾
   - 添加 `impl PanelComponent for StatusPanel` 块：
     - `fn kind(&self) -> PanelKind { PanelKind::Status }`
     - `fn handle_key(&mut self, input: Input, _ctx: &mut PanelContext<'_>) -> EventResult`
@@ -602,7 +602,7 @@
   - 原因: StatusPanel 只有 Tab 切换和 Esc 关闭，迁移最简单
 
 - [x] 为 MemoryPanel 实现 PanelComponent trait
-  - 位置: `rust-agent-tui/src/app/memory_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
+  - 位置: `peri-tui/src/app/memory_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
   - 添加 `impl PanelComponent for MemoryPanel` 块：
     - `fn kind(&self) -> PanelKind { PanelKind::Memory }`
     - `fn handle_key(&mut self, input: Input, ctx: &mut PanelContext<'_>) -> EventResult`
@@ -621,7 +621,7 @@
   - 原因: MemoryPanel 的 Enter 需要在调用方处理编辑器打开（涉及 TUI raw mode 切换），通过 `EventResult::OpenPanel(PanelKind::Memory)` 返回特殊标记
 
 - [x] 修改 `event.rs`，添加 PanelManager 分发入口（双写过渡）
-  - 位置: `rust-agent-tui/src/event.rs` L251-303（5 个面板的 if-else 分发区域）
+  - 位置: `peri-tui/src/event.rs` L251-303（5 个面板的 if-else 分发区域）
   - 在现有 `if app.sessions[app.active].core.agent_panel.is_some()` 之前（L251），插入 PanelManager 分发代码块：
 
     ```rust
@@ -733,7 +733,7 @@
   - 原因: 双写过渡期保证已迁移面板走 PanelManager 新路径，未迁移面板（Login/Config/ThreadBrowser/MCP/Plugin/Cron）走旧 if-else 路径
 
 - [x] 修改 `panel_ops.rs` 的 open/close 方法，同步 PanelManager（双写）
-  - 位置: `rust-agent-tui/src/app/panel_ops.rs`
+  - 位置: `peri-tui/src/app/panel_ops.rs`
   - 在 `open_model_panel` 方法（L7-15）末尾，`self.sessions[self.active].core.model_panel = Some(...)` 之后，添加：
 
     ```rust
@@ -775,31 +775,31 @@
     - `test_status_panel_handle_key_left`: 调用 `handle_key(Left)` → 预期返回 `EventResult::Consumed`，`tab` 切换
     - `test_memory_panel_handle_key_enter`: 调用 `handle_key(Enter)` → 预期返回 `EventResult::OpenPanel(PanelKind::Memory)`
   - PanelContext 构造：测试中构造最小 PanelContext（大部分字段可用 default/dummy 值，仅验证 handle_key 返回值和面板自身状态变化）
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- "panel::tests::test_.*_handle_key" 2>&1`
+  - 运行命令: `cargo test -p peri-tui --lib -- "panel::tests::test_.*_handle_key" 2>&1`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 5 个面板文件都包含 `impl PanelComponent`
-  - `grep -l "impl PanelComponent for" rust-agent-tui/src/app/{model,agent,hooks,status,memory}_panel.rs | wc -l`
+  - `grep -l "impl PanelComponent for" peri-tui/src/app/{model,agent,hooks,status,memory}_panel.rs | wc -l`
   - 预期: 5
 - [x] 验证 ModelPanel 无 unwrap 调用
-  - `grep "unwrap()" rust-agent-tui/src/app/model_panel.rs`
+  - `grep "unwrap()" peri-tui/src/app/model_panel.rs`
   - 预期: 仅在 `#[cfg(test)]` 块中有匹配（已有的测试代码），`impl PanelComponent` 块中无 unwrap
 - [x] 验证 event.rs 中 5 个面板的旧分发代码已被注释
-  - `grep -n "Task 3.*已迁移" rust-agent-tui/src/event.rs`
+  - `grep -n "Task 3.*已迁移" peri-tui/src/event.rs`
   - 预期: 至少 5 行注释标记
 - [x] 验证 PanelManager 分发入口存在
-  - `grep -n "session_panels.dispatch_key\|global_panels.dispatch_key" rust-agent-tui/src/event.rs`
+  - `grep -n "session_panels.dispatch_key\|global_panels.dispatch_key" peri-tui/src/event.rs`
   - 预期: 至少 2 行匹配
 - [x] 验证 panel_ops.rs 中 open/close 方法包含 PanelManager 同步
-  - `grep -c "session_panels.open\|session_panels.close\|global_panels.open\|global_panels.close" rust-agent-tui/src/app/panel_ops.rs`
+  - `grep -c "session_panels.open\|session_panels.close\|global_panels.open\|global_panels.close" peri-tui/src/app/panel_ops.rs`
   - 预期: 至少 10 行匹配（5 个面板各 open + close）
 - [x] 验证全量编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 输出包含 "Finished" 且无 error
 - [x] 验证 handle_key 单元测试通过
-  - `cargo test -p rust-agent-tui --lib -- "panel::tests::test_.*_handle_key" 2>&1 | tail -5`
+  - `cargo test -p peri-tui --lib -- "panel::tests::test_.*_handle_key" 2>&1 | tail -5`
   - 预期: 输出包含 "test result: ok" 且无失败
 
 ---
@@ -808,15 +808,15 @@
 
 **前置条件:** Task 1-3 全部执行完成。
 
-- [x] 运行全量测试套件：`cargo test -p rust-agent-tui 2>&1 | tail -20`，预期所有测试通过
-- [x] 验证 `panel_manager.rs` 和 `panel_component.rs` 存在且编译通过：`grep -c "pub struct PanelManager\|pub trait PanelComponent" rust-agent-tui/src/app/panel_manager.rs rust-agent-tui/src/app/panel_component.rs`
-- [x] 验证 `AppCore` 包含 `session_panels` 字段：`grep "session_panels: PanelManager" rust-agent-tui/src/app/core.rs`
-- [x] 验证 `App` 包含 `global_panels` 字段：`grep "global_panels: PanelManager" rust-agent-tui/src/app/mod.rs`
-- [x] 验证 5 个简单面板已实现 PanelComponent：`grep -rl "impl PanelComponent for" rust-agent-tui/src/app/model_panel.rs rust-agent-tui/src/app/agent_panel.rs rust-agent-tui/src/app/hooks_panel.rs rust-agent-tui/src/app/status_panel.rs rust-agent-tui/src/app/memory_panel.rs | wc -l`，预期 5
-- [x] 验证 event.rs 中 5 个简单面板的旧分发已注释或迁移：`grep -c "Task 3.*已迁移\|PanelManager::dispatch" rust-agent-tui/src/event.rs`
-- [x] 验证 panel_ops.rs 双写同步存在：`grep -c "session_panels.open\|global_panels.open" rust-agent-tui/src/app/panel_ops.rs`
-- [x] 验证 clippy 无警告：`cargo clippy -p rust-agent-tui 2>&1 | grep -E "warning|error" | grep -v "generated" | head -5`
-- [x] 验证编译：`cargo build -p rust-agent-tui 2>&1 | tail -3`
+- [x] 运行全量测试套件：`cargo test -p peri-tui 2>&1 | tail -20`，预期所有测试通过
+- [x] 验证 `panel_manager.rs` 和 `panel_component.rs` 存在且编译通过：`grep -c "pub struct PanelManager\|pub trait PanelComponent" peri-tui/src/app/panel_manager.rs peri-tui/src/app/panel_component.rs`
+- [x] 验证 `AppCore` 包含 `session_panels` 字段：`grep "session_panels: PanelManager" peri-tui/src/app/core.rs`
+- [x] 验证 `App` 包含 `global_panels` 字段：`grep "global_panels: PanelManager" peri-tui/src/app/mod.rs`
+- [x] 验证 5 个简单面板已实现 PanelComponent：`grep -rl "impl PanelComponent for" peri-tui/src/app/model_panel.rs peri-tui/src/app/agent_panel.rs peri-tui/src/app/hooks_panel.rs peri-tui/src/app/status_panel.rs peri-tui/src/app/memory_panel.rs | wc -l`，预期 5
+- [x] 验证 event.rs 中 5 个简单面板的旧分发已注释或迁移：`grep -c "Task 3.*已迁移\|PanelManager::dispatch" peri-tui/src/event.rs`
+- [x] 验证 panel_ops.rs 双写同步存在：`grep -c "session_panels.open\|global_panels.open" peri-tui/src/app/panel_ops.rs`
+- [x] 验证 clippy 无警告：`cargo clippy -p peri-tui 2>&1 | grep -E "warning|error" | grep -v "generated" | head -5`
+- [x] 验证编译：`cargo build -p peri-tui 2>&1 | tail -3`
 
 **失败排查:**
 

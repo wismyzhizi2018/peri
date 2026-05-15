@@ -5,7 +5,7 @@ CLI tool for installing and managing the Peri Rust Agent Framework.
 ## Quick Start
 
 ```bash
-# Install perihelion
+# Install peri
 npx peri-cli
 
 # Add to PATH (run after installation)
@@ -89,7 +89,7 @@ export GITHUB_PROXY=<your-proxy-url>/https://github.com
 ## Installation Directory
 
 ```
-~/.perihelion/
+~/.peri/
 ├── current-version.txt   # Current version marker
 ├── peri                  # Executable symlink
 └── agent-v1.17/          # Agent version directory

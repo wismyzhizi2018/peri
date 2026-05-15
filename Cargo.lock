@@ -2861,7 +2861,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
-name = "perihelion-lsp"
+name = "peri-agent"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "dirs-next",
+ "futures",
+ "parking_lot",
+ "rand 0.10.1",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-test",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "peri-lsp"
 version = "0.1.0"
 dependencies = [
  "lru 0.18.0",
@@ -2878,7 +2903,88 @@ dependencies = [
 ]
 
 [[package]]
-name = "perihelion-widgets"
+name = "peri-middlewares"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64",
+ "chrono",
+ "croner",
+ "dirs-next",
+ "filetime",
+ "flate2",
+ "glob",
+ "gray_matter",
+ "grep",
+ "html2text",
+ "ignore",
+ "ipnet",
+ "lsp-types",
+ "num_cpus",
+ "parking_lot",
+ "peri-agent",
+ "peri-lsp",
+ "regex",
+ "reqwest",
+ "rmcp",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "shellexpand",
+ "tar",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-test",
+ "tracing",
+ "url",
+ "urlencoding",
+ "uuid",
+ "walkdir",
+]
+
+[[package]]
+name = "peri-tui"
+version = "0.1.0"
+dependencies = [
+ "agent-client-protocol",
+ "agent-client-protocol-tokio",
+ "anyhow",
+ "arboard",
+ "async-trait",
+ "base64",
+ "chrono",
+ "clap",
+ "dashmap",
+ "dirs-next",
+ "dotenvy",
+ "fluent",
+ "fluent-bundle",
+ "langfuse-client",
+ "parking_lot",
+ "peri-agent",
+ "peri-lsp",
+ "peri-middlewares",
+ "peri-widgets",
+ "png",
+ "ratatui",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tui-textarea-2",
+ "unic-langid",
+ "unicode-segmentation",
+ "unicode-width",
+ "uuid",
+]
+
+[[package]]
+name = "peri-widgets"
 version = "0.1.0"
 dependencies = [
  "once_cell",
@@ -3666,112 +3772,6 @@ dependencies = [
  "spki",
  "subtle",
  "zeroize",
-]
-
-[[package]]
-name = "rust-agent-middlewares"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "base64",
- "chrono",
- "croner",
- "dirs-next",
- "filetime",
- "flate2",
- "glob",
- "gray_matter",
- "grep",
- "html2text",
- "ignore",
- "ipnet",
- "lsp-types",
- "num_cpus",
- "parking_lot",
- "perihelion-lsp",
- "regex",
- "reqwest",
- "rmcp",
- "rust-create-agent",
- "serde",
- "serde_json",
- "serde_yaml",
- "shellexpand",
- "tar",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tokio-test",
- "tracing",
- "url",
- "urlencoding",
- "uuid",
- "walkdir",
-]
-
-[[package]]
-name = "rust-agent-tui"
-version = "0.1.0"
-dependencies = [
- "agent-client-protocol",
- "agent-client-protocol-tokio",
- "anyhow",
- "arboard",
- "async-trait",
- "base64",
- "chrono",
- "clap",
- "dashmap",
- "dirs-next",
- "dotenvy",
- "fluent",
- "fluent-bundle",
- "langfuse-client",
- "parking_lot",
- "perihelion-lsp",
- "perihelion-widgets",
- "png",
- "ratatui",
- "reqwest",
- "rust-agent-middlewares",
- "rust-create-agent",
- "serde",
- "serde_json",
- "sysinfo",
- "tokio",
- "tokio-util",
- "tracing",
- "tui-textarea-2",
- "unic-langid",
- "unicode-segmentation",
- "unicode-width",
- "uuid",
-]
-
-[[package]]
-name = "rust-create-agent"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "dirs-next",
- "futures",
- "parking_lot",
- "rand 0.10.1",
- "reqwest",
- "serde",
- "serde_json",
- "sqlx",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tokio-test",
- "tokio-util",
- "tracing",
- "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]

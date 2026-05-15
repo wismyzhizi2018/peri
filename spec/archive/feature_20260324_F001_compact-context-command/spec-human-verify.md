@@ -11,7 +11,7 @@
 ### 环境要求
 
 - [ ] [AUTO] 确认 Rust 工具链可用: `rustc --version`
-- [ ] [AUTO] 编译 rust-agent-tui: `cargo build -p rust-agent-tui 2>&1 | grep -E "^error" | head -5`
+- [ ] [AUTO] 编译 peri-tui: `cargo build -p peri-tui 2>&1 | grep -E "^error" | head -5`
 - [ ] [AUTO] 确认 API Key 已配置（至少一个）: `(test -n "$ANTHROPIC_API_KEY" || test -n "$OPENAI_API_KEY") && echo "已配置" || echo "未配置"`
 - [ ] [MANUAL] 准备一个终端窗口用于运行 TUI（本清单中 [H] 步骤均需在此窗口操作）
 
@@ -29,33 +29,33 @@ TUI 是无状态应用，无需额外数据库 seed。每个 [H] 场景均从干
 
 - **来源:** Task 1/2/3 检查步骤
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"` → 期望: 无输出（无编译错误）
-  2. [A] `cargo build -p rust-agent-tui 2>&1 | grep "non-exhaustive"` → 期望: 无输出（AgentEvent match 覆盖完整）
+  1. [A] `cargo build -p peri-tui 2>&1 | grep -E "^error"` → 期望: 无输出（无编译错误）
+  2. [A] `cargo build -p peri-tui 2>&1 | grep "non-exhaustive"` → 期望: 无输出（AgentEvent match 覆盖完整）
 - **异常排查:**
-  - 若出现 `cannot find function compact_task`：检查 `rust-agent-tui/src/app/agent.rs` 末尾是否存在 `pub async fn compact_task`
+  - 若出现 `cannot find function compact_task`：检查 `peri-tui/src/app/agent.rs` 末尾是否存在 `pub async fn compact_task`
   - 若出现 `non-exhaustive patterns`：检查 `handle_agent_event` 中是否遗漏了 `CompactDone`/`CompactError` 分支
 
 #### - [x] 1.2 关键符号存在性
 
 - **来源:** Task 1/2/3 检查步骤
 - **操作步骤:**
-  1. [A] `grep -n "CompactDone\|CompactError" rust-agent-tui/src/app/mod.rs` → 期望: 至少 3 行输出（枚举定义 + 两个处理臂）
-  2. [A] `grep -n "pub async fn compact_task" rust-agent-tui/src/app/agent.rs` → 期望: 找到函数定义行（如 `204:pub async fn compact_task`）
-  3. [A] `grep -n "fn name\|fn description\|fn execute" rust-agent-tui/src/command/compact.rs` → 期望: 3 行输出，分别对应三个 Command trait 方法
-  4. [A] `grep -n "无可压缩的上下文" rust-agent-tui/src/app/mod.rs` → 期望: 找到对应字符串（空历史保护逻辑存在）
+  1. [A] `grep -n "CompactDone\|CompactError" peri-tui/src/app/mod.rs` → 期望: 至少 3 行输出（枚举定义 + 两个处理臂）
+  2. [A] `grep -n "pub async fn compact_task" peri-tui/src/app/agent.rs` → 期望: 找到函数定义行（如 `204:pub async fn compact_task`）
+  3. [A] `grep -n "fn name\|fn description\|fn execute" peri-tui/src/command/compact.rs` → 期望: 3 行输出，分别对应三个 Command trait 方法
+  4. [A] `grep -n "无可压缩的上下文" peri-tui/src/app/mod.rs` → 期望: 找到对应字符串（空历史保护逻辑存在）
 - **异常排查:**
-  - 若 `compact_task` 不存在：检查 `rust-agent-tui/src/app/agent.rs` 末尾
-  - 若 `compact.rs` 的方法缺少：检查 `rust-agent-tui/src/command/compact.rs`
+  - 若 `compact_task` 不存在：检查 `peri-tui/src/app/agent.rs` 末尾
+  - 若 `compact.rs` 的方法缺少：检查 `peri-tui/src/command/compact.rs`
 
 #### - [x] 1.3 全量测试不回归
 
 - **来源:** Task 4 端到端验证场景 1 & 7
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui 2>&1 | tail -3` → 期望: 输出包含 `test result: ok`，无 `FAILED`
-  2. [A] `cargo test -p rust-create-agent --lib 2>&1 | tail -3` → 期望: 输出包含 `test result: ok`，无 `FAILED`
+  1. [A] `cargo test -p peri-tui 2>&1 | tail -3` → 期望: 输出包含 `test result: ok`，无 `FAILED`
+  2. [A] `cargo test -p peri-agent --lib 2>&1 | tail -3` → 期望: 输出包含 `test result: ok`，无 `FAILED`
 - **异常排查:**
-  - 若 TUI 测试失败：`cargo test -p rust-agent-tui -- --nocapture 2>&1 | grep FAILED`
-  - 若核心库测试失败：说明修改破坏了 rust-create-agent，检查 `app/mod.rs` 的 import 变更
+  - 若 TUI 测试失败：`cargo test -p peri-tui -- --nocapture 2>&1 | grep FAILED`
+  - 若核心库测试失败：说明修改破坏了 peri-agent，检查 `app/mod.rs` 的 import 变更
 
 ---
 
@@ -65,9 +65,9 @@ TUI 是无状态应用，无需额外数据库 seed。每个 [H] 场景均从干
 
 - **来源:** Task 3 检查步骤、Task 4 场景 2
 - **操作步骤:**
-  1. [A] `grep -c "CompactCommand" rust-agent-tui/src/command/mod.rs` → 期望: `1`（恰好注册一次）
-  2. [A] `grep -n "pub mod compact" rust-agent-tui/src/command/mod.rs` → 期望: 找到 `pub mod compact;`
-  3. [A] `grep -rn "fn name" rust-agent-tui/src/command/*.rs | grep -v "mod.rs"` → 期望: 无其他命令以 `co` 开头（`clear` 开头是 `cl`，`compact` 唯一以 `co` 开头）
+  1. [A] `grep -c "CompactCommand" peri-tui/src/command/mod.rs` → 期望: `1`（恰好注册一次）
+  2. [A] `grep -n "pub mod compact" peri-tui/src/command/mod.rs` → 期望: 找到 `pub mod compact;`
+  3. [A] `grep -rn "fn name" peri-tui/src/command/*.rs | grep -v "mod.rs"` → 期望: 无其他命令以 `co` 开头（`clear` 开头是 `cl`，`compact` 唯一以 `co` 开头）
 - **异常排查:**
   - 若 count 为 0：检查 `command/mod.rs` 是否已 `r.register(Box::new(compact::CompactCommand));`
 
@@ -75,8 +75,8 @@ TUI 是无状态应用，无需额外数据库 seed。每个 [H] 场景均从干
 
 - **来源:** Task 3 检查步骤 4
 - **操作步骤:**
-  1. [A] `grep -n '"compact"\|压缩对话上下文' rust-agent-tui/src/command/compact.rs` → 期望: 输出包含 name 返回 "compact" 和 description 描述行
-  2. [H] 启动 TUI：`cargo run -p rust-agent-tui -- -y`，在输入框输入 `/help` 并按 Enter，观察消息列表中是否出现 `compact` 及其描述"压缩对话上下文（调用 LLM 生成摘要）" → 是/否
+  1. [A] `grep -n '"compact"\|压缩对话上下文' peri-tui/src/command/compact.rs` → 期望: 输出包含 name 返回 "compact" 和 description 描述行
+  2. [H] 启动 TUI：`cargo run -p peri-tui -- -y`，在输入框输入 `/help` 并按 Enter，观察消息列表中是否出现 `compact` 及其描述"压缩对话上下文（调用 LLM 生成摘要）" → 是/否
 - **异常排查:**
   - 若 [H] 未显示 compact：确认 `default_registry()` 中已注册，重新 `cargo build`
 
@@ -84,15 +84,15 @@ TUI 是无状态应用，无需额外数据库 seed。每个 [H] 场景均从干
 
 ### 场景 3：TUI 行为验证
 
-> 以下 [H] 步骤均需启动 TUI：`cargo run -p rust-agent-tui -- -y`（YOLO 模式）
+> 以下 [H] 步骤均需启动 TUI：`cargo run -p peri-tui -- -y`（YOLO 模式）
 > 前提：已配置 `ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY`
 
 #### - [x] 3.1 空历史边界保护
 
 - **来源:** spec-design.md 验收标准 §历史消息为空
 - **操作步骤:**
-  1. [A] `grep -n "agent_state_messages.is_empty" rust-agent-tui/src/app/mod.rs` → 期望: 找到该判断（保护逻辑存在于代码中）
-  2. [A] `grep -n "set_loading\|loading.*true" rust-agent-tui/src/app/mod.rs | head -5` → 期望: `start_compact` 中 `set_loading(true)` 位于 `is_empty()` 判断之后
+  1. [A] `grep -n "agent_state_messages.is_empty" peri-tui/src/app/mod.rs` → 期望: 找到该判断（保护逻辑存在于代码中）
+  2. [A] `grep -n "set_loading\|loading.*true" peri-tui/src/app/mod.rs | head -5` → 期望: `start_compact` 中 `set_loading(true)` 位于 `is_empty()` 判断之后
   3. [H] 启动 TUI，不发送任何消息，直接输入 `/compact` 并按 Enter。观察：消息列表中是否出现"无可压缩的上下文"提示，且输入框保持可用（没有变成黄色"处理中…"状态） → 是/否
 - **异常排查:**
   - 若 TUI 进入 loading 状态：检查 `start_compact` 中 `is_empty()` 判断是否在 `set_loading(true)` 之前
@@ -135,9 +135,9 @@ TUI 是无状态应用，无需额外数据库 seed。每个 [H] 场景均从干
 
 - **来源:** spec-design.md 验收标准 §LLM 调用失败
 - **操作步骤:**
-  1. [A] `grep -n "CompactError" rust-agent-tui/src/app/mod.rs` → 期望: 找到 CompactError 处理臂，其中无 `agent_state_messages` 赋值语句
-  2. [A] `grep -A5 "CompactError(msg)" rust-agent-tui/src/app/mod.rs` → 期望: 处理臂仅 push 错误提示 + set_loading(false)，不修改 agent_state_messages
-  3. [H] （可选，需要一个会失败的 API Key）临时设置无效 API Key：`ANTHROPIC_API_KEY=invalid cargo run -p rust-agent-tui`，与 AI 交互一轮后输入 `/compact`，等待错误响应。观察：消息列表中是否出现"❌ 压缩失败: ..."错误提示，且历史消息保持不变 → 是/否
+  1. [A] `grep -n "CompactError" peri-tui/src/app/mod.rs` → 期望: 找到 CompactError 处理臂，其中无 `agent_state_messages` 赋值语句
+  2. [A] `grep -A5 "CompactError(msg)" peri-tui/src/app/mod.rs` → 期望: 处理臂仅 push 错误提示 + set_loading(false)，不修改 agent_state_messages
+  3. [H] （可选，需要一个会失败的 API Key）临时设置无效 API Key：`ANTHROPIC_API_KEY=invalid cargo run -p peri-tui`，与 AI 交互一轮后输入 `/compact`，等待错误响应。观察：消息列表中是否出现"❌ 压缩失败: ..."错误提示，且历史消息保持不变 → 是/否
 - **异常排查:**
   - 若压缩失败后历史被清空：检查 `CompactError` 分支是否意外修改了 `agent_state_messages`
 
@@ -149,7 +149,7 @@ TUI 是无状态应用，无需额外数据库 seed。每个 [H] 场景均从干
 
 - **来源:** spec-design.md 验收标准 §压缩后继续发送消息
 - **操作步骤:**
-  1. [H] 启动 TUI，与 AI 对话：先告诉它"我正在开发一个 Rust 项目，项目叫 perihelion"，然后随机聊几轮。执行 `/compact`，等待完成。然后发消息"我的项目叫什么名字？"，观察：AI 是否能正确回答"perihelion" → 是/否
+  1. [H] 启动 TUI，与 AI 对话：先告诉它"我正在开发一个 Rust 项目，项目叫 peri"，然后随机聊几轮。执行 `/compact`，等待完成。然后发消息"我的项目叫什么名字？"，观察：AI 是否能正确回答"peri" → 是/否
   2. [H] 在同一会话中，再次执行 `/compact`（连续两次压缩），再提问。观察：AI 是否仍能正确响应 → 是/否
 - **异常排查:**
   - 若 AI 忘记了项目名称：检查 `CompactDone` 处理中 `agent_state_messages` 是否正确设置为 `vec![BaseMessage::system(summary)]`
@@ -159,8 +159,8 @@ TUI 是无状态应用，无需额外数据库 seed。每个 [H] 场景均从干
 
 - **来源:** spec-design.md §实现要点（compact 期间缓冲）
 - **操作步骤:**
-  1. [A] `grep -n "pending_messages\|set_loading" rust-agent-tui/src/app/mod.rs | grep -A2 "start_compact"` → 期望: `start_compact` 中调用 `set_loading(true)` 会触发 `build_textarea` 的 loading 状态，pending_messages 机制已通过 set_loading 统一管理
-  2. [A] `grep -n "pending_messages" rust-agent-tui/src/app/mod.rs | grep -v "^--"` → 期望: 找到 `pending_messages` 在 `Done`/`Error` 分支中的合并发送逻辑，确认 compact 完成后（`CompactDone` 调用 `set_loading(false)` + `agent_rx = None`）不会阻塞缓冲消息的处理
+  1. [A] `grep -n "pending_messages\|set_loading" peri-tui/src/app/mod.rs | grep -A2 "start_compact"` → 期望: `start_compact` 中调用 `set_loading(true)` 会触发 `build_textarea` 的 loading 状态，pending_messages 机制已通过 set_loading 统一管理
+  2. [A] `grep -n "pending_messages" peri-tui/src/app/mod.rs | grep -v "^--"` → 期望: 找到 `pending_messages` 在 `Done`/`Error` 分支中的合并发送逻辑，确认 compact 完成后（`CompactDone` 调用 `set_loading(false)` + `agent_rx = None`）不会阻塞缓冲消息的处理
 - **异常排查:**
   - 若 compact 结束后缓冲消息未发送：检查 `set_loading(false)` 是否触发 `pending_messages` 的检查和发送
 

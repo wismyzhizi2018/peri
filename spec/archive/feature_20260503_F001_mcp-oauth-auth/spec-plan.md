@@ -54,18 +54,18 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-middlewares/Cargo.toml`
-- 修改: `rust-agent-middlewares/src/mcp/config.rs`
-- 修改: `rust-agent-middlewares/src/mcp/mod.rs`
+- 修改: `peri-middlewares/Cargo.toml`
+- 修改: `peri-middlewares/src/mcp/config.rs`
+- 修改: `peri-middlewares/src/mcp/mod.rs`
 
 **执行步骤:**
 
 - [x] 在 rmcp 依赖的 features 列表中追加 `"auth"` — 启用 oauth2 / url 依赖
-  - 位置: `rust-agent-middlewares/Cargo.toml` 第 29-33 行
+  - 位置: `peri-middlewares/Cargo.toml` 第 29-33 行
   - 将 `rmcp = { version = "1.6", features = [` 列表末尾 `"transport-streamable-http-client-reqwest",` 之后追加 `"auth",`
   - 原因: rmcp auth feature 依赖 `dep:oauth2`、`__reqwest`（已通过 transport-streamable-http-client-reqwest 间接启用）、`dep:url`，启用后 oauth2 和 url crate 可用
 - [x] 在 config.rs 中新增 `OAuthConfig` 结构体 — 定义 OAuth 配置模型
-  - 位置: `rust-agent-middlewares/src/mcp/config.rs` 第 22 行（`McpServerConfig` 结构体定义之后，`McpConfigFile` 定义之前）
+  - 位置: `peri-middlewares/src/mcp/config.rs` 第 22 行（`McpServerConfig` 结构体定义之后，`McpConfigFile` 定义之前）
   - 新增结构体:
 
     ```rust
@@ -97,7 +97,7 @@
 
   - 原因: 配置文件使用 camelCase（`clientId`/`clientSecret`），需通过 `#[serde(rename_all = "camelCase")]` 对齐。`is_enabled()` 提供便捷判断，`Default` trait 支持默认构造。
 - [x] 在 `McpServerConfig` 中追加 `oauth` 字段 — 关联 OAuth 配置
-  - 位置: `rust-agent-middlewares/src/mcp/config.rs` 第 7-22 行，`McpServerConfig` 结构体定义内
+  - 位置: `peri-middlewares/src/mcp/config.rs` 第 7-22 行，`McpServerConfig` 结构体定义内
   - 在 `headers` 字段（第 20-21 行）之后追加:
 
     ```rust
@@ -108,7 +108,7 @@
 
   - 原因: 使每个 MCP 服务器可独立声明 OAuth 配置，`#[serde(default)]` 保证向后兼容（旧配置文件无 oauth 字段时反序列化为 None）。
 - [x] 在 `expand_server_config` 函数中追加 `oauth` 字段的环境变量展开 — 展开 client_secret 中的 ${VAR}
-  - 位置: `rust-agent-middlewares/src/mcp/config.rs` 第 130-147 行，`expand_server_config` 函数
+  - 位置: `peri-middlewares/src/mcp/config.rs` 第 130-147 行，`expand_server_config` 函数
   - 在返回的 `McpServerConfig` 结构体字面量中，`headers` 字段之后追加:
 
     ```rust
@@ -122,16 +122,16 @@
 
   - 原因: `client_secret` 可能引用环境变量（如 `${ENTERPRISE_CLIENT_SECRET}`），需在配置加载阶段展开。`client_id` 和 `scopes` 通常为静态值，直接克隆。
 - [x] 更新所有现有测试中 `McpServerConfig` 的手动构造 — 补充 `oauth: None` 字段
-  - 位置: `rust-agent-middlewares/src/mcp/config.rs` 第 311-541 行，`mod tests` 内所有 `McpServerConfig { ... }` 构造
+  - 位置: `peri-middlewares/src/mcp/config.rs` 第 311-541 行，`mod tests` 内所有 `McpServerConfig { ... }` 构造
   - 涉及测试函数: `test_merge_project_overrides_global`（第 398-426 行两处）、`test_merge_project_adds_new_server`（第 428-459 行两处）
   - 每处 `McpServerConfig { ... }` 在 `headers: None,` 之后追加 `oauth: None,`
   - 原因: 新增 `oauth` 字段后，所有手动构造 `McpServerConfig` 的位置必须补充该字段，否则编译失败。通过 JSON 反序列化的测试（如 `test_load_from_valid_json`）不受影响，因为 `#[serde(default)]` 已处理缺失字段。
 - [x] 在 mod.rs 的 pub use 列表中导出 `OAuthConfig`
-  - 位置: `rust-agent-middlewares/src/mcp/mod.rs` 第 8-10 行
+  - 位置: `peri-middlewares/src/mcp/mod.rs` 第 8-10 行
   - 在 `pub use config::{ ..., McpServerConfig,` 之后追加 `OAuthConfig,`
   - 原因: Task 4 的 OAuth 流程编排模块需要引用 `OAuthConfig`，通过 mod.rs 统一导出保持公共 API 一致。
 - [x] 为 OAuthConfig 和 expand_server_config 的 OAuth 展开逻辑编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/config.rs`（`#[cfg(test)] mod tests` 内）
+  - 测试文件: `peri-middlewares/src/mcp/config.rs`（`#[cfg(test)] mod tests` 内）
   - 测试场景:
     - `test_oauth_config_default_disabled`: `OAuthConfig::default().is_enabled()` → 返回 `true`（默认启用）
     - `test_oauth_config_explicitly_disabled`: `OAuthConfig { enabled: Some(false), .. }.is_enabled()` → 返回 `false`
@@ -139,28 +139,28 @@
     - `test_expand_server_config_oauth_client_secret`: 设置环境变量 `TEST_OAUTH_SECRET=real_secret`，构造含 `oauth: Some(OAuthConfig { client_secret: Some("${TEST_OAUTH_SECRET}".into()), ... })` 的 `McpServerConfig`，调用 `expand_server_config`，断言展开后 `client_secret` 为 `"real_secret"`
     - `test_expand_server_config_oauth_none`: 构造含 `oauth: None` 的 `McpServerConfig`，调用 `expand_server_config`，断言展开后 `oauth` 仍为 `None`
     - `test_mcp_server_config_with_oauth_from_json`: JSON `{"mcpServers":{"srv":{"url":"https://example.com","oauth":{"clientId":"id","scopes":["s1"]}}}}` 反序列化为 `McpConfigFile`，断言 `oauth` 字段正确填充
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests::test_oauth`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- mcp::config::tests::test_oauth`
   - 预期: 所有 6 个测试通过
 
 **检查步骤:**
 
 - [x] 验证 Cargo.toml 包含 auth feature
-  - `grep -c '"auth"' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/Cargo.toml`
+  - `grep -c '"auth"' /Users/konghayao/code/ai/peri/peri-middlewares/Cargo.toml`
   - 预期: 输出为 1
 - [x] 验证 OAuthConfig 结构体定义存在
-  - `grep -n 'pub struct OAuthConfig' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/config.rs`
+  - `grep -n 'pub struct OAuthConfig' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/config.rs`
   - 预期: 行号输出
 - [x] 验证 McpServerConfig 包含 oauth 字段
-  - `grep -n 'pub oauth' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/config.rs`
+  - `grep -n 'pub oauth' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/config.rs`
   - 预期: 行号输出
 - [x] 验证 mod.rs 导出 OAuthConfig
-  - `grep 'OAuthConfig' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/mod.rs`
+  - `grep 'OAuthConfig' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/mod.rs`
   - 预期: 输出包含 `OAuthConfig`
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 输出包含 `Finished`，无编译错误
 - [x] 验证所有现有测试通过（含新增测试）
-  - `cargo test -p rust-agent-middlewares --lib 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib 2>&1 | tail -10`
   - 预期: 输出包含 `test result: ok`，无失败测试
 
 ---
@@ -174,13 +174,13 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-middlewares/src/mcp/auth_store.rs`
-- 修改: `rust-agent-middlewares/src/mcp/mod.rs`
+- 新建: `peri-middlewares/src/mcp/auth_store.rs`
+- 修改: `peri-middlewares/src/mcp/mod.rs`
 
 **执行步骤:**
 
 - [x] 新建 auth_store.rs 文件，定义 `OAuthTokenFile` 数据结构和 `AuthStoreError` 错误枚举
-  - 位置: `rust-agent-middlewares/src/mcp/auth_store.rs`（新文件，与 mod.rs 同级目录）
+  - 位置: `peri-middlewares/src/mcp/auth_store.rs`（新文件，与 mod.rs 同级目录）
   - 文件头部 imports:
 
     ```rust
@@ -229,7 +229,7 @@
 
   - 原因: rmcp 的 `AuthError` 不实现 `From<std::io::Error>`，无法直接包装 IO 错误。自定义 `AuthStoreError` 用于内部错误传播，在 `CredentialStore` trait 实现层转换为 `AuthError::InternalError`。`source` 字段使用 `String`（非 `std::io::Error`），因为 `thiserror` 的 `#[source]` 属性要求 Error trait bound，而此处需要手动映射。
 - [x] 实现 `FileCredentialStore` 结构体及其核心文件读写方法
-  - 位置: `rust-agent-middlewares/src/mcp/auth_store.rs`，`OAuthTokenFile` 定义之后
+  - 位置: `peri-middlewares/src/mcp/auth_store.rs`，`OAuthTokenFile` 定义之后
   - 结构体定义:
 
     ```rust
@@ -414,7 +414,7 @@
 
   - 原因: `FileCredentialStore` 是底层存储引擎，负责 JSON 文件的读写。使用 `Mutex<()>` 而非 `RwLock`，因为写操作需要读-改-写，读锁无法保证一致性。`ensure_file()` 在每次读写前调用，保证首次使用时自动创建文件。`with_path()` 构造方法支持测试时使用临时文件路径。
 - [x] 实现 `PerServerCredentialStore` — 包装 `FileCredentialStore`，实现 rmcp `CredentialStore` trait
-  - 位置: `rust-agent-middlewares/src/mcp/auth_store.rs`，`FileCredentialStore` 实现之后
+  - 位置: `peri-middlewares/src/mcp/auth_store.rs`，`FileCredentialStore` 实现之后
   - 结构体定义:
 
     ```rust
@@ -471,7 +471,7 @@
 
   - 原因: rmcp 的 `CredentialStore` trait 接口是全局的（load/save/clear 不带 server_name 参数），但实际使用场景是每个 MCP 服务器独立管理 token。`PerServerCredentialStore` 通过构造时绑定 `server_name`，将 trait 接口映射到 per-server 的文件读写。`inner` 使用 `Arc<FileCredentialStore>` 共享，多个服务器实例共享同一个文件但按 key 隔离。错误统一转换为 `AuthError::InternalError`，符合 rmcp 的错误传播约定。
 - [x] 在 mod.rs 中注册 auth_store 模块并导出公共类型
-  - 位置: `rust-agent-middlewares/src/mcp/mod.rs`
+  - 位置: `peri-middlewares/src/mcp/mod.rs`
   - 在第 6 行 `pub mod middleware;` 之后追加 `pub mod auth_store;`
   - 在第 12 行 `pub use transport::{TransportConfig, TransportError};` 之后追加:
 
@@ -481,7 +481,7 @@
 
   - 原因: Task 4 的 `OAuthFlowManager` 需要引用 `FileCredentialStore` 和 `PerServerCredentialStore`，通过 mod.rs 统一导出。
 - [x] 为 FileCredentialStore 和 PerServerCredentialStore 编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/auth_store.rs`（文件末尾 `#[cfg(test)] mod tests`）
+  - 测试文件: `peri-middlewares/src/mcp/auth_store.rs`（文件末尾 `#[cfg(test)] mod tests`）
   - 测试场景:
     - `test_new_creates_default_path`: `FileCredentialStore::new()` 的 path 以 `.peri/oauth_tokens.json` 结尾
     - `test_ensure_file_creates_file_with_initial_content`: 使用 `tempfile::NamedTempFile` 创建临时路径，构造 `FileCredentialStore::with_path(temp_path)`，调用 `ensure_file()`，断言文件存在且内容为合法 JSON（包含 `"version": 1` 和 `"tokens": {}`）
@@ -495,31 +495,31 @@
     - `test_per_server_credential_store_load_save`: 构造 `PerServerCredentialStore::new(Arc::new(store), "test-srv".into())`，调用 `CredentialStore` trait 的 `save` → `load`，断言数据一致
     - `test_per_server_credential_store_clear`: `save` → `clear` → `load` 返回 `None`
     - `test_concurrent_save_does_not_corrupt`: 使用 `tokio::join!` 并发对同一 `FileCredentialStore` 的两个不同 server_name 调用 `save_server`，完成后两个 server 的 token 均可正确加载（验证 Mutex 保护读-改-写原子性）
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- mcp::auth_store::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- mcp::auth_store::tests`
   - 预期: 所有 12 个测试通过
 
 **检查步骤:**
 
 - [x] 验证 auth_store.rs 文件存在
-  - `test -f /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/auth_store.rs && echo "EXISTS"`
+  - `test -f /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/auth_store.rs && echo "EXISTS"`
   - 预期: 输出 `EXISTS`
 - [x] 验证 mod.rs 导出 auth_store 模块和公共类型
-  - `grep -E 'auth_store|FileCredentialStore|PerServerCredentialStore|AuthStoreError' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/mod.rs`
+  - `grep -E 'auth_store|FileCredentialStore|PerServerCredentialStore|AuthStoreError' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/mod.rs`
   - 预期: 输出包含 `pub mod auth_store;`、`FileCredentialStore`、`PerServerCredentialStore`、`AuthStoreError`
 - [x] 验证 FileCredentialStore 实现了文件权限设置
-  - `grep -c '0o600' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/auth_store.rs`
+  - `grep -c '0o600' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/auth_store.rs`
   - 预期: 输出为 1
 - [x] 验证 PerServerCredentialStore 实现了 CredentialStore trait
-  - `grep -c 'impl CredentialStore for PerServerCredentialStore' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/auth_store.rs`
+  - `grep -c 'impl CredentialStore for PerServerCredentialStore' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/auth_store.rs`
   - 预期: 输出为 1
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 输出包含 `Finished`，无编译错误
 - [x] 验证 auth_store 模块所有测试通过
-  - `cargo test -p rust-agent-middlewares --lib -- mcp::auth_store::tests 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib -- mcp::auth_store::tests 2>&1 | tail -10`
   - 预期: 输出包含 `test result: ok`，12 个测试全部通过
 - [x] 验证无回归（全量测试）
-  - `cargo test -p rust-agent-middlewares --lib 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib 2>&1 | tail -10`
   - 预期: 输出包含 `test result: ok`，无失败测试
 
 ---
@@ -533,13 +533,13 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-middlewares/src/mcp/callback_server.rs`
-- 修改: `rust-agent-middlewares/src/mcp/mod.rs`
+- 新建: `peri-middlewares/src/mcp/callback_server.rs`
+- 修改: `peri-middlewares/src/mcp/mod.rs`
 
 **执行步骤:**
 
 - [x] 新建 callback_server.rs，定义 CallbackError 错误枚举 — 统一回调服务器的错误类型
-  - 位置: `rust-agent-middlewares/src/mcp/callback_server.rs` 文件顶部
+  - 位置: `peri-middlewares/src/mcp/callback_server.rs` 文件顶部
   - 新增内容:
 
     ```rust
@@ -570,7 +570,7 @@
 
   - 原因: 使用 thiserror 与项目现有错误模式一致（config.rs、transport.rs、client.rs 均使用 thiserror）。`StateMismatch` 携带 expected/got 信息便于调试。
 - [x] 实现 OAuthCallbackServer 结构体和 bind() 方法 — 绑定随机端口并创建回调通道
-  - 位置: `rust-agent-middlewares/src/mcp/callback_server.rs`，CallbackError 定义之后
+  - 位置: `peri-middlewares/src/mcp/callback_server.rs`，CallbackError 定义之后
   - 新增内容:
 
     ```rust
@@ -624,7 +624,7 @@
 
   - 原因: 绑定 `127.0.0.1:0` 由操作系统分配随机可用端口，避免端口冲突。oneshot channel 将回调中的 code 传递给调用方。`code_rx` 存储在结构体中，确保生命周期与服务器一致，由 `wait_for_code()` 消费。
 - [x] 实现 wait_for_code() 和 wait_for_code_with_timeout() 方法 — 接受 HTTP 连接并解析回调参数
-  - 位置: `rust-agent-middlewares/src/mcp/callback_server.rs`，`bind()` 方法之后
+  - 位置: `peri-middlewares/src/mcp/callback_server.rs`，`bind()` 方法之后
   - 新增内容:
 
     ```rust
@@ -659,7 +659,7 @@
 
   - 原因: `tokio::time::timeout` 包装实现超时控制。`self` 被 move 进方法，确保服务器监听器在等待结束后自动关闭（Drop），释放端口。`code_tx` 随 `self` 一起 move，在 `handle_connection` 中使用。`wait_for_code_with_timeout` 标记为 `#[cfg(test)]`，限制测试方法暴露范围。
 - [x] 实现 handle_connection() 静态方法 — 解析 HTTP GET 请求中的 code 和 state 参数
-  - 位置: `rust-agent-middlewares/src/mcp/callback_server.rs`，`wait_for_code()` 方法之后
+  - 位置: `peri-middlewares/src/mcp/callback_server.rs`，`wait_for_code()` 方法之后
   - 新增内容:
 
     ```rust
@@ -701,7 +701,7 @@
 
   - 原因: 使用 `BufReader` 按行读取 HTTP 请求行，避免读取整个请求体。CSRF state 验证防止跨站请求伪造攻击。oneshot channel send 的返回值用 `_` 忽略，因为调用方可能已因超时 drop 了 receiver。先发送 HTML 响应再 return，确保浏览器页面正常显示。
 - [x] 实现 parse_callback_url() 静态方法 — 从 HTTP 请求行提取 code 和 state 参数
-  - 位置: `rust-agent-middlewares/src/mcp/callback_server.rs`，`handle_connection()` 之后
+  - 位置: `peri-middlewares/src/mcp/callback_server.rs`，`handle_connection()` 之后
   - 新增内容:
 
     ```rust
@@ -756,7 +756,7 @@
 
   - 原因: 手动解析 URL query string 而非引入额外 URL 解析库，避免非标准 HTTP 请求行格式导致解析失败。URL decode 处理 `%xx` 编码字符（如授权码中的特殊字符）。
 - [x] 实现 urldecode() 模块级辅助函数 — 解码 URL percent-encoded 字符
-  - 位置: `rust-agent-middlewares/src/mcp/callback_server.rs`，`OAuthCallbackServer` impl 块之后（模块级函数）
+  - 位置: `peri-middlewares/src/mcp/callback_server.rs`，`OAuthCallbackServer` impl 块之后（模块级函数）
   - 新增内容:
 
     ```rust
@@ -792,7 +792,7 @@
 
   - 原因: OAuth 授权码和 state 可能包含 URL 编码字符（如 `+` → 空格、`%2F` → `/`）。自行实现避免引入额外依赖，此处只需一个简单函数。
 - [x] 实现 success_html()、error_html() 和 send_response() 辅助方法 — 生成并发送 HTTP 响应
-  - 位置: `rust-agent-middlewares/src/mcp/callback_server.rs`，`urldecode()` 之后
+  - 位置: `peri-middlewares/src/mcp/callback_server.rs`，`urldecode()` 之后
   - 新增内容:
 
     ```rust
@@ -840,7 +840,7 @@
 
   - 原因: 内联 CSS 确保无外部依赖，页面简洁美观。最小化 HTTP/1.1 响应实现，`Connection: close` 告知浏览器关闭连接，`shutdown()` 确保响应刷出。使用 `let _ =` 忽略写入错误，因为回调服务器只接受一个连接。
 - [x] 实现 parse_code_from_url() 公共函数 — 从用户粘贴的 URL 中提取 code 和 state
-  - 位置: `rust-agent-middlewares/src/mcp/callback_server.rs`，模块级函数区域（`urldecode()` 之后）
+  - 位置: `peri-middlewares/src/mcp/callback_server.rs`，模块级函数区域（`urldecode()` 之后）
   - 新增内容:
 
     ```rust
@@ -882,7 +882,7 @@
 
   - 原因: 回调服务器超时后，TUI 显示手动粘贴面板。用户可能粘贴完整 URL 或仅粘贴 query string，此函数兼容两种格式。作为模块级公共函数供 Task 5（TUI 面板）直接调用。
 - [x] 在 mod.rs 中注册 callback_server 模块并导出公共类型
-  - 位置: `rust-agent-middlewares/src/mcp/mod.rs`
+  - 位置: `peri-middlewares/src/mcp/mod.rs`
   - 在 `pub mod auth_store;` 之后追加 `pub mod callback_server;`
   - 在 `pub use` 块中追加:
 
@@ -892,7 +892,7 @@
 
   - 原因: Task 4 的 OAuth 流程编排需要导入 `OAuthCallbackServer` 和 `CallbackError`，Task 5 需要导入 `parse_code_from_url`。统一通过 mod.rs 导出保持公共 API 一致。
 - [x] 为 OAuthCallbackServer 核心逻辑编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/callback_server.rs`（文件底部 `#[cfg(test)] mod tests` 块）
+  - 测试文件: `peri-middlewares/src/mcp/callback_server.rs`（文件底部 `#[cfg(test)] mod tests` 块）
   - 测试场景:
     - `test_parse_callback_url_valid`: 输入 `"GET /callback?code=abc123&state=xyz789 HTTP/1.1\r\n"` → 返回 `Ok(("abc123".into(), "xyz789".into()))`
     - `test_parse_callback_url_missing_code`: 输入 `"GET /callback?state=xyz HTTP/1.1\r\n"` → 返回 `Err(CallbackError::MissingCode)`
@@ -908,31 +908,31 @@
     - `test_parse_code_from_url_query_only`: 输入 `"code=abc&state=xyz"` → 返回 `Ok(("abc".into(), "xyz".into()))`
     - `test_parse_code_from_url_missing_code`: 输入 `"http://localhost/callback?state=xyz"` → 返回 `Err(CallbackError::MissingCode)`
   - 集成测试（`test_wait_for_code_success`、`test_wait_for_code_state_mismatch`、`test_wait_for_code_timeout`）使用 `tokio::net::TcpStream` 发送模拟 HTTP 请求
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- mcp::callback_server::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- mcp::callback_server::tests`
   - 预期: 所有 12 个测试通过
 
 **检查步骤:**
 
 - [x] 验证 callback_server.rs 文件存在且包含核心结构体
-  - `grep -n 'pub struct OAuthCallbackServer' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/callback_server.rs`
+  - `grep -n 'pub struct OAuthCallbackServer' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/callback_server.rs`
   - 预期: 行号输出
 - [x] 验证 CallbackError 枚举包含所有变体
-  - `grep -c 'BindFailed\|Timeout\|StateMismatch\|MissingCode\|InvalidRequest\|Io' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/callback_server.rs`
+  - `grep -c 'BindFailed\|Timeout\|StateMismatch\|MissingCode\|InvalidRequest\|Io' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/callback_server.rs`
   - 预期: 输出为 6（6 个变体各出现至少一次）
 - [x] 验证 mod.rs 注册并导出 callback_server
-  - `grep 'callback_server' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/mod.rs`
+  - `grep 'callback_server' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/mod.rs`
   - 预期: 输出包含 `pub mod callback_server;` 和 `pub use callback_server`
 - [x] 验证 parse_code_from_url 公共函数存在
-  - `grep -n 'pub fn parse_code_from_url' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/callback_server.rs`
+  - `grep -n 'pub fn parse_code_from_url' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/callback_server.rs`
   - 预期: 行号输出
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 输出包含 `Finished`，无编译错误
 - [x] 验证所有回调服务器测试通过
-  - `cargo test -p rust-agent-middlewares --lib -- mcp::callback_server::tests 2>&1 | tail -15`
+  - `cargo test -p peri-middlewares --lib -- mcp::callback_server::tests 2>&1 | tail -15`
   - 预期: 输出包含 `test result: ok`，12 个测试全部通过
 - [x] 验证全量测试无回归
-  - `cargo test -p rust-agent-middlewares --lib 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib 2>&1 | tail -10`
   - 预期: 输出包含 `test result: ok`，无失败测试
 
 ---
@@ -946,15 +946,15 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-middlewares/src/mcp/oauth_flow.rs`
-- 修改: `rust-agent-middlewares/src/mcp/transport.rs`
-- 修改: `rust-agent-middlewares/src/mcp/client.rs`
-- 修改: `rust-agent-middlewares/src/mcp/mod.rs`
+- 新建: `peri-middlewares/src/mcp/oauth_flow.rs`
+- 修改: `peri-middlewares/src/mcp/transport.rs`
+- 修改: `peri-middlewares/src/mcp/client.rs`
+- 修改: `peri-middlewares/src/mcp/mod.rs`
 
 **执行步骤:**
 
 - [x] 新建 oauth_flow.rs，定义 OAuth 流程编排所需的公共类型 — 为 client.rs 和 TUI 提供类型契约
-  - 位置: `rust-agent-middlewares/src/mcp/oauth_flow.rs`（新文件）
+  - 位置: `peri-middlewares/src/mcp/oauth_flow.rs`（新文件）
   - 文件头部 imports:
 
     ```rust
@@ -1024,7 +1024,7 @@
 
   - 原因: `OAuthCallbackResult` 是 TUI 和 middlewares 之间的共享数据类型，定义在 middlewares 层供 Task 5 引用。`OAuthFlowError` 统一封装 OAuth 流程中所有可能的错误（回调服务器错误、rmcp auth 错误、用户取消）。`OAuthFlowEvent` 解耦 OAuth 编排器和 TUI——OAuthFlowManager 产出事件，client.rs 通过回调转发到 TUI 事件通道。
 - [x] 实现 `OAuthFlowManager` 结构体和 `new()` 构造方法 — 管理所有 MCP 服务器的 OAuth 状态
-  - 位置: `rust-agent-middlewares/src/mcp/oauth_flow.rs`，公共类型定义之后
+  - 位置: `peri-middlewares/src/mcp/oauth_flow.rs`，公共类型定义之后
   - 新增内容:
 
     ```rust
@@ -1059,9 +1059,9 @@
     }
     ```
 
-  - 原因: 使用回调函数而非 `mpsc::Sender<AgentEvent>`，因为 `OAuthFlowManager` 在 middlewares 层（不依赖 `rust-create-agent` 的事件定义）。回调函数由 client.rs 在 `run_initialize()` 中注入，client.rs 负责将 `OAuthFlowEvent` 转换为 `AgentEvent` 并发送到 TUI 事件通道。`token_store` 使用 `Arc` 共享，多个服务器共享同一个文件但按 key 隔离。
+  - 原因: 使用回调函数而非 `mpsc::Sender<AgentEvent>`，因为 `OAuthFlowManager` 在 middlewares 层（不依赖 `peri-agent` 的事件定义）。回调函数由 client.rs 在 `run_initialize()` 中注入，client.rs 负责将 `OAuthFlowEvent` 转换为 `AgentEvent` 并发送到 TUI 事件通道。`token_store` 使用 `Arc` 共享，多个服务器共享同一个文件但按 key 隔离。
 - [x] 实现 `OAuthFlowManager::run_oauth_flow()` 方法 — 编排完整 OAuth 授权流程
-  - 位置: `rust-agent-middlewares/src/mcp/oauth_flow.rs`，`new()` 之后
+  - 位置: `peri-middlewares/src/mcp/oauth_flow.rs`，`new()` 之后
   - 新增内容:
 
     ```rust
@@ -1130,7 +1130,7 @@
                 .map(|s| s.iter().map(|ss| ss.as_str()).collect())
                 .unwrap_or_default();
 
-            let client_name = Some("perihelion-mcp-client");
+            let client_name = Some("peri-mcp-client");
             state.start_authorization(&scopes, &redirect_uri, client_name).await?;
 
             // 5. 获取授权 URL
@@ -1199,7 +1199,7 @@
 
   - 原因: `run_oauth_flow()` 是核心编排方法，整合了 Task 1-3 的所有组件。快速路径（`initialize_from_store()`）避免每次启动都触发浏览器授权。使用 `tokio::select!` 并发等待本地回调服务器和 TUI 手动粘贴，取先到达的结果——回调服务器超时后 TUI 侧仍可接收用户输入，反之亦然。`emit_event()` 将事件通过回调函数传递给 client.rs，由 client.rs 决定如何转发到 TUI。
 - [x] 实现 `OAuthFlowManager::get_authorization_manager()` 方法 — 提取 AuthorizationManager 用于构建 AuthClient
-  - 位置: `rust-agent-middlewares/src/mcp/oauth_flow.rs`，`run_oauth_flow()` 之后
+  - 位置: `peri-middlewares/src/mcp/oauth_flow.rs`，`run_oauth_flow()` 之后
   - 新增内容:
 
     ```rust
@@ -1243,7 +1243,7 @@
 
   - 原因: `get_authorization_manager()` 使用 `remove` 消费状态（OAuthState 不能 Clone），确保 AuthorizationManager 的所有权唯一转移给 AuthClient。client.rs 在 OAuth 授权成功后调用此方法构建 `AuthClient<StreamableHttpClientTransport>`，再用其重新连接 MCP 服务器。`is_authorized()` 用于 Task 5 的 TUI 面板展示 OAuth 状态。
 - [x] 在 transport.rs 中新增 `TransportConfig` 的 `oauth` 字段 — 携带 OAuth 配置到传输层
-  - 位置: `rust-agent-middlewares/src/mcp/transport.rs` 第 14-17 行，`StreamableHttp` 变体内
+  - 位置: `peri-middlewares/src/mcp/transport.rs` 第 14-17 行，`StreamableHttp` 变体内
   - 将 `StreamableHttp` 变体从:
 
     ```rust
@@ -1264,7 +1264,7 @@
     },
     ```
 
-  - 位置: `rust-agent-middlewares/src/mcp/transport.rs` 第 41-44 行，`TryFrom` 实现中 `StreamableHttp` 分支
+  - 位置: `peri-middlewares/src/mcp/transport.rs` 第 41-44 行，`TryFrom` 实现中 `StreamableHttp` 分支
   - 将 `Ok(TransportConfig::StreamableHttp {` 构造中的:
 
     ```rust
@@ -1282,12 +1282,12 @@
         .cloned(),
     ```
 
-  - 位置: `rust-agent-middlewares/src/mcp/transport.rs` 第 59-178 行，`#[cfg(test)] mod tests` 内所有 `TransportConfig::StreamableHttp { ... }` 构造
+  - 位置: `peri-middlewares/src/mcp/transport.rs` 第 59-178 行，`#[cfg(test)] mod tests` 内所有 `TransportConfig::StreamableHttp { ... }` 构造
   - 在每个 `StreamableHttp` 构造中追加 `oauth: None,` 字段
   - 涉及测试函数: `test_try_from_http_config`（第 101 行）、`test_build_transport_returns_config`（第 160 行）
   - 原因: `TransportConfig::StreamableHttp` 携带 `oauth` 字段，使 `client.rs` 的 `run_initialize()` 和 `reconnect()` 能区分需要 OAuth 的服务器和普通 HTTP 服务器。`filter(|o| o.is_enabled())` 确保显式禁用 OAuth 的服务器走普通 HTTP 连接路径。
 - [x] 在 client.rs 中新增 `build_authed_transport()` 函数 — 使用 AuthClient 包装 StreamableHttpClientTransport
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs`，`build_http_transport()` 函数（第 620-651 行）之后
+  - 位置: `peri-middlewares/src/mcp/client.rs`，`build_http_transport()` 函数（第 620-651 行）之后
   - 新增内容:
 
     ```rust
@@ -1313,7 +1313,7 @@
   - 注意: 需确认 rmcp 是否提供 `StreamableHttpClientTransport::from_client()` 或等价方法。如不存在，使用 `with_client(client, config)` 并从 base transport 获取 config。
   - 原因: `AuthClient<C>` 实现了 `StreamableHttpClient` trait（`rust-mcp-patch/src/transport/common/auth/streamable_http_client.rs`），因此 `StreamableHttpClientTransport<AuthClient<...>>` 可以作为 `Worker` 传递给 `serve_client()`。AuthClient 自动在每次请求时调用 `get_access_token()` 获取/刷新 token 并注入 Authorization 头。
 - [x] 修改 `McpClientPool::run_initialize()` — 集成 OAuth 流程到连接池初始化
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs` 第 95-241 行，`run_initialize()` 方法
+  - 位置: `peri-middlewares/src/mcp/client.rs` 第 95-241 行，`run_initialize()` 方法
   - 在方法签名中新增 `oauth_event_callback` 参数:
 
     ```rust
@@ -1378,7 +1378,7 @@
 
   - 原因: `run_initialize()` 是连接池初始化的入口，在此集成 OAuth 流程使得 OAuth 授权在后台自动完成。`oauth_event_callback` 参数为可选——当 TUI 未传入回调时（如测试或 headless 模式），OAuth 流程不触发，服务器标记为 Failed。`run_oauth_flow()` 内部的快速路径（`initialize_from_store()`）在已有 token 时跳过浏览器授权，减少用户交互。
 - [x] 修改 `McpClientPool::reconnect()` — 集成 OAuth 重连逻辑
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs` 第 257-358 行，`reconnect()` 方法
+  - 位置: `peri-middlewares/src/mcp/client.rs` 第 257-358 行，`reconnect()` 方法
   - 修改方法签名，新增 `oauth_event_callback` 参数:
 
     ```rust
@@ -1424,7 +1424,7 @@
 
   - 原因: `reconnect()` 与 `run_initialize()` 共享相同的 OAuth 连接逻辑。重连时如果 token 过期（AuthClient 的 `get_access_token()` 自动刷新），无需重新触发完整 OAuth 流程；仅在 token 完全丢失时才触发浏览器授权。
 - [x] 新增 `McpClientPool::start_oauth_flow()` 公共方法 — 供 TUI 面板手动触发 OAuth 授权
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs`，`reconnect()` 方法之后
+  - 位置: `peri-middlewares/src/mcp/client.rs`，`reconnect()` 方法之后
   - 新增内容:
 
     ```rust
@@ -1473,7 +1473,7 @@
   - 原因: Task 5 的 MCP 面板 `r` 键调用此方法。此方法先执行 OAuth 授权流程，成功后自动调用 `reconnect()`（传 `None` 跳过 OAuth 检查，因为 token 已在 `run_oauth_flow` 中保存到 store，`reconnect` 中的普通连接路径会通过 `build_http_transport` 使用已有 headers 连接）。
   - 修正: `reconnect()` 中传 `None` 时不会使用 AuthClient，需要改为传 `Some` 以便重连时也使用 AuthClient。实际实现中，`start_oauth_flow` 授权成功后应先关闭旧连接，再用 `build_authed_transport` 重新连接。此步骤的实际实现应在 `reconnect()` 内部完成——`reconnect()` 检测到 oauth 配置时自动使用 AuthClient 重连，无需额外逻辑。
 - [x] 更新 `McpClientPool::initialize()` 同步方法 — 添加 oauth_event_callback 参数保持签名一致
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs` 第 419-533 行，`initialize()` 方法
+  - 位置: `peri-middlewares/src/mcp/client.rs` 第 419-533 行，`initialize()` 方法
   - 修改方法签名:
 
     ```rust
@@ -1486,7 +1486,7 @@
   - 修改方法体内 `TransportConfig::StreamableHttp` 分支（第 467-473 行），与 `run_initialize()` 相同地添加 OAuth 检查逻辑（创建 OAuthFlowManager → run_oauth_flow → build_authed_transport）
   - 原因: `initialize()` 是 `run_initialize()` 的同步阻塞版本（保留向后兼容），两者共享相同的 OAuth 连接逻辑。
 - [x] 在 mod.rs 中注册 oauth_flow 模块并导出公共类型
-  - 位置: `rust-agent-middlewares/src/mcp/mod.rs`
+  - 位置: `peri-middlewares/src/mcp/mod.rs`
   - 在 `pub mod callback_server;` 之后追加 `pub mod oauth_flow;`
   - 在 `pub use` 块中追加:
 
@@ -1496,11 +1496,11 @@
 
   - 原因: client.rs 的 `run_initialize()` / `reconnect()` / `start_oauth_flow()` 需要引用 `OAuthFlowManager`、`OAuthFlowEvent` 等类型。Task 5 的 TUI 层需要引用 `OAuthCallbackResult`、`OAuthFlowEvent`。
 - [x] 更新 client.rs 和 transport.rs 中所有受影响的测试 — 补充 oauth 字段
-  - 位置: `rust-agent-middlewares/src/mcp/transport.rs` `mod tests` 内所有 `TransportConfig::StreamableHttp { ... }` 构造
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs` `mod tests` 内（测试不涉及 OAuth，保持 `oauth_event_callback: None`）
+  - 位置: `peri-middlewares/src/mcp/transport.rs` `mod tests` 内所有 `TransportConfig::StreamableHttp { ... }` 构造
+  - 位置: `peri-middlewares/src/mcp/client.rs` `mod tests` 内（测试不涉及 OAuth，保持 `oauth_event_callback: None`）
   - 原因: `TransportConfig::StreamableHttp` 新增 `oauth` 字段后，所有手动构造该变体的测试必须补充 `oauth: None,`。`run_initialize()` / `reconnect()` 新增参数后，现有测试调用点需补充 `None` 参数。
 - [x] 为 OAuthFlowManager 核心逻辑编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/oauth_flow.rs`（文件末尾 `#[cfg(test)] mod tests` 块）
+  - 测试文件: `peri-middlewares/src/mcp/oauth_flow.rs`（文件末尾 `#[cfg(test)] mod tests` 块）
   - 测试场景:
     - `test_oauth_flow_error_display`: 构造各种 `OAuthFlowError` 变体，断言 `Display` 输出包含关键信息（如 "OAuth 流程失败"、"回调服务器错误"、"授权被用户取消"）
     - `test_oauth_flow_event_types`: 构造 `OAuthFlowEvent` 的三个变体，断言 match 分支正确识别
@@ -1508,40 +1508,40 @@
     - `test_oauth_flow_manager_new`: 构造 `OAuthFlowManager::new(Arc::new(FileCredentialStore::with_path(tmp_path)), |_| {})`，断言 `is_authorized("nonexistent")` 返回 `false`
     - `test_oauth_flow_manager_is_authorized_empty`: 新建 manager，断言 `is_authorized` 对任意 server_name 返回 `false`
     - `test_oauth_flow_manager_emit_event`: 构造 manager 时注入计数回调，调用内部 emit_event（通过测试 helper），断言回调被调用
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- mcp::oauth_flow::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- mcp::oauth_flow::tests`
   - 预期: 所有 6 个测试通过
 
 **检查步骤:**
 
 - [x] 验证 oauth_flow.rs 文件存在且包含核心结构体
-  - `grep -n 'pub struct OAuthFlowManager' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/oauth_flow.rs`
+  - `grep -n 'pub struct OAuthFlowManager' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/oauth_flow.rs`
   - 预期: 行号输出
 - [x] 验证 OAuthFlowError 枚举包含所有变体
-  - `grep -c 'FlowFailed\|CallbackError\|AuthError\|Cancelled\|CallbackTimeout' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/oauth_flow.rs`
+  - `grep -c 'FlowFailed\|CallbackError\|AuthError\|Cancelled\|CallbackTimeout' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/oauth_flow.rs`
   - 预期: 输出为 5（5 个变体各出现至少一次）
 - [x] 验证 OAuthFlowEvent 枚举包含 3 个变体
-  - `grep -c 'AuthorizationNeeded\|AuthorizationCompleted\|AuthorizationFailed' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/oauth_flow.rs`
+  - `grep -c 'AuthorizationNeeded\|AuthorizationCompleted\|AuthorizationFailed' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/oauth_flow.rs`
   - 预期: 输出为 3
 - [x] 验证 mod.rs 注册并导出 oauth_flow 模块
-  - `grep 'oauth_flow' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/mod.rs`
+  - `grep 'oauth_flow' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/mod.rs`
   - 预期: 输出包含 `pub mod oauth_flow;` 和 `pub use oauth_flow`
 - [x] 验证 transport.rs 的 StreamableHttp 包含 oauth 字段
-  - `grep -A 5 'StreamableHttp' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/transport.rs | grep -c 'oauth'
+  - `grep -A 5 'StreamableHttp' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/transport.rs | grep -c 'oauth'
   - 预期: 输出为 2（变体定义 + TryFrom 构造）
 - [x] 验证 client.rs 包含 build_authed_transport 函数
-  - `grep -n 'fn build_authed_transport' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/client.rs`
+  - `grep -n 'fn build_authed_transport' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/client.rs`
   - 预期: 行号输出
 - [x] 验证 client.rs 包含 start_oauth_flow 方法
-  - `grep -n 'fn start_oauth_flow' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/client.rs`
+  - `grep -n 'fn start_oauth_flow' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/client.rs`
   - 预期: 行号输出
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 输出包含 `Finished`，无编译错误
 - [x] 验证 oauth_flow 模块测试通过
-  - `cargo test -p rust-agent-middlewares --lib -- mcp::oauth_flow::tests 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib -- mcp::oauth_flow::tests 2>&1 | tail -10`
   - 预期: 输出包含 `test result: ok`，6 个测试全部通过
 - [x] 验证全量测试无回归
-  - `cargo test -p rust-agent-middlewares --lib 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib 2>&1 | tail -10`
   - 预期: 输出包含 `test result: ok`，无失败测试
 
 ---
@@ -1555,21 +1555,21 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/events.rs`
-- 修改: `rust-agent-tui/src/app/mcp_panel.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/mcp.rs`
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
-- 修改: `rust-agent-tui/src/event.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/status_bar.rs`
-- 新建: `rust-agent-tui/src/app/oauth_prompt.rs`
-- 新建: `rust-agent-tui/src/ui/main_ui/popups/oauth.rs`
-- 修改: `rust-agent-middlewares/src/mcp/client.rs`（ServerInfo 新增 oauth_status 字段）
+- 修改: `peri-tui/src/app/events.rs`
+- 修改: `peri-tui/src/app/mcp_panel.rs`
+- 修改: `peri-tui/src/ui/main_ui/panels/mcp.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/event.rs`
+- 修改: `peri-tui/src/ui/main_ui/status_bar.rs`
+- 新建: `peri-tui/src/app/oauth_prompt.rs`
+- 新建: `peri-tui/src/ui/main_ui/popups/oauth.rs`
+- 修改: `peri-middlewares/src/mcp/client.rs`（ServerInfo 新增 oauth_status 字段）
 
 **执行步骤:**
 
-- [x] 在 `rust-agent-middlewares/src/mcp/client.rs` 的 `ServerInfo` 中新增 `oauth_status` 字段 — 为 TUI 面板提供 OAuth 状态数据
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs` 第 34-41 行，`ServerInfo` 结构体定义内，在 `resource_count` 字段之后
+- [x] 在 `peri-middlewares/src/mcp/client.rs` 的 `ServerInfo` 中新增 `oauth_status` 字段 — 为 TUI 面板提供 OAuth 状态数据
+  - 位置: `peri-middlewares/src/mcp/client.rs` 第 34-41 行，`ServerInfo` 结构体定义内，在 `resource_count` 字段之后
   - 在 `ServerInfo` 定义之前（第 33 行之前）新增 `OAuthStatus` 枚举:
 
     ```rust
@@ -1594,10 +1594,10 @@
     ```
 
   - 更新所有构造 `ServerInfo` 的位置（`McpClientPool::server_infos()` 方法中），新增 `oauth_status: OAuthStatus::default()` 字段
-  - 在 `rust-agent-middlewares/src/mcp/mod.rs` 的 `pub use` 列表中导出 `OAuthStatus`
+  - 在 `peri-middlewares/src/mcp/mod.rs` 的 `pub use` 列表中导出 `OAuthStatus`
   - 原因: `OAuthStatus` 枚举为 TUI 面板提供三种状态展示（None / Authorized / NeedsAuthorization），`Default` trait 保证现有构造点向后兼容。Task 4 的 `OAuthFlowManager` 在授权完成后更新 `ServerInfo.oauth_status` 为 `Authorized`。
-- [x] 在 `rust-agent-tui/src/app/events.rs` 的 `AgentEvent` 枚举中新增 3 个 OAuth 变体 — 支持后台到 TUI 的 OAuth 事件传递
-  - 位置: `rust-agent-tui/src/app/events.rs` 第 72 行（`ContextWarning` 变体之后，枚举闭合括号之前）
+- [x] 在 `peri-tui/src/app/events.rs` 的 `AgentEvent` 枚举中新增 3 个 OAuth 变体 — 支持后台到 TUI 的 OAuth 事件传递
+  - 位置: `peri-tui/src/app/events.rs` 第 72 行（`ContextWarning` 变体之后，枚举闭合括号之前）
   - 在文件顶部 imports 区域（第 3 行 `use tokio::sync::oneshot;` 之后）追加 `OAuthCallbackResult` 结构体定义:
 
     ```rust
@@ -1633,8 +1633,8 @@
     ```
 
   - 原因: `OAuthAuthorizationNeeded` 携带 `oneshot::Sender<OAuthCallbackResult>` 回调通道，TUI 弹窗收集用户输入后通过此通道将 code/state 传回后台 OAuthFlowManager。`OAuthCallbackResult` 作为公共结构体，在 events.rs 中定义供 TUI 和 middlewares 双方引用。`OAuthAuthorizationCompleted/Failed` 用于更新 MCP 面板状态和显示系统消息。
-- [x] 新建 `rust-agent-tui/src/app/oauth_prompt.rs` — 定义 OAuth 弹窗面板的状态和交互逻辑
-  - 位置: `rust-agent-tui/src/app/oauth_prompt.rs`（新文件）
+- [x] 新建 `peri-tui/src/app/oauth_prompt.rs` — 定义 OAuth 弹窗面板的状态和交互逻辑
+  - 位置: `peri-tui/src/app/oauth_prompt.rs`（新文件）
   - 文件内容:
 
     ```rust
@@ -1674,7 +1674,7 @@
 
         /// 提交用户输入的回调 URL，返回 true 表示成功发送
         pub fn submit(&mut self) -> bool {
-            use rust_agent_middlewares::mcp::parse_code_from_url;
+            use peri_middlewares::mcp::parse_code_from_url;
             match parse_code_from_url(&self.input) {
                 Ok((code, state)) => {
                     let _ = self.callback_tx.send(OAuthCallbackResult { code, state });
@@ -1690,33 +1690,33 @@
     ```
 
   - 原因: `OAuthPrompt` 遵循项目中 `HitlBatchPrompt` / `AskUserBatchPrompt` 的弹窗状态管理模式。`submit()` 方法调用 Task 3 实现的 `parse_code_from_url()` 解析用户粘贴的内容，通过 oneshot channel 传回后台。错误信息存储在 `error_message` 中供渲染层显示。
-- [x] 在 `rust-agent-tui/src/app/mod.rs` 中注册 `oauth_prompt` 模块并新增 `App` 字段
-  - 位置: `rust-agent-tui/src/app/mod.rs` 第 24 行（`mod hitl_prompt;` 之后）追加 `mod oauth_prompt;`
-  - 位置: `rust-agent-tui/src/app/mod.rs` 第 29 行（`pub use hitl_prompt::...` 之后）追加:
+- [x] 在 `peri-tui/src/app/mod.rs` 中注册 `oauth_prompt` 模块并新增 `App` 字段
+  - 位置: `peri-tui/src/app/mod.rs` 第 24 行（`mod hitl_prompt;` 之后）追加 `mod oauth_prompt;`
+  - 位置: `peri-tui/src/app/mod.rs` 第 29 行（`pub use hitl_prompt::...` 之后）追加:
 
     ```rust
     pub use oauth_prompt::OAuthPrompt;
     ```
 
-  - 位置: `rust-agent-tui/src/app/mod.rs` 第 100 行（`pub mcp_panel: Option<McpPanel>,` 之后）追加:
+  - 位置: `peri-tui/src/app/mod.rs` 第 100 行（`pub mcp_panel: Option<McpPanel>,` 之后）追加:
 
     ```rust
     /// OAuth 授权弹窗状态（None 表示无弹窗）
     pub oauth_prompt: Option<OAuthPrompt>,
     ```
 
-  - 位置: `rust-agent-tui/src/app/mod.rs` 第 196 行（`mcp_panel: None,` 之后）追加:
+  - 位置: `peri-tui/src/app/mod.rs` 第 196 行（`mcp_panel: None,` 之后）追加:
 
     ```rust
     oauth_prompt: None,
     ```
 
   - 原因: `oauth_prompt` 作为 `App` 的可选字段，与 `interaction_prompt`（HITL/AskUser）互不冲突——OAuth 弹窗由 `AgentEvent::OAuthAuthorizationNeeded` 触发，独立于 ReAct 循环中的 HITL 拦截。
-- [x] 在 `rust-agent-tui/src/ui/main_ui/popups/mod.rs` 中注册 `oauth` 模块
-  - 位置: `rust-agent-tui/src/ui/main_ui/popups/mod.rs` 第 4 行（`pub mod hitl;` 之后）追加 `pub mod oauth;`
+- [x] 在 `peri-tui/src/ui/main_ui/popups/mod.rs` 中注册 `oauth` 模块
+  - 位置: `peri-tui/src/ui/main_ui/popups/mod.rs` 第 4 行（`pub mod hitl;` 之后）追加 `pub mod oauth;`
   - 原因: OAuth 弹窗面板渲染器放在 popups 模块下，与 hitl / ask_user 同级，因为 OAuth 弹窗同样是阻塞式交互弹窗（用户必须操作后才能继续）。
-- [x] 新建 `rust-agent-tui/src/ui/main_ui/popups/oauth.rs` — 实现 OAuth 弹窗面板的渲染函数
-  - 位置: `rust-agent-tui/src/ui/main_ui/popups/oauth.rs`（新文件）
+- [x] 新建 `peri-tui/src/ui/main_ui/popups/oauth.rs` — 实现 OAuth 弹窗面板的渲染函数
+  - 位置: `peri-tui/src/ui/main_ui/popups/oauth.rs`（新文件）
   - 渲染函数签名: `pub(crate) fn render_oauth_popup(f: &mut Frame, app: &mut App, area: Rect)`
   - 渲染布局（从上到下）:
     1. **标题行**: " OAuth 授权 — {server_name} "（使用 `theme::THINKING` 颜色 + `Modifier::BOLD`）
@@ -1729,8 +1729,8 @@
   - 输入框使用 `crate::app::handle_edit_key()` 统一处理编辑按键（Char / Backspace / Delete / Left / Right / Home / End / Ctrl+A / Ctrl+E / Ctrl+K / Ctrl+U）
   - 边框使用 `BorderedPanel` widget，边框颜色 `theme::BORDER`
   - 原因: 遵循项目面板渲染规范——面板内部禁止渲染快捷键提示行，快捷键统一由状态栏 `render_second_row` 负责。此处快捷键行是临时实现，在步骤 10 中由状态栏接管后移除。
-- [x] 在 `rust-agent-tui/src/ui/main_ui.rs` 的 `render()` 函数中添加 OAuth 弹窗的渲染调度
-  - 位置: `rust-agent-tui/src/ui/main_ui.rs` 第 71-81 行，底部展开区渲染块（`if panel_height > 0 { ... }` 内部）
+- [x] 在 `peri-tui/src/ui/main_ui.rs` 的 `render()` 函数中添加 OAuth 弹窗的渲染调度
+  - 位置: `peri-tui/src/ui/main_ui.rs` 第 71-81 行，底部展开区渲染块（`if panel_height > 0 { ... }` 内部）
   - 在 `match &app.agent.interaction_prompt { ... }` 块之后、`if app.core.login_panel.is_some()` 之前追加:
 
     ```rust
@@ -1740,8 +1740,8 @@
     ```
 
   - 原因: OAuth 弹窗与 HITL/AskUser 弹窗互斥（由后台事件触发时序保证），渲染在同一区域。
-- [x] 在 `rust-agent-tui/src/ui/main_ui.rs` 的 `active_panel_height()` 函数中添加 OAuth 弹窗的高度计算
-  - 位置: `rust-agent-tui/src/ui/main_ui.rs` 第 126-208 行，`active_panel_height` 函数内
+- [x] 在 `peri-tui/src/ui/main_ui.rs` 的 `active_panel_height()` 函数中添加 OAuth 弹窗的高度计算
+  - 位置: `peri-tui/src/ui/main_ui.rs` 第 126-208 行，`active_panel_height` 函数内
   - 在 `else if let Some(crate::app::InteractionPrompt::Questions(p)) = ...` 分支之前追加:
 
     ```rust
@@ -1750,8 +1750,8 @@
     ```
 
   - 原因: OAuth 弹窗固定 9 行高度（标题 + 提示 + URL + 空行 + 输入框 + 错误 + 快捷键 + 上下边框）。
-- [x] 在 `rust-agent-tui/src/event.rs` 的 `next_event()` 函数中添加 OAuth 弹窗的键盘事件处理
-  - 位置: `rust-agent-tui/src/event.rs`，在 MCP 面板处理块（`if app.mcp_panel.is_some()`，约第 185 行）之前追加:
+- [x] 在 `peri-tui/src/event.rs` 的 `next_event()` 函数中添加 OAuth 弹窗的键盘事件处理
+  - 位置: `peri-tui/src/event.rs`，在 MCP 面板处理块（`if app.mcp_panel.is_some()`，约第 185 行）之前追加:
 
     ```rust
     // OAuth 弹窗优先处理
@@ -1791,8 +1791,8 @@
     ```
 
   - 原因: OAuth 弹窗优先级高于 MCP 面板（弹窗 > 面板），遵循项目事件处理优先级链。`handle_edit_key()` 复用 `app/mod.rs` 中的统一编辑按键处理函数，支持完整的单行编辑操作。Enter 提交成功后清除 `oauth_prompt` 关闭弹窗。
-- [x] 在 `rust-agent-tui/src/app/mcp_panel.rs` 的 MCP 面板中新增手动授权触发方法
-  - 位置: `rust-agent-tui/src/app/mcp_panel.rs`，在 `mcp_panel_reconnect()` 方法之后追加 `mcp_panel_request_oauth()` 方法:
+- [x] 在 `peri-tui/src/app/mcp_panel.rs` 的 MCP 面板中新增手动授权触发方法
+  - 位置: `peri-tui/src/app/mcp_panel.rs`，在 `mcp_panel_reconnect()` 方法之后追加 `mcp_panel_request_oauth()` 方法:
 
     ```rust
     /// 手动触发当前选中服务器的 OAuth 授权流程
@@ -1809,7 +1809,7 @@
             if server.transport_type != "http" {
                 return;
             }
-            use rust_agent_middlewares::mcp::OAuthStatus;
+            use peri_middlewares::mcp::OAuthStatus;
             if server.oauth_status != OAuthStatus::NeedsAuthorization {
                 return;
             }
@@ -1826,8 +1826,8 @@
 
   - 注意: `start_oauth_flow` 方法由 Task 4 在 `McpClientPool` 中实现。此处预留调用点，Task 4 完成后编译通过。
   - 原因: 用户在 MCP 面板 ServerList 视图中按 `r` 键触发 OAuth 流程。仅对 HTTP 传输且状态为 `NeedsAuthorization` 的服务器生效。
-- [x] 在 `rust-agent-tui/src/event.rs` 的 `handle_mcp_panel()` 函数中添加 `r` 键绑定
-  - 位置: `rust-agent-tui/src/event.rs`，`handle_mcp_panel` 函数内，在 `Ctrl+R` 重连分支（约第 1248-1259 行）之后追加:
+- [x] 在 `peri-tui/src/event.rs` 的 `handle_mcp_panel()` 函数中添加 `r` 键绑定
+  - 位置: `peri-tui/src/event.rs`，`handle_mcp_panel` 函数内，在 `Ctrl+R` 重连分支（约第 1248-1259 行）之后追加:
 
     ```rust
     Input {
@@ -1842,18 +1842,18 @@
     ```
 
   - 原因: `r` 键（无 Ctrl 修饰）用于手动触发 OAuth 授权。`Ctrl+R` 已被重连功能占用，使用小写 `r` 不与任何现有快捷键冲突。CLAUDE.md 规范禁止 `Shift + 字母`，`r` 是普通字母键，不违反规范。
-- [x] 在 `rust-agent-tui/src/ui/main_ui/panels/mcp.rs` 的服务器列表渲染中新增 OAuth 状态图标列
-  - 位置: `rust-agent-tui/src/ui/main_ui/panels/mcp.rs`，`render_server_list` 函数内，第 100-117 行的 `Line::from(vec![...])` 构建
+- [x] 在 `peri-tui/src/ui/main_ui/panels/mcp.rs` 的服务器列表渲染中新增 OAuth 状态图标列
+  - 位置: `peri-tui/src/ui/main_ui/panels/mcp.rs`，`render_server_list` 函数内，第 100-117 行的 `Line::from(vec![...])` 构建
   - 在 `count_text` 的 Span 之前插入 OAuth 状态 Span。在循环体中（第 50 行 `for (i, server) in panel.servers.iter().enumerate()` 之后），在构建 `count_text` 之前新增:
 
     ```rust
     // OAuth 状态图标
     let (oauth_icon, oauth_style) = match &server.oauth_status {
-        rust_agent_middlewares::mcp::OAuthStatus::None => ("", Style::default()),
-        rust_agent_middlewares::mcp::OAuthStatus::Authorized => {
+        peri_middlewares::mcp::OAuthStatus::None => ("", Style::default()),
+        peri_middlewares::mcp::OAuthStatus::Authorized => {
             ("\u{1f511}", Style::default().fg(theme::SAGE))
         }
-        rust_agent_middlewares::mcp::OAuthStatus::NeedsAuthorization => {
+        peri_middlewares::mcp::OAuthStatus::NeedsAuthorization => {
             ("\u{1f512}", Style::default().fg(theme::WARNING))
         }
     };
@@ -1866,8 +1866,8 @@
     ```
 
   - 原因: 在服务器列表的每一行右侧（count_text 之前）显示 OAuth 状态图标。`None` 状态不显示图标（空字符串），`Authorized` 显示绿色钥匙，`NeedsAuthorization` 显示黄色锁。
-- [x] 在 `rust-agent-tui/src/ui/main_ui/status_bar.rs` 的 `render_second_row` 中添加 OAuth 弹窗和 MCP 面板的快捷键提示
-  - 位置: `rust-agent-tui/src/ui/main_ui/status_bar.rs` 第 218 行，`render_second_row` 函数内的 `match &app.agent.interaction_prompt` 表达式
+- [x] 在 `peri-tui/src/ui/main_ui/status_bar.rs` 的 `render_second_row` 中添加 OAuth 弹窗和 MCP 面板的快捷键提示
+  - 位置: `peri-tui/src/ui/main_ui/status_bar.rs` 第 218 行，`render_second_row` 函数内的 `match &app.agent.interaction_prompt` 表达式
   - 在 `Some(crate::app::InteractionPrompt::Questions(_))` 分支之前追加:
 
     ```rust
@@ -1890,72 +1890,72 @@
 
   - 原因: 遵循 CLAUDE.md 面板快捷键设计规范——面板内部禁止渲染快捷键提示行，统一由状态栏 `render_second_row` 负责。`Some(_) if app.oauth_prompt.is_some()` 使用 guard 模式匹配，优先级高于 `InteractionPrompt` 分支。
 - [x] 更新所有现有测试中 `ServerInfo` 的手动构造 — 补充 `oauth_status` 字段
-  - 位置: `rust-agent-tui/src/app/mcp_panel.rs` 第 252-259 行，`make_server_info` 函数
+  - 位置: `peri-tui/src/app/mcp_panel.rs` 第 252-259 行，`make_server_info` 函数
   - 在 `resource_count: 0,` 之后追加 `oauth_status: Default::default(),`
-  - 位置: `rust-agent-tui/src/ui/main_ui/panels/mcp.rs` 第 311-318 行，`make_server` 函数
+  - 位置: `peri-tui/src/ui/main_ui/panels/mcp.rs` 第 311-318 行，`make_server` 函数
   - 在 `resource_count: 2,` 之后追加 `oauth_status: Default::default(),`
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs` 中所有构造 `ServerInfo` 的位置
+  - 位置: `peri-middlewares/src/mcp/client.rs` 中所有构造 `ServerInfo` 的位置
   - 原因: `oauth_status` 字段新增后，所有手动构造 `ServerInfo` 的位置必须补充该字段。`OAuthStatus` 实现了 `Default` trait（默认为 `None`），使用 `Default::default()` 或 `OAuthStatus::None` 填充。
 - [x] 为 OAuth 弹窗面板交互逻辑编写单元测试
-  - 测试文件: `rust-agent-tui/src/app/oauth_prompt.rs`（文件末尾 `#[cfg(test)] mod tests` 块）
+  - 测试文件: `peri-tui/src/app/oauth_prompt.rs`（文件末尾 `#[cfg(test)] mod tests` 块）
   - 测试场景:
     - `test_oauth_prompt_new`: 构造 `OAuthPrompt::new(...)`，断言 `input` 为空、`cursor` 为 0、`error_message` 为 `None`
     - `test_oauth_prompt_submit_valid_url`: 构造 OAuthPrompt，设置 `input = "http://localhost:12345/callback?code=abc&state=xyz"`，调用 `submit()`，断言返回 `true`，`callback_tx` 接收到 `OAuthCallbackResult { code: "abc", state: "xyz" }`
     - `test_oauth_prompt_submit_query_only`: 设置 `input = "code=test_code&state=test_state"`，调用 `submit()`，断言返回 `true`
     - `test_oauth_prompt_submit_invalid_url`: 设置 `input = "not a valid url"`，调用 `submit()`，断言返回 `false`，`error_message` 为 `Some(...)`
     - `test_oauth_prompt_submit_empty`: 设置 `input = ""`，调用 `submit()`，断言返回 `false`
-  - 测试文件: `rust-agent-tui/src/ui/main_ui/popups/oauth.rs`（文件末尾 `#[cfg(test)] mod tests` 块）
+  - 测试文件: `peri-tui/src/ui/main_ui/popups/oauth.rs`（文件末尾 `#[cfg(test)] mod tests` 块）
   - 测试场景:
     - `test_render_oauth_popup_shows_url`: 构造 headless App，设置 `oauth_prompt = Some(OAuthPrompt::new(...))`，调用 `render()`，断言 snapshot 包含 `authorization_url` 中的域名部分（ASCII 内容）
     - `test_render_oauth_popup_shows_error`: 构造 OAuthPrompt 并设置 `error_message = Some("parse error")`，渲染后断言 snapshot 包含 "parse error"
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- app::oauth_prompt::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- app::oauth_prompt::tests`
   - 预期: 所有 5 个 oauth_prompt 测试通过
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- ui::main_ui::popups::oauth::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- ui::main_ui::popups::oauth::tests`
   - 预期: 所有 2 个渲染测试通过
 
 **检查步骤:**
 
 - [x] 验证 OAuthStatus 枚举在 client.rs 中定义并导出
-  - `grep -n 'pub enum OAuthStatus' /Users/konghayao/code/ai/perihelion/rust-agent-middlewares/src/mcp/client.rs`
+  - `grep -n 'pub enum OAuthStatus' /Users/konghayao/code/ai/peri/peri-middlewares/src/mcp/client.rs`
   - 预期: 行号输出
 - [x] 验证 AgentEvent 包含 OAuth 变体
-  - `grep -c 'OAuthAuthorization' /Users/konghayao/code/ai/perihelion/rust-agent-tui/src/app/events.rs`
+  - `grep -c 'OAuthAuthorization' /Users/konghayao/code/ai/peri/peri-tui/src/app/events.rs`
   - 预期: 输出为 4（OAuthCallbackResult + 3 个 OAuth 变体）
 - [x] 验证 OAuthPrompt 结构体定义存在
-  - `grep -n 'pub struct OAuthPrompt' /Users/konghayao/code/ai/perihelion/rust-agent-tui/src/app/oauth_prompt.rs`
+  - `grep -n 'pub struct OAuthPrompt' /Users/konghayao/code/ai/peri/peri-tui/src/app/oauth_prompt.rs`
   - 预期: 行号输出
 - [x] 验证 App 包含 oauth_prompt 字段
-  - `grep -n 'pub oauth_prompt' /Users/konghayao/code/ai/perihelion/rust-agent-tui/src/app/mod.rs`
+  - `grep -n 'pub oauth_prompt' /Users/konghayao/code/ai/peri/peri-tui/src/app/mod.rs`
   - 预期: 行号输出
 - [x] 验证 OAuth 弹窗渲染函数存在
-  - `grep -n 'pub(crate) fn render_oauth_popup' /Users/konghayao/code/ai/perihelion/rust-agent-tui/src/ui/main_ui/popups/oauth.rs`
+  - `grep -n 'pub(crate) fn render_oauth_popup' /Users/konghayao/code/ai/peri/peri-tui/src/ui/main_ui/popups/oauth.rs`
   - 预期: 行号输出
 - [x] 验证事件处理函数 handle_oauth_prompt 存在
-  - `grep -n 'fn handle_oauth_prompt' /Users/konghayao/code/ai/perihelion/rust-agent-tui/src/event.rs`
+  - `grep -n 'fn handle_oauth_prompt' /Users/konghayao/code/ai/peri/peri-tui/src/event.rs`
   - 预期: 行号输出
 - [x] 验证 MCP 面板包含 mcp_panel_request_oauth 方法
-  - `grep -n 'mcp_panel_request_oauth' /Users/konghayao/code/ai/perihelion/rust-agent-tui/src/app/mcp_panel.rs`
+  - `grep -n 'mcp_panel_request_oauth' /Users/konghayao/code/ai/peri/peri-tui/src/app/mcp_panel.rs`
   - 预期: 行号输出
 - [x] 验证状态栏包含 OAuth 弹窗快捷键
-  - `grep 'oauth_prompt' /Users/konghayao/code/ai/perihelion/rust-agent-tui/src/ui/main_ui/status_bar.rs`
+  - `grep 'oauth_prompt' /Users/konghayao/code/ai/peri/peri-tui/src/ui/main_ui/status_bar.rs`
   - 预期: 输出包含 `oauth_prompt`
 - [x] 验证状态栏 MCP 面板包含 r:授权
-  - `grep 'r.*:授权' /Users/konghayao/code/ai/perihelion/rust-agent-tui/src/ui/main_ui/status_bar.rs`
+  - `grep 'r.*:授权' /Users/konghayao/code/ai/peri/peri-tui/src/ui/main_ui/status_bar.rs`
   - 预期: 输出包含 `r` 和 `授权`
 - [x] 验证编译通过（middlewares）
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 输出包含 `Finished`，无编译错误
 - [x] 验证编译通过（TUI）
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 输出包含 `Finished`，无编译错误（注：`start_oauth_flow` 方法需 Task 4 实现后才能编译，此处预期编译错误指向该方法调用，属于正常跨 Task 依赖）
 - [x] 验证 oauth_prompt 模块测试通过
-  - `cargo test -p rust-agent-tui --lib -- app::oauth_prompt::tests 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- app::oauth_prompt::tests 2>&1 | tail -10`
   - 预期: 输出包含 `test result: ok`，5 个测试全部通过
 - [x] 验证 oauth 弹窗渲染测试通过
-  - `cargo test -p rust-agent-tui --lib -- ui::main_ui::popups::oauth::tests 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- ui::main_ui::popups::oauth::tests 2>&1 | tail -10`
   - 预期: 输出包含 `test result: ok`，2 个测试全部通过
 - [x] 验证 middlewares 全量测试无回归
-  - `cargo test -p rust-agent-middlewares --lib 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib 2>&1 | tail -10`
   - 预期: 输出包含 `test result: ok`，无失败测试
 
 ---
@@ -1976,49 +1976,49 @@
    - 失败排查: 逐个 crate 检查 `cargo test -p <crate-name>`，定位失败的具体 Task
 
 2. 验证 rmcp auth feature 编译正确
-   - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+   - `cargo build -p peri-middlewares 2>&1 | tail -5`
    - 预期: `Finished`，无编译错误
    - 失败排查: 检查 Task 1 的 Cargo.toml auth feature 配置
 
 3. 验证 OAuthConfig 配置反序列化兼容性
-   - `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests 2>&1 | tail -10`
+   - `cargo test -p peri-middlewares --lib -- mcp::config::tests 2>&1 | tail -10`
    - 预期: 所有配置测试通过（含新增的 OAuth 测试和现有测试）
    - 失败排查: 检查 Task 1 的 McpServerConfig 扩展
 
 4. 验证 Token 持久化功能
-   - `cargo test -p rust-agent-middlewares --lib -- mcp::auth_store::tests 2>&1 | tail -10`
+   - `cargo test -p peri-middlewares --lib -- mcp::auth_store::tests 2>&1 | tail -10`
    - 预期: 所有 Token 存储测试通过（文件创建、读写、清除、并发安全）
    - 失败排查: 检查 Task 2 的 FileCredentialStore 实现
 
 5. 验证 OAuth 回调服务器功能
-   - `cargo test -p rust-agent-middlewares --lib -- mcp::callback_server::tests 2>&1 | tail -10`
+   - `cargo test -p peri-middlewares --lib -- mcp::callback_server::tests 2>&1 | tail -10`
    - 预期: 所有回调服务器测试通过（URL 解析、回调接收、超时、state 验证）
    - 失败排查: 检查 Task 3 的 OAuthCallbackServer 实现
 
 6. 验证 OAuth 流程编排
-   - `cargo test -p rust-agent-middlewares --lib -- mcp::oauth_flow::tests 2>&1 | tail -10`
+   - `cargo test -p peri-middlewares --lib -- mcp::oauth_flow::tests 2>&1 | tail -10`
    - 预期: 所有 OAuth 流程测试通过
    - 失败排查: 检查 Task 4 的 OAuthFlowManager 和 build_authed_transport 实现
 
 7. 验证 TUI OAuth 面板和事件
-   - `cargo test -p rust-agent-tui --lib -- app::oauth_prompt::tests 2>&1 | tail -10`
-   - `cargo test -p rust-agent-tui --lib -- ui::main_ui::popups::oauth::tests 2>&1 | tail -10`
+   - `cargo test -p peri-tui --lib -- app::oauth_prompt::tests 2>&1 | tail -10`
+   - `cargo test -p peri-tui --lib -- ui::main_ui::popups::oauth::tests 2>&1 | tail -10`
    - 预期: 所有 TUI OAuth 测试通过
    - 失败排查: 检查 Task 5 的 OAuthPrompt 和 OAuth 弹窗实现
 
 8. 验证 TUI 完整构建
-   - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+   - `cargo build -p peri-tui 2>&1 | tail -5`
    - 预期: `Finished`，无编译错误
    - 失败排查: 检查 Task 4-5 之间的跨 crate 接口是否对齐（AgentEvent 变体、OAuthFlowManager 事件类型）
 
 9. 验证向后兼容性（不配置 oauth 字段的 MCP 服务器行为不变）
-   - `cargo test -p rust-agent-middlewares --lib -- mcp::client::tests 2>&1 | tail -10`
+   - `cargo test -p peri-middlewares --lib -- mcp::client::tests 2>&1 | tail -10`
    - 预期: 所有现有连接池测试通过（oauth: None 的服务器不应触发 OAuth 流程）
    - 失败排查: 检查 Task 1 的 `#[serde(default)]` 和 Task 4 的条件判断逻辑
 
 **认知变更:**
 
-- [x] [CLAUDE.md] MCP 中间件新增 `auth_store`、`callback_server`、`oauth_flow` 三个子模块，位于 `rust-agent-middlewares/src/mcp/`。OAuth 仅用于 StreamableHttp 传输类型，stdio 传输不受影响。
+- [x] [CLAUDE.md] MCP 中间件新增 `auth_store`、`callback_server`、`oauth_flow` 三个子模块，位于 `peri-middlewares/src/mcp/`。OAuth 仅用于 StreamableHttp 传输类型，stdio 传输不受影响。
 - [x] [CLAUDE.md] MCP 服务器配置新增 `oauth` 字段（`OAuthConfig`），JSON 键名使用 camelCase（`clientId`/`clientSecret`/`scopes`），`client_secret` 支持 `${VAR}` 环境变量展开。
 - [x] [CLAUDE.md] [TRAP] rmcp `auth` feature 启用后引入 `oauth2` crate 依赖。`AuthError` 不实现 `From<std::io::Error>`，需要自定义错误包装（`AuthStoreError`）来桥接 IO 错误和 rmcp 认证错误。
-- [x] [CLAUDE.md] TUI `AgentEvent`（`rust-agent-tui/src/app/events.rs`）新增 `OAuthAuthorizationNeeded`、`OAuthAuthorizationCompleted`、`OAuthAuthorizationFailed` 三个变体。核心层 `AgentEvent`（`rust-create-agent/src/agent/events.rs`）不新增变体——OAuth 事件仅在 TUI 层定义。
+- [x] [CLAUDE.md] TUI `AgentEvent`（`peri-tui/src/app/events.rs`）新增 `OAuthAuthorizationNeeded`、`OAuthAuthorizationCompleted`、`OAuthAuthorizationFailed` 三个变体。核心层 `AgentEvent`（`peri-agent/src/agent/events.rs`）不新增变体——OAuth 事件仅在 TUI 层定义。

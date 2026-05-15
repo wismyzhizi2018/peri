@@ -107,11 +107,11 @@
 
 ### 关键文件变更
 
-- **`rust-agent-tui/src/ui/theme.rs`**：更新常量注释和 TOOL_NAME 别名逻辑（TOOL_NAME 改为按工具名动态返回，不再是简单别名）
-- **`rust-agent-tui/src/ui/markdown/mod.rs`**：`render_heading()` 方法中 H1/H2 的颜色从 ACCENT 改为 WARNING
-- **`rust-agent-tui/src/ui/message_render.rs`** 或工具渲染路径：按工具名返回对应颜色（`get_tool_name_color(name)` 函数）
-- **`rust-agent-tui/src/ui/main_ui/panels/`**：ModelPanel/RelayPanel/AgentsPanel 的激活边框改用 MUTED_ACTIVE
-- **`rust-agent-tui/src/ui/main_ui/status_bar.rs`**：时间/Agent 名颜色改为 MUTED
+- **`peri-tui/src/ui/theme.rs`**：更新常量注释和 TOOL_NAME 别名逻辑（TOOL_NAME 改为按工具名动态返回，不再是简单别名）
+- **`peri-tui/src/ui/markdown/mod.rs`**：`render_heading()` 方法中 H1/H2 的颜色从 ACCENT 改为 WARNING
+- **`peri-tui/src/ui/message_render.rs`** 或工具渲染路径：按工具名返回对应颜色（`get_tool_name_color(name)` 函数）
+- **`peri-tui/src/ui/main_ui/panels/`**：ModelPanel/RelayPanel/AgentsPanel 的激活边框改用 MUTED_ACTIVE
+- **`peri-tui/src/ui/main_ui/status_bar.rs`**：时间/Agent 名颜色改为 MUTED
 - **`TUI-STYLE.md`**：同步更新配色表格和指南，版本升为 1.1
 
 ### 工具名颜色函数

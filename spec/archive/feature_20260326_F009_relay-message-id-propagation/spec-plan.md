@@ -11,7 +11,7 @@
 ### Task 1: AgentEvent 枚举变更
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/agent/events.rs`
+- 修改: `peri-agent/src/agent/events.rs`
 
 **执行步骤:**
 - [x] 将 `TextChunk(String)` 改为结构体变体 `TextChunk { message_id: MessageId, chunk: String }`
@@ -23,10 +23,10 @@
 
 **检查步骤:**
 - [x] 枚举定义编译通过（此时调用方会报错，属于预期）
-  - `cargo check -p rust-create-agent 2>&1 | grep "error\[" | head -20`
+  - `cargo check -p peri-agent 2>&1 | grep "error\[" | head -20`
   - 预期: 只出现 `executor.rs` 和 `agent.rs` 的调用方错误，events.rs 本身无 error
 - [x] TextChunk JSON 序列化包含 message_id 字段
-  - `grep -A5 'TextChunk' rust-create-agent/src/agent/events.rs`
+  - `grep -A5 'TextChunk' peri-agent/src/agent/events.rs`
   - 预期: 看到 `message_id: MessageId` 和 `chunk: String` 两个字段
 
 ---
@@ -34,7 +34,7 @@
 ### Task 2: executor.rs 捕获 AI 消息 ID 并注入事件
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/agent/executor.rs`
+- 修改: `peri-agent/src/agent/executor.rs`
 
 **执行步骤:**
 - [x] **路径一（有工具调用）**：在 `state.add_message(ai_msg)` 之前捕获 `ai_msg_id`
@@ -52,11 +52,11 @@
   - 更新 `TextChunk` emit：`AgentEvent::TextChunk { message_id: ai_msg_id, chunk: answer }`
 
 **检查步骤:**
-- [x] rust-create-agent 全量编译无 error
-  - `cargo check -p rust-create-agent 2>&1 | grep "^error" | head -10`
+- [x] peri-agent 全量编译无 error
+  - `cargo check -p peri-agent 2>&1 | grep "^error" | head -10`
   - 预期: 无输出（只剩 TUI 侧 pattern 报错）
 - [x] 单元测试通过（executor 测试不匹配 AgentEvent 变体，应零改动通过）
-  - `cargo test -p rust-create-agent --lib 2>&1 | tail -5`
+  - `cargo test -p peri-agent --lib 2>&1 | tail -5`
   - 预期: `test result: ok. N passed; 0 failed`
 
 ---
@@ -64,7 +64,7 @@
 ### Task 3: TUI agent.rs 映射层 pattern 更新
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/agent.rs`
 
 **执行步骤:**
 - [x] 更新 **Langfuse hook** 中三处 pattern（~line 105-112）
@@ -86,10 +86,10 @@
   - `cargo build 2>&1 | grep -E "^error|warning\[" | head -20`
   - 预期: 无 error，warning 数量与改动前相同（不新增）
 - [x] TUI headless 测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo test -p peri-tui 2>&1 | tail -5`
   - 预期: `test result: ok. N passed; 0 failed`
-- [x] rust-create-agent 单元测试通过
-  - `cargo test -p rust-create-agent --lib 2>&1 | tail -5`
+- [x] peri-agent 单元测试通过
+  - `cargo test -p peri-agent --lib 2>&1 | tail -5`
   - 预期: `test result: ok. N passed; 0 failed`
 
 ---
@@ -104,20 +104,20 @@
 
 1. **TextChunk 携带正确 message_id**
    - 在 `executor.rs` 中的 `TextChunk` emit 前后分别取 `ai_msg_id` 和事件中的 `message_id`，通过临时测试断言验证一致性
-   - `cargo test -p rust-create-agent --lib -- message_id 2>&1`
+   - `cargo test -p peri-agent --lib -- message_id 2>&1`
    - Expected: 测试通过，或新增验证测试输出 `ok`
    - On failure: 检查 Task 2 路径二的 `ai_msg_id` 捕获
    - ✅ 结果: test_text_chunk_message_id ok
 
 2. **ToolStart/ToolEnd message_id 与 MessageAdded id 一致**
    - 编写/运行单元测试：用 `MockLLM::tool_then_answer()` 驱动执行器，收集 `ToolStart { message_id }` 和前一条 `MessageAdded(Ai{id})`，断言两者相同
-   - `cargo test -p rust-create-agent --lib -- tool_message_id 2>&1`
+   - `cargo test -p peri-agent --lib -- tool_message_id 2>&1`
    - Expected: 测试通过
    - On failure: 检查 Task 2 路径一的 `ai_msg_id` 捕获（拒绝分支 / 正常分支）
    - ✅ 结果: test_tool_message_id ok
 
 3. **Relay JSON 透传：text_chunk 含 message_id 字段**
-   - `cargo test -p rust-create-agent --lib 2>&1 | grep -E "ok|FAILED"`
+   - `cargo test -p peri-agent --lib 2>&1 | grep -E "ok|FAILED"`
    - 补充：序列化断言 `serde_json::to_value(&AgentEvent::TextChunk { message_id: MessageId::new(), chunk: "x".into() }).unwrap()["message_id"].is_string()`
    - Expected: `true`
    - On failure: 检查 Task 1 枚举定义中 MessageId 的 serde Serialize 推导
@@ -127,4 +127,4 @@
    - `cargo test 2>&1 | tail -10`
    - Expected: 所有 test crate 均 `ok`，0 failed
    - On failure: 按 Task 编号逐一排查编译 error 或 pattern 不匹配
-   - ✅ 结果: 42 passed; 0 failed（rust-create-agent）
+   - ✅ 结果: 42 passed; 0 failed（peri-agent）

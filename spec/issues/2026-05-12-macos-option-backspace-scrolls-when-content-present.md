@@ -20,7 +20,7 @@
 
 - **复现频率**：必现
 - **触发步骤**：
-  1. 在 Mac 上使用 VS Code 集成终端启动 rust-agent-tui
+  1. 在 Mac 上使用 VS Code 集成终端启动 peri-tui
   2. 与 agent 进行几轮对话，使消息区域出现可滚动内容
   3. 在输入框中输入一些文字（多行）
   4. 按 Option+Backspace
@@ -35,10 +35,10 @@
 
 1. **终端层**：VS Code 终端在 Mac 上将 Option+Backspace 映射为 PageUp 转义序列（这是 VS Code 终端的已知行为）
 2. **crossterm 层**：crossterm 将转义序列解释为 `Key::PageUp`
-3. **事件处理层**：`rust-agent-tui/src/event.rs` 中，`PageUp` 被直接拦截用于滚动，没有先让 textarea 处理
+3. **事件处理层**：`peri-tui/src/event.rs` 中，`PageUp` 被直接拦截用于滚动，没有先让 textarea 处理
 
 ```rust
-// rust-agent-tui/src/event.rs:809-815
+// peri-tui/src/event.rs:809-815
 Input {
     key: Key::PageUp, ..
 } => {
@@ -52,8 +52,8 @@ Input {
 
 ## 相关代码
 
-- `rust-agent-tui/src/event.rs:809-822` —— PageUp/PageDown 事件处理
-- `rust-agent-tui/src/event.rs:824-842` —— Ctrl+U/Ctrl+D 半页滚动处理
+- `peri-tui/src/event.rs:809-822` —— PageUp/PageDown 事件处理
+- `peri-tui/src/event.rs:824-842` —— Ctrl+U/Ctrl+D 半页滚动处理
 
 ## 外部依赖问题
 
@@ -71,7 +71,7 @@ Input {
 
 **采用方案 1**：移除 `PageUp`/`PageDown` 的无条件拦截，让这些按键通过默认分支传递给 textarea 处理。
 
-**修改文件**：`rust-agent-tui/src/event.rs`
+**修改文件**：`peri-tui/src/event.rs`
 
 **修改内容**：删除了 812-825 行的 `PageUp`/`PageDown` 事件处理器，并添加注释说明：
 

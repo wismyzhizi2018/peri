@@ -12,7 +12,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/config/types.rs`
+- 修改: `peri-tui/src/config/types.rs`
 
 **执行步骤:**
 
@@ -31,10 +31,10 @@
 **检查步骤:**
 
 - [x] 编译通过，无 unused field warning
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无输出（零编译错误）
 - [x] 新结构序列化格式正确
-  - `cargo test -p rust-agent-tui --lib -- config 2>&1 | tail -20`
+  - `cargo test -p peri-tui --lib -- config 2>&1 | tail -20`
   - 预期: 所有 config 测试通过
 
 ---
@@ -43,7 +43,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/config/store.rs`
+- 修改: `peri-tui/src/config/store.rs`
 
 **执行步骤:**
 
@@ -56,10 +56,10 @@
 **检查步骤:**
 
 - [x] 旧格式 JSON 加载后字段迁移正确
-  - `cargo test -p rust-agent-tui --lib -- migration 2>&1 | tail -20`
+  - `cargo test -p peri-tui --lib -- migration 2>&1 | tail -20`
   - 预期: 迁移测试通过
 - [x] 迁移后 `active_alias` 为 "opus"
-  - `cargo test -p rust-agent-tui --lib -- store 2>&1 | tail -20`
+  - `cargo test -p peri-tui --lib -- store 2>&1 | tail -20`
   - 预期: 测试通过
 
 ---
@@ -68,7 +68,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/provider.rs`
+- 修改: `peri-tui/src/app/provider.rs`
 
 **执行步骤:**
 
@@ -92,10 +92,10 @@
 **检查步骤:**
 
 - [x] from_config 正确解析 opus 别名
-  - `cargo test -p rust-agent-tui --lib -- provider 2>&1 | tail -20`
+  - `cargo test -p peri-tui --lib -- provider 2>&1 | tail -20`
   - 预期: 所有 provider 测试通过
 - [x] 空 model_id 不 panic，回退到默认 model
-  - `cargo test -p rust-agent-tui --lib -- provider_default 2>&1 | tail -20`
+  - `cargo test -p peri-tui --lib -- provider_default 2>&1 | tail -20`
   - 预期: 测试通过
 
 ---
@@ -104,7 +104,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/model_panel.rs`
+- 修改: `peri-tui/src/app/model_panel.rs`
 
 **执行步骤:**
 
@@ -129,10 +129,10 @@
 **检查步骤:**
 
 - [x] ModelPanel 所有方法编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep "^error"`
   - 预期: 无错误
 - [x] ModelPanel 单元测试通过
-  - `cargo test -p rust-agent-tui --lib -- model_panel 2>&1 | tail -30`
+  - `cargo test -p peri-tui --lib -- model_panel 2>&1 | tail -30`
   - 预期: 全部通过
 
 ---
@@ -141,8 +141,8 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
 
@@ -169,13 +169,13 @@
 **检查步骤:**
 
 - [x] 全量编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep "^error"`
   - 预期: 无错误
 - [x] 全量测试通过（含 headless）
-  - `cargo test -p rust-agent-tui 2>&1 | tail -30`
+  - `cargo test -p peri-tui 2>&1 | tail -30`
   - 预期: `test result: ok`
 - [x] Headless 渲染无 panic
-  - `cargo test -p rust-agent-tui headless 2>&1 | tail -20`
+  - `cargo test -p peri-tui headless 2>&1 | tail -20`
   - 预期: headless 测试通过
 
 ---
@@ -184,14 +184,14 @@
 
 **Prerequisites:**
 
-- 启动命令: `cargo run -p rust-agent-tui`
-- 环境: `rust-agent-tui/.env` 中至少配置一个有效 API Key
+- 启动命令: `cargo run -p peri-tui`
+- 环境: `peri-tui/.env` 中至少配置一个有效 API Key
 - 测试前确认: `~/.peri/settings.json` 备份旧配置（若存在）
 
 **端到端验证:**
 
 1. **旧格式配置自动迁移**（通过单元测试验证迁移逻辑）
-   - `cargo test -p rust-agent-tui -- migration` → 3 passed ✓
+   - `cargo test -p peri-tui -- migration` → 3 passed ✓
 
 2. **settings.json 存储新格式**（通过迁移单元测试间接验证）
    - model_aliases 含 opus/sonnet/haiku 三个字段 ✓
@@ -200,16 +200,16 @@
    - 迁移后 active_alias = "opus" ✓
 
 4. **LlmProvider 正确解析别名**
-   - `cargo test -p rust-agent-tui -- provider` → 7 passed ✓
+   - `cargo test -p peri-tui -- provider` → 7 passed ✓
 
 5. **空 model_id 不 panic**
-   - `cargo test -p rust-agent-tui -- provider_default` → 2 passed ✓
+   - `cargo test -p peri-tui -- provider_default` → 2 passed ✓
 
 6. **全量单元测试通过**
-   - `cargo test -p rust-agent-tui` → 40 passed; 0 failed ✓
+   - `cargo test -p peri-tui` → 40 passed; 0 failed ✓
 
 7. **TUI 编译产物无新增 warning**
-   - `cargo build -p rust-agent-tui` → 3 warnings（均为改动前已存在的旧 warning）✓
+   - `cargo build -p peri-tui` → 3 warnings（均为改动前已存在的旧 warning）✓
 
 ---
 
@@ -217,9 +217,9 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/event.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
-- 修改: `rust-agent-tui/src/command/model.rs`
+- 修改: `peri-tui/src/event.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/command/model.rs`
 
 **执行步骤:**
 
@@ -235,4 +235,4 @@
 **检查步骤:**
 
 - [x] 全量测试通过
-  - `cargo test -p rust-agent-tui` → 40 passed; 0 failed ✓
+  - `cargo test -p peri-tui` → 40 passed; 0 failed ✓

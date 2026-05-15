@@ -18,7 +18,7 @@ F006（message-uuid-v7）已为每条 `BaseMessage` 分配了 UUID v7 的唯一 
 
 ### 1. AgentEvent 枚举变更
 
-**文件：`rust-create-agent/src/agent/events.rs`**
+**文件：`peri-agent/src/agent/events.rs`**
 
 ```rust
 // 变更前
@@ -36,7 +36,7 @@ ToolEnd   { message_id: MessageId, tool_call_id: String, name: String, output: S
 
 ### 2. executor.rs 事件发射点更新
 
-**文件：`rust-create-agent/src/agent/executor.rs`**
+**文件：`peri-agent/src/agent/executor.rs`**
 
 ReAct 循环中有两条发射路径，均需捕获当前 AI 消息的 `message_id`：
 
@@ -72,7 +72,7 @@ self.emit(AgentEvent::TextChunk { message_id: ai_msg_id, chunk: answer });
 
 ### 3. TUI agent.rs 映射层更新
 
-**文件：`rust-agent-tui/src/app/agent.rs`**
+**文件：`peri-tui/src/app/agent.rs`**
 
 TUI 侧的 `FnEventHandler` 中更新 pattern 解构，用 `..` 忽略新字段，TUI 自身的 `AgentEvent` 枚举**不变**：
 
@@ -138,9 +138,9 @@ Relay Server 完全透传 JSON，新字段自动出现在 Web 前端收到的事
 
 | 模块 | 变更 |
 |------|------|
-| `rust-create-agent/src/agent/events.rs` | `TextChunk(String)` → `TextChunk { message_id, chunk }`；`ToolStart`/`ToolEnd` 增加 `message_id` 字段 |
-| `rust-create-agent/src/agent/executor.rs` | 捕获 `ai_msg.id()` 并注入上述事件；两个发射路径各加一行 `let ai_msg_id = ai_msg.id();` |
-| `rust-agent-tui/src/app/agent.rs` | Langfuse hook + TUI AgentEvent 映射：用 `..` 解构忽略 `message_id` |
+| `peri-agent/src/agent/events.rs` | `TextChunk(String)` → `TextChunk { message_id, chunk }`；`ToolStart`/`ToolEnd` 增加 `message_id` 字段 |
+| `peri-agent/src/agent/executor.rs` | 捕获 `ai_msg.id()` 并注入上述事件；两个发射路径各加一行 `let ai_msg_id = ai_msg.id();` |
+| `peri-tui/src/app/agent.rs` | Langfuse hook + TUI AgentEvent 映射：用 `..` 解构忽略 `message_id` |
 | `rust-relay-server` | **无需变更** |
 | 所有 `#[cfg(test)]` | 更新用到 `TextChunk` / `ToolStart` / `ToolEnd` 的测试的 pattern 匹配 |
 
@@ -156,6 +156,6 @@ Relay Server 完全透传 JSON，新字段自动出现在 Web 前端收到的事
 - [ ] `ExecutorEvent::TextChunk { message_id, chunk }` 的 `message_id` 与前一条 `MessageAdded(Ai{id})` 的 `id` 相同
 - [ ] `ExecutorEvent::ToolStart { message_id }` 的 `message_id` 与同轮次 `MessageAdded(Ai{id})` 的 `id` 相同
 - [ ] Relay 透传：Web 客户端收到的 `text_chunk` JSON 含 `message_id` 字段
-- [ ] `cargo test -p rust-create-agent --lib` 全量通过
-- [ ] `cargo test -p rust-agent-tui` headless 测试通过
+- [ ] `cargo test -p peri-agent --lib` 全量通过
+- [ ] `cargo test -p peri-tui` headless 测试通过
 - [ ] `cargo build` 无 warning

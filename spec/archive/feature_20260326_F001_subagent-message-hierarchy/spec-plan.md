@@ -11,8 +11,8 @@
 ### Task 1: TUI 事件与 ViewModel 扩展
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/events.rs`
-- 修改: `rust-agent-tui/src/ui/message_view.rs`
+- 修改: `peri-tui/src/app/events.rs`
+- 修改: `peri-tui/src/ui/message_view.rs`
 
 **执行步骤:**
 - [x] 在 `AgentEvent` 枚举末尾新增两个变体
@@ -26,10 +26,10 @@
 
 **检查步骤:**
 - [x] 编译通过，无 dead_code 警告
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "error|warning.*unused"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "error|warning.*unused"`
   - 预期: 无 error，无因本次修改引入的 unused 警告
 - [x] SubAgentGroup 变体存在且结构正确
-  - `grep -n "SubAgentGroup" rust-agent-tui/src/ui/message_view.rs`
+  - `grep -n "SubAgentGroup" peri-tui/src/ui/message_view.rs`
   - 预期: 出现包含所有字段的结构定义
 
 ---
@@ -37,7 +37,7 @@
 ### Task 2: 事件映射层
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/agent.rs`
 
 **执行步骤:**
 - [x] 在 `FnEventHandler` 的 match 中，在通用 `ToolStart` 分支**之前**插入 `launch_agent` 专属分支
@@ -50,10 +50,10 @@
 
 **检查步骤:**
 - [x] 编译通过，match 分支穷举正确
-  - `cargo build -p rust-agent-tui 2>&1 | grep "error"`
+  - `cargo build -p peri-tui 2>&1 | grep "error"`
   - 预期: 无 error
 - [x] `agent.rs` 包含 `SubAgentStart` 和 `SubAgentEnd` 的映射
-  - `grep -n "SubAgentStart\|SubAgentEnd" rust-agent-tui/src/app/agent.rs`
+  - `grep -n "SubAgentStart\|SubAgentEnd" peri-tui/src/app/agent.rs`
   - 预期: 两者均出现在映射 match 块中
 
 ---
@@ -61,7 +61,7 @@
 ### Task 3: 渲染线程 UpdateLastMessage
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/render_thread.rs`
+- 修改: `peri-tui/src/ui/render_thread.rs`
 
 **执行步骤:**
 - [x] 在 `RenderEvent` 枚举中新增变体 `UpdateLastMessage(MessageViewModel)`
@@ -74,10 +74,10 @@
 
 **检查步骤:**
 - [x] `UpdateLastMessage` 变体存在于 `RenderEvent`
-  - `grep -n "UpdateLastMessage" rust-agent-tui/src/ui/render_thread.rs`
+  - `grep -n "UpdateLastMessage" peri-tui/src/ui/render_thread.rs`
   - 预期: 定义和 match 处理各出现一次
 - [x] 编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | grep "error"`
+  - `cargo build -p peri-tui 2>&1 | grep "error"`
   - 预期: 无 error
 
 ---
@@ -85,8 +85,8 @@
 ### Task 4: App 状态管理与消息路由
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/agent_ops.rs`
 
 **执行步骤:**
 - [x] 在 `App` 结构体中新增字段 `subagent_group_idx: Option<usize>`，初始化为 `None`
@@ -114,10 +114,10 @@
 
 **检查步骤:**
 - [x] App 结构体包含新字段且初始化正确
-  - `grep -n "subagent_group_idx" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "subagent_group_idx" peri-tui/src/app/mod.rs`
   - 预期: 字段声明 + `None` 初始值各出现一次
 - [x] 编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | grep "error"`
+  - `cargo build -p peri-tui 2>&1 | grep "error"`
   - 预期: 无 error
 
 ---
@@ -125,7 +125,7 @@
 ### Task 5: SubAgentGroup 渲染
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/message_render.rs`
+- 修改: `peri-tui/src/ui/message_render.rs`
 
 **执行步骤:**
 - [x] 在 `render_view_model` 的 match 中新增 `MessageViewModel::SubAgentGroup { .. }` 分支
@@ -142,10 +142,10 @@
 
 **检查步骤:**
 - [x] `render_view_model` 包含 SubAgentGroup 分支
-  - `grep -n "SubAgentGroup" rust-agent-tui/src/ui/message_render.rs`
+  - `grep -n "SubAgentGroup" peri-tui/src/ui/message_render.rs`
   - 预期: 出现 match 分支
 - [x] 编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | grep "error"`
+  - `cargo build -p peri-tui 2>&1 | grep "error"`
   - 预期: 无 error
 
 ---
@@ -153,7 +153,7 @@
 ### Task 6: Headless 测试
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/headless.rs`
+- 修改: `peri-tui/src/ui/headless.rs`
 
 **执行步骤:**
 - [x] 新增测试 `test_subagent_group_basic`：注入 SubAgentStart → 2×ToolCall → SubAgentEnd 事件序列
@@ -168,10 +168,10 @@
 
 **检查步骤:**
 - [x] 新增的三个测试全部通过
-  - `cargo test -p rust-agent-tui test_subagent_group -- --nocapture 2>&1 | tail -10`
+  - `cargo test -p peri-tui test_subagent_group -- --nocapture 2>&1 | tail -10`
   - 预期: 输出包含 `ok` 且无 `FAILED`
 - [x] 全量测试无回归
-  - `cargo test -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo test -p peri-tui 2>&1 | tail -5`
   - 预期: `test result: ok`
 
 ---
@@ -179,37 +179,37 @@
 ### Task 7: SubAgent 消息层级验收
 
 **Prerequisites:**
-- 启动命令: `cargo build -p rust-agent-tui 2>&1 | tail -3`
-- 测试前提: `cargo test -p rust-agent-tui` 全绿
+- 启动命令: `cargo build -p peri-tui 2>&1 | tail -3`
+- 测试前提: `cargo test -p peri-tui` 全绿
 
 **End-to-end verification:**
 
 1. **headless 基础层级结构**（subagent_group_basic 测试）
-   - `cargo test -p rust-agent-tui test_subagent_group_basic -- --nocapture 2>&1 | grep -E "ok|FAILED"`
+   - `cargo test -p peri-tui test_subagent_group_basic -- --nocapture 2>&1 | grep -E "ok|FAILED"`
    - Expected: 输出包含 `ok`
    - On failure: 检查 Task 4（SubAgentStart 路由）和 Task 5（渲染逻辑）
    - [x] ✅ PASSED
 
 2. **headless 滑动窗口限制**（6 步只显示 4 步）
-   - `cargo test -p rust-agent-tui test_subagent_group_sliding_window -- --nocapture 2>&1 | grep -E "ok|FAILED"`
+   - `cargo test -p peri-tui test_subagent_group_sliding_window -- --nocapture 2>&1 | grep -E "ok|FAILED"`
    - Expected: 输出包含 `ok`
    - On failure: 检查 Task 4（ToolCall 路由中的滑动窗口逻辑）
    - [x] ✅ PASSED
 
 3. **headless AssistantChunk 路由**
-   - `cargo test -p rust-agent-tui test_subagent_group_assistant_chunk -- --nocapture 2>&1 | grep -E "ok|FAILED"`
+   - `cargo test -p peri-tui test_subagent_group_assistant_chunk -- --nocapture 2>&1 | grep -E "ok|FAILED"`
    - Expected: 输出包含 `ok`
    - On failure: 检查 Task 4（AssistantChunk 路由分支）
    - [x] ✅ PASSED
 
 4. **编译无回归**（全量 lint + build）
-   - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+   - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
    - Expected: 无输出（无 error）
    - On failure: 检查对应 Task 的编译步骤
    - [x] ✅ PASSED
 
 5. **全量测试无回归**
-   - `cargo test -p rust-agent-tui 2>&1 | tail -3`
+   - `cargo test -p peri-tui 2>&1 | tail -3`
    - Expected: 最后一行包含 `test result: ok`
    - On failure: 检查 Task 6（headless 测试），定位失败测试名称后回溯至对应 Task
    - [x] ✅ PASSED (57 passed)

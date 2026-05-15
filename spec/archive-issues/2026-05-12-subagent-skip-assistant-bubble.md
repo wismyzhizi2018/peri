@@ -36,7 +36,7 @@ AssistantBubble 只有一个 `●` 前缀，后面没有实际内容（因为只
 
 ## 相关代码
 
-- `rust-agent-tui/src/ui/message_render.rs:398-409` — SubAgentGroup 展开状态的 recent_messages 渲染循环
+- `peri-tui/src/ui/message_render.rs:398-409` — SubAgentGroup 展开状态的 recent_messages 渲染循环
 
   ```rust
   for inner_vm in iter_messages.iter() {
@@ -52,7 +52,7 @@ AssistantBubble 只有一个 `●` 前缀，后面没有实际内容（因为只
   }
   ```
 
-- `rust-agent-tui/src/ui/message_render.rs:110-194` — AssistantBubble 渲染逻辑
+- `peri-tui/src/ui/message_render.rs:110-194` — AssistantBubble 渲染逻辑
 
 ## 期望改进方向
 

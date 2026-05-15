@@ -208,7 +208,7 @@ global_panels.dispatch_key(input, &mut ctx);
 
 **改动范围**：`mod.rs`（结构体定义）、`agent_ops.rs`、`panel_ops.rs`、`event.rs`、`config/` 模块
 
-**验证**：`cargo build -p rust-agent-tui` + 全部 headless 测试通过
+**验证**：`cargo build -p peri-tui` + 全部 headless 测试通过
 
 #### P2：提取 SessionManager（低风险）
 
@@ -224,7 +224,7 @@ global_panels.dispatch_key(input, &mut ctx);
 
 **改动范围**：`mod.rs`、`agent_ops.rs`、`event.rs`、`main_ui.rs`
 
-**验证**：`cargo build -p rust-agent-tui` + 全部 headless 测试通过
+**验证**：`cargo build -p peri-tui` + 全部 headless 测试通过
 
 #### P4：提取 UiState（中风险）
 
@@ -241,7 +241,7 @@ global_panels.dispatch_key(input, &mut ctx);
 
 **改动范围**：`core.rs`、`event.rs`、`main_ui.rs`、`headless.rs`
 
-**验证**：`cargo build -p rust-agent-tui` + 全部 headless 测试通过
+**验证**：`cargo build -p peri-tui` + 全部 headless 测试通过
 
 #### P5：提取 MessageState（中风险）
 
@@ -274,7 +274,7 @@ global_panels.dispatch_key(input, &mut ctx);
 3. 全项目搜索 `session.core.` 替换
 4. 删除 `AppCore` 结构体定义
 
-**验证**：`grep -r "session.core" rust-agent-tui/src/` 返回 0 结果
+**验证**：`grep -r "session.core" peri-tui/src/` 返回 0 结果
 
 #### P9：消除 God Object（高风险）
 
@@ -313,7 +313,7 @@ P4 + P5 + P6 + P7
 2. App/AppCore 添加新字段（与旧字段共存）
 3. 逐文件迁移访问路径（双写期，新旧路径均可编译）
 4. 删除旧字段
-5. `cargo test -p rust-agent-tui` + `cargo clippy -p rust-agent-tui`
+5. `cargo test -p peri-tui` + `cargo clippy -p peri-tui`
 
 ### 双写过渡策略
 
@@ -350,8 +350,8 @@ pub struct PanelContext<'a> {
 
 | 约束 | 一致性 |
 |------|--------|
-| Workspace resolver = "2" | ✅ 仅 rust-agent-tui 内部重组 |
-| 禁止下层依赖上层 | ✅ 所有新类型在 rust-agent-tui 内 |
+| Workspace resolver = "2" | ✅ 仅 peri-tui 内部重组 |
+| 禁止下层依赖上层 | ✅ 所有新类型在 peri-tui 内 |
 | 字符串截断用字符级操作 | ✅ 不变 |
 | 测试隔离 | ✅ config_path_override 移入 ServiceRegistry，headless 测试不变 |
 | 无新增外部 crate | ✅ 纯内部重组 |
@@ -362,9 +362,9 @@ pub struct PanelContext<'a> {
 ## 验收标准
 
 - [ ] App 3 字段（services + session_mgr + global_panels）
-- [ ] AppCore 消除，`grep -r "session.core" rust-agent-tui/src/` 返回 0 结果
+- [ ] AppCore 消除，`grep -r "session.core" peri-tui/src/` 返回 0 结果
 - [ ] ChatSession 6 个子模块（ui / messages / session_panels / agent / commands / metadata）
 - [ ] 0 处 `std::mem::take` workaround
 - [ ] 全部 headless 测试通过
-- [ ] `cargo clippy -p rust-agent-tui` 无警告
+- [ ] `cargo clippy -p peri-tui` 无警告
 - [ ] event.rs 不含 `app.sessions[app.active].core.xxx` 直接访问

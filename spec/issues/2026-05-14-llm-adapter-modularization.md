@@ -6,14 +6,14 @@
 
 ## 问题描述
 
-`rust-create-agent/src/llm/anthropic.rs`（1983 行）和 `openai.rs`（1065 行）各自承载了完整的 LLM 适配器实现：构造器、序列化/反序列化、缓存策略、API invoke、流式处理、响应解析。两个文件结构高度对称，但职责过重，修改任一环节需要阅读整个文件。
+`peri-agent/src/llm/anthropic.rs`（1983 行）和 `openai.rs`（1065 行）各自承载了完整的 LLM 适配器实现：构造器、序列化/反序列化、缓存策略、API invoke、流式处理、响应解析。两个文件结构高度对称，但职责过重，修改任一环节需要阅读整个文件。
 
 ## 现状数据
 
 | 文件 | 行数 | 主要职责 |
 |------|------|---------|
-| `rust-create-agent/src/llm/anthropic.rs` | 1983 | ChatAnthropic 全部实现 |
-| `rust-create-agent/src/llm/openai.rs` | 1065 | ChatOpenAI 全部实现 |
+| `peri-agent/src/llm/anthropic.rs` | 1983 | ChatAnthropic 全部实现 |
+| `peri-agent/src/llm/openai.rs` | 1065 | ChatOpenAI 全部实现 |
 
 ### `anthropic.rs` 内部分布
 
@@ -68,6 +68,6 @@ llm/
 
 ## 涉及文件
 
-- `rust-create-agent/src/llm/anthropic.rs`（1983 行）
-- `rust-create-agent/src/llm/openai.rs`（1065 行）
-- `rust-create-agent/src/llm/mod.rs`（模块入口）
+- `peri-agent/src/llm/anthropic.rs`（1983 行）
+- `peri-agent/src/llm/openai.rs`（1065 行）
+- `peri-agent/src/llm/mod.rs`（模块入口）

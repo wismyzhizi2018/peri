@@ -11,27 +11,27 @@
 - **数据库:** sqlx 0.8（runtime-tokio + sqlite，SqlitePool 连接池，WAL 模式）
 - **MCP Client:** rmcp 1.6.0（stdio + Streamable HTTP 传输，auth feature 启用 OAuth 2.0）
 - **TUI 框架:** ratatui ≥0.30 + ratatui-textarea 0.8 + pulldown-cmark 0.12 + arboard 3（剪贴板）+ png 0.17（RGBA→PNG）+ base64 0.22 + langfuse-client（workspace 内 crate，Langfuse V4 客户端，替代 langfuse-ergonomic）
-- **perihelion-widgets**（独立 widget crate，BorderedPanel/ScrollableArea/SelectableList/MarkdownRenderer 等 11 组件）
+- **peri-widgets**（独立 widget crate，BorderedPanel/ScrollableArea/SelectableList/MarkdownRenderer 等 11 组件）
 - **syntect 5**（代码语法高亮，feature flag `markdown-highlight` 控制）
 - **grep 0.4 + grep-regex**（进程内文件内容搜索，替代外部 rg 进程）
-- **定时任务:** croner 2（cron 表达式解析与下次触发时间计算，仅 rust-agent-middlewares）
+- **定时任务:** croner 2（cron 表达式解析与下次触发时间计算，仅 peri-middlewares）
 - **错误处理:** thiserror 2.0（库 crate）/ anyhow 1.0（应用层）
 - **日志/追踪:** tracing 0.1 + tracing-subscriber 0.3 + opentelemetry 0.31 + tracing-opentelemetry 0.32
 - **OTLP 导出:** opentelemetry-otlp 0.31（http-proto + reqwest-rustls）
-- **UUID:** uuid 1.x（features: v7 + serde，rust-create-agent 层消息 ID）
+- **UUID:** uuid 1.x（features: v7 + serde，peri-agent 层消息 ID）
 - **同步原语:** parking_lot 0.12
 - **构建工具:** Cargo（Workspace resolver = "2"）
 
 ## 架构决策
 
-- **Workspace 多 crate 分层:** `rust-create-agent`（核心 lib）→ `rust-agent-middlewares`（中间件 lib）→ `rust-agent-tui`（应用层），禁止下层依赖上层
+- **Workspace 多 crate 分层:** `peri-agent`（核心 lib）→ `peri-middlewares`（中间件 lib）→ `peri-tui`（应用层），禁止下层依赖上层
 - **异步优先:** 所有 IO 密集操作使用 async/await，trait 方法通过 `async-trait` 标注
 - **Middleware Chain 模式:** 横切关注点（HITL、日志、工具提供、prompt 注入）通过 `Middleware<S>` trait 解耦，不侵入核心 ReAct 执行器
 - **工具系统:** `BaseTool` trait 统一工具接口，`ToolProvider` trait 支持批量动态提供，`register_tool` 手动注册优先级最高
 - **消息不可变历史:** `AgentState` 消息列表只追加，不修改历史，保证 LLM 上下文一致性
 - **事件驱动 TUI 通信:** Agent task 与 TUI 渲染线程通过有界 mpsc channel + oneshot 通信，禁止共享可变状态
 - **线程持久化事件驱动:** 持久化由 `StateSnapshot` 事件触发增量写入，不做全量序列化
-- **Widget 独立 crate:** perihelion-widgets 零内部依赖，仅依赖 ratatui + pulldown-cmark，TUI 通过 feature flag 引入
+- **Widget 独立 crate:** peri-widgets 零内部依赖，仅依赖 ratatui + pulldown-cmark，TUI 通过 feature flag 引入
 - **权限模式系统:** 5 级 PermissionMode（Default/AcceptEdits/Auto/BypassPermissions/DontAsk），Arc<AtomicU8> 无锁共享，HITL middleware 根据 mode 决定放行/拦截
 - **LLM 重试装饰器:** RetryableLLM<L> 装饰器模式，对 executor 零改动，指数退避+25%随机抖动
 - **消息管线统一:** MessagePipeline 成为消息状态管理唯一入口，PipelineAction 枚举统一描述所有 UI 变更
@@ -55,7 +55,7 @@
 
 ## 部署方式
 
-- **开发/本地运行:** `cargo run -p rust-agent-tui`，配置通过 `~/.peri/settings.json` 的 `env` 字段和环境变量
+- **开发/本地运行:** `cargo run -p peri-tui`，配置通过 `~/.peri/settings.json` 的 `env` 字段和环境变量
 - **生产构建:** `cargo build --release`，输出单一二进制，无外部动态依赖（SQLite bundled）
 - **可观测性（可选）:** `docker compose -f docker-compose.otel.yml up -d` 启动 Jaeger，设置 `OTEL_EXPORTER_OTLP_ENDPOINT` 环境变量即开启 OTLP 导出
 - **CI/CD:** （未检测到）

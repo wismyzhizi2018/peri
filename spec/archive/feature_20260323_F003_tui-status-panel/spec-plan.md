@@ -2,7 +2,7 @@
 
 **目标:** 工具调用颜色分层、路径参数缩短、输入框上方固定 TODO 状态面板
 
-**技术栈:** Rust, ratatui, rust-agent-tui
+**技术栈:** Rust, ratatui, peri-tui
 
 **设计文档:** ./spec-design.md
 
@@ -11,7 +11,7 @@
 ### Task 1: tool_display 函数拆分与路径缩短
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/tool_display.rs`
+- 修改: `peri-tui/src/app/tool_display.rs`
 
 **执行步骤:**
 - [x] 新增辅助函数 `strip_cwd(path: &str, cwd: Option<&str>) -> String`
@@ -28,13 +28,13 @@
 
 **检查步骤:**
 - [x] 编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error" | head -5`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error" | head -5`
   - 预期: 无输出（无编译错误）
 - [x] `strip_cwd` 路径剥离逻辑正确
-  - `cargo test -p rust-agent-tui --lib -- tool_display 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- tool_display 2>&1 | tail -10`
   - 预期: `test result: ok` 或无 tool_display 测试（至少编译通过）
 - [x] bash 参数不做路径处理（手动验证逻辑：`format_tool_args("bash", &json!({"command": "cargo build"}), Some("/home/user"))` 返回 `Some("cargo build")`）
-  - `cargo test -p rust-agent-tui 2>&1 | grep -E "FAILED|ok"`
+  - `cargo test -p peri-tui 2>&1 | grep -E "FAILED|ok"`
   - 预期: 无 FAILED
 
 ---
@@ -42,8 +42,8 @@
 ### Task 2: ViewModel 与渲染颜色分层
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/message_view.rs`
-- 修改: `rust-agent-tui/src/ui/message_render.rs`
+- 修改: `peri-tui/src/ui/message_view.rs`
+- 修改: `peri-tui/src/ui/message_render.rs`
 
 **执行步骤:**
 - [x] 在 `MessageViewModel::ToolBlock` 变体中新增 `args_display: Option<String>` 字段
@@ -61,13 +61,13 @@
 
 **检查步骤:**
 - [x] 编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error" | head -5`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error" | head -5`
   - 预期: 无输出
 - [x] `tool_block` 构造函数新签名被正确调用（无遗漏）
-  - `grep -n "tool_block(" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "tool_block(" peri-tui/src/app/mod.rs`
   - 预期: 所有调用处均已更新，参数数量匹配新签名
 - [x] headless 测试（如有）通过
-  - `cargo test -p rust-agent-tui 2>&1 | grep -E "FAILED|ok"`
+  - `cargo test -p peri-tui 2>&1 | grep -E "FAILED|ok"`
   - 预期: 无 FAILED
 
 ---
@@ -75,8 +75,8 @@
 ### Task 3: TODO 状态面板（App 状态 + 布局 + 渲染）
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
 
 **执行步骤:**
 - [x] 修改 `App` struct：
@@ -103,19 +103,19 @@
 
 **检查步骤:**
 - [x] 编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error" | head -5`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error" | head -5`
   - 预期: 无输出
 - [x] 无遗漏的 `todo_message_index` 引用
-  - `grep -rn "todo_message_index" rust-agent-tui/src/`
+  - `grep -rn "todo_message_index" peri-tui/src/`
   - 预期: 无输出（已全部删除）
 - [x] 无遗漏的 `TodoStatus` 引用
-  - `grep -rn "TodoStatus" rust-agent-tui/src/`
+  - `grep -rn "TodoStatus" peri-tui/src/`
   - 预期: 无输出（已全部删除）
 - [x] chunks 下标正确（帮助栏和浮层基准 area 已更新）
-  - `grep -n "chunks\[" rust-agent-tui/src/ui/main_ui.rs`
+  - `grep -n "chunks\[" peri-tui/src/ui/main_ui.rs`
   - 预期: 最大下标为 4（chunks[0]～chunks[4]），无遗漏的旧 [3] 引用
 - [x] 全量测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | grep -E "FAILED|ok"`
+  - `cargo test -p peri-tui 2>&1 | grep -E "FAILED|ok"`
   - 预期: 无 FAILED
 
 ---
@@ -123,38 +123,38 @@
 ### Task 4: TUI 状态面板 Acceptance
 
 **前置条件:**
-- 启动命令: `cargo run -p rust-agent-tui`（或 `cargo run -p rust-agent-tui -- -y` YOLO 模式）
+- 启动命令: `cargo run -p peri-tui`（或 `cargo run -p peri-tui -- -y` YOLO 模式）
 - 需要配置好 API Key（`ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY`）
 - 可选：准备含 `todo_write` 调用的测试 prompt，例如："用 todo_write 工具记录3个任务"
 
 **端到端验证:**
 
 1. 编译验证 ✅
-   - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+   - `cargo build -p peri-tui 2>&1 | tail -3`
    - Expected: 包含 `Finished` 且无 error
    - On failure: 检查 Task 1-3（编译错误）
 
 2. 工具颜色分层验证（代码检视）✅
-   - `grep -A8 "ToolBlock {" rust-agent-tui/src/ui/message_render.rs | grep -E "args_display|DarkGray"`
+   - `grep -A8 "ToolBlock {" peri-tui/src/ui/message_render.rs | grep -E "args_display|DarkGray"`
    - Expected: 渲染代码中含 `args_display` 和 `Color::DarkGray` 的 Span 分支
    - On failure: 检查 Task 2（渲染拆分逻辑）
 
 3. 路径缩短函数存在验证 ✅
-   - `grep -n "strip_cwd\|format_tool_args" rust-agent-tui/src/app/tool_display.rs`
+   - `grep -n "strip_cwd\|format_tool_args" peri-tui/src/app/tool_display.rs`
    - Expected: 两个函数均存在定义
    - On failure: 检查 Task 1（函数拆分）
 
 4. TODO 面板布局插入验证 ✅
-   - `grep -c "Constraint::Length" rust-agent-tui/src/ui/main_ui.rs`
+   - `grep -c "Constraint::Length" peri-tui/src/ui/main_ui.rs`
    - Expected: 输出 `4`（标题1 + todo面板1 + 输入框1 + 帮助栏1，Min 不计入）
    - On failure: 检查 Task 3（Layout 5-slot 改造）
 
 5. todo_message_index 已删除验证 ✅
-   - `grep -rn "todo_message_index\|TodoStatus" rust-agent-tui/src/`
+   - `grep -rn "todo_message_index\|TodoStatus" peri-tui/src/`
    - Expected: 无输出
    - On failure: 检查 Task 3（App 状态清理）
 
 6. 全量测试 ✅
-   - `cargo test -p rust-agent-tui 2>&1 | tail -5`
+   - `cargo test -p peri-tui 2>&1 | tail -5`
    - Expected: `test result: ok` 或无 FAILED
    - On failure: 检查 Task 2-3（ViewModel/App 改动）

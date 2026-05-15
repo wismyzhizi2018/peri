@@ -12,7 +12,7 @@
 - [ ] [AUTO] 检查 Rust 工具链可用: `cargo --version`
 - [ ] [AUTO] 全量编译（含所有 crate）: `cargo build 2>&1 | grep -c '^error'`
 - [ ] [AUTO/SERVICE] 启动 Relay Server: `cargo run -p rust-relay-server --features server` (port: 8080)
-- [ ] [AUTO/SERVICE] 启动 TUI（连接 Relay）: `cargo run -p rust-agent-tui -- --remote-control ws://localhost:8080 --relay-token test --relay-name verify-agent` (port: N/A)
+- [ ] [AUTO/SERVICE] 启动 TUI（连接 Relay）: `cargo run -p peri-tui -- --remote-control ws://localhost:8080 --relay-token test --relay-name verify-agent` (port: N/A)
 
 ### 测试数据准备
 - [ ] [MANUAL] 准备一个带 `ask_user` 工具调用的 Agent 任务（例如：让 Agent 执行一个需要询问用户的步骤）
@@ -49,17 +49,17 @@
 #### - [x] 2.1 AskUserBatch 全字段发送映射
 - **来源:** Task 2 检查步骤
 - **操作步骤:**
-  1. [A] `grep -A 15 'AskUserBatch(req)' rust-agent-tui/src/app/agent_ops.rs | grep -E 'tool_call_id|allow_custom_input|placeholder'` → 期望: 3 行匹配（每个字段各一行）
-  2. [A] `cargo build -p rust-agent-tui 2>&1 | tail -5` → 期望: 无 `error`，输出包含 `Finished` 或 `Compiling`
+  1. [A] `grep -A 15 'AskUserBatch(req)' peri-tui/src/app/agent_ops.rs | grep -E 'tool_call_id|allow_custom_input|placeholder'` → 期望: 3 行匹配（每个字段各一行）
+  2. [A] `cargo build -p peri-tui 2>&1 | tail -5` → 期望: 无 `error`，输出包含 `Finished` 或 `Compiling`
 - **异常排查:**
   - 如果字段缺失: 检查 `agent_ops.rs` 中 `AskUserBatch(req)` 分支的 `serde_json::json!` 构建逻辑
 
 #### - [x] 2.2 CancelAgent 中断处理
 - **来源:** Task 3 检查步骤 + spec-design.md
 - **操作步骤:**
-  1. [A] `grep -n 'CancelAgent' rust-agent-tui/src/app/relay_ops.rs` → 期望: 至少 1 行（match 分支）
-  2. [A] `grep -n 'tool_call_id' rust-agent-tui/src/app/relay_ops.rs` → 期望: 至少 1 行（AskUserResponse 匹配逻辑中使用）
-  3. [A] `grep -n 'data\.description' rust-agent-tui/src/app/relay_ops.rs` → 期望: 无输出（旧的 description 匹配已改为 tool_call_id）
+  1. [A] `grep -n 'CancelAgent' peri-tui/src/app/relay_ops.rs` → 期望: 至少 1 行（match 分支）
+  2. [A] `grep -n 'tool_call_id' peri-tui/src/app/relay_ops.rs` → 期望: 至少 1 行（AskUserResponse 匹配逻辑中使用）
+  3. [A] `grep -n 'data\.description' peri-tui/src/app/relay_ops.rs` → 期望: 无输出（旧的 description 匹配已改为 tool_call_id）
 - **异常排查:**
   - 如果 `data.description` 仍存在: 说明 Task 3 的匹配键修改未完成，需检查 `AskUserResponse` 分支
 

@@ -39,10 +39,10 @@ Compact 后消息流顶部显示：
 
 ## 相关代码
 
-- `rust-agent-tui/src/app/thread_ops.rs:365` — `push_system_note("正在压缩上下文…")` 在 compact 开始时添加
-- `rust-agent-tui/src/app/agent_ops.rs:168-170` — `CacheWarning` 通过 `AddMessage` 添加为 `ephemeral_notes`
-- `rust-agent-tui/src/app/agent_compact.rs:92-102` — `handle_compact_done` 用 `prefix_len: 0` 的 `RebuildAll` 重建，所有 `ephemeral_notes` 被保留
-- `rust-agent-tui/src/app/agent_render.rs:80-86` — `apply_pipeline_action` 中 `RebuildAll` 的 ephemeral_notes 过滤逻辑
+- `peri-tui/src/app/thread_ops.rs:365` — `push_system_note("正在压缩上下文…")` 在 compact 开始时添加
+- `peri-tui/src/app/agent_ops.rs:168-170` — `CacheWarning` 通过 `AddMessage` 添加为 `ephemeral_notes`
+- `peri-tui/src/app/agent_compact.rs:92-102` — `handle_compact_done` 用 `prefix_len: 0` 的 `RebuildAll` 重建，所有 `ephemeral_notes` 被保留
+- `peri-tui/src/app/agent_render.rs:80-86` — `apply_pipeline_action` 中 `RebuildAll` 的 ephemeral_notes 过滤逻辑
 
 ## 期望改进方向
 

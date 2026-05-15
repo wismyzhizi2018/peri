@@ -68,7 +68,7 @@ if !loading {
 
 | 文件 | 改动 |
 |------|------|
-| `rust-agent-middlewares/src/subagent/tool.rs` | `invoke()` 分支重排、`invoke_background()` 新增 is_fork 参数、新增 `invoke_background_fork()` |
-| `rust-agent-tui/src/app/agent_ops.rs` | `poll_agent()` 中 `pending_bg_continuation` 竞态修复 |
-| `rust-agent-tui/src/app/message_pipeline.rs` | `done()`/`interrupt()` 不再重复推入 finalized_vm |
-| `rust-agent-tui/src/ui/headless_test.rs` | 新增 2 个诊断测试 |
+| `peri-middlewares/src/subagent/tool.rs` | `invoke()` 分支重排、`invoke_background()` 新增 is_fork 参数、新增 `invoke_background_fork()` |
+| `peri-tui/src/app/agent_ops.rs` | `poll_agent()` 中 `pending_bg_continuation` 竞态修复 |
+| `peri-tui/src/app/message_pipeline.rs` | `done()`/`interrupt()` 不再重复推入 finalized_vm |
+| `peri-tui/src/ui/headless_test.rs` | 新增 2 个诊断测试 |

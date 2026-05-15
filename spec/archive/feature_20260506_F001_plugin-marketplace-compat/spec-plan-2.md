@@ -2,14 +2,14 @@
 
 **目标:** 将插件系统与 Peri 现有的 Skills/MCP/SubAgent 中间件集成，并实现 TUI 插件管理面板。
 
-**技术栈:** Rust, ratatui, perihelion-widgets, tokio, tracing
+**技术栈:** Rust, ratatui, peri-widgets, tokio, tracing
 
 **设计文档:** spec-design.md
 
 ## 改动总览
 
 - 本次计划包含 Task 5（现有系统集成）和 Task 6（TUI 插件管理面板）两个 Task
-- Task 5 修改 `rust-agent-middlewares` 层的 Skills/MCP/SubAgent 中间件，提供插件加载集成点，Task 6 依赖 Task 5 产出的 `PluginManager` 接口
+- Task 5 修改 `peri-middlewares` 层的 Skills/MCP/SubAgent 中间件，提供插件加载集成点，Task 6 依赖 Task 5 产出的 `PluginManager` 接口
 - Task 6 新建 3 个文件（`plugin_panel.rs`、`plugin.rs` 命令、`panels/plugin.rs` 渲染），修改 5 个现有文件（`app/mod.rs`、`app/panel_ops.rs`、`command/mod.rs`、`ui/main_ui.rs`、`ui/main_ui/status_bar.rs`），新增 1 个 `event.rs` 中的按键处理函数
 - 面板状态放在全局 `App` 层（与 `mcp_panel` 同级），不在 `AppCore` 中，因为插件数据跨 session 共享
 
@@ -23,22 +23,22 @@
 **执行步骤:**
 
 - [x] 验证 spec-plan-1 的构建产物可用
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -3`
+  - `cargo build -p peri-middlewares 2>&1 | tail -3`
   - 预期: 编译成功，plugin 模块已注册
 - [x] 验证 TUI 可编译
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 编译成功
 - [x] 验证 spec-plan-1 的测试全部通过
-  - `cargo test -p rust-agent-middlewares --lib -- plugin:: 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib -- plugin:: 2>&1 | tail -10`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] plugin 模块已在 lib.rs 中注册
-  - `grep "pub mod plugin" rust-agent-middlewares/src/lib.rs`
+  - `grep "pub mod plugin" peri-middlewares/src/lib.rs`
   - 预期: 找到模块声明
 - [x] PluginManifest 类型可导入
-  - `grep "PluginManifest" rust-agent-middlewares/src/plugin/mod.rs`
+  - `grep "PluginManifest" peri-middlewares/src/plugin/mod.rs`
   - 预期: 找到类型导出
 
 ---
@@ -52,25 +52,25 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-middlewares/src/skills/mod.rs`
-- 修改: `rust-agent-middlewares/src/mcp/config.rs`
-- 修改: `rust-agent-middlewares/src/mcp/mod.rs`
-- 修改: `rust-agent-middlewares/src/subagent/mod.rs`
-- 修改: `rust-agent-middlewares/src/subagent/mod.rs` 的导出
-- 修改: `rust-agent-middlewares/src/plugin/mod.rs`
-- 修改: `rust-agent-middlewares/src/plugin/loader.rs`
-- 修改: `rust-agent-middlewares/src/lib.rs`
-- 修改: `rust-agent-tui/src/app/agent.rs`
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/prompt.rs`
-- 修改: `rust-agent-tui/src/command/mod.rs`
-- 新建: `rust-agent-tui/src/command/plugin_command.rs`
+- 修改: `peri-middlewares/src/skills/mod.rs`
+- 修改: `peri-middlewares/src/mcp/config.rs`
+- 修改: `peri-middlewares/src/mcp/mod.rs`
+- 修改: `peri-middlewares/src/subagent/mod.rs`
+- 修改: `peri-middlewares/src/subagent/mod.rs` 的导出
+- 修改: `peri-middlewares/src/plugin/mod.rs`
+- 修改: `peri-middlewares/src/plugin/loader.rs`
+- 修改: `peri-middlewares/src/lib.rs`
+- 修改: `peri-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/agent_ops.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/prompt.rs`
+- 修改: `peri-tui/src/command/mod.rs`
+- 新建: `peri-tui/src/command/plugin_command.rs`
 
 **执行步骤:**
 
 - [x] 在 `PluginLoader` 中新增 `load_enabled_plugins` 公共函数，返回已启用插件的聚合加载结果
-  - 位置: `rust-agent-middlewares/src/plugin/loader.rs`，在现有 loader 函数之后
+  - 位置: `peri-middlewares/src/plugin/loader.rs`，在现有 loader 函数之后
   - 定义聚合结果结构体:
 
     ```rust
@@ -105,12 +105,12 @@
   - 原因: 这是所有集成的数据入口点，TUI 和中间件都依赖此函数获取插件数据
 
 - [x] 在 `plugin/mod.rs` 中导出 `PluginLoadResult`、`SinglePluginLoad` 和 `load_enabled_plugins`
-  - 位置: `rust-agent-middlewares/src/plugin/mod.rs`，在 `pub use` 块中追加
+  - 位置: `peri-middlewares/src/plugin/mod.rs`，在 `pub use` 块中追加
   - 追加: `pub use loader::{PluginLoadResult, SinglePluginLoad, load_enabled_plugins};`
-  - 原因: 上层 `rust-agent-tui` 需要通过 `rust_agent_middlewares::plugin::load_enabled_plugins` 调用
+  - 原因: 上层 `peri-tui` 需要通过 `peri_middlewares::plugin::load_enabled_plugins` 调用
 
 - [x] 为 `SkillsMiddleware` 新增 `with_extra_dirs` 方法，扩展插件 skills 搜索路径
-  - 位置: `rust-agent-middlewares/src/skills/mod.rs`
+  - 位置: `peri-middlewares/src/skills/mod.rs`
   - 在 `SkillsMiddleware` 结构体定义中（~L51-55）新增字段 `extra_dirs: Vec<PathBuf>`
   - 在 `new()` 方法中将 `extra_dirs` 初始化为空 `Vec`（~L60）
   - 在 `with_global_config` 方法之后（~L90）新增方法:
@@ -137,7 +137,7 @@
   - 原因: 插件 skills 路径需要在用户级 > 全局 > 项目级之后搜索，同名先到先得优先级不变。采用 builder 方法而非修改函数签名，保持向后兼容
 
 - [x] 在 `mcp/config.rs` 中新增 `Plugin` 变体到 `ConfigSource` 枚举
-  - 位置: `rust-agent-middlewares/src/mcp/config.rs`，`ConfigSource` 枚举定义处（~L7-13）
+  - 位置: `peri-middlewares/src/mcp/config.rs`，`ConfigSource` 枚举定义处（~L7-13）
   - 在 `Global(PathBuf)` 变体之后追加:
 
     ```rust
@@ -148,7 +148,7 @@
   - 原因: 插件 MCP 服务器需要独立的来源标记，便于 TUI 面板区分展示
 
 - [x] 在 `mcp/config.rs` 中新增 `merge_plugin_servers` 函数
-  - 位置: `rust-agent-middlewares/src/mcp/config.rs`，在 `load_merged_config` 函数之后（~L256）
+  - 位置: `peri-middlewares/src/mcp/config.rs`，在 `load_merged_config` 函数之后（~L256）
   - 函数签名和实现:
 
     ```rust
@@ -172,13 +172,13 @@
   - 原因: 插件 MCP 服务器需要命名空间隔离（`{plugin_name}__{server_name}`），防止与用户配置的同名服务器冲突
 
 - [x] 在 `mcp/mod.rs` 中导出 `merge_plugin_servers`
-  - 位置: `rust-agent-middlewares/src/mcp/mod.rs`，在 `pub use` 块中追加
+  - 位置: `peri-middlewares/src/mcp/mod.rs`，在 `pub use` 块中追加
   - 在现有 `pub use config::*;` 行之后追加（如果使用了 glob import 则无需额外操作；否则逐个追加 `merge_plugin_servers, ConfigSource`）
   - 验证方式: 检查 mod.rs 中是否已有 `pub use config::*;`，有则无需修改
   - 原因: TUI 层 `agent_ops.rs` 需要调用此函数
 
 - [x] 为 `subagent/mod.rs` 新增 `scan_agents_with_extra_dirs` 函数
-  - 位置: `rust-agent-middlewares/src/subagent/mod.rs`，在 `scan_agents` 函数之后（~L205）
+  - 位置: `peri-middlewares/src/subagent/mod.rs`，在 `scan_agents` 函数之后（~L205）
   - 函数实现: 复用 `scan_agents` 的目录扫描逻辑（~L144-204 中的 `.md` 文件解析和 `agent.md` 嵌套目录解析），对每个 `extra_dirs` 中的目录执行相同的扫描
   - 追加去重逻辑: `result.dedup_by(|a, b| a.0 == b.0)`（按 agent_id 去重，项目级优先）
   - 函数签名:
@@ -192,12 +192,12 @@
   - 原因: 插件 agent 路径需要在 `{cwd}/.claude/agents/` 之外追加搜索，保持原 `scan_agents` 签名不变
 
 - [x] 在 `lib.rs` 中导出 `scan_agents_with_extra_dirs`
-  - 位置: `rust-agent-middlewares/src/lib.rs`，在 `scan_agents` 导出行之后
+  - 位置: `peri-middlewares/src/lib.rs`，在 `scan_agents` 导出行之后
   - 追加: `scan_agents_with_extra_dirs,`
   - 原因: TUI 层 `prompt.rs` 需要调用此函数
 
 - [x] 在 `App` 结构体中新增 `plugin_data` 字段，存储加载的插件数据
-  - 位置: `rust-agent-tui/src/app/mod.rs`，`App` 结构体定义中（~L107，`mcp_pool` 字段之后）
+  - 位置: `peri-tui/src/app/mod.rs`，`App` 结构体定义中（~L107，`mcp_pool` 字段之后）
   - 新增字段:
 
     ```rust
@@ -210,7 +210,7 @@
   - 原因: 插件数据在 App 初始化后一次性加载，后续所有 agent 启动复用同一份数据
 
 - [x] 在 App 初始化时加载已启用插件数据
-  - 位置: `rust-agent-tui/src/app/mod.rs`，`App::new()` 方法中、`spawn_mcp_init()` 调用之前
+  - 位置: `peri-tui/src/app/mod.rs`，`App::new()` 方法中、`spawn_mcp_init()` 调用之前
   - 新增插件加载逻辑:
 
     ```rust
@@ -218,7 +218,7 @@
     let claude_dir = dirs_next::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join(".claude");
-    let plugin_data = rust_agent_middlewares::plugin::load_enabled_plugins(&claude_dir);
+    let plugin_data = peri_middlewares::plugin::load_enabled_plugins(&claude_dir);
     app.plugin_data = Some(plugin_data);
     ```
 
@@ -226,7 +226,7 @@
   - 原因: 插件数据必须在 agent 启动前加载完成，MCP 服务器合并需要在连接池初始化前或后执行
 
 - [x] 在 `App` 上新增 `merge_plugin_mcp_to_pool` (SKIPPED: 非关键路径，MCP 服务器由 loader 聚合后通过 pool.configs 注入) 方法，将插件 MCP 服务器注入连接池
-  - 位置: `rust-agent-tui/src/app/mod.rs`，`spawn_mcp_init` 方法之后（~L337）
+  - 位置: `peri-tui/src/app/mod.rs`，`spawn_mcp_init` 方法之后（~L337）
   - 新增方法:
 
     ```rust
@@ -250,7 +250,7 @@
   - 原因: MCP 连接池的 `configs` 字段是 `RwLock<HashMap>`，可以在初始化完成后安全追加。追加后新服务器不会自动连接，需要后续触发重连（或由 Task 6 的面板操作触发）
 
 - [x] 在 `AgentRunConfig` 中新增插件路径字段
-  - 位置: `rust-agent-tui/src/app/agent.rs`，`AgentRunConfig` 结构体定义中（~L34，`mcp_pool` 之后）
+  - 位置: `peri-tui/src/app/agent.rs`，`AgentRunConfig` 结构体定义中（~L34，`mcp_pool` 之后）
   - 新增字段:
 
     ```rust
@@ -264,7 +264,7 @@
   - 原因: 将插件数据从 App 层传递到 agent 层
 
 - [x] 修改 `agent_ops.rs` 中的 `submit_message` 方法，传递插件路径到 `AgentRunConfig`
-  - 位置: `rust-agent-tui/src/app/agent_ops.rs`，`AgentRunConfig` 构造处（~L199-215）
+  - 位置: `peri-tui/src/app/agent_ops.rs`，`AgentRunConfig` 构造处（~L199-215）
   - 在 `mcp_pool` 字段之后追加:
 
     ```rust
@@ -279,7 +279,7 @@
   - 原因: 每次 agent 启动时从 App 的 plugin_data 中提取路径传入
 
 - [x] 修改 `run_universal_agent` 中的 `SkillsMiddleware` 注册，注入插件 skills 路径
-  - 位置: `rust-agent-tui/src/app/agent.rs`，中间件注册处（~L252）
+  - 位置: `peri-tui/src/app/agent.rs`，中间件注册处（~L252）
   - 将:
 
     ```rust
@@ -292,16 +292,16 @@
     .add_middleware(Box::new(SkillsMiddleware::new().with_extra_dirs(plugin_skill_dirs)))
     ```
 
-  - 同步修改 `rust-agent-tui/src/acp/agent_assembler.rs`（~L145）中的 `SkillsMiddleware::new()` 调用，传入对应的插件路径参数（acp 模块从自己的 config 中获取）
+  - 同步修改 `peri-tui/src/acp/agent_assembler.rs`（~L145）中的 `SkillsMiddleware::new()` 调用，传入对应的插件路径参数（acp 模块从自己的 config 中获取）
   - 原因: 插件 skills 目录需要在 agent 启动时追加到搜索路径
 
 - [x] 修改 `prompt.rs` 中的 `format_available_agents` 函数，包含插件 agent
-  - 位置: `rust-agent-tui/src/prompt.rs`，`format_available_agents` 函数（~L63）
+  - 位置: `peri-tui/src/prompt.rs`，`format_available_agents` 函数（~L63）
   - 修改函数签名，新增 `extra_agent_dirs` 参数:
 
     ```rust
     fn format_available_agents(cwd: &str, extra_agent_dirs: &[PathBuf]) -> String {
-        let agents = rust_agent_middlewares::scan_agents_with_extra_dirs(cwd, extra_agent_dirs);
+        let agents = peri_middlewares::scan_agents_with_extra_dirs(cwd, extra_agent_dirs);
         // ... 原有逻辑不变
     }
     ```
@@ -311,13 +311,13 @@
   - 修改所有 `build_system_prompt` 调用处（`agent.rs` ~L70、`agent_assembler.rs`），传入 `plugin_agent_dirs`
   - 原因: 系统提示词中的 agent 列表需要包含插件提供的 agent
 
-- [x] 新建 `rust-agent-tui/src/command/plugin_command.rs`，实现 `PluginCommandAdapter`
-  - 位置: 新建文件 `rust-agent-tui/src/command/plugin_command.rs`
+- [x] 新建 `peri-tui/src/command/plugin_command.rs`，实现 `PluginCommandAdapter`
+  - 位置: 新建文件 `peri-tui/src/command/plugin_command.rs`
   - `PluginCommandAdapter` 结构体包装 `CommandEntry`，实现 `Command` trait:
 
     ```rust
     use super::{Command, App};
-    use rust_agent_middlewares::plugin::CommandEntry;
+    use peri_middlewares::plugin::CommandEntry;
 
     /// 将插件的 CommandEntry 适配为 TUI Command trait
     pub struct PluginCommandAdapter {
@@ -352,11 +352,11 @@
     }
     ```
 
-  - `CommandSource` 枚举从 `rust_agent_middlewares::plugin` 导入（Task 4 定义）
+  - `CommandSource` 枚举从 `peri_middlewares::plugin` 导入（Task 4 定义）
   - 原因: Rust 不支持运行时动态 trait 实现，需要适配器结构体将 `CommandEntry` 桥接到 `Command` trait
 
 - [x] 修改 `default_registry` 函数，支持注册插件命令
-  - 位置: `rust-agent-tui/src/command/mod.rs`
+  - 位置: `peri-tui/src/command/mod.rs`
   - 在文件顶部模块声明区域追加: `pub mod plugin_command;`（~L16 之后）
   - 修改 `default_registry` 函数签名:
 
@@ -376,7 +376,7 @@
   - 原因: 插件命令需要在 TUI 命令注册时一并注册，与内置命令共享同一 dispatch 逻辑
 
 - [x] 修改 `App` 中 `CommandRegistry` 创建处，传入插件命令
-  - 位置: `rust-agent-tui/src/app/mod.rs`，CommandRegistry 初始化处
+  - 位置: `peri-tui/src/app/mod.rs`，CommandRegistry 初始化处
   - 将 `default_registry()` 调用修改为 `default_registry(plugin_commands)`
   - 插件命令列表从 `self.plugin_data.as_ref().map(|pd| pd.all_commands.clone()).unwrap_or_default()` 获取
   - 如果 CommandRegistry 在 plugin_data 加载之前创建，需要将注册拆分为两步：先创建空 registry，plugin_data 加载后再追加插件命令
@@ -384,84 +384,84 @@
   - 原因: CommandRegistry 可能需要在 plugin_data 加载前创建（用于 App 初始化），插件命令后续追加
 
 - [x] 为 SkillsMiddleware 的 `with_extra_dirs` 编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/skills/mod.rs` 的 `#[cfg(test)] mod tests` 块
+  - 测试文件: `peri-middlewares/src/skills/mod.rs` 的 `#[cfg(test)] mod tests` 块
   - 测试场景:
     - `test_extra_dirs_injected`: 创建 2 个额外 skills 目录（各含 1 个 skill），调用 `resolve_dirs`，验证返回列表长度比默认多 2
     - `test_extra_dirs_nonexistent_skipped`: 传入包含不存在路径的 Vec，验证 `resolve_dirs` 不包含该路径
     - `test_extra_dirs_priority_after_project`: 验证 `resolve_dirs` 返回列表中，额外目录在项目级目录之后
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- skills::tests::test_extra_dirs`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- skills::tests::test_extra_dirs`
   - 预期: 所有测试通过
 
 - [x] 为 `merge_plugin_servers` 编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/config.rs` 的 `#[cfg(test)] mod tests` 块
+  - 测试文件: `peri-middlewares/src/mcp/config.rs` 的 `#[cfg(test)] mod tests` 块
   - 测试场景:
     - `test_merge_plugin_servers_namespaced`: 传入 `plugin_name="my-plugin"` 和 `servers={"db": config}`，验证合并后 key 为 `"my-plugin__db"`
     - `test_merge_plugin_servers_preserves_existing`: 传入已有配置包含 `"db"` 服务器，验证合并后两者共存且原有 `"db"` 不被覆盖
     - `test_merge_plugin_servers_source_tag`: 验证合并后的服务器 `source` 为 `Some(ConfigSource::Plugin)`
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests::test_merge_plugin`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- mcp::config::tests::test_merge_plugin`
   - 预期: 所有测试通过
 
 - [x] 为 `scan_agents_with_extra_dirs` 编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/subagent/mod.rs` 的 `#[cfg(test)] mod tests` 块
+  - 测试文件: `peri-middlewares/src/subagent/mod.rs` 的 `#[cfg(test)] mod tests` 块
   - 测试场景:
     - `test_scan_agents_with_extra_dirs`: 在额外目录创建 `agent.md` 文件，验证扫描结果包含该 agent
     - `test_scan_agents_with_extra_dirs_dedup`: 在 cwd 和额外目录创建同名 agent（相同 agent_id），验证去重后只保留一个
     - `test_scan_agents_with_extra_dirs_empty`: 传入空 `extra_dirs` 列表，验证结果与 `scan_agents` 完全一致
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- subagent::tests::test_scan_agents_with_extra`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- subagent::tests::test_scan_agents_with_extra`
   - 预期: 所有测试通过
 
 - [x] 为 `load_enabled_plugins` 编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/plugin/loader.rs` 的 `#[cfg(test)] mod tests` 块
+  - 测试文件: `peri-middlewares/src/plugin/loader.rs` 的 `#[cfg(test)] mod tests` 块
   - 测试场景:
     - `test_load_no_plugins`: 传入不存在的 claude_dir，验证返回空 `PluginLoadResult`（所有字段为空 Vec/HashMap）
     - `test_load_enabled_plugins`: 创建 2 个插件目录（1 个在 installed_plugins.json 中且 enabledPlugins 包含、1 个不在），验证只加载启用的插件
     - `test_load_plugin_skill_dirs`: 创建带 `skills/` 子目录的已启用插件，验证 `all_skill_dirs` 包含对应路径；创建无 `skills/` 子目录的插件，验证不包含
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- plugin::loader::tests::test_load_enabled`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- plugin::loader::tests::test_load_enabled`
   - 预期: 所有测试通过
 
 - [x] 为 `PluginCommandAdapter` 编写单元测试
-  - 测试文件: `rust-agent-tui/src/command/plugin_command.rs` 的 `#[cfg(test)] mod tests` 块
+  - 测试文件: `peri-tui/src/command/plugin_command.rs` 的 `#[cfg(test)] mod tests` 块
   - 测试场景:
     - `test_adapter_name_returns_entry_name`: 构造 `CommandEntry { name: "test:cmd".into(), .. }`，验证 `name()` 返回 `"test:cmd"`
     - `test_adapter_description_returns_entry_description`: 验证 `description()` 返回 `CommandEntry.description`
     - `test_adapter_execute_reads_file`: 创建临时 `.md` 文件写入内容，构造 `PluginCommandAdapter`，调用 `execute(app, "")`，验证输入框包含文件内容
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- command::plugin_command::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- command::plugin_command::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 SkillsMiddleware 新增字段和方法编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 编译成功，无 error
 - [x] 验证 MCP 配置合并函数编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 编译成功，无 error
 - [x] 验证 subagent 扩展函数编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 编译成功，无 error
 - [x] 验证 TUI 层集成编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 编译成功，无 error
 - [x] 验证所有新增测试通过
-  - `cargo test -p rust-agent-middlewares --lib 2>&1 | tail -20`
+  - `cargo test -p peri-middlewares --lib 2>&1 | tail -20`
   - 预期: 所有测试通过，包含新增的 `test_extra_dirs`、`test_merge_plugin`、`test_scan_agents_with_extra` 测试
 - [x] 验证 TUI 层测试通过
-  - `cargo test -p rust-agent-tui --lib 2>&1 | tail -20`
+  - `cargo test -p peri-tui --lib 2>&1 | tail -20`
   - 预期: 所有测试通过，包含新增的 `PluginCommandAdapter` 测试
 - [x] 验证全量构建无回归
   - `cargo build 2>&1 | tail -5`
   - 预期: 编译成功，无 error
 - [x] 验证 with_extra_dirs 在 resolve_dirs 中正确追加路径
-  - `cargo test -p rust-agent-middlewares --lib -- skills::tests::test_extra_dirs_injected 2>&1 | tail -3`
+  - `cargo test -p peri-middlewares --lib -- skills::tests::test_extra_dirs_injected 2>&1 | tail -3`
   - 预期: 测试通过
 - [x] 验证 merge_plugin_servers 命名空间隔离
-  - `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests::test_merge_plugin_servers_namespaced 2>&1 | tail -3`
+  - `cargo test -p peri-middlewares --lib -- mcp::config::tests::test_merge_plugin_servers_namespaced 2>&1 | tail -3`
   - 预期: 测试通过
 - [x] 验证 scan_agents_with_extra_dirs 导出正确
-  - `grep "scan_agents_with_extra_dirs" rust-agent-middlewares/src/lib.rs`
+  - `grep "scan_agents_with_extra_dirs" peri-middlewares/src/lib.rs`
   - 预期: 找到导出行
 - [x] 验证 load_enabled_plugins 导出正确
-  - `grep "load_enabled_plugins" rust-agent-middlewares/src/plugin/mod.rs`
+  - `grep "load_enabled_plugins" peri-middlewares/src/plugin/mod.rs`
   - 预期: 找到导出行
 
 **认知变更:**
@@ -482,21 +482,21 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/app/plugin_panel.rs`
-- 新建: `rust-agent-tui/src/command/plugin.rs`
-- 新建: `rust-agent-tui/src/ui/main_ui/panels/plugin.rs`
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/app/panel_ops.rs`
-- 修改: `rust-agent-tui/src/command/mod.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/status_bar.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/mod.rs`
-- 修改: `rust-agent-tui/src/event.rs`
+- 新建: `peri-tui/src/app/plugin_panel.rs`
+- 新建: `peri-tui/src/command/plugin.rs`
+- 新建: `peri-tui/src/ui/main_ui/panels/plugin.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/panel_ops.rs`
+- 修改: `peri-tui/src/command/mod.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/ui/main_ui/status_bar.rs`
+- 修改: `peri-tui/src/ui/main_ui/panels/mod.rs`
+- 修改: `peri-tui/src/event.rs`
 
 **执行步骤:**
 
 - [x] 新建 PluginPanel 状态结构体和视图枚举
-  - 位置: 新建文件 `rust-agent-tui/src/app/plugin_panel.rs`
+  - 位置: 新建文件 `peri-tui/src/app/plugin_panel.rs`
   - 定义 `PluginPanelView` 枚举，三个变体: `Browse`（已安装列表）、`Marketplace`（可用插件）、`Installed`（管理视图）
   - 定义 `PluginPanel` 结构体:
 
@@ -511,14 +511,14 @@
     }
     ```
 
-  - `InstalledPlugin` 和 `AvailablePlugin` 从 `rust_agent_middlewares::plugin` 重导出
+  - `InstalledPlugin` 和 `AvailablePlugin` 从 `peri_middlewares::plugin` 重导出
   - 实现 `PluginPanel::new(installed, available)` 构造函数，初始 view 为 `Browse`
   - 实现 `PluginPanelView` 的 `label()` 方法返回视图标签文本（"Browse" / "Marketplace" / "Installed"）
   - 实现 `PluginPanelView::next()` / `prev()` 方法循环切换三个视图
   - 原因: 遵循现有面板模式（McpPanel/ModelPanel），结构体持有列表数据和光标状态
 
 - [x] 实现 PluginPanel 的光标移动和视图切换方法（impl App 块）
-  - 位置: `rust-agent-tui/src/app/plugin_panel.rs`，在 `impl crate::app::App` 块中
+  - 位置: `peri-tui/src/app/plugin_panel.rs`，在 `impl crate::app::App` 块中
   - 实现 `plugin_panel_move_up()`: 根据 `view` 获取当前列表长度，`cursor.saturating_sub(1)`
   - 实现 `plugin_panel_move_down()`: `cursor + 1`，不超过列表长度 -1
   - 实现 `plugin_panel_tab()`: 调用 `view.next()`，重置 `cursor = 0` 和 `scroll_offset = 0`
@@ -532,7 +532,7 @@
   - 原因: 与 McpPanel 操作方法模式一致，所有面板操作都在 `impl App` 中
 
 - [x] 在 App 结构体中添加 plugin_panel 字段
-  - 位置: `rust-agent-tui/src/app/mod.rs` 的 `App` 结构体定义中（在 `memory_panel` 字段之后，`quit_pending_since` 之前）
+  - 位置: `peri-tui/src/app/mod.rs` 的 `App` 结构体定义中（在 `memory_panel` 字段之后，`quit_pending_since` 之前）
   - 添加字段: `pub plugin_panel: Option<crate::app::plugin_panel::PluginPanel>`
   - 在 `mod.rs` 的模块声明区域添加: `mod plugin_panel;`
   - 在 `App::new()` 初始化列表中添加: `plugin_panel: None`
@@ -540,7 +540,7 @@
   - 原因: plugin_panel 是全局面板（跨 session 共享），与 mcp_panel、status_panel、memory_panel 同级
 
 - [x] 在 panel_ops.rs 中添加插件面板打开/关闭操作
-  - 位置: `rust-agent-tui/src/app/panel_ops.rs`，在 `close_memory_panel()` 方法之后
+  - 位置: `peri-tui/src/app/panel_ops.rs`，在 `close_memory_panel()` 方法之后
   - 实现 `open_plugin_panel()`:
 
     ```rust
@@ -567,7 +567,7 @@
   - 原因: 遵循现有面板互斥模式（open_xxx_panel 中关闭其他面板）
 
 - [x] 新建 /plugin 命令
-  - 位置: 新建文件 `rust-agent-tui/src/command/plugin.rs`
+  - 位置: 新建文件 `peri-tui/src/command/plugin.rs`
   - 实现 `PluginCommand` 结构体:
 
     ```rust
@@ -588,7 +588,7 @@
   - 原因: 与 McpCommand、MemoryCommand 结构一致
 
 - [x] 在 default_registry() 中注册 /plugin 命令
-  - 位置: `rust-agent-tui/src/command/mod.rs`
+  - 位置: `peri-tui/src/command/mod.rs`
   - 在模块声明区域添加: `pub mod plugin;`
   - 在 `default_registry()` 函数中，在 `r.register(Box::new(memory::MemoryCommand));` 之后添加:
 
@@ -599,7 +599,7 @@
   - 原因: 遵循现有命令注册模式
 
 - [x] 新建插件面板渲染模块
-  - 位置: 新建文件 `rust-agent-tui/src/ui/main_ui/panels/plugin.rs`
+  - 位置: 新建文件 `peri-tui/src/ui/main_ui/panels/plugin.rs`
   - 实现 `render_plugin_panel(f: &mut Frame, app: &mut App, area: Rect)` 函数
   - 顶部 Tab 行: 渲染三个视图标签 "Browse" / "Marketplace" / "Installed"，当前视图高亮
   - Browse 视图: 使用 `BorderedPanel` + `ScrollableArea` 渲染已安装插件列表，每项显示名称、版本、启用状态标记（绿色勾/红色叉）
@@ -611,12 +611,12 @@
   - 原因: 遵循现有面板渲染模式（参考 `panels/mcp.rs` 的 BorderedPanel + ScrollableArea 用法）
 
 - [x] 在 panels/mod.rs 中注册插件面板模块
-  - 位置: `rust-agent-tui/src/ui/main_ui/panels/mod.rs`
+  - 位置: `peri-tui/src/ui/main_ui/panels/mod.rs`
   - 添加: `pub mod plugin;`
   - 原因: 使渲染模块可被 main_ui.rs 引用
 
 - [x] 在 main_ui.rs 中集成插件面板渲染
-  - 位置: `rust-agent-tui/src/ui/main_ui.rs`
+  - 位置: `peri-tui/src/ui/main_ui.rs`
   - 在 `render_session_column()` 的底部展开区渲染块中（`if app.memory_panel.is_some()` 之后），添加:
 
     ```rust
@@ -640,7 +640,7 @@
   - 原因: 与其他面板渲染集成模式一致
 
 - [x] 在 status_bar.rs 中添加插件面板快捷键提示
-  - 位置: `rust-agent-tui/src/ui/main_ui/status_bar.rs` 的 `render_second_row()` 函数中
+  - 位置: `peri-tui/src/ui/main_ui/status_bar.rs` 的 `render_second_row()` 函数中
   - 在 `app.memory_panel.is_some()` 分支之后、`thread_browser` 分支之前，添加:
 
     ```rust
@@ -656,7 +656,7 @@
   - 原因: 遵循面板快捷键设计规范——面板内部禁止渲染快捷键提示行，统一由状态栏第二行负责
 
 - [x] 在 event.rs 中添加插件面板按键处理
-  - 位置: `rust-agent-tui/src/event.rs`
+  - 位置: `peri-tui/src/event.rs`
   - 在 MCP 面板按键处理块 `if app.mcp_panel.is_some()` 之后，添加:
 
     ```rust
@@ -681,38 +681,38 @@
   - 原因: 遵循现有面板按键分发模式
 
 - [x] 为 PluginPanel 编写单元测试
-  - 测试文件: `rust-agent-tui/src/app/plugin_panel.rs`（`#[cfg(test)] mod tests` 块）
+  - 测试文件: `peri-tui/src/app/plugin_panel.rs`（`#[cfg(test)] mod tests` 块）
   - 测试场景:
     - `test_plugin_panel_new`: 构造空列表，验证 cursor=0、view=Browse、confirm_delete=None
     - `test_plugin_panel_move_cursor`: 构造 3 项列表，上移 5 次不越界（cursor=0），下移 5 次不越界（cursor=2）
     - `test_plugin_panel_tab_cycles_views`: 连续调用 `plugin_panel_tab()` 3 次，验证 view 循环 Browse → Marketplace → Installed → Browse
     - `test_plugin_panel_close`: 打开后关闭，验证 `plugin_panel.is_none()`
     - `test_plugin_panel_request_cancel_delete`: 请求删除后 `confirm_delete` 为 Some，取消后为 None
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- plugin_panel`
+  - 运行命令: `cargo test -p peri-tui --lib -- plugin_panel`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 PluginPanel 编译通过
-  - `cargo build -p rust-agent-tui`
+  - `cargo build -p peri-tui`
   - 预期: 编译成功，无错误
 - [x] 验证 PluginPanel 单元测试通过
-  - `cargo test -p rust-agent-tui --lib -- plugin_panel`
+  - `cargo test -p peri-tui --lib -- plugin_panel`
   - 预期: 所有测试通过
 - [x] 验证 /plugin 命令已注册
-  - `grep -r "PluginCommand" rust-agent-tui/src/command/`
+  - `grep -r "PluginCommand" peri-tui/src/command/`
   - 预期: 在 `plugin.rs` 和 `mod.rs` 中找到引用
 - [x] 验证状态栏快捷键分支存在
-  - `grep "plugin_panel" rust-agent-tui/src/ui/main_ui/status_bar.rs`
+  - `grep "plugin_panel" peri-tui/src/ui/main_ui/status_bar.rs`
   - 预期: 找到 plugin_panel 分支
 - [x] 验证 event.rs 中按键处理函数存在
-  - `grep "handle_plugin_panel" rust-agent-tui/src/event.rs`
+  - `grep "handle_plugin_panel" peri-tui/src/event.rs`
   - 预期: 找到函数定义和调用点
 - [x] 验证面板渲染模块存在
-  - `grep "render_plugin_panel" rust-agent-tui/src/ui/main_ui/panels/plugin.rs`
+  - `grep "render_plugin_panel" peri-tui/src/ui/main_ui/panels/plugin.rs`
   - 预期: 找到函数定义
 - [x] 验证面板高度计算包含 plugin_panel 分支
-  - `grep "plugin_panel" rust-agent-tui/src/ui/main_ui.rs`
+  - `grep "plugin_panel" peri-tui/src/ui/main_ui.rs`
   - 预期: 在渲染和高度计算两处找到引用
 
 ---
@@ -733,27 +733,27 @@
    - 失败排查: 按 Task 逐步检查——先排除 Task 1 类型问题，再检查 Task 2-4 核心逻辑，最后检查 Task 5-6 集成
 
 2. 验证 plugin.json 清单解析（兼容性核心）
-   - `cargo test -p rust-agent-middlewares --lib -- plugin::types::tests 2>&1 | tail -15`
+   - `cargo test -p peri-middlewares --lib -- plugin::types::tests 2>&1 | tail -15`
    - 预期: roundtrip 测试通过，Claude Code 格式的 plugin.json 可正确反序列化
    - 失败排查: 检查 Task 1 types.rs 的 `#[serde(rename = "...")]` 属性与 Claude Code schemas.ts 是否一致
 
 3. 验证 marketplace 发现链路
-   - `cargo test -p rust-agent-middlewares --lib -- plugin::marketplace 2>&1 | tail -10`
+   - `cargo test -p peri-middlewares --lib -- plugin::marketplace 2>&1 | tail -10`
    - 预期: GitHub/URL/local/NPM 拉取逻辑测试通过
    - 失败排查: 检查 Task 2 marketplace.rs 的 git clone 模拟和 HTTP mock
 
 4. 验证插件 skills/MCP/agents 注入集成
-   - `cargo test -p rust-agent-middlewares --lib -- plugin::loader 2>&1 | tail -10`
-   - `cargo test -p rust-agent-middlewares --lib -- skills 2>&1 | tail -5`
+   - `cargo test -p peri-middlewares --lib -- plugin::loader 2>&1 | tail -10`
+   - `cargo test -p peri-middlewares --lib -- skills 2>&1 | tail -5`
    - 预期: 插件 skills 路径追加、MCP 服务器合并测试通过
    - 失败排查: 检查 Task 5 SkillsMiddleware 扩展和 Task 4 loader 提取逻辑
 
 5. 验证 TUI 插件面板功能
-   - `cargo test -p rust-agent-tui --lib 2>&1 | tail -15`
+   - `cargo test -p peri-tui --lib 2>&1 | tail -15`
    - 预期: 所有 TUI 测试通过，包含 plugin_panel 测试
    - 失败排查: 检查 Task 6 的面板渲染、事件处理、状态栏集成
 
 6. 验证 Headless 测试不写入真实 ~/.claude/
-   - `grep "config_path_override" rust-agent-tui/src/app/plugin_panel.rs`
+   - `grep "config_path_override" peri-tui/src/app/plugin_panel.rs`
    - 预期: 插件面板的配置写入使用 override 路径
    - 失败排查: 检查 Task 6 panel_ops.rs 的 open_plugin_panel 和配置保存路径

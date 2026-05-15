@@ -5,6 +5,7 @@
 当主 agent 并行 dispatching 多个 SubAgent 时（如 `dispatching-parallel-agents` skill 触发），每个 SubAgent 渲染为独立的 `SubAgentGroup` 块，展开显示内部工具调用和消息，占满大量屏幕空间。用户期望类似 Claude Code 的紧凑树形汇总视图——多个 agent 合并为一个可折叠的树，默认折叠，每个 agent 只占一行摘要。
 
 当前问题：
+
 - 每个 SubAgent 独立展开，内部消息全部显示，垂直空间占用过多
 - 无「同批次 agent 汇总」的概念
 - 无树形连接线（`├─`/`└─`）的渲染能力
@@ -46,6 +47,7 @@ SubAgentGroup {
 ```
 
 语义约定：
+
 - `batch_agents.is_empty()` → 单 agent，渲染逻辑与现有一致（零改动）
 - `batch_agents` 非空 → 批次汇总模式，`task_preview` 和 `recent_messages` 等现有字段不用于摘要行（由 batch_agents 驱动）
 
@@ -83,6 +85,7 @@ active_batch: Option<BatchInfo>,
 3. 合并后的 VM 通过 `RebuildAll` 替换尾部
 
 **流式行为：**
+
 - 执行中：多个 SubAgentGroup 独立显示（各自 `is_running: true`），保持当前 UX
 - 全部完成后：reconcile 触发聚合，一次性替换为树形汇总视图
 
@@ -108,6 +111,7 @@ active_batch: Option<BatchInfo>,
 **渲染实现：**
 
 在 `render_view_model()` 的 `SubAgentGroup` 分支中，检查 `batch_agents.is_empty()`：
+
 - 空 → 现有渲染逻辑不变
 - 非空 → 新增树形渲染分支，根据 `collapsed` 字段决定折叠/展开
 
@@ -127,10 +131,10 @@ active_batch: Option<BatchInfo>,
 
 | 文件 | 改动 |
 |------|------|
-| `rust-agent-tui/src/ui/message_view.rs` | SubAgentGroup 新增 `batch_agents` 字段 + `AgentSummary` 结构体 |
-| `rust-agent-tui/src/ui/message_render.rs` | SubAgentGroup 树形渲染分支 |
-| `rust-agent-tui/src/app/message_pipeline.rs` | BatchInfo 状态、批次检测、`aggregate_batch_groups()` 聚合 |
-| `rust-agent-tui/src/ui/message_view.rs`（`aggregate_tool_groups` 附近） | 新增 `aggregate_batch_groups()` 函数 |
+| `peri-tui/src/ui/message_view.rs` | SubAgentGroup 新增 `batch_agents` 字段 + `AgentSummary` 结构体 |
+| `peri-tui/src/ui/message_render.rs` | SubAgentGroup 树形渲染分支 |
+| `peri-tui/src/app/message_pipeline.rs` | BatchInfo 状态、批次检测、`aggregate_batch_groups()` 聚合 |
+| `peri-tui/src/ui/message_view.rs`（`aggregate_tool_groups` 附近） | 新增 `aggregate_batch_groups()` 函数 |
 
 ## 实现要点
 
@@ -143,7 +147,7 @@ active_batch: Option<BatchInfo>,
 ## 约束一致性
 
 - **消息管线统一**：聚合逻辑在 Pipeline 的 reconcile 阶段执行，符合 MessagePipeline 作为唯一入口的架构约束
-- **Widget 独立 crate**：渲染逻辑在 `message_render.rs`（TUI 层），不涉及 perihelion-widgets
+- **Widget 独立 crate**：渲染逻辑在 `message_render.rs`（TUI 层），不涉及 peri-widgets
 - **事件驱动 TUI**：无新增事件类型，复用现有 SubAgentStart/SubAgentEnd/RebuildAll
 - **RebuildAll 尾部替换**：聚合通过 RebuildAll 触发，只替换尾部，保留前缀
 - 无架构偏离，无新增约束

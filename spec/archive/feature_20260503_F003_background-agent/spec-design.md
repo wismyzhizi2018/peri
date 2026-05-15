@@ -38,10 +38,10 @@
 
 ### 2. 核心数据结构
 
-#### 2.1 后台任务注册中心（`rust-agent-middlewares`）
+#### 2.1 后台任务注册中心（`peri-middlewares`）
 
 ```rust
-// 新文件: rust-agent-middlewares/src/subagent/background.rs
+// 新文件: peri-middlewares/src/subagent/background.rs
 
 /// 后台任务结果
 #[derive(Debug, Clone)]
@@ -116,7 +116,7 @@ impl BackgroundTaskRegistry {
 - ReAct 循环在每轮迭代末尾通过 `try_recv` 消费，不会无限堆积
 - 通道创建在 `SubAgentMiddleware` 中，tx 传给 `BackgroundTaskRegistry`，rx 传给 `ReActAgent`
 
-### 3. ReActAgent 变更（`rust-create-agent`）
+### 3. ReActAgent 变更（`peri-agent`）
 
 #### 3.1 新增字段
 
@@ -187,7 +187,7 @@ if let Some(ref mut rx) = self.notification_rx {
 | 正在 LLM 调用 | LLM 调用返回后 → 工具执行 → 迭代末尾消费 |
 | 空闲（无 ReAct 循环） | TUI 通过事件系统显示通知 |
 
-### 4. SubAgentTool 变更（`rust-agent-middlewares`）
+### 4. SubAgentTool 变更（`peri-middlewares`）
 
 #### 4.1 新增字段
 
@@ -331,7 +331,7 @@ impl SubAgentMiddleware {
 }
 ```
 
-在 `rust-agent-tui/src/app/agent_ops.rs` 组装主 agent 时：
+在 `peri-tui/src/app/agent_ops.rs` 组装主 agent 时：
 
 ```rust
 let (notification_tx, notification_rx) = SubAgentMiddleware::create_notification_channel();
@@ -347,7 +347,7 @@ let agent = ReActAgent::new(llm)
     // ... 其他中间件 ...
 ```
 
-### 6. 事件扩展（`rust-create-agent`）
+### 6. 事件扩展（`peri-agent`）
 
 新增 `AgentEvent` 变体：
 
@@ -366,7 +366,7 @@ pub enum AgentEvent {
 }
 ```
 
-### 7. TUI 显示（`rust-agent-tui`）
+### 7. TUI 显示（`peri-tui`）
 
 #### 7.1 状态栏指示器
 
@@ -401,21 +401,21 @@ pub enum AgentEvent {
 
 | 文件 | 变更类型 | 说明 |
 |------|---------|------|
-| `rust-create-agent/src/agent/executor.rs` | 修改 | 新增 `notification_rx` 字段 + 循环内消费点 |
-| `rust-create-agent/src/agent/events.rs` | 修改 | 新增 `BackgroundTaskCompleted` 变体 |
-| `rust-agent-middlewares/src/subagent/background.rs` | **新增** | `BackgroundTaskRegistry` + `BackgroundTaskResult` + `BackgroundTaskStatus` |
-| `rust-agent-middlewares/src/subagent/tool.rs` | 修改 | 新增 `background_registry` 字段 + `invoke_background()` 方法 |
-| `rust-agent-middlewares/src/subagent/mod.rs` | 修改 | `build_tool()` 传递 registry，新增通道创建逻辑 |
-| `rust-agent-tui/src/app/agent_ops.rs` | 修改 | 组装时创建通道和 registry |
-| `rust-agent-tui/src/app/events.rs` | 修改 | 处理 `BackgroundTaskCompleted` 事件 |
-| `rust-agent-tui/src/ui/main_ui/status_bar.rs` | 修改 | 显示后台任务计数 |
+| `peri-agent/src/agent/executor.rs` | 修改 | 新增 `notification_rx` 字段 + 循环内消费点 |
+| `peri-agent/src/agent/events.rs` | 修改 | 新增 `BackgroundTaskCompleted` 变体 |
+| `peri-middlewares/src/subagent/background.rs` | **新增** | `BackgroundTaskRegistry` + `BackgroundTaskResult` + `BackgroundTaskStatus` |
+| `peri-middlewares/src/subagent/tool.rs` | 修改 | 新增 `background_registry` 字段 + `invoke_background()` 方法 |
+| `peri-middlewares/src/subagent/mod.rs` | 修改 | `build_tool()` 传递 registry，新增通道创建逻辑 |
+| `peri-tui/src/app/agent_ops.rs` | 修改 | 组装时创建通道和 registry |
+| `peri-tui/src/app/events.rs` | 修改 | 处理 `BackgroundTaskCompleted` 事件 |
+| `peri-tui/src/ui/main_ui/status_bar.rs` | 修改 | 显示后台任务计数 |
 
 ### 9.2 关键技术决策
 
 - **Unbounded channel 而非 bounded**：后台任务完成时间不可预测，UnboundedSender 的 `send` 不阻塞，保证后台任务不会因通道满而卡住。ReAct 循环每轮 `try_recv` 全部消费，不会无限堆积。
 - **消费点在循环末尾而非开头**：放在 StepDone/StateSnapshot 之后，保证当前轮次的状态快照已正确发出，不会混入下一轮的后台通知。
 - **注入为 Human 消息**：后台任务结果作为 Human 消息注入，而非 ToolResult。因为原始工具调用早已返回了 "task started" 的 ToolResult，后续完成是独立事件，不是原始工具调用的延迟结果。
-- **注册中心在 middlewares 层**：`BackgroundTaskRegistry` 放在 `rust-agent-middlewares` 而非 `rust-create-agent`，保持核心框架对后台任务概念的零依赖。核心层只提供泛用的 `notification_rx` 通道消费机制。
+- **注册中心在 middlewares 层**：`BackgroundTaskRegistry` 放在 `peri-middlewares` 而非 `peri-agent`，保持核心框架对后台任务概念的零依赖。核心层只提供泛用的 `notification_rx` 通道消费机制。
 - **SubAgentTool 中提取 build_child_agent()**：将 normal 路径中的 agent 构建逻辑（解析定义、过滤工具、组装 ReActAgent）提取为独立方法，供 normal/background/fork 三条路径复用。
 
 ### 9.3 依赖
@@ -435,7 +435,7 @@ pub enum AgentEvent {
 - **事件驱动 TUI 通信**：`BackgroundTaskCompleted` 事件通过现有 `AgentEventHandler` 推送到 TUI。
 - **Workspace 依赖方向**：核心层只定义 `BackgroundTaskResult` 类型（通过 re-export 或泛型），不依赖 middlewares 层。`notification_rx` 的类型参数为 `BackgroundTaskResult`，该类型需在核心层定义或在 `State` trait 关联类型中声明。
 
-  > **架构偏离说明**：`ReActAgent` 的 `notification_rx` 字段类型为 `UnboundedReceiver<BackgroundTaskResult>`。如果 `BackgroundTaskResult` 定义在 middlewares 层，会违反"核心不依赖上层"的约束。解决方案：将 `BackgroundTaskResult` 定义在 `rust-create-agent/src/agent/` 中（作为核心事件类型的一部分），middlewares 层使用该类型。
+  > **架构偏离说明**：`ReActAgent` 的 `notification_rx` 字段类型为 `UnboundedReceiver<BackgroundTaskResult>`。如果 `BackgroundTaskResult` 定义在 middlewares 层，会违反"核心不依赖上层"的约束。解决方案：将 `BackgroundTaskResult` 定义在 `peri-agent/src/agent/` 中（作为核心事件类型的一部分），middlewares 层使用该类型。
 
 - **编码规范**：遵循 Rust 2021 edition + async-trait + tracing 日志。
 

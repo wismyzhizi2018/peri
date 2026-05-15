@@ -9,7 +9,7 @@
 ## 改动总览
 
 - 在 `langfuse-client/` 目录下新建独立 Rust crate（不属于 workspace），包含 6 个源文件（lib.rs、error.rs、config.rs、types.rs、client.rs、batcher.rs），提供两层 API（底层 Client + 上层 Batcher）
-- Task 1-4 按依赖顺序构建 crate 骨架→数据类型→Client→Batcher；Task 5 将 rust-agent-tui 的 session.rs/tracer.rs 迁移到新 crate API，替换 langfuse-ergonomic + langfuse-client-base 两个第三方依赖
+- Task 1-4 按依赖顺序构建 crate 骨架→数据类型→Client→Batcher；Task 5 将 peri-tui 的 session.rs/tracer.rs 迁移到新 crate API，替换 langfuse-ergonomic + langfuse-client-base 两个第三方依赖
 - 关键决策：所有 body 字段用 `Option<T>`（无 `Option<Option<T>>`），IngestionEvent 用 serde 内部标签枚举（10 变体），ObservationBody 作为 V4 统一类型覆盖 create/update
 
 ---
@@ -17,14 +17,14 @@
 ### Task 0: 环境准备
 
 **背景:**
-确保 Rust 构建工具链可用，验证 langfuse-client 作为独立 crate 和 rust-agent-tui 的编译环境正常。
+确保 Rust 构建工具链可用，验证 langfuse-client 作为独立 crate 和 peri-tui 的编译环境正常。
 
 **执行步骤:**
 - [ ] 验证 Rust 工具链可用
   - `rustc --version && cargo --version`
   - 预期: 输出 Rust 版本信息
 - [ ] 验证 workspace 现有 crate 可编译
-  - `cargo build -p rust-agent-tui 2>&1`
+  - `cargo build -p peri-tui 2>&1`
   - 预期: 编译成功（确认基线无问题）
 
 **检查步骤:**
@@ -165,7 +165,7 @@
         }
     }
     ```
-  - 原因: ClientConfig 封装认证三要素供 Client 使用；BatcherConfig 定义批量策略供 Batcher 使用；from_env() 提供环境变量加载，与现有 rust-agent-tui 的配置方式一致
+  - 原因: ClientConfig 封装认证三要素供 Client 使用；BatcherConfig 定义批量策略供 Batcher 使用；from_env() 提供环境变量加载，与现有 peri-tui 的配置方式一致
 
 - [ ] 创建 `langfuse-client/src/lib.rs` — 模块声明与重导出
   - 位置: `langfuse-client/src/lib.rs`（新建）
@@ -1317,20 +1317,20 @@
 ### Task 5: TUI 集成迁移
 
 **背景:**
-替换 `rust-agent-tui` 中的 `langfuse-ergonomic` + `langfuse-client-base` 两个第三方 crate，改用 Task 1-4 实现的 `langfuse-client` 新 crate。当前 `rust-agent-tui/src/langfuse/` 目录包含 3 个源文件：session.rs（使用 `langfuse_ergonomic::ClientBuilder/Batcher/LangfuseClient`）、tracer.rs（使用 `langfuse_client_base::models` 的 `IngestionEvent/IngestionEventOneOf2/4/8/CreateSpanBody/CreateGenerationBody/ObservationBody/UsageDetails`）、config.rs（纯环境变量读取，无需修改）。对外接口 `LangfuseSession` / `LangfuseTracer` 的方法签名和行为保持不变，仅替换内部实现。上层调用方（`agent_ops.rs`、`langfuse_state.rs`、`agent.rs`）通过 `crate::langfuse::LangfuseSession/LangfuseTracer` 引用，只要公开 API 不变则无需改动。
+替换 `peri-tui` 中的 `langfuse-ergonomic` + `langfuse-client-base` 两个第三方 crate，改用 Task 1-4 实现的 `langfuse-client` 新 crate。当前 `peri-tui/src/langfuse/` 目录包含 3 个源文件：session.rs（使用 `langfuse_ergonomic::ClientBuilder/Batcher/LangfuseClient`）、tracer.rs（使用 `langfuse_client_base::models` 的 `IngestionEvent/IngestionEventOneOf2/4/8/CreateSpanBody/CreateGenerationBody/ObservationBody/UsageDetails`）、config.rs（纯环境变量读取，无需修改）。对外接口 `LangfuseSession` / `LangfuseTracer` 的方法签名和行为保持不变，仅替换内部实现。上层调用方（`agent_ops.rs`、`langfuse_state.rs`、`agent.rs`）通过 `crate::langfuse::LangfuseSession/LangfuseTracer` 引用，只要公开 API 不变则无需改动。
 
 **涉及文件:**
-- 修改: `rust-agent-tui/Cargo.toml`（移除 langfuse-ergonomic + langfuse-client-base，添加 langfuse-client path dep）
-- 修改: `rust-agent-tui/src/langfuse/session.rs`（改用 `langfuse_client::LangfuseClient + Batcher + BatcherConfig`）
-- 修改: `rust-agent-tui/src/langfuse/tracer.rs`（改用 `langfuse_client::types::*`，消除 `Option<Option<T>>` 双层嵌套）
-- 不修改: `rust-agent-tui/src/langfuse/config.rs`（环境变量读取逻辑通用，无第三方依赖）
-- 不修改: `rust-agent-tui/src/langfuse/mod.rs`（公开导出不变）
-- 不修改: `rust-agent-tui/src/app/agent_ops.rs`、`langfuse_state.rs`、`agent.rs`（对外接口不变）
+- 修改: `peri-tui/Cargo.toml`（移除 langfuse-ergonomic + langfuse-client-base，添加 langfuse-client path dep）
+- 修改: `peri-tui/src/langfuse/session.rs`（改用 `langfuse_client::LangfuseClient + Batcher + BatcherConfig`）
+- 修改: `peri-tui/src/langfuse/tracer.rs`（改用 `langfuse_client::types::*`，消除 `Option<Option<T>>` 双层嵌套）
+- 不修改: `peri-tui/src/langfuse/config.rs`（环境变量读取逻辑通用，无第三方依赖）
+- 不修改: `peri-tui/src/langfuse/mod.rs`（公开导出不变）
+- 不修改: `peri-tui/src/app/agent_ops.rs`、`langfuse_state.rs`、`agent.rs`（对外接口不变）
 
 **执行步骤:**
 
 - [ ] 修改 Cargo.toml — 替换依赖声明
-  - 位置: `rust-agent-tui/Cargo.toml`（`[dependencies]` 段，~L43-L44）
+  - 位置: `peri-tui/Cargo.toml`（`[dependencies]` 段，~L43-L44）
   - 删除以下两行:
     ```toml
     langfuse-ergonomic = "0.6.3"
@@ -1343,7 +1343,7 @@
   - 原因: 新 crate 路径为 workspace 外的 `../../langfuse-client`（与 spec-design.md 约定一致，新 crate 独立于 workspace）。移除两个第三方依赖后，`reqwest` 仍保留（其他地方也使用）
 
 - [ ] 重写 session.rs — 改用 langfuse_client 的 Client + Batcher
-  - 位置: `rust-agent-tui/src/langfuse/session.rs`（全文替换）
+  - 位置: `peri-tui/src/langfuse/session.rs`（全文替换）
   - 当前代码使用 `langfuse_ergonomic::{BackpressurePolicy, Batcher, ClientBuilder, LangfuseClient}`，需改为 `langfuse_client` 的对应 API
   - 替换后完整代码:
     ```rust
@@ -1400,7 +1400,7 @@
   - 原因: 对外接口 `LangfuseSession::new(config, session_id) -> Option<Self>` 签名和语义不变。`LangfuseClient::new()` 不返回 Result，因此 `new()` 不再因 Client 构造失败返回 None，仅保留 `Some(Self)` 路径。但为保持对外行为兼容（返回 Option<Self>），保留 `Option<Self>` 返回类型
 
 - [ ] 重写 tracer.rs import 区块 — 替换类型导入
-  - 位置: `rust-agent-tui/src/langfuse/tracer.rs`（文件开头 ~L1-L16）
+  - 位置: `peri-tui/src/langfuse/tracer.rs`（文件开头 ~L1-L16）
   - 删除旧 import:
     ```rust
     use langfuse_client_base::models::{
@@ -1422,7 +1422,7 @@
   - 原因: 新 crate 将所有事件类型统一为 `IngestionEvent` 枚举的变体（`SpanCreate`/`GenerationCreate`/`ObservationCreate`/`TraceCreate`），不再需要 `IngestionEventOneOf2/4/8` 的 Box 包装。`CreateSpanBody` → `SpanBody`、`CreateGenerationBody` → `GenerationBody`。`UsageDetails` 从 enum 变为 `HashMap<String, i32>` 类型别名，简化构造
 
 - [ ] 重写 tracer.rs 的 `flush_tools_batch` — SpanCreate 事件
-  - 位置: `rust-agent-tui/src/langfuse/tracer.rs`（`flush_tools_batch()` 方法体，~L83-L121）
+  - 位置: `peri-tui/src/langfuse/tracer.rs`（`flush_tools_batch()` 方法体，~L83-L121）
   - 将 `CreateSpanBody` + `IngestionEventOneOf2` 替换为 `SpanBody` + `IngestionEvent::SpanCreate`
   - 旧代码（需替换的部分，从 `let body = CreateSpanBody {` 到 `batcher.add(IngestionEvent::IngestionEventOneOf2(Box::new(event)))`）:
     ```rust
@@ -1485,7 +1485,7 @@
   - 原因: 新 crate 的 `IngestionEvent` 使用 serde 内部标签枚举，`SpanCreate` 变体自动序列化为 `{"type":"span-create","id":"...","timestamp":"...","body":{...}}`
 
 - [ ] 重写 tracer.rs 的 `on_trace_start` — TraceCreate + ObservationCreate 事件
-  - 位置: `rust-agent-tui/src/langfuse/tracer.rs`（`on_trace_start()` 方法体，~L124-L172）
+  - 位置: `peri-tui/src/langfuse/tracer.rs`（`on_trace_start()` 方法体，~L124-L172）
   - 有两处需替换:
     1. **TraceCreate 部分**（`client.trace().id().name().input().session_id().call().await`）→ 构造 `IngestionEvent::TraceCreate` 并通过 `batcher.add()` 发送
     2. **ObservationCreate 部分**（`ObservationBody { ... }` + `IngestionEventOneOf8`）→ 新 `ObservationBody` + `IngestionEvent::ObservationCreate`
@@ -1583,7 +1583,7 @@
   - 原因: 与 `flush_tools_batch` 相同的映射规则。`ObservationType::Agent` 的 serde 序列化不变（`SCREAMING_SNAKE_CASE` → `"AGENT"`）。ObservationBody 的 `..Default::default()` 需要该结构体实现 Default（所有字段均为 Option<T> 或有 default，天然支持）
 
 - [ ] 重写 tracer.rs 的 `on_llm_end` — GenerationCreate 事件
-  - 位置: `rust-agent-tui/src/langfuse/tracer.rs`（`on_llm_end()` 方法体中的 spawn 块，~L236-L264）
+  - 位置: `peri-tui/src/langfuse/tracer.rs`（`on_llm_end()` 方法体中的 spawn 块，~L236-L264）
   - 两处修改: UsageDetails 构造 + GenerationCreate 事件构造
   - 旧 UsageDetails 构造（~L219-L234）:
     ```rust
@@ -1663,7 +1663,7 @@
   - 原因: `CreateGenerationBody` → `GenerationBody`，`Some(Some(x))` → `Some(x)`，`usage_details` 字段类型从 `Option<Box<UsageDetails>>` → `Option<UsageDetails>`（即 `Option<HashMap<String, i32>>`），无需 Box 包装
 
 - [ ] 重写 tracer.rs 的 `on_tool_end` — 工具 SpanCreate 事件
-  - 位置: `rust-agent-tui/src/langfuse/tracer.rs`（`on_tool_end()` 方法体内的 spawn 块，~L309-L336）
+  - 位置: `peri-tui/src/langfuse/tracer.rs`（`on_tool_end()` 方法体内的 spawn 块，~L309-L336）
   - 旧代码（需替换部分）:
     ```rust
     let status_msg = if is_error { Some(Some("error".to_string())) } else { None };
@@ -1720,7 +1720,7 @@
   - 原因: 与 `flush_tools_batch` 相同映射规则
 
 - [ ] 重写 tracer.rs 的 `on_trace_end` — Trace 更新事件
-  - 位置: `rust-agent-tui/src/langfuse/tracer.rs`（`on_trace_end()` 方法体内的 spawn 块中更新 Trace 部分，~L376-L385）
+  - 位置: `peri-tui/src/langfuse/tracer.rs`（`on_trace_end()` 方法体内的 spawn 块中更新 Trace 部分，~L376-L385）
   - 旧代码:
     ```rust
     // 更新 Trace 输出
@@ -1786,71 +1786,71 @@
     ```
   - 原因: `ObservationBody` 的 `r#type` 是 required 字段（非 Option），Rust 的 `Default` derive 要求所有字段实现 Default，而 `ObservationType` 枚举无自然默认值。因此 `ObservationBody` 不能 derive `Default`，必须手动初始化所有字段。`SpanBody` 和 `GenerationBody` 的所有字段都是 `Option<T>`，可以 derive `Default`。`TraceBody` 同理所有字段为 `Option<T>`，可以 derive `Default`
 
-- [ ] 编译验证 — rust-agent-tui 整体编译
-  - 运行命令: `cargo build -p rust-agent-tui 2>&1`
+- [ ] 编译验证 — peri-tui 整体编译
+  - 运行命令: `cargo build -p peri-tui 2>&1`
   - 预期: 编译成功，无 error。可能有 unused import 警告（旧 import 移除后），需根据编译器提示清理
   - 修复策略: 编译错误按以下优先级处理:
     1. 类型不匹配（`Option<Option<T>>` vs `Option<T>`）→ 按映射规则移除内层 `Some()`
     2. 方法不存在（`client.trace()`）→ 已替换为 `batcher.add()`，检查是否有遗漏
     3. import 错误 → 确认 `langfuse_client::` 前缀下的所有类型已正确导出
 
-- [ ] 运行 rust-agent-tui 现有测试
-  - 运行命令: `cargo test -p rust-agent-tui 2>&1`
+- [ ] 运行 peri-tui 现有测试
+  - 运行命令: `cargo test -p peri-tui 2>&1`
   - 预期: 所有测试通过（如有 headless 测试中涉及 langfuse 相关逻辑的，需确认行为不变）
-  - 注意: rust-agent-tui 的 langfuse 功能是可选的（需要设置 LANGFUSE_* 环境变量），测试中未设置这些环境变量时 langfuse 代码路径不被触发
+  - 注意: peri-tui 的 langfuse 功能是可选的（需要设置 LANGFUSE_* 环境变量），测试中未设置这些环境变量时 langfuse 代码路径不被触发
 
 **检查步骤:**
 
 - [ ] 验证 Cargo.toml 不再包含旧依赖
-  - `grep -E 'langfuse-ergonomic|langfuse-client-base' rust-agent-tui/Cargo.toml`
+  - `grep -E 'langfuse-ergonomic|langfuse-client-base' peri-tui/Cargo.toml`
   - 预期: 无匹配（exit code 1）
 
 - [ ] 验证 Cargo.toml 包含新依赖
-  - `grep 'langfuse-client' rust-agent-tui/Cargo.toml`
+  - `grep 'langfuse-client' peri-tui/Cargo.toml`
   - 预期: 包含 `langfuse-client = { path = "../../langfuse-client" }`
 
 - [ ] 验证 session.rs 使用新 crate 的 import
-  - `grep -n 'langfuse_' rust-agent-tui/src/langfuse/session.rs`
+  - `grep -n 'langfuse_' peri-tui/src/langfuse/session.rs`
   - 预期: 仅包含 `use langfuse_client::` 前缀的 import，不包含 `langfuse_ergonomic` 或 `langfuse_client_base`
 
 - [ ] 验证 tracer.rs 使用新 crate 的 import
-  - `grep -n 'langfuse_' rust-agent-tui/src/langfuse/tracer.rs`
+  - `grep -n 'langfuse_' peri-tui/src/langfuse/tracer.rs`
   - 预期: 仅包含 `use langfuse_client::` 前缀的 import
 
 - [ ] 验证 tracer.rs 不再包含旧事件类型
-  - `grep -E 'IngestionEventOneOf|ingestion_event_one_of|CreateSpanBody|CreateGenerationBody' rust-agent-tui/src/langfuse/tracer.rs`
+  - `grep -E 'IngestionEventOneOf|ingestion_event_one_of|CreateSpanBody|CreateGenerationBody' peri-tui/src/langfuse/tracer.rs`
   - 预期: 无匹配（exit code 1）
 
 - [ ] 验证 tracer.rs 不再包含 double Option 模式
-  - `grep -c 'Some(Some(' rust-agent-tui/src/langfuse/tracer.rs`
+  - `grep -c 'Some(Some(' peri-tui/src/langfuse/tracer.rs`
   - 预期: 0 个匹配
 
 - [ ] 验证 tracer.rs 使用新的 IngestionEvent 枚举变体
-  - `grep -E 'IngestionEvent::(SpanCreate|GenerationCreate|ObservationCreate|TraceCreate)' rust-agent-tui/src/langfuse/tracer.rs`
+  - `grep -E 'IngestionEvent::(SpanCreate|GenerationCreate|ObservationCreate|TraceCreate)' peri-tui/src/langfuse/tracer.rs`
   - 预期: 包含所有 4 种变体（SpanCreate 至少 2 处——flush_tools_batch + on_tool_end，GenerationCreate 1 处，ObservationCreate 1 处，TraceCreate 2 处——on_trace_start + on_trace_end）
 
 - [ ] 验证 tracer.rs 不再调用 client.trace()
-  - `grep -c 'client\.trace()' rust-agent-tui/src/langfuse/tracer.rs`
+  - `grep -c 'client\.trace()' peri-tui/src/langfuse/tracer.rs`
   - 预期: 0 个匹配
 
 - [ ] 验证 config.rs 未被修改
-  - `grep -E 'langfuse_ergonomic|langfuse_client_base|langfuse_client' rust-agent-tui/src/langfuse/config.rs`
+  - `grep -E 'langfuse_ergonomic|langfuse_client_base|langfuse_client' peri-tui/src/langfuse/config.rs`
   - 预期: 无匹配（config.rs 不引用任何第三方 langfuse crate）
 
 - [ ] 验证 mod.rs 公开导出不变
-  - `grep -E 'pub use (config|session|tracer)' rust-agent-tui/src/langfuse/mod.rs`
+  - `grep -E 'pub use (config|session|tracer)' peri-tui/src/langfuse/mod.rs`
   - 预期: 包含 `pub use config::LangfuseConfig;`、`pub use session::LangfuseSession;`、`pub use tracer::LangfuseTracer;`（与修改前一致）
 
 - [ ] 验证整体编译通过
-  - `cargo build -p rust-agent-tui 2>&1`
+  - `cargo build -p peri-tui 2>&1`
   - 预期: 编译成功，无 error
 
 - [ ] 验证 langfuse-client crate 编译通过
   - `cd langfuse-client && cargo check 2>&1`
   - 预期: 编译成功
 
-- [ ] 验证 rust-agent-tui 测试通过
-  - `cargo test -p rust-agent-tui 2>&1`
+- [ ] 验证 peri-tui 测试通过
+  - `cargo test -p peri-tui 2>&1`
   - 预期: 所有测试通过
 
 - [ ] 验证 langfuse-client 全量测试通过
@@ -1867,7 +1867,7 @@
 
 **前置条件:**
 - `langfuse-client` crate 已编译通过: `cd langfuse-client && cargo build`
-- `rust-agent-tui` 已编译通过: `cargo build -p rust-agent-tui`
+- `peri-tui` 已编译通过: `cargo build -p peri-tui`
 - 测试数据: 无需外部服务（mockito mock）
 
 **端到端验证:**
@@ -1879,7 +1879,7 @@
 
 2. 运行 workspace 全量测试
    - `cargo test 2>&1`
-   - 预期: 所有 workspace crate 测试通过，包括 rust-agent-tui 的 headless 测试
+   - 预期: 所有 workspace crate 测试通过，包括 peri-tui 的 headless 测试
    - 失败排查: 检查 Task 5（TUI 集成迁移）— 类型不匹配或 import 错误
 
 3. 验证 langfuse-client crate 无 Option<Option<T>> 嵌套
@@ -1887,13 +1887,13 @@
    - 预期: 无匹配（exit code 1）
    - 失败排查: 检查 types.rs 中的 body 结构体定义
 
-4. 验证 rust-agent-tui 不再依赖旧 crate
-   - `grep -E 'langfuse-ergonomic|langfuse-client-base' rust-agent-tui/Cargo.toml`
+4. 验证 peri-tui 不再依赖旧 crate
+   - `grep -E 'langfuse-ergonomic|langfuse-client-base' peri-tui/Cargo.toml`
    - 预期: 无匹配（exit code 1）
    - 失败排查: 检查 Task 5 步骤 1（Cargo.toml 替换）
 
 5. 验证 tracer.rs 无 double Option 和旧事件类型
-   - `grep -E 'Some\(Some\(|IngestionEventOneOf|CreateSpanBody|CreateGenerationBody|client\.trace\(\)' rust-agent-tui/src/langfuse/tracer.rs`
+   - `grep -E 'Some\(Some\(|IngestionEventOneOf|CreateSpanBody|CreateGenerationBody|client\.trace\(\)' peri-tui/src/langfuse/tracer.rs`
    - 预期: 无匹配（exit code 1）
    - 失败排查: 检查 Task 5 步骤 3-7（tracer.rs 各方法替换）
 

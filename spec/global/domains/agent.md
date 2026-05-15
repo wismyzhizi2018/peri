@@ -188,7 +188,7 @@ launch_agent 工具调用
 **摘要:** 提取 UserInteractionBroker trait 统一 HITL 和 AskUser 交互机制
 **关键决策:**
 
-- 新建 rust-create-agent/src/interaction/mod.rs：UserInteractionBroker trait + InteractionContext（Approval/Questions）
+- 新建 peri-agent/src/interaction/mod.rs：UserInteractionBroker trait + InteractionContext（Approval/Questions）
 - HITL 和 AskUser 中间件均通过 broker.request() 等待响应，单 channel 替代两套
 - TUI TuiInteractionBroker 实现；relay 协议从 4 条消息合并为 2 条（InteractionRequest/InteractionResponse）
 - 两阶段迁移：先新增 broker，再删旧实现（此 feature 归档时尚未完全完成）
@@ -322,7 +322,7 @@ launch_agent 工具调用
 **问题本质:** 工具前文本通过 AiReasoning 事件发射而非 TextChunk，TUI pipeline 将 AiReasoning 映射为 "Thought for N chars" 推理提示，不显示实际文本
 **通用模式:** 核心框架的事件类型决定了 TUI pipeline 的处理路径。新增事件或修改事件语义时，必须同步检查 TUI 侧的事件映射层（agent.rs 的事件映射表）
 **技术决策:** 工具前文本改用 TextChunk 发射，与最终回答走同一路径
-**涉及文件:** rust-create-agent/src/agent/executor/tool_dispatch.rs, rust-create-agent/src/agent/executor/final_answer.rs, rust-agent-tui/src/app/agent.rs, rust-agent-tui/src/app/message_pipeline.rs
+**涉及文件:** peri-agent/src/agent/executor/tool_dispatch.rs, peri-agent/src/agent/executor/final_answer.rs, peri-tui/src/app/agent.rs, peri-tui/src/app/message_pipeline.rs
 **CLAUDE.md 链接:** false
 
 ### issue_2026-05-12-background-agent-display-and-continuation-bugs
@@ -333,7 +333,7 @@ launch_agent 工具调用
 **问题本质:** 三个独立根因：(1) fork 检测优先于 background 导致走错路径且 background_task_count 泄漏；(2) frozen_subagent_vms 跨轮次膨胀导致错位替换；(3) pending_bg_continuation.take() 在 loading=true 时丢失
 **通用模式:** 多语义叠加（fork+background）时需要明确的优先级和独立处理路径。跨轮次累积的数据结构（frozen_vms）必须有清理/去重机制。异步 take() + 条件检查应先检查条件再 take()，避免消费后丢弃
 **架构影响:** frozen_subagent_vms 的 drain_subagent_stack() 方法规范了异常残留清理；pending_bg_continuation 的修复模式（先检查条件再 take）可作为异步状态消费的通用范式
-**涉及文件:** rust-agent-middlewares/src/subagent/tool.rs, rust-agent-tui/src/app/agent_ops.rs, rust-agent-tui/src/app/message_pipeline.rs
+**涉及文件:** peri-middlewares/src/subagent/tool.rs, peri-tui/src/app/agent_ops.rs, peri-tui/src/app/message_pipeline.rs
 **CLAUDE.md 链接:** false
 
 ### issue_2026-05-11-background-agent-missing-tools
@@ -343,7 +343,7 @@ launch_agent 工具调用
 **关键词:** SubAgent, 工具继承, register_tool, Arc 共享
 **问题本质:** Background agent 的工具完全依赖 parent_tools 通过 register_tool 传递，tokio::spawn 闭包的 Arc 引用在 move 后可能失效
 **通用模式:** Background agent 的 middleware 配置与 Normal 路径一致但工具来源不同（register_tool vs middleware 内部构建）。跨 async 边界的工具传递需要确保 Arc 引用的生命周期
-**涉及文件:** rust-agent-tui/src/app/agent.rs, rust-agent-middlewares/src/subagent/tool.rs, rust-create-agent/src/agent/executor/mod.rs
+**涉及文件:** peri-tui/src/app/agent.rs, peri-middlewares/src/subagent/tool.rs, peri-agent/src/agent/executor/mod.rs
 **CLAUDE.md 链接:** false
 
 ### issue_2026-05-12-glm-reasoning-field-not-parsed
@@ -354,7 +354,7 @@ launch_agent 工具调用
 **问题本质:** GLM 系列模型使用 `reasoning` 顶层字段而非 `reasoning_content`，代码只检查了后者。附带发现 invariant check 对并行 tool_calls 的合法消息序列产生误报
 **通用模式:** OpenAI 兼容 API 的字段名存在 provider 差异。解析时应同时检查多个可能的字段名（or_else 链式），序列化时应同时回传多个字段以保持兼容。invariant check 应基于消息块而非逐条检查
 **技术决策:** 解析侧 reasoning_content.or(reasoning) 双字段尝试；序列化侧同时设置两个字段；invariant check 改为连续块检查
-**涉及文件:** rust-create-agent/src/llm/openai.rs, rust-create-agent/src/messages/adapters/openai.rs
+**涉及文件:** peri-agent/src/llm/openai.rs, peri-agent/src/messages/adapters/openai.rs
 **CLAUDE.md 链接:** true
 
 ### issue_2026-05-14-deepseek-anthropic-thinking-block-dropped
@@ -366,7 +366,7 @@ launch_agent 工具调用
 **通用模式:** 手动构造的 assistant 消息必须考虑 provider 的 thinking 回传约束。在序列化层自动检测并注入 redacted_thinking 比在每个构造点修补更健壮——集中处理比分散修补更可靠。
 **架构影响:** 使用 Anthropic 的 redacted_thinking 类型（opaque data 字段）作为"无 thinking 原文但有占位"的通用解决方案
 **技术决策:** messages_to_anthropic() 中检测不含 thinking/redacted_thinking 的 assistant 消息自动注入 redacted_thinking
-**涉及文件:** rust-agent-middlewares/src/subagent/skill_preload.rs, rust-create-agent/src/llm/anthropic.rs
+**涉及文件:** peri-middlewares/src/subagent/skill_preload.rs, peri-agent/src/llm/anthropic.rs
 **CLAUDE.md 链接:** true
 
 ### issue_2026-05-14-orphaned-tool-use-without-tool-result
@@ -378,7 +378,7 @@ launch_agent 工具调用
 **通用模式:** 多工具并发的结果处理必须"尽最大努力收集所有结果，延迟错误传播"（collect-all-before-error 模式）。在循环中收集 deferred_error，循环结束后统一判断是否报错。所有 tool_result 必须始终写入（包括 error tool_result）。
 **架构影响:** deferred_error 模式——将所有错误收集到 Option<AgentError>，循环结束后统一返回。这适用于所有需要"处理所有元素后再决定成败"的并发场景
 **技术决策:** run_on_error/run_after_tool 失败改为 let _ = 吞掉并收集到 deferred_error；state.add_message(tool_msg) 始终执行
-**涉及文件:** rust-create-agent/src/agent/executor/tool_dispatch.rs
+**涉及文件:** peri-agent/src/agent/executor/tool_dispatch.rs
 **CLAUDE.md 链接:** true
 
 ### issue_2026-05-14-grep-tool-capability-gap
@@ -389,7 +389,7 @@ launch_agent 工具调用
 **问题本质:** 工具暴露给 LLM 的 JSON schema 参数（multiline/-n/whole_word）声称可用但实际未实现，导致 LLM 写出正确的跨行正则却得到错误结果。本质是接口契约不匹配——声明与实现不同步。
 **通用模式:** 所有暴露给 LLM 的工具参数必须经过实现验证。工具 schema 是对 LLM 的接口契约，任何声称支持的参数必须有对应的代码路径。新增参数时必须同步实现。
 **技术决策:** output_mode 从必填改为默认 "content"，减少 LLM 调用负担
-**涉及文件:** rust-agent-middlewares/src/tools/filesystem/grep.rs
+**涉及文件:** peri-middlewares/src/tools/filesystem/grep.rs
 **CLAUDE.md 链接:** false
 
 ---

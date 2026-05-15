@@ -104,13 +104,13 @@ struct SkillFrontmatter {
 
 | 文件 | 改动类型 | 说明 |
 |------|---------|------|
-| `rust-agent-middlewares/src/subagent/tool.rs` | 修改 | `llm_factory` 签名改为 `Fn(Option<&str>)`，`invoke()` 传入 model alias |
-| `rust-agent-middlewares/src/subagent/mod.rs` | 修改 | `SubAgentMiddleware` 构造函数的 `llm_factory` 签名同步更新 |
-| `rust-agent-middlewares/src/skills/loader.rs` | 修改 | `SkillFrontmatter` 增加 `model` 字段，`SkillMetadata` 增加 `model` 字段 |
-| `rust-agent-middlewares/src/skills/mod.rs` | 修改 | `build_summary()` 中展示 skill 的 model 信息 |
-| `rust-agent-tui/src/app/agent.rs` | 修改 | `AgentRunConfig` 增加 `config` 字段，`llm_factory` 升级为 alias-aware |
-| `rust-agent-tui/src/app/provider.rs` | 修改 | 新增 `LlmProvider::from_config_for_alias()` 方法 |
-| `rust-agent-tui/src/app/agent_ops.rs` | 修改 | 构造 `AgentRunConfig` 时传入 `config` |
+| `peri-middlewares/src/subagent/tool.rs` | 修改 | `llm_factory` 签名改为 `Fn(Option<&str>)`，`invoke()` 传入 model alias |
+| `peri-middlewares/src/subagent/mod.rs` | 修改 | `SubAgentMiddleware` 构造函数的 `llm_factory` 签名同步更新 |
+| `peri-middlewares/src/skills/loader.rs` | 修改 | `SkillFrontmatter` 增加 `model` 字段，`SkillMetadata` 增加 `model` 字段 |
+| `peri-middlewares/src/skills/mod.rs` | 修改 | `build_summary()` 中展示 skill 的 model 信息 |
+| `peri-tui/src/app/agent.rs` | 修改 | `AgentRunConfig` 增加 `config` 字段，`llm_factory` 升级为 alias-aware |
+| `peri-tui/src/app/provider.rs` | 修改 | 新增 `LlmProvider::from_config_for_alias()` 方法 |
+| `peri-tui/src/app/agent_ops.rs` | 修改 | 构造 `AgentRunConfig` 时传入 `config` |
 
 > 在适合的章节中插入设计配图：`![改动文件与依赖关系](./images/02-file-changes.png)`
 
@@ -136,7 +136,7 @@ SubAgentTool::invoke():
 
 ## 实现要点
 
-- **架构分层**：alias 解析逻辑完全在 TUI 层（`rust-agent-tui`），中间件层（`rust-agent-middlewares`）仅传递 `Option<&str>` 参数，不引入配置类型依赖
+- **架构分层**：alias 解析逻辑完全在 TUI 层（`peri-tui`），中间件层（`peri-middlewares`）仅传递 `Option<&str>` 参数，不引入配置类型依赖
 - **错误处理**：未知 alias 时 `warn!` 日志 + fallback 到父模型；alias 对应 provider 未配置时同理
 - **Skill model**：仅解析存储、展示在摘要中，不影响模型选择逻辑
 - **兼容性**：现有 `llm_factory` 的调用点（`SubAgentTool` 测试中的 `EchoLLM` 等）需同步更新签名为 `|_| Box::new(EchoLLM)`

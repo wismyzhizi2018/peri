@@ -26,12 +26,12 @@
 ### 测试策略
 
 - **内嵌单元测试为主**：遵循项目规范（`constraints.md`），所有测试写在 `src/` 内的 `#[cfg(test)] mod tests` 块中，不新建 `tests/` 文件
-- **tempfile 隔离文件系统**：`tempfile` crate 已在 `rust-agent-middlewares` dev-dependencies 中，文件系统工具测试使用 `TempDir` 隔离，不污染真实文件系统
+- **tempfile 隔离文件系统**：`tempfile` crate 已在 `peri-middlewares` dev-dependencies 中，文件系统工具测试使用 `TempDir` 隔离，不污染真实文件系统
 - **Mock trait 替代外部依赖**：`ask_user_tool` 测试实现 `MockBroker`（`UserInteractionBroker` trait），直接返回预设答案，不依赖 TUI 或 oneshot channel 基础设施
 - **test-only 构造器**：`RelayClient` 需要 WebSocket 连接才能构建，为其在 `#[cfg(test)]` 块中添加 `new_for_testing()` 私有构造器，绕过网络连接
 - **stub 命令**：TUI 命令测试中注册实现 `Command` trait 的 stub，测试 dispatch 返回值和匹配行为，无需真实 App 状态
 
-### 模块 A：文件系统工具（rust-agent-middlewares）
+### 模块 A：文件系统工具（peri-middlewares）
 
 测试通过 `BaseTool::invoke(serde_json::Value)` 接口调用，cwd 设置为 `TempDir` 路径。
 
@@ -72,7 +72,7 @@ test_oversized_entry_skipped   — 超过 512KB 的条目不进入 history
 test_get_history_since_empty   — 空历史返回空 Vec
 ```
 
-### 模块 C：ask_user_tool（rust-agent-middlewares）
+### 模块 C：ask_user_tool（peri-middlewares）
 
 实现 `MockBroker`：
 
@@ -101,7 +101,7 @@ test_unexpected_response_type      — broker 返回非 Answers → Err
 test_empty_selected_returns_empty  — selected=[], text=None → ""
 ```
 
-### 模块 D：TUI 命令系统（rust-agent-tui）
+### 模块 D：TUI 命令系统（peri-tui）
 
 在 `command/mod.rs` 中添加测试，注册 stub Command：
 
@@ -139,17 +139,17 @@ test_dispatch_empty_name            — "/" 空命令名 → false
 
 ## 约束一致性
 
-- **测试位置**：遵循 `constraints.md` 规范，测试写在 `src/` 内的 `#[cfg(test)] mod tests`；bin crate（`rust-agent-tui`）命令测试同理
+- **测试位置**：遵循 `constraints.md` 规范，测试写在 `src/` 内的 `#[cfg(test)] mod tests`；bin crate（`peri-tui`）命令测试同理
 - **异步运行时**：所有 async 测试使用 `#[tokio::test]`，符合 tokio 1.x 规范
 - **无新 crate 依赖**：`tempfile` 已在 dev-dependencies，`MockBroker` 在测试块内定义，不引入额外依赖
 - **无下层依赖上层**：`RelayClient::new_for_testing()` 只在 `#[cfg(test)]` 块存在，不影响生产代码的 crate 依赖关系
 
 ## 验收标准
 
-- [ ] `rust-agent-middlewares` 6 个文件系统工具各有 ≥4 个测试，覆盖正常路径、文件不存在、边界条件
+- [ ] `peri-middlewares` 6 个文件系统工具各有 ≥4 个测试，覆盖正常路径、文件不存在、边界条件
 - [ ] `rust-relay-server` `auth.rs` 有 5 个 token 验证测试
 - [ ] `rust-relay-server` `client/mod.rs` 有 7 个历史缓存测试（含 1000 条滚动、since 过滤）
-- [ ] `rust-agent-middlewares` `ask_user_tool.rs` 有 10 个测试，覆盖参数解析和返回格式
-- [ ] `rust-agent-tui` `command/mod.rs` 有 8 个 dispatch/prefix 测试
+- [ ] `peri-middlewares` `ask_user_tool.rs` 有 10 个测试，覆盖参数解析和返回格式
+- [ ] `peri-tui` `command/mod.rs` 有 8 个 dispatch/prefix 测试
 - [ ] `cargo test` 全量通过，无新增 warning
 - [ ] 新增测试总数 ≥ 55 个

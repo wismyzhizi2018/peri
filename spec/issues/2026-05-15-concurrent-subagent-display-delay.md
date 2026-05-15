@@ -31,7 +31,7 @@ build_tail_vms() has_snapshot=true 分支：
 在 `has_snapshot=true` 分支中，`merge_frozen_subagents` 之后追加 `subagent_stack` 中未 frozen 的运行中 SubAgentGroup：
 
 ```
-rust-agent-tui/src/app/message_pipeline.rs:753-769
+peri-tui/src/app/message_pipeline.rs:753-769
 ```
 `finalized_vm.is_none()` 确保只追加运行中的，避免与 frozen 重复。
 
@@ -53,7 +53,7 @@ rust-agent-tui/src/app/message_pipeline.rs:753-769
 **路径 B（被丢弃的）**：SubAgent 中间件发出的 `SubagentStarted` → `map_executor_event()` → **返回 None**，未处理
 
 ```
-rust-agent-tui/src/app/agent.rs:611-616
+peri-tui/src/app/agent.rs:611-616
 ExecutorEvent::SubagentStarted { .. }
 | ExecutorEvent::SubagentStopped { .. }
 | ... => return None,  // "not yet handled in TUI"
@@ -64,14 +64,14 @@ ExecutorEvent::SubagentStarted { .. }
 `MessagePipeline::in_subagent()` 和所有子事件路由函数都只检查 `subagent_stack.last()`：
 
 ```
-rust-agent-tui/src/app/message_pipeline.rs:590-594
+peri-tui/src/app/message_pipeline.rs:590-594
 pub fn in_subagent(&self) -> bool {
     self.subagent_stack
         .last()
         .is_some_and(|s| s.is_running && !s.is_background)
 }
 
-rust-agent-tui/src/app/message_pipeline.rs:476-491
+peri-tui/src/app/message_pipeline.rs:476-491
 fn subagent_tool_start(&mut self, ...) {
     if let Some(sub) = self.subagent_stack.last_mut() {  // ← 总是更新最后一个
         ...
@@ -79,7 +79,7 @@ fn subagent_tool_start(&mut self, ...) {
     }
 }
 
-rust-agent-tui/src/app/message_pipeline.rs:495-500
+peri-tui/src/app/message_pipeline.rs:495-500
 pub fn subagent_push_chunk(&mut self, chunk: &str) {
     if let Some(sub) = self.subagent_stack.last_mut() {  // ← 总是推给最后一个
         ...
@@ -125,7 +125,7 @@ SubAgentStart 事件不更新 spinner 状态（`agent_ops.rs:9-40`）。spinner 
 `FnEventHandler` 使用 `try_send`（非阻塞），通道容量 32：
 
 ```
-rust-agent-tui/src/app/agent.rs:156
+peri-tui/src/app/agent.rs:156
 if let Err(e) = tx_event.try_send(msg) {
     // Full → drop; Closed → warn
 }
@@ -137,13 +137,13 @@ if let Err(e) = tx_event.try_send(msg) {
 
 | 文件 | 行数范围 | 说明 |
 |------|---------|------|
-| `rust-agent-tui/src/app/message_pipeline.rs` | 470-500, 590-594 | SubAgent 事件路由 `subagent_tool_start()`, `subagent_push_chunk()`, `in_subagent()` — 只使用 `last()` |
-| `rust-agent-tui/src/app/message_pipeline.rs` | 748-775 | `build_tail_vms()` SubAgentGroup 构建 — `has_snapshot_this_round` 分支 |
-| `rust-agent-tui/src/app/agent_ops.rs` | 9-40 | `handle_agent_event` SubAgentStart 分支 — 不更新 spinner |
-| `rust-agent-tui/src/app/agent.rs` | 482-501 | `map_executor_event` ToolStart(Agent) → SubAgentStart |
-| `rust-agent-tui/src/app/agent.rs` | 611-616 | `SubagentStarted`/`SubagentStopped` 被丢弃（"not yet handled in TUI"）|
-| `rust-agent-tui/src/app/agent.rs` | 156 | `try_send` 事件发送 — 通道满时丢弃 |
-| `rust-agent-middlewares/src/subagent/tool.rs` | 351-356, 892-897 | 中间件层 `SubagentStarted` 事件发射 |
+| `peri-tui/src/app/message_pipeline.rs` | 470-500, 590-594 | SubAgent 事件路由 `subagent_tool_start()`, `subagent_push_chunk()`, `in_subagent()` — 只使用 `last()` |
+| `peri-tui/src/app/message_pipeline.rs` | 748-775 | `build_tail_vms()` SubAgentGroup 构建 — `has_snapshot_this_round` 分支 |
+| `peri-tui/src/app/agent_ops.rs` | 9-40 | `handle_agent_event` SubAgentStart 分支 — 不更新 spinner |
+| `peri-tui/src/app/agent.rs` | 482-501 | `map_executor_event` ToolStart(Agent) → SubAgentStart |
+| `peri-tui/src/app/agent.rs` | 611-616 | `SubagentStarted`/`SubagentStopped` 被丢弃（"not yet handled in TUI"）|
+| `peri-tui/src/app/agent.rs` | 156 | `try_send` 事件发送 — 通道满时丢弃 |
+| `peri-middlewares/src/subagent/tool.rs` | 351-356, 892-897 | 中间件层 `SubagentStarted` 事件发射 |
 
 ## 影响分析
 

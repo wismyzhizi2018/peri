@@ -73,7 +73,7 @@
 ### Task 3: TUI poll_relay 处理 SyncRequest（app/mod.rs）
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
 - [x] 在 `poll_relay` 方法的 `match web_msg` 中新增 `WebMessage::SyncRequest { since_seq }` 分支：
@@ -97,16 +97,16 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 输出包含 "Finished"，无 error
 - [x] SyncRequest 处理分支存在
-  - `grep -c "SyncRequest" rust-agent-tui/src/app/mod.rs`
+  - `grep -c "SyncRequest" peri-tui/src/app/mod.rs`
   - 预期: 输出 >= 1
 - [x] sync_response 构造逻辑存在
-  - `grep -c "sync_response" rust-agent-tui/src/app/mod.rs`
+  - `grep -c "sync_response" peri-tui/src/app/mod.rs`
   - 预期: 输出 >= 1
 - [x] 测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo test -p peri-tui 2>&1 | tail -5`
   - 预期: 输出包含 "test result: ok"，0 failed
 
 ---
@@ -162,7 +162,7 @@
 
 **Prerequisites:**
 - Start Relay Server: `RELAY_TOKEN=test RELAY_PORT=18080 cargo run -p rust-relay-server`
-- Start Agent TUI with relay: `cargo run -p rust-agent-tui -- --remote-control ws://localhost:18080 --relay-token test --relay-name Agent-A`
+- Start Agent TUI with relay: `cargo run -p peri-tui -- --remote-control ws://localhost:18080 --relay-token test --relay-name Agent-A`
 - Open browser: `http://localhost:18080/web/?token=test`
 
 **End-to-end verification:**
@@ -188,7 +188,7 @@
    - On failure: check Task 2 RelayClient 新增方法
 
 5. ✓ 验证 TUI poll_relay 处理 SyncRequest
-   - `grep "SyncRequest" rust-agent-tui/src/app/mod.rs`
+   - `grep "SyncRequest" peri-tui/src/app/mod.rs`
    - Expected: 输出包含 `WebMessage::SyncRequest`
    - On failure: check Task 3 poll_relay 分支
 
@@ -202,14 +202,14 @@
 ### Task 6: Phase 2 - 新增 MessageAdded 事件（events.rs）
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/agent/events.rs`
+- 修改: `peri-agent/src/agent/events.rs`
 
 **执行步骤:**
 - [x] 在 `AgentEvent` 枚举中新增 `MessageAdded(crate::messages::BaseMessage)` 变体
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-create-agent 2>&1 | tail -3`
+  - `cargo build -p peri-agent 2>&1 | tail -3`
   - 预期: 输出包含 "Finished"，无 error
 
 ---
@@ -217,7 +217,7 @@
 ### Task 7: Phase 2 - executor.rs 发送 MessageAdded 事件
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/agent/executor.rs`
+- 修改: `peri-agent/src/agent/executor.rs`
 
 **执行步骤:**
 - [x] 在用户输入位置（约 107 行）：`state.add_message(human_msg)` 后调用 `self.emit(AgentEvent::MessageAdded(human_msg))`
@@ -227,10 +227,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-create-agent 2>&1 | tail -3`
+  - `cargo build -p peri-agent 2>&1 | tail -3`
   - 预期: 输出包含 "Finished"，无 error
 - [x] 全量测试通过
-  - `cargo test -p rust-create-agent 2>&1 | tail -5`
+  - `cargo test -p peri-agent 2>&1 | tail -5`
   - 预期: 输出包含 "test result: ok"，0 failed
 
 ---
@@ -260,7 +260,7 @@
 - 修改: `rust-relay-server/src/client/mod.rs`
 
 **执行步骤:**
-- [x] 新增 `pub fn send_message(&self, msg: &rust_create_agent::messages::BaseMessage)` 方法
+- [x] 新增 `pub fn send_message(&self, msg: &peri_agent::messages::BaseMessage)` 方法
   - 将 BaseMessage 序列化为 JSON Value
   - 调用 `send_with_seq` 注入 seq 并发送
 
@@ -274,7 +274,7 @@
 ### Task 10: Phase 2 - agent.rs 处理 MessageAdded 事件
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/agent.rs`
 
 **执行步骤:**
 - [x] 修改事件回调 `FnEventHandler`：
@@ -284,7 +284,7 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 输出包含 "Finished"，无 error
 
 ---
@@ -319,14 +319,14 @@
 ### Task 12: Phase 2 - TUI poll_relay 用户消息改为 BaseMessage 格式
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
 - [x] 修改 `WebMessage::UserInput` 处理：将 relay 发送的用户消息格式从 `{ "type": "user_message", "text": ... }` 改为 `{ "role": "user", "content": ... }`
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 输出包含 "Finished"，无 error
 
 ---

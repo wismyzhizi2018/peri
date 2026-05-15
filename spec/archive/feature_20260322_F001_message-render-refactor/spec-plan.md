@@ -11,15 +11,15 @@
 ### Task 1: 添加 tui-markdown 依赖
 
 **涉及文件:**
-- 修改: `rust-agent-tui/Cargo.toml`
+- 修改: `peri-tui/Cargo.toml`
 
 **执行步骤:**
 - [x] 在 `[dependencies]` 中添加 `tui-markdown = "0.3"`
-- [x] 运行 `cargo build -p rust-agent-tui` 确认依赖拉取成功
+- [x] 运行 `cargo build -p peri-tui` 确认依赖拉取成功
 
 **检查步骤:**
 - [x] 确认依赖编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 输出 `Finished` 无 error
 
 ---
@@ -27,11 +27,11 @@
 ### Task 2: MessageViewModel 数据模型
 
 **涉及文件:**
-- 新建: `rust-agent-tui/src/ui/mod.rs`
-- 新建: `rust-agent-tui/src/ui/message_view.rs`
+- 新建: `peri-tui/src/ui/mod.rs`
+- 新建: `peri-tui/src/ui/message_view.rs`
 
 **执行步骤:**
-- [x] 创建 `rust-agent-tui/src/ui/` 目录和 `mod.rs`
+- [x] 创建 `peri-tui/src/ui/` 目录和 `mod.rs`
   - 声明 `pub mod message_view;` `pub mod message_render;` `pub mod markdown;`
 - [x] 在 `message_view.rs` 中定义 `MessageViewModel` 枚举
   - 五个变体：`UserBubble`、`AssistantBubble`、`ToolBlock`、`SystemNote`、`TodoStatus`
@@ -53,10 +53,10 @@
 
 **检查步骤:**
 - [x] 模块声明正确，编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: `Finished` 无 error
 - [x] from_base_message 覆盖所有 BaseMessage 变体
-  - `grep -c 'BaseMessage::' rust-agent-tui/src/ui/message_view.rs`
+  - `grep -c 'BaseMessage::' peri-tui/src/ui/message_view.rs`
   - 预期: 至少 4（Human/Ai/Tool/System 各一个 match arm）
 
 ---
@@ -64,7 +64,7 @@
 ### Task 3: Markdown 封装模块
 
 **涉及文件:**
-- 新建: `rust-agent-tui/src/ui/markdown.rs`
+- 新建: `peri-tui/src/ui/markdown.rs`
 
 **执行步骤:**
 - [x] 创建 `markdown.rs`，封装 tui-markdown 的调用
@@ -77,7 +77,7 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: `Finished` 无 error
 
 ---
@@ -85,8 +85,8 @@
 ### Task 4: 渲染层重构
 
 **涉及文件:**
-- 新建: `rust-agent-tui/src/ui/message_render.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
+- 新建: `peri-tui/src/ui/message_render.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
 
 **执行步骤:**
 - [x] 在 `message_render.rs` 中实现 `pub fn render_view_model(vm: &MessageViewModel, width: usize) -> Vec<Line<'static>>`
@@ -109,13 +109,13 @@
 
 **检查步骤:**
 - [x] render_view_model 覆盖所有 ViewModel 变体
-  - `grep -c 'MessageViewModel::' rust-agent-tui/src/ui/message_render.rs`
+  - `grep -c 'MessageViewModel::' peri-tui/src/ui/message_render.rs`
   - 预期: 至少 6（每个变体 + collapsed 状态两个 arm）
 - [x] 旧渲染函数已删除
-  - `grep -c 'fn message_to_lines' rust-agent-tui/src/ui/main_ui.rs`
+  - `grep -c 'fn message_to_lines' peri-tui/src/ui/main_ui.rs`
   - 预期: 0
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: `Finished` 无 error
 
 ---
@@ -123,11 +123,11 @@
 ### Task 5: App 层集成
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/event.rs`
-- 修改: `rust-agent-tui/src/command/help.rs`
-- 修改: `rust-agent-tui/src/command/agent.rs`
-- 修改: `rust-agent-tui/src/command/history.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/event.rs`
+- 修改: `peri-tui/src/command/help.rs`
+- 修改: `peri-tui/src/command/agent.rs`
+- 修改: `peri-tui/src/command/history.rs`
 
 **执行步骤:**
 - [x] 替换 App 结构体中的 `messages` 字段
@@ -162,13 +162,13 @@
 
 **检查步骤:**
 - [x] ChatMessage 已完全移除
-  - `grep -rn 'ChatMessage' rust-agent-tui/src/`
+  - `grep -rn 'ChatMessage' peri-tui/src/`
   - 预期: 0 匹配
 - [x] 所有文件中 `app.messages` 引用已迁移
-  - `grep -rn '\.messages' rust-agent-tui/src/ | grep -v 'view_messages' | grep -v 'agent_state_messages' | grep -v 'state_messages' | grep -v '//'`
+  - `grep -rn '\.messages' peri-tui/src/ | grep -v 'view_messages' | grep -v 'agent_state_messages' | grep -v 'state_messages' | grep -v '//'`
   - 预期: 0 匹配（排除注释和 agent_state_messages）
 - [x] 编译通过无 warning
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: `Finished` 无 error 无 warning
 - [ ] 全量测试通过
   - `cargo test 2>&1 | tail -5`
@@ -179,32 +179,32 @@
 ### Task 6: Message Render Refactor Acceptance
 
 **Prerequisites:**
-- 启动命令: `cargo run -p rust-agent-tui`
+- 启动命令: `cargo run -p peri-tui`
 - 环境变量: 需配置有效的 LLM API Key（`ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY`）
 
 **End-to-end verification:**
 
 1. 编译和测试通过
-   - `cargo build -p rust-agent-tui 2>&1 | tail -3 && cargo test 2>&1 | tail -5`
+   - `cargo build -p peri-tui 2>&1 | tail -3 && cargo test 2>&1 | tail -5`
    - Expected: `Finished` + `test result: ok`
    - On failure: check Task 1-5
 
 2. ChatMessage 完全移除验证
-   - `grep -rn 'ChatMessage' rust-agent-tui/src/ | grep -v '//' | wc -l`
+   - `grep -rn 'ChatMessage' peri-tui/src/ | grep -v '//' | wc -l`
    - Expected: 0
    - On failure: check Task 5 集成步骤
 
 3. ViewModel 变体完整性验证
-   - `grep -c 'UserBubble\|AssistantBubble\|ToolBlock\|SystemNote\|TodoStatus' rust-agent-tui/src/ui/message_view.rs`
+   - `grep -c 'UserBubble\|AssistantBubble\|ToolBlock\|SystemNote\|TodoStatus' peri-tui/src/ui/message_view.rs`
    - Expected: 至少 10（定义 + from_base_message 中各出现一次以上）
    - On failure: check Task 2 数据模型
 
 4. Markdown 集成验证
-   - `grep -c 'tui_markdown' rust-agent-tui/src/ui/markdown.rs`
+   - `grep -c 'tui_markdown' peri-tui/src/ui/markdown.rs`
    - Expected: 至少 1
    - On failure: check Task 3 markdown 封装
 
 5. 工具折叠功能验证
-   - `grep -c 'toggle_collapse\|collapsed' rust-agent-tui/src/ui/message_view.rs`
+   - `grep -c 'toggle_collapse\|collapsed' peri-tui/src/ui/message_view.rs`
    - Expected: 至少 3（字段定义 + toggle 方法 + 默认值设置）
    - On failure: check Task 2 toggle_collapse 实现

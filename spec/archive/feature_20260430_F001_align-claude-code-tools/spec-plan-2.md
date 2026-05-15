@@ -20,16 +20,16 @@
 ### Task 0: 环境准备
 
 **背景:**
-本文件依赖 plan-1 的 Task 0 已完成全量环境验证。此处仅做快速构建检查，确保 `rust-agent-middlewares` crate 处于可编译状态。
+本文件依赖 plan-1 的 Task 0 已完成全量环境验证。此处仅做快速构建检查，确保 `peri-middlewares` crate 处于可编译状态。
 
 **执行步骤:**
 - [x] 快速构建检查（参考 plan-1 Task 0 的全量验证）
-  - `cargo build -p rust-agent-middlewares`
+  - `cargo build -p peri-middlewares`
   - 预期: 构建成功，无编译错误
 
 **检查步骤:**
 - [x] 中间件 crate 构建成功
-  - `cargo build -p rust-agent-middlewares`
+  - `cargo build -p peri-middlewares`
   - 预期: 构建成功，无错误
 
 ---
@@ -40,7 +40,7 @@
 将 `bash` 工具重命名为 `Bash`，超时参数从秒（`timeout_secs`，1-300）迁移为毫秒（`timeout`，1-600000），对齐 Claude Code 的 Bash 工具接口。同时新增 `description`（命令用途简述）和 `run_in_background`（后台运行预留）两个可选参数。当前 `BashTool` 使用 `Duration::from_secs(timeout_secs)` 计算超时，需改为 `Duration::from_millis(timeout_ms)`。Task 8 的 TUI 层工具名更新和 HITL 工具名匹配依赖本 Task 的工具名变更。
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/middleware/terminal.rs`
+- 修改: `peri-middlewares/src/middleware/terminal.rs`
 
 **执行步骤:**
 
@@ -137,21 +137,21 @@
         assert!(result.contains("ok"));
     }
     ```
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- middleware::terminal::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- middleware::terminal::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 - [x] 验证 BashTool 工具名为 `"Bash"`
-  - `cargo test -p rust-agent-middlewares --lib -- test_tool_name_is_Bash`
+  - `cargo test -p peri-middlewares --lib -- test_tool_name_is_Bash`
   - 预期: 测试通过
 - [x] 验证描述文本中无旧工具名和旧参数名残留
-  - `grep -n 'read_file\|edit_file\|write_file\|glob_files\|search_files_rg\|timeout_secs' rust-agent-middlewares/src/middleware/terminal.rs`
+  - `grep -n 'read_file\|edit_file\|write_file\|glob_files\|search_files_rg\|timeout_secs' peri-middlewares/src/middleware/terminal.rs`
   - 预期: 无匹配输出（旧名称已全部清除）
 - [x] 验证 `tool_names()` 返回 `"Bash"`
-  - `grep -n 'tool_names' rust-agent-middlewares/src/middleware/terminal.rs`
+  - `grep -n 'tool_names' peri-middlewares/src/middleware/terminal.rs`
   - 预期: 函数体中包含 `"Bash"` 而非 `"bash"`
 - [x] 验证模块编译和全量测试通过
-  - `cargo test -p rust-agent-middlewares`
+  - `cargo test -p peri-middlewares`
   - 预期: 所有测试通过，无编译错误
 
 ---
@@ -162,9 +162,9 @@
 将 `search_files_rg` 工具重命名为 `Grep`，并将 ripgrep 原始参数数组（`args: string[]`）替换为结构化字段（`pattern`/`path`/`glob`/`type`/`output_mode`/`-i`/`-C`/`-n`/`multiline`/`head_limit`/`offset`）。当前 `SearchFilesRgTool.invoke()` 接收 `args` 数组，通过 `parse_args()` 解析为 `ParsedArgs`，再调用 `execute_search()` 执行搜索。重构后 `GrepTool.invoke()` 将结构化 JSON 字段转译为 `ParsedArgs`（或等价结构），复用现有 `execute_search()` 搜索引擎。Task 8 的 TUI 层工具名和提示词更新依赖本 Task。
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/tools/filesystem/grep.rs`
-- 修改: `rust-agent-middlewares/src/middleware/filesystem.rs`（更新 `tool_names()`、import、`build_tools()` 中 `SearchFilesRgTool` → `GrepTool`）
-- 修改: `rust-agent-middlewares/src/tools/mod.rs`（更新 re-export `SearchFilesRgTool` → `GrepTool`）
+- 修改: `peri-middlewares/src/tools/filesystem/grep.rs`
+- 修改: `peri-middlewares/src/middleware/filesystem.rs`（更新 `tool_names()`、import、`build_tools()` 中 `SearchFilesRgTool` → `GrepTool`）
+- 修改: `peri-middlewares/src/tools/mod.rs`（更新 re-export `SearchFilesRgTool` → `GrepTool`）
 
 **执行步骤:**
 
@@ -426,18 +426,18 @@
   - 原因: 描述文本需引用新的参数名和工具名
 
 - [x] 更新 `FilesystemMiddleware::tool_names()` — 将 `"search_files_rg"` 改为 `"Grep"`
-  - 位置: `rust-agent-middlewares/src/middleware/filesystem.rs` → `fn tool_names()` (~L30-L38)
+  - 位置: `peri-middlewares/src/middleware/filesystem.rs` → `fn tool_names()` (~L30-L38)
   - 将列表中的 `"search_files_rg"` 改为 `"Grep"`
   - 原因: 工具名列表需与 `fn name()` 一致
 
 - [x] 更新 `filesystem.rs` 的 import 和 `build_tools()` — 将 `SearchFilesRgTool` 改为 `GrepTool`
-  - 位置: `rust-agent-middlewares/src/middleware/filesystem.rs`
+  - 位置: `peri-middlewares/src/middleware/filesystem.rs`
   - 将 `use crate::tools::{..., SearchFilesRgTool, ...}` 中的 `SearchFilesRgTool` 改为 `GrepTool` (~L7)
   - 将 `build_tools()` 中 `Box::new(SearchFilesRgTool::new(cwd))` 改为 `Box::new(GrepTool::new(cwd))` (~L25)
   - 原因: 结构体重命名后，所有引用需同步更新
 
 - [x] 更新 `tools/mod.rs` re-exports — 将 `SearchFilesRgTool` 改为 `GrepTool`
-  - 位置: `rust-agent-middlewares/src/tools/mod.rs` (~L6-L8)
+  - 位置: `peri-middlewares/src/tools/mod.rs` (~L6-L8)
   - 将 `pub use filesystem::{..., SearchFilesRgTool, ...}` 中的 `SearchFilesRgTool` 改为 `GrepTool`
   - 原因: mod.rs 是公开 API 入口，结构体重命名后 re-export 名称需同步
 
@@ -521,27 +521,27 @@
         assert!(result.contains("line 5"), "should include line 5+: {result}");
     }
     ```
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- tools::filesystem::grep::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- tools::filesystem::grep::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 - [x] 验证 GrepTool 工具名为 `"Grep"`
-  - `cargo test -p rust-agent-middlewares --lib -- test_grep_tool_name`
+  - `cargo test -p peri-middlewares --lib -- test_grep_tool_name`
   - 预期: 测试通过
 - [x] 验证旧工具名和旧参数格式在 grep.rs 中无残留
-  - `grep -n 'search_files_rg\|"args"\|SearchFilesRg' rust-agent-middlewares/src/tools/filesystem/grep.rs`
+  - `grep -n 'search_files_rg\|"args"\|SearchFilesRg' peri-middlewares/src/tools/filesystem/grep.rs`
   - 预期: 仅在注释或已被删除的旧代码中可能残留，活跃代码中无匹配
 - [x] 验证 `FilesystemMiddleware::tool_names()` 中包含 `"Grep"`
-  - `grep -n 'tool_names' rust-agent-middlewares/src/middleware/filesystem.rs`
+  - `grep -n 'tool_names' peri-middlewares/src/middleware/filesystem.rs`
   - 预期: 函数体中包含 `"Grep"` 而非 `"search_files_rg"`
 - [x] 验证 `filesystem.rs` 中无 `SearchFilesRgTool` 残留
-  - `grep -n 'SearchFilesRgTool' rust-agent-middlewares/src/middleware/filesystem.rs`
+  - `grep -n 'SearchFilesRgTool' peri-middlewares/src/middleware/filesystem.rs`
   - 预期: 无匹配输出（已全部替换为 `GrepTool`）
 - [x] 验证 `tools/mod.rs` 中无 `SearchFilesRgTool` 残留
-  - `grep -n 'SearchFilesRgTool' rust-agent-middlewares/src/tools/mod.rs`
+  - `grep -n 'SearchFilesRgTool' peri-middlewares/src/tools/mod.rs`
   - 预期: 无匹配输出（已全部替换为 `GrepTool`）
 - [x] 验证模块编译和全量测试通过
-  - `cargo test -p rust-agent-middlewares`
+  - `cargo test -p peri-middlewares`
   - 预期: 所有测试通过，无编译错误
 
 ---
@@ -552,8 +552,8 @@
 将 `launch_agent` 工具重命名为 `Agent`，将参数结构从 `agent_id`+`task`+`cwd` 重写为 `prompt`+`description`+`subagent_type`+`name`+`isolation`+`run_in_background`+`cwd`，对齐 Claude Code 的 Agent 工具接口。当前 `SubAgentTool.invoke()` 从 `input["agent_id"]` 和 `input["task"]` 读取参数，需改为从 `input["prompt"]` 和 `input["subagent_type"]` 读取。`isolation` 和 `run_in_background` 为预留字段，解析但不影响执行。Task 8 的 TUI 层工具名和 HITL 工具名匹配依赖本 Task。
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/subagent/tool.rs`
-- 修改: `rust-agent-middlewares/src/subagent/mod.rs`（更新 `build_agents_summary()` 中的工具名引用）
+- 修改: `peri-middlewares/src/subagent/tool.rs`
+- 修改: `peri-middlewares/src/subagent/mod.rs`（更新 `build_agents_summary()` 中的工具名引用）
 
 **执行步骤:**
 
@@ -770,24 +770,24 @@
         assert!(result.contains("echo"), "应正常执行: {}", result);
     }
     ```
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- subagent::tool::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- subagent::tool::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 - [x] 验证 SubAgentTool 工具名为 `"Agent"`
-  - `cargo test -p rust-agent-middlewares --lib -- test_tool_name`
+  - `cargo test -p peri-middlewares --lib -- test_tool_name`
   - 预期: 断言 `assert_eq!(t.name(), "Agent")` 通过
 - [x] 验证 `filter_tools()` 中排除 `"Agent"` 而非 `"launch_agent"`
-  - `cargo test -p rust-agent-middlewares --lib -- test_agent_excluded_even_when_explicitly_allowed`
+  - `cargo test -p peri-middlewares --lib -- test_agent_excluded_even_when_explicitly_allowed`
   - 预期: 测试通过
 - [x] 验证旧工具名 `launch_agent` 和旧参数名 `agent_id`/`task` 在活跃代码中无残留
-  - `grep -n 'launch_agent\|"agent_id"\|"task"' rust-agent-middlewares/src/subagent/tool.rs | grep -v '//' | grep -v 'test' | grep -v 'mod.rs'`
+  - `grep -n 'launch_agent\|"agent_id"\|"task"' peri-middlewares/src/subagent/tool.rs | grep -v '//' | grep -v 'test' | grep -v 'mod.rs'`
   - 预期: 活跃代码（非注释、非测试）中无匹配
 - [x] 验证 `build_agents_summary()` 引用新工具名
-  - `grep -n 'launch_agent\|agent_id' rust-agent-middlewares/src/subagent/mod.rs`
+  - `grep -n 'launch_agent\|agent_id' peri-middlewares/src/subagent/mod.rs`
   - 预期: 无匹配输出（已全部替换为 `Agent` 和 `subagent_type`/`prompt`）
 - [x] 验证模块编译和全量测试通过
-  - `cargo test -p rust-agent-middlewares`
+  - `cargo test -p peri-middlewares`
   - 预期: 所有测试通过，无编译错误
 
 ---
@@ -798,26 +798,26 @@
 Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`read_file`→`Read`、`write_file`→`Write`、`edit_file`→`Edit`、`glob_files`→`Glob`、`search_files_rg`→`Grep`、`bash`→`Bash`、`todo_write`→`TodoWrite`、`ask_user_question`→`AskUserQuestion`、`launch_agent`→`Agent`）。TUI 层的 UI 显示、事件路由、工具参数格式化、HITL 审批匹配、提示词段落文件仍引用旧工具名，需全部更新为新名称。`message_pipeline.rs` 中 SubAgent 事件路由依赖 `input["agent_id"]`/`input["task"]` 字段，需改为 `input["subagent_type"]`/`input["prompt"]` 以适配 Agent 工具的新参数结构。`skill_preload.rs` 中 fake tool call 使用的 `"read_file"` 需改为 `"Read"`。本 Task 依赖 Task 1-7 全部完成。
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/tool_display.rs`
-- 修改: `rust-agent-tui/src/ui/message_view.rs`
-- 修改: `rust-agent-tui/src/app/agent.rs`
-- 修改: `rust-agent-tui/src/app/message_pipeline.rs`
-- 修改: `rust-agent-tui/src/app/events.rs`
-- 修改: `rust-agent-tui/src/ui/headless.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/popups/hitl.rs`
-- 修改: `rust-agent-tui/prompts/sections/05_using_tools.md`
-- 修改: `rust-agent-tui/prompts/sections/07_communicating.md`
-- 修改: `rust-agent-tui/prompts/sections/10_hitl.md`
-- 修改: `rust-agent-tui/prompts/sections/11_subagent.md`
-- 修改: `rust-agent-tui/prompts/sections/06_tone_style.md`
-- 修改: `rust-agent-middlewares/src/hitl/mod.rs`
-- 修改: `rust-agent-middlewares/src/hitl/auto_classifier.rs`
-- 修改: `rust-agent-middlewares/src/subagent/skill_preload.rs`
+- 修改: `peri-tui/src/app/tool_display.rs`
+- 修改: `peri-tui/src/ui/message_view.rs`
+- 修改: `peri-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/message_pipeline.rs`
+- 修改: `peri-tui/src/app/events.rs`
+- 修改: `peri-tui/src/ui/headless.rs`
+- 修改: `peri-tui/src/ui/main_ui/popups/hitl.rs`
+- 修改: `peri-tui/prompts/sections/05_using_tools.md`
+- 修改: `peri-tui/prompts/sections/07_communicating.md`
+- 修改: `peri-tui/prompts/sections/10_hitl.md`
+- 修改: `peri-tui/prompts/sections/11_subagent.md`
+- 修改: `peri-tui/prompts/sections/06_tone_style.md`
+- 修改: `peri-middlewares/src/hitl/mod.rs`
+- 修改: `peri-middlewares/src/hitl/auto_classifier.rs`
+- 修改: `peri-middlewares/src/subagent/skill_preload.rs`
 
 **执行步骤:**
 
 - [x] 更新 `tool_display.rs` — 工具名匹配分支全部替换为新名称
-  - 位置: `rust-agent-tui/src/app/tool_display.rs`
+  - 位置: `peri-tui/src/app/tool_display.rs`
   - `format_tool_name()` 函数（~L19-L33）：将 match 分支从旧名改为新名
     - `"bash"` → `"Bash"`（保持返回 `"Shell"`，显示名不变）
     - `"read_file"` → `"Read"`（保持返回 `"Read"`）
@@ -836,7 +836,7 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
   - 原因: 工具显示逻辑需匹配新工具名
 
 - [x] 更新 `message_view.rs` — ToolCategory 枚举和工具颜色映射全部替换为新名称
-  - 位置: `rust-agent-tui/src/ui/message_view.rs`
+  - 位置: `peri-tui/src/ui/message_view.rs`
   - `ToolCategory::from_tool_name()`（~L19-L24）：
     - `"read_file"` → `"Read"`
     - `"search_files_rg"` → `"Grep"`
@@ -858,7 +858,7 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
   - 原因: 分类匹配、颜色分配、SubAgent 恢复逻辑均依赖工具名
 
 - [x] 更新 `agent.rs` — ExecutorEvent 映射中的工具名匹配
-  - 位置: `rust-agent-tui/src/app/agent.rs` → `fn map_executor_event()`（~L280-L360）
+  - 位置: `peri-tui/src/app/agent.rs` → `fn map_executor_event()`（~L280-L360）
   - 注释 `// launch_agent ToolStart` → `// Agent ToolStart`（~L284）
   - `if name == "launch_agent"` → `if name == "Agent"`（~L285）
   - `input["agent_id"]` → `input["subagent_type"]`（~L286，适配新参数名）
@@ -870,7 +870,7 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
   - 原因: 事件路由需匹配新工具名和新参数字段
 
 - [x] 更新 `message_pipeline.rs` — 流式事件处理中的工具名匹配和参数字段
-  - 位置: `rust-agent-tui/src/app/message_pipeline.rs`
+  - 位置: `peri-tui/src/app/message_pipeline.rs`
   - `handle_event()` 中 `SubAgentStart` 分支（~L211-L213）：
     - `serde_json::json!({"agent_id": &agent_id, "task": &task_preview})` → `serde_json::json!({"subagent_type": &agent_id, "prompt": &task_preview})`
     - `self.tool_start(&tc_id, "launch_agent", input)` → `self.tool_start(&tc_id, "Agent", input)`
@@ -894,13 +894,13 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
   - 原因: 流式管线需匹配新工具名和新参数字段以正确路由事件
 
 - [x] 更新 `events.rs` — 注释中的工具名引用
-  - 位置: `rust-agent-tui/src/app/events.rs`（~L45, ~L50）
+  - 位置: `peri-tui/src/app/events.rs`（~L45, ~L50）
   - `/// SubAgent 开始执行（由 launch_agent ToolStart 映射而来）` → `/// SubAgent 开始执行（由 Agent ToolStart 映射而来）`
   - `/// SubAgent 执行结束（由 launch_agent ToolEnd 映射而来）` → `/// SubAgent 执行结束（由 Agent ToolEnd 映射而来）`
   - 原因: 注释需反映新工具名
 
 - [x] 更新 `headless.rs` — 测试中的工具名引用
-  - 位置: `rust-agent-tui/src/ui/headless.rs`
+  - 位置: `peri-tui/src/ui/headless.rs`
   - `test_tool_call_renders`（~L109）：`name: "read_file".into()` → `name: "Read".into()`
   - `test_tool_call_renders`（~L124）：`.any(|l| l.contains("Read") || l.contains("read_file"))` → `.any(|l| l.contains("Read") || l.contains("Read"))`（去重后为 `.any(|l| l.contains("Read"))`）
   - `test_subagent_rendering`（~L498）：`name: "read_file".into()` → `name: "Read".into()`
@@ -915,7 +915,7 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
   - 原因: 测试中使用的工具名需与实际工具名一致
 
 - [x] 更新 `message_view.rs` 测试 — 工具名引用
-  - 位置: `rust-agent-tui/src/ui/message_view.rs` → `mod tests`（~L552-L673）
+  - 位置: `peri-tui/src/ui/message_view.rs` → `mod tests`（~L552-L673）
   - `test_ai_message_with_only_tool_calls_renders_tool_use`（~L565-L592）：
     - `ToolCallRequest::new("toolu_001", "bash", ...)` → `ToolCallRequest::new("toolu_001", "Bash", ...)`
     - `ToolCallRequest::new("toolu_002", "read_file", ...)` → `ToolCallRequest::new("toolu_002", "Read", ...)`
@@ -928,14 +928,14 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
   - 原因: 测试断言需匹配新工具名
 
 - [x] 更新 `hitl.rs` 测试 — HITL 面板测试中的工具名
-  - 位置: `rust-agent-tui/src/ui/main_ui/popups/hitl.rs` → `mod tests`
+  - 位置: `peri-tui/src/ui/main_ui/popups/hitl.rs` → `mod tests`
   - `render_headless_hitl_single`（~L176）：`tool_name: "bash".to_string()` → `tool_name: "Bash".to_string()`
   - `render_headless_hitl_multi`（~L193）：`tool_name: "bash".to_string()` → `tool_name: "Bash".to_string()`
   - `render_headless_hitl_multi`（~L197）：`tool_name: "write_file".to_string()` → `tool_name: "Write".to_string()`
   - 原因: 测试数据需使用新工具名
 
 - [x] 更新 `message_pipeline.rs` 测试 — 全部工具名引用
-  - 位置: `rust-agent-tui/src/app/message_pipeline.rs` → `mod tests`（~L690-L1082）
+  - 位置: `peri-tui/src/app/message_pipeline.rs` → `mod tests`（~L690-L1082）
   - `test_tool_args_cwd_consistency`（~L710）：`"read_file"` → `"Read"`（ToolCallRequest 和 json! 中）
   - `test_pipeline_tool_end_no_duplicate`（~L789-L810）：`"read_file"` → `"Read"`（4 处：tool_start、tool_end、ToolCallRequest×2）
   - `test_handle_event_tool_lifecycle`（~L857-L880）：`name: "read_file".into()` → `name: "Read".into()`（2 处）
@@ -944,20 +944,20 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
   - 原因: 测试需使用新工具名
 
 - [x] 更新提示词段落文件 — 所有旧工具名引用替换为新名称
-  - 位置: `rust-agent-tui/prompts/sections/05_using_tools.md`（~L7-L9）
+  - 位置: `peri-tui/prompts/sections/05_using_tools.md`（~L7-L9）
     - `` `search_files_rg` `` → `` `Grep` ``
     - `` `glob_files` `` → `` `Glob` ``
     - `` `bash` commands like `grep` or `find` `` → `` `Bash` commands like `grep` or `find` ``
     - `` `read_file` instead of `bash` commands like `cat` `` → `` `Read` instead of `Bash` commands like `cat` ``
     - `` `write_file` or `edit_file` instead of `bash` commands like `echo` or `sed` `` → `` `Write` or `Edit` instead of `Bash` commands like `echo` or `sed` ``
-  - 位置: `rust-agent-tui/prompts/sections/07_communicating.md`（~L4）
+  - 位置: `peri-tui/prompts/sections/07_communicating.md`（~L4）
     - `` "I will use the read_file tool to..." `` → `` "I will use the Read tool to..." ``
-  - 位置: `rust-agent-tui/prompts/sections/10_hitl.md`（~L5-L7）
+  - 位置: `peri-tui/prompts/sections/10_hitl.md`（~L5-L7）
     - `` - `bash` — shell command execution `` → `` - `Bash` — shell command execution ``
     - `` - `launch_agent` — sub-agent delegation `` → `` - `Agent` — sub-agent delegation ``
     - `` - `write_*` — any file write operation `` → `` - `Write` — file write operation ``
     - `` - `edit_*` — any file edit operation `` → `` - `Edit` — file edit operation ``
-  - 位置: `rust-agent-tui/prompts/sections/11_subagent.md`（~L3, ~L14-L15）
+  - 位置: `peri-tui/prompts/sections/11_subagent.md`（~L3, ~L14-L15）
     - `` `launch_agent` tool `` → `` `Agent` tool ``
     - `` `agent_id` matching `` → `` `subagent_type` matching ``
     - `` .claude/agents/{agent_id}.md `` → `` .claude/agents/{subagent_type}.md ``（2 处）
@@ -965,12 +965,12 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
     - `` `agent_id` matching `` → `` `subagent_type` matching ``
     - `` excluding `launch_agent` itself `` → `` excluding `Agent` itself ``
     - `` Ensure the `task` parameter `` → `` Ensure the `prompt` parameter ``
-  - 位置: `rust-agent-tui/prompts/sections/06_tone_style.md`（~L57）
+  - 位置: `peri-tui/prompts/sections/06_tone_style.md`（~L57）
     - `When you run a non-trivial bash command` → `When you run a non-trivial shell command`（此处 "bash" 是通用术语而非工具名，但保持一致性改为 "shell command"）
   - 原因: 提示词中引用的工具名和参数名必须与实际工具定义一致
 
 - [x] 更新 `hitl/mod.rs` — 默认审批规则和编辑工具判断中的工具名
-  - 位置: `rust-agent-middlewares/src/hitl/mod.rs`
+  - 位置: `peri-middlewares/src/hitl/mod.rs`
   - `default_requires_approval()` 函数（~L40-L48）：
     - `tool_name == "bash"` → `tool_name == "Bash"`
     - `tool_name == "launch_agent"` → `tool_name == "Agent"`
@@ -989,7 +989,7 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
   - 原因: HITL 审批匹配逻辑需使用新工具名
 
 - [x] 更新 `hitl/mod.rs` 测试 — 审批测试中的工具名
-  - 位置: `rust-agent-middlewares/src/hitl/mod.rs` → `mod tests`
+  - 位置: `peri-middlewares/src/hitl/mod.rs` → `mod tests`
   - `test_default_requires_approval`（~L456-L467）：
     - `default_requires_approval("bash")` → `default_requires_approval("Bash")`
     - `default_requires_approval("write_file")` → `default_requires_approval("Write")`
@@ -1011,13 +1011,13 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
   - 原因: 测试断言需使用新工具名
 
 - [x] 更新 `hitl/auto_classifier.rs` 测试 — 分类器测试中的工具名
-  - 位置: `rust-agent-middlewares/src/hitl/auto_classifier.rs` → `mod tests`
+  - 位置: `peri-middlewares/src/hitl/auto_classifier.rs` → `mod tests`
   - 所有 `LlmAutoClassifier::cache_key("bash", ...)` → `LlmAutoClassifier::cache_key("Bash", ...)`（~L232, ~L233, ~L242, ~L243, ~L316, ~L330 共 6 处）
   - 所有 `classifier.classify("bash", ...)` → `classifier.classify("Bash", ...)`（~L254, ~L266, ~L278, ~L290, ~L302, ~L314, ~L327, ~L343, ~L356, ~L373, ~L385, ~L397 共 12 处）
   - 原因: 分类器接收的工具名应与新工具名一致
 
 - [x] 更新 `subagent/skill_preload.rs` — fake tool call 中的工具名
-  - 位置: `rust-agent-middlewares/src/subagent/skill_preload.rs`
+  - 位置: `peri-middlewares/src/subagent/skill_preload.rs`
   - 注释（~L11）：`` fake read_file 工具调用 `` → `` fake Read 工具调用 ``
   - 注释（~L21）：`` [ToolUse{read_file, ...}] `` → `` [ToolUse{Read, ...}] ``
   - `ContentBlock::tool_use(format!("skill_preload_{}", i), "read_file", ...)` → `"Read"`（~L103）
@@ -1025,7 +1025,7 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
   - 原因: fake tool call 使用的工具名需与实际工具名一致，否则 LLM 会收到不一致的上下文
 
 - [x] 为 TUI 层工具名更新编写单元测试
-  - 测试文件: `rust-agent-tui/src/app/tool_display.rs` → 在文件末尾新增 `#[cfg(test)] mod tests`
+  - 测试文件: `peri-tui/src/app/tool_display.rs` → 在文件末尾新增 `#[cfg(test)] mod tests`
   - 新增测试函数:
     ```rust
     #[cfg(test)]
@@ -1072,11 +1072,11 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
         }
     }
     ```
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- app::tool_display::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- app::tool_display::tests`
   - 预期: 所有测试通过
 
 - [x] 为 HITL 工具名更新编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/hitl/mod.rs` → `mod tests`
+  - 测试文件: `peri-middlewares/src/hitl/mod.rs` → `mod tests`
   - 新增测试函数 `test_new_tool_names_approval_consistency`:
     ```rust
     #[test]
@@ -1106,11 +1106,11 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
         assert!(!is_edit_tool("Read"), "Read 不应为编辑工具");
     }
     ```
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- hitl::tests::test_new_tool_names_approval_consistency hitl::tests::test_is_edit_tool_new_names`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- hitl::tests::test_new_tool_names_approval_consistency hitl::tests::test_is_edit_tool_new_names`
   - 预期: 所有测试通过
 
 - [x] 为 ToolCategory 新名称编写单元测试
-  - 测试文件: `rust-agent-tui/src/ui/message_view.rs` → `mod tests`
+  - 测试文件: `peri-tui/src/ui/message_view.rs` → `mod tests`
   - 新增测试函数:
     ```rust
     #[test]
@@ -1143,27 +1143,27 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
         assert_eq!(tool_color("TodoWrite"), theme::THINKING);
     }
     ```
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- ui::message_view::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- ui::message_view::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 - [x] 验证 TUI 层无旧工具名残留
-  - `grep -rn '"bash"\|"read_file"\|"write_file"\|"edit_file"\|"glob_files"\|"search_files_rg"\|"todo_write"\|"ask_user_question"\|"launch_agent"' rust-agent-tui/src/ --include='*.rs'`
+  - `grep -rn '"bash"\|"read_file"\|"write_file"\|"edit_file"\|"glob_files"\|"search_files_rg"\|"todo_write"\|"ask_user_question"\|"launch_agent"' peri-tui/src/ --include='*.rs'`
   - 预期: 无匹配输出（旧名称已全部替换）
 - [x] 验证提示词段落无旧工具名残留
-  - `grep -rn 'read_file\|write_file\|edit_file\|glob_files\|search_files_rg\|launch_agent' rust-agent-tui/prompts/sections/ --include='*.md'`
+  - `grep -rn 'read_file\|write_file\|edit_file\|glob_files\|search_files_rg\|launch_agent' peri-tui/prompts/sections/ --include='*.md'`
   - 预期: 无匹配输出（`bash` 作为通用术语保留在 `06_tone_style.md` 的 "shell command" 上下文中）
 - [x] 验证 HITL 模块无旧工具名残留
-  - `grep -rn '"bash"\|"launch_agent"\|"write_file"\|"edit_file"\|"read_file"' rust-agent-middlewares/src/hitl/ --include='*.rs'`
+  - `grep -rn '"bash"\|"launch_agent"\|"write_file"\|"edit_file"\|"read_file"' peri-middlewares/src/hitl/ --include='*.rs'`
   - 预期: 无匹配输出
 - [x] 验证 `skill_preload.rs` 无旧工具名残留
-  - `grep -n 'read_file' rust-agent-middlewares/src/subagent/skill_preload.rs`
+  - `grep -n 'read_file' peri-middlewares/src/subagent/skill_preload.rs`
   - 预期: 无匹配输出
 - [x] 验证 TUI 层编译和测试通过
-  - `cargo test -p rust-agent-tui`
+  - `cargo test -p peri-tui`
   - 预期: 所有测试通过，无编译错误
 - [x] 验证 middlewares 层编译和测试通过
-  - `cargo test -p rust-agent-middlewares`
+  - `cargo test -p peri-middlewares`
   - 预期: 所有测试通过，无编译错误
 - [x] 验证全量构建通过
   - `cargo build`
@@ -1191,29 +1191,29 @@ Task 1-7 已将所有 9 个工具的名称和参数结构对齐 Claude Code（`r
 2. 运行完整测试套件确保无回归
    - `cargo test`
    - 预期: 全部测试通过
-   - 失败排查: 按失败测试所属 crate 定位 — `rust-agent-middlewares` 测试失败排查 plan-2 Task 5/6/7，`rust-agent-tui` 测试失败排查 plan-2 Task 8
+   - 失败排查: 按失败测试所属 crate 定位 — `peri-middlewares` 测试失败排查 plan-2 Task 5/6/7，`peri-tui` 测试失败排查 plan-2 Task 8
 
 3. 验证所有旧工具名在整个代码库中无残留（comprehensive grep）
-   - `grep -rn '"bash"\|"read_file"\|"write_file"\|"edit_file"\|"glob_files"\|"search_files_rg"\|"todo_write"\|"ask_user_question"\|"launch_agent"' rust-agent-middlewares/src/ rust-agent-tui/src/ --include='*.rs'`
+   - `grep -rn '"bash"\|"read_file"\|"write_file"\|"edit_file"\|"glob_files"\|"search_files_rg"\|"todo_write"\|"ask_user_question"\|"launch_agent"' peri-middlewares/src/ peri-tui/src/ --include='*.rs'`
    - 预期: 无匹配输出（所有源码中的旧工具名字符串已替换）
    - 失败排查: 按文件路径定位 — `terminal.rs` → plan-2 Task 5，`grep.rs` → plan-2 Task 6，`tool.rs`/`mod.rs` → plan-2 Task 7，TUI 文件 → plan-2 Task 8，hitl 文件 → plan-2 Task 8
 
 4. 验证新工具名在工具定义中正确生效
-   - `grep -n 'fn name()' rust-agent-middlewares/src/tools/filesystem/write.rs rust-agent-middlewares/src/tools/filesystem/edit.rs rust-agent-middlewares/src/tools/filesystem/glob.rs rust-agent-middlewares/src/tools/filesystem/read.rs rust-agent-middlewares/src/middleware/terminal.rs rust-agent-middlewares/src/tools/filesystem/grep.rs rust-agent-middlewares/src/tools/todo.rs rust-agent-middlewares/src/tools/ask_user_tool.rs rust-agent-middlewares/src/subagent/tool.rs`
+   - `grep -n 'fn name()' peri-middlewares/src/tools/filesystem/write.rs peri-middlewares/src/tools/filesystem/edit.rs peri-middlewares/src/tools/filesystem/glob.rs peri-middlewares/src/tools/filesystem/read.rs peri-middlewares/src/middleware/terminal.rs peri-middlewares/src/tools/filesystem/grep.rs peri-middlewares/src/tools/todo.rs peri-middlewares/src/tools/ask_user_tool.rs peri-middlewares/src/subagent/tool.rs`
    - 预期: 各文件分别返回 `"Write"`、`"Edit"`、`"Glob"`、`"Read"`、`"Bash"`、`"Grep"`、`"TodoWrite"`、`"AskUserQuestion"`、`"Agent"`
    - 失败排查: 检查对应 Task 的 `fn name()` 修改步骤
 
 5. 验证 HITL 审批列表使用新工具名
-   - `grep -n 'default_requires_approval\|is_edit_tool' rust-agent-middlewares/src/hitl/mod.rs | head -30`
+   - `grep -n 'default_requires_approval\|is_edit_tool' peri-middlewares/src/hitl/mod.rs | head -30`
    - 预期: 函数体中出现 `"Bash"`、`"Write"`、`"Edit"`、`"Agent"` 等新工具名，无旧名称
    - 失败排查: 检查 plan-2 Task 8 的 `hitl/mod.rs` 更新步骤
 
 6. 验证提示词段落文件使用新工具名
-   - `grep -rn 'read_file\|write_file\|edit_file\|glob_files\|search_files_rg\|launch_agent\|todo_write\|ask_user_question' rust-agent-tui/prompts/sections/ --include='*.md'`
+   - `grep -rn 'read_file\|write_file\|edit_file\|glob_files\|search_files_rg\|launch_agent\|todo_write\|ask_user_question' peri-tui/prompts/sections/ --include='*.md'`
    - 预期: 无匹配输出（`bash` 作为通用术语保留在 `06_tone_style.md` 的 "shell command" 上下文中不算残留）
    - 失败排查: 检查 plan-2 Task 8 的提示词段落更新步骤
 
 7. 验证工具显示和颜色映射使用新名称
-   - `cargo test -p rust-agent-tui --lib -- app::tool_display::tests`
+   - `cargo test -p peri-tui --lib -- app::tool_display::tests`
    - 预期: 所有测试通过（包括 `test_format_tool_name_new_names`、`test_old_tool_names_not_matched`）
    - 失败排查: 检查 plan-2 Task 8 的 `tool_display.rs` 更新步骤

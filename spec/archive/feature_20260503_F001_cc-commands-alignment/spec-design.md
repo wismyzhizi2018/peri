@@ -138,8 +138,8 @@ pub trait Command: Send + Sync {
 
 ## 约束一致性
 
-- **Workspace 分层：** 新命令全部在 `rust-agent-tui` 应用层实现，符合「禁止下层依赖上层」约束
-- **Widget 复用：** 面板使用 `perihelion-widgets` 的 `BorderedPanel`、`ScrollableArea`、`RadioGroup`、`InputField`、`TabBar` 组件
+- **Workspace 分层：** 新命令全部在 `peri-tui` 应用层实现，符合「禁止下层依赖上层」约束
+- **Widget 复用：** 面板使用 `peri-widgets` 的 `BorderedPanel`、`ScrollableArea`、`RadioGroup`、`InputField`、`TabBar` 组件
 - **编码规范：** 使用 `tracing` 日志，不使用 `println!`
 - **测试：** 所有面板支持 headless 测试模式
 

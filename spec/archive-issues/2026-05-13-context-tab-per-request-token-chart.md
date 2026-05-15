@@ -14,7 +14,7 @@
 
 ### 数据收集
 
-- 在 `TokenTracker`（`rust-create-agent/src/agent/token.rs`）中新增每次请求的历史记录数组
+- 在 `TokenTracker`（`peri-agent/src/agent/token.rs`）中新增每次请求的历史记录数组
 - 每次 `accumulate()` 调用时，将当次 `TokenUsage` 追加到历史记录中（仅内存，不持久化）
 - 当前会话 `/new` 或 compact 时可重置
 
@@ -50,6 +50,6 @@
 
 ## 涉及文件
 
-- `rust-create-agent/src/agent/token.rs`（`TokenTracker`）—— 新增 per-request 历史记录
-- `rust-agent-tui/src/ui/main_ui/panels/status.rs`（`build_context_lines`）—— 替换为图表渲染
-- `rust-agent-tui/src/app/status_panel.rs`（`desired_height`）—— 面板高度从 14 增大到 20
+- `peri-agent/src/agent/token.rs`（`TokenTracker`）—— 新增 per-request 历史记录
+- `peri-tui/src/ui/main_ui/panels/status.rs`（`build_context_lines`）—— 替换为图表渲染
+- `peri-tui/src/app/status_panel.rs`（`desired_height`）—— 面板高度从 14 增大到 20

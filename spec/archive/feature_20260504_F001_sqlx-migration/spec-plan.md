@@ -4,7 +4,7 @@
 rusqlite → sqlx 异步迁移
 
 ## 目标
-将 `rust-create-agent` 的线程持久化层从 `rusqlite`（同步 + spawn_blocking）迁移到 `sqlx`（原生 async），去掉 `parking_lot::Mutex` + `spawn_blocking` 模式，简化异步代码。
+将 `peri-agent` 的线程持久化层从 `rusqlite`（同步 + spawn_blocking）迁移到 `sqlx`（原生 async），去掉 `parking_lot::Mutex` + `spawn_blocking` 模式，简化异步代码。
 
 ## 技术栈
 - Rust 2021, tokio async/await, sqlx 0.8 (runtime-tokio + sqlite), serde_json
@@ -14,7 +14,7 @@ rusqlite → sqlx 异步迁移
 
 ## 改动总览
 
-- **涉及文件（6 个）**: `Cargo.toml`、`rust-create-agent/Cargo.toml`、`rust-create-agent/src/thread/sqlite_store.rs`、`rust-agent-tui/src/app/mod.rs`、`rust-agent-tui/src/app/panel_ops.rs`、`rust-agent-tui/src/acp/main_acp.rs`
+- **涉及文件（6 个）**: `Cargo.toml`、`peri-agent/Cargo.toml`、`peri-agent/src/thread/sqlite_store.rs`、`peri-tui/src/app/mod.rs`、`peri-tui/src/app/panel_ops.rs`、`peri-tui/src/acp/main_acp.rs`
 - **Task 依赖**: Task 1（依赖）→ Task 2（核心重写）→ Task 3（调用方适配），严格顺序执行
 - **关键设计决策**: sqlx 仅用 runtime-tokio + sqlite features，不引入 macros/migrate；`App::new()` 和 `new_headless()` 变 async；移除 `Default` impl
 
@@ -26,13 +26,13 @@ rusqlite → sqlx 异步迁移
 
 1. 确认当前代码可编译:
    ```bash
-   cargo build -p rust-create-agent
-   cargo build -p rust-agent-tui
+   cargo build -p peri-agent
+   cargo build -p peri-tui
    ```
 
 2. 确认现有测试通过:
    ```bash
-   cargo test -p rust-create-agent --lib -- thread
+   cargo test -p peri-agent --lib -- thread
    ```
 
 #### 检查步骤
@@ -45,12 +45,12 @@ rusqlite → sqlx 异步迁移
 
 #### 背景
 
-`rust-create-agent` 当前依赖 `rusqlite 0.31`（bundled）和 `parking_lot 0.12`。迁移到 sqlx 需要替换这两个依赖。`parking_lot` 在 `rust-create-agent` 内仅被 `sqlite_store.rs` 使用，可安全移除。
+`peri-agent` 当前依赖 `rusqlite 0.31`（bundled）和 `parking_lot 0.12`。迁移到 sqlx 需要替换这两个依赖。`parking_lot` 在 `peri-agent` 内仅被 `sqlite_store.rs` 使用，可安全移除。
 
 #### 涉及文件
 
 - `Cargo.toml`（workspace 根）
-- `rust-create-agent/Cargo.toml`
+- `peri-agent/Cargo.toml`
 
 #### 执行步骤
 
@@ -59,18 +59,18 @@ rusqlite → sqlx 异步迁移
    sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
    ```
 
-2. 编辑 `rust-create-agent/Cargo.toml`:
+2. 编辑 `peri-agent/Cargo.toml`:
    - 删除第 23 行: `rusqlite = { version = "0.31", features = ["bundled"] }`
    - 删除第 24 行: `parking_lot.workspace = true`
    - 在原位置添加: `sqlx = { workspace = true }`
 
-3. workspace 根的 `parking_lot = "0.12"`（第 59 行）保留不动——其他 crate（如 `rust-agent-middlewares`）仍使用。
+3. workspace 根的 `parking_lot = "0.12"`（第 59 行）保留不动——其他 crate（如 `peri-middlewares`）仍使用。
 
 #### 检查步骤
 
-- 确认 `rust-create-agent/Cargo.toml` 中无 `rusqlite` 和 `parking_lot` 引用
+- 确认 `peri-agent/Cargo.toml` 中无 `rusqlite` 和 `parking_lot` 引用
 - 确认 workspace `Cargo.toml` 中有 `sqlx` 条目
-- 此时 `cargo build -p rust-create-agent` 会报编译错误（因为 `sqlite_store.rs` 仍引用 `rusqlite`），这是预期的，Task 2 会修复
+- 此时 `cargo build -p peri-agent` 会报编译错误（因为 `sqlite_store.rs` 仍引用 `rusqlite`），这是预期的，Task 2 会修复
 
 #### 单元测试
 
@@ -86,7 +86,7 @@ rusqlite → sqlx 异步迁移
 
 #### 涉及文件
 
-- `rust-create-agent/src/thread/sqlite_store.rs`
+- `peri-agent/src/thread/sqlite_store.rs`
 
 #### 执行步骤
 
@@ -486,13 +486,13 @@ rusqlite → sqlx 异步迁移
 - 确认文件中无 `rusqlite`、`parking_lot`、`spawn_blocking` 引用
 - 确认所有 7 个 trait 方法直接使用 `sqlx::query` 而非 `spawn_blocking`
 - 确认 `new()` 和 `default_path()` 签名为 `async fn`
-- 编译通过: `cargo build -p rust-create-agent`
+- 编译通过: `cargo build -p peri-agent`
 
 #### 单元测试
 
 - 运行现有 5 个测试，确认全部通过:
   ```bash
-  cargo test -p rust-create-agent --lib -- thread::sqlite_store::tests
+  cargo test -p peri-agent --lib -- thread::sqlite_store::tests
   ```
 - 测试覆盖: create+load、list 排序、delete cascade、消息顺序、标题自动设置
 
@@ -506,18 +506,18 @@ rusqlite → sqlx 异步迁移
 
 #### 涉及文件
 
-- `rust-agent-tui/src/app/mod.rs`
-- `rust-agent-tui/src/app/panel_ops.rs`
-- `rust-agent-tui/src/acp/main_acp.rs`
-- `rust-agent-tui/src/main.rs`
-- `rust-agent-tui/src/ui/headless.rs`
-- `rust-agent-tui/src/command/mod.rs`
-- `rust-agent-tui/src/command/loop_cmd.rs`
-- `rust-agent-tui/src/ui/main_ui/popups/oauth.rs`
+- `peri-tui/src/app/mod.rs`
+- `peri-tui/src/app/panel_ops.rs`
+- `peri-tui/src/acp/main_acp.rs`
+- `peri-tui/src/main.rs`
+- `peri-tui/src/ui/headless.rs`
+- `peri-tui/src/command/mod.rs`
+- `peri-tui/src/command/loop_cmd.rs`
+- `peri-tui/src/ui/main_ui/popups/oauth.rs`
 
 #### 执行步骤
 
-1. **`rust-agent-tui/src/app/mod.rs`** — `App::new()` 变 async:
+1. **`peri-tui/src/app/mod.rs`** — `App::new()` 变 async:
 
    a. 移除 `Default for App` impl（约第 126-129 行）:
       ```rust
@@ -551,7 +551,7 @@ rusqlite → sqlx 异步迁移
       );
       ```
 
-2. **`rust-agent-tui/src/main.rs`** — `App::new()` 调用加 await:
+2. **`peri-tui/src/main.rs`** — `App::new()` 调用加 await:
 
    将第 167 行:
    ```rust
@@ -562,7 +562,7 @@ rusqlite → sqlx 异步迁移
    let mut app = App::new().await;
    ```
 
-3. **`rust-agent-tui/src/app/panel_ops.rs`** — `new_headless()` 变 async:
+3. **`peri-tui/src/app/panel_ops.rs`** — `new_headless()` 变 async:
 
    a. 将 `pub fn new_headless(width: u16, height: u16) -> (App, HeadlessHandle)`（第 434 行）改为 `pub async fn new_headless(width: u16, height: u16) -> (App, HeadlessHandle)`。
 
@@ -583,7 +583,7 @@ rusqlite → sqlx 异步迁移
       );
       ```
 
-4. **`rust-agent-tui/src/acp/main_acp.rs`** — 调用加 await:
+4. **`peri-tui/src/acp/main_acp.rs`** — 调用加 await:
 
    将第 39-43 行:
    ```rust
@@ -608,14 +608,14 @@ rusqlite → sqlx 异步迁移
 
    在以下文件中，将每个 `App::new_headless(...)` 调用改为 `App::new_headless(...).await`:
 
-   - `rust-agent-tui/src/ui/headless.rs`: 所有 `App::new_headless(...)` 和 `crate::app::App::new_headless(...)` 调用（约 20+ 处）
-   - `rust-agent-tui/src/command/mod.rs:200`: `App::new_headless(80, 24).0` → `App::new_headless(80, 24).await.0`（在 `fn headless_app()` 中，该函数也需改为 `async fn`，调用处加 `.await`）
-   - `rust-agent-tui/src/command/loop_cmd.rs:51`: 同上
-   - `rust-agent-tui/src/ui/main_ui/popups/oauth.rs:85,105`: `crate::app::App::new_headless(80, 30)` → `crate::app::App::new_headless(80, 30).await`
+   - `peri-tui/src/ui/headless.rs`: 所有 `App::new_headless(...)` 和 `crate::app::App::new_headless(...)` 调用（约 20+ 处）
+   - `peri-tui/src/command/mod.rs:200`: `App::new_headless(80, 24).0` → `App::new_headless(80, 24).await.0`（在 `fn headless_app()` 中，该函数也需改为 `async fn`，调用处加 `.await`）
+   - `peri-tui/src/command/loop_cmd.rs:51`: 同上
+   - `peri-tui/src/ui/main_ui/popups/oauth.rs:85,105`: `crate::app::App::new_headless(80, 30)` → `crate::app::App::new_headless(80, 30).await`
 
 6. **辅助函数 `headless_app()` 改 async**:
 
-   `rust-agent-tui/src/command/mod.rs:199-201`:
+   `peri-tui/src/command/mod.rs:199-201`:
    ```rust
    // 旧:
    fn headless_app() -> App {
@@ -630,7 +630,7 @@ rusqlite → sqlx 异步迁移
    ```
    调用 `headless_app()` 的测试方法中加 `.await`。
 
-   同理修改 `rust-agent-tui/src/command/loop_cmd.rs:50-52` 中的 `headless_app()`。
+   同理修改 `peri-tui/src/command/loop_cmd.rs:50-52` 中的 `headless_app()`。
 
 #### 检查步骤
 
@@ -638,14 +638,14 @@ rusqlite → sqlx 异步迁移
 - 确认 `App::new()` 和 `App::new_headless()` 签名为 `async fn`
 - 确认所有 `SqliteThreadStore::new()` 和 `default_path()` 调用后有 `.await`
 - 确认所有 `App::new()` 和 `App::new_headless()` 调用后有 `.await`
-- 全量编译: `cargo build -p rust-agent-tui`
-- 全量测试: `cargo test -p rust-agent-tui`
+- 全量编译: `cargo build -p peri-tui`
+- 全量测试: `cargo test -p peri-tui`
 
 #### 单元测试
 
 - 运行全量测试确认所有 headless 测试通过:
   ```bash
-  cargo test -p rust-agent-tui
+  cargo test -p peri-tui
   ```
 - 特别关注 `headless.rs` 中的测试（~20+ 个）和 `command/mod.rs`、`command/loop_cmd.rs` 中的测试
 
@@ -671,19 +671,19 @@ rusqlite → sqlx 异步迁移
 
 3. **验证依赖清理**:
    ```bash
-   cargo tree -p rust-create-agent | grep -E "rusqlite|parking_lot"
+   cargo tree -p peri-agent | grep -E "rusqlite|parking_lot"
    ```
-   预期输出为空（rusqlite 和 parking_lot 不再是 rust-create-agent 的依赖）。
+   预期输出为空（rusqlite 和 parking_lot 不再是 peri-agent 的依赖）。
 
 4. **验证 sqlx 依赖**:
    ```bash
-   cargo tree -p rust-create-agent | grep sqlx
+   cargo tree -p peri-agent | grep sqlx
    ```
    预期输出包含 `sqlx` 及其 sqlite 相关子依赖。
 
 5. **运行 TUI 冒烟测试**:
    ```bash
-   cargo run -p rust-agent-tui -- --help
+   cargo run -p peri-tui -- --help
    ```
    确认二进制可正常启动。
 
@@ -692,5 +692,5 @@ rusqlite → sqlx 异步迁移
 - 编译失败 → 检查 Task 1 依赖是否正确、Task 2 中 imports 是否完整
 - `thread::sqlite_store` 测试失败 → Task 2 重写逻辑有误，检查 SQL 语句和 bind 参数
 - headless 测试失败 → Task 3 中遗漏 `.await`，全局搜索 `App::new_headless(` 确认所有调用点
-- 依赖树仍含 rusqlite → Task 1 中 `rust-create-agent/Cargo.toml` 未完全移除
+- 依赖树仍含 rusqlite → Task 1 中 `peri-agent/Cargo.toml` 未完全移除
 

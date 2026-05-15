@@ -27,7 +27,7 @@ SQLite 历史数据可直接删除重建，无需迁移。
 - 依赖：`uuid = { version = "1", features = ["v7", "serde"] }`
 
 ```rust
-// rust-create-agent/src/messages/mod.rs
+// peri-agent/src/messages/mod.rs
 
 /// 消息唯一标识符 — UUID v7（时间有序，跨进程安全）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -212,14 +212,14 @@ fn message_from_provider(&self, role: &str, content: Value) -> BaseMessage {
 
 | 模块 | 变更 |
 |------|------|
-| `rust-create-agent/Cargo.toml` | 新增 `uuid = { version = "1", features = ["v7", "serde"] }` |
-| `rust-create-agent/src/messages/mod.rs` | 新增 `MessageId` 导出 |
-| `rust-create-agent/src/messages/message.rs` | 四个变体增加 `id: MessageId`，更新所有构造器，增加 `id()` 访问器 |
-| `rust-create-agent/src/messages/adapters/` | `OpenAiAdapter` / `AnthropicAdapter` 序列化跳过 `id`，反序列化生成新 ID |
-| `rust-create-agent/src/thread/sqlite_store.rs` | Schema 重建（移除 seq，主键改 message_id），写入/读取 message_id |
-| `rust-create-agent/src/thread/types.rs` | `ThreadMeta` 增加 `message_count` 字段（从 messages 表 COUNT） |
-| `rust-agent-tui` | 编译通过即可，消息渲染直接用 `msg.id()` |
-| `rust-agent-middlewares` | 各 middleware `prepend_message` 的系统消息自动获得 ID |
+| `peri-agent/Cargo.toml` | 新增 `uuid = { version = "1", features = ["v7", "serde"] }` |
+| `peri-agent/src/messages/mod.rs` | 新增 `MessageId` 导出 |
+| `peri-agent/src/messages/message.rs` | 四个变体增加 `id: MessageId`，更新所有构造器，增加 `id()` 访问器 |
+| `peri-agent/src/messages/adapters/` | `OpenAiAdapter` / `AnthropicAdapter` 序列化跳过 `id`，反序列化生成新 ID |
+| `peri-agent/src/thread/sqlite_store.rs` | Schema 重建（移除 seq，主键改 message_id），写入/读取 message_id |
+| `peri-agent/src/thread/types.rs` | `ThreadMeta` 增加 `message_count` 字段（从 messages 表 COUNT） |
+| `peri-tui` | 编译通过即可，消息渲染直接用 `msg.id()` |
+| `peri-middlewares` | 各 middleware `prepend_message` 的系统消息自动获得 ID |
 | 所有 `#[cfg(test)]` | 更新单测中的 `BaseMessage` 字面量构造 |
 
 ## 约束一致性
@@ -235,5 +235,5 @@ fn message_from_provider(&self, role: &str, content: Value) -> BaseMessage {
 - [ ] SQLite `messages.message_id` 列存在，主键为 `message_id`
 - [ ] `load_messages` 还原的 `BaseMessage` 含正确 ID（与写入时一致）
 - [ ] Provider 适配层序列化发给 LLM 的 JSON 不含 `id` 字段
-- [ ] 所有单测通过：`cargo test -p rust-create-agent --lib`
-- [ ] TUI headless 测试通过：`cargo test -p rust-agent-tui`
+- [ ] 所有单测通过：`cargo test -p peri-agent --lib`
+- [ ] TUI headless 测试通过：`cargo test -p peri-tui`

@@ -4,7 +4,7 @@
 
 当前 LLM 调用失败时（网络超时、429 限流、5xx 服务器错误），executor 直接终止 agent，用户需要手动重试整个对话。但实际上大部分 LLM 错误是暂时性的，自动重试即可恢复。
 
-参考 Claude Code 的 `withRetry()` 机制（指数退避 + 随机抖动 + 最大重试次数），需要在 perihelion 的 ReactLLM 层实现类似的重试能力。
+参考 Claude Code 的 `withRetry()` 机制（指数退避 + 随机抖动 + 最大重试次数），需要在 peri 的 ReactLLM 层实现类似的重试能力。
 
 ## 目标
 
@@ -122,7 +122,7 @@ return Err(AgentError::LlmHttpError {
 
 ### 重试配置
 
-新增 `rust-create-agent/src/llm/retry.rs` 文件。
+新增 `peri-agent/src/llm/retry.rs` 文件。
 
 ```rust
 pub struct RetryConfig {
@@ -235,16 +235,16 @@ LLM 重试 2/5 (2.1s)...  API 错误 503: Service Unavailable
 
 | 文件 | 改动类型 | 说明 |
 |------|---------|------|
-| `rust-create-agent/src/error.rs` | 修改 | 新增 `LlmHttpError` 变体 + `is_retryable()` |
-| `rust-create-agent/src/agent/events.rs` | 修改 | 新增 `LlmRetrying` 事件 |
-| `rust-create-agent/src/llm/mod.rs` | 修改 | 导出 `retry` 模块 |
-| `rust-create-agent/src/llm/retry.rs` | **新建** | `RetryConfig` + `RetryableLLM<L>` |
-| `rust-create-agent/src/llm/openai.rs` | 修改 | HTTP 错误改用 `LlmHttpError` |
-| `rust-create-agent/src/llm/anthropic.rs` | 修改 | HTTP 错误改用 `LlmHttpError` |
-| `rust-agent-tui/src/app/agent_ops.rs` | 修改 | 处理 `LlmRetrying` 事件 |
-| `rust-agent-tui/src/app/mod.rs` | 修改 | 新增 `RetryStatus` 字段 |
-| `rust-agent-tui/src/ui/main_ui/status_bar.rs` | 修改 | 重试状态显示 |
-| `rust-agent-tui/src/ui/headless.rs` | 修改 | 测试适配新事件 |
+| `peri-agent/src/error.rs` | 修改 | 新增 `LlmHttpError` 变体 + `is_retryable()` |
+| `peri-agent/src/agent/events.rs` | 修改 | 新增 `LlmRetrying` 事件 |
+| `peri-agent/src/llm/mod.rs` | 修改 | 导出 `retry` 模块 |
+| `peri-agent/src/llm/retry.rs` | **新建** | `RetryConfig` + `RetryableLLM<L>` |
+| `peri-agent/src/llm/openai.rs` | 修改 | HTTP 错误改用 `LlmHttpError` |
+| `peri-agent/src/llm/anthropic.rs` | 修改 | HTTP 错误改用 `LlmHttpError` |
+| `peri-tui/src/app/agent_ops.rs` | 修改 | 处理 `LlmRetrying` 事件 |
+| `peri-tui/src/app/mod.rs` | 修改 | 新增 `RetryStatus` 字段 |
+| `peri-tui/src/ui/main_ui/status_bar.rs` | 修改 | 重试状态显示 |
+| `peri-tui/src/ui/headless.rs` | 修改 | 测试适配新事件 |
 
 ## 实现要点
 
@@ -255,7 +255,7 @@ LLM 重试 2/5 (2.1s)...  API 错误 503: Service Unavailable
 
 ## 约束一致性
 
-- **Workspace 分层**：`retry.rs` 放在 `rust-create-agent`（核心框架层），符合"基础设施放在下层"的约束。
+- **Workspace 分层**：`retry.rs` 放在 `peri-agent`（核心框架层），符合"基础设施放在下层"的约束。
 - **异步优先**：`RetryableLLM` 的 `generate_reasoning` 是 async 函数，sleep 使用 `tokio::time::sleep`，符合异步优先约束。
 - **Middleware Chain 不受影响**：重试在 ReactLLM 层，不涉及 Middleware，不违反 Middleware Chain 模式。
 - **事件驱动通信**：通过 `AgentEvent::LlmRetrying` 事件通知 TUI，符合事件驱动 TUI 通信约束。

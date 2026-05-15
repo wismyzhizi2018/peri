@@ -42,7 +42,7 @@
 ### Task 2: TUI JSON 发送映射
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`
+- 修改: `peri-tui/src/app/agent_ops.rs`
 
 **执行步骤:**
 - [x] 找到 `AgentEvent::AskUserBatch(req)` 分支内构建 `questions: Vec<serde_json::Value>` 的 `serde_json::json!` 块
@@ -56,10 +56,10 @@
 
 **检查步骤:**
 - [x] 编译通过（含 TUI crate）
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 无 `error`
 - [x] 验证发送代码含新字段
-  - `grep -A 12 'AskUserBatch(req)' rust-agent-tui/src/app/agent_ops.rs | grep -E 'tool_call_id|allow_custom_input|placeholder'`
+  - `grep -A 12 'AskUserBatch(req)' peri-tui/src/app/agent_ops.rs | grep -E 'tool_call_id|allow_custom_input|placeholder'`
   - 预期: 3 行匹配（每个字段各一行）
 
 ---
@@ -67,7 +67,7 @@
 ### Task 3: TUI relay 中断处理
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/relay_ops.rs`
+- 修改: `peri-tui/src/app/relay_ops.rs`
 
 **执行步骤:**
 - [x] 在 `poll_relay` 的 `match web_msg` 末尾（`WebMessage::Pong => {}` 之后、`WebMessage::SyncRequest` 之前）新增分支：
@@ -87,13 +87,13 @@
   - `cargo build 2>&1 | tail -5`
   - 预期: 无 `error`（所有 crate）
 - [x] 验证 `CancelAgent` 分支存在
-  - `grep -n 'CancelAgent' rust-agent-tui/src/app/relay_ops.rs`
+  - `grep -n 'CancelAgent' peri-tui/src/app/relay_ops.rs`
   - 预期: 至少 1 行
 - [x] 验证匹配键已改为 tool_call_id
-  - `grep -n 'tool_call_id' rust-agent-tui/src/app/relay_ops.rs`
+  - `grep -n 'tool_call_id' peri-tui/src/app/relay_ops.rs`
   - 预期: 至少 1 行（AskUserResponse 分支中）
 - [x] 原先的 `description` 匹配不再存在于该处
-  - `grep -n 'data\.description' rust-agent-tui/src/app/relay_ops.rs`
+  - `grep -n 'data\.description' peri-tui/src/app/relay_ops.rs`
   - 预期: 无输出
 
 ---
@@ -168,7 +168,7 @@
 
 **前置条件:**
 - 启动命令: `cargo run -p rust-relay-server --features server`（默认 :8080）
-- 启动 TUI: `cargo run -p rust-agent-tui -- --remote-control ws://localhost:8080 --relay-token <token> --relay-name test`
+- 启动 TUI: `cargo run -p peri-tui -- --remote-control ws://localhost:8080 --relay-token <token> --relay-name test`
 - 浏览器打开: `http://localhost:8080/web/?token=<token>`
 
 **端到端验证:**

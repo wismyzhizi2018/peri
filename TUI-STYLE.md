@@ -6,7 +6,7 @@
 
 ## 色板
 
-源码：`rust-agent-tui/src/ui/theme.rs`（业务常量）、`perihelion-widgets/src/theme/presets.rs`（DarkTheme trait 实现）。
+源码：`peri-tui/src/ui/theme.rs`（业务常量）、`peri-widgets/src/theme/presets.rs`（DarkTheme trait 实现）。
 
 ### 强调色
 
@@ -64,7 +64,7 @@
 
 ## Markdown 渲染
 
-源码：`perihelion-widgets/src/markdown/`。通过 `DefaultMarkdownTheme` 参数化：
+源码：`peri-widgets/src/markdown/`。通过 `DefaultMarkdownTheme` 参数化：
 
 | 元素 | 颜色 | 说明 |
 |------|------|------|
@@ -84,7 +84,7 @@
 
 ## 消息流
 
-源码：`rust-agent-tui/src/ui/message_render.rs`。
+源码：`peri-tui/src/ui/message_render.rs`。
 
 ### 消息类型与视觉
 
@@ -157,7 +157,7 @@ read_file、search_files_rg、glob_files 等只读工具自动聚合：
 
 ## Welcome Card
 
-源码：`rust-agent-tui/src/ui/welcome.rs`。空消息时垂直+水平居中显示：
+源码：`peri-tui/src/ui/welcome.rs`。空消息时垂直+水平居中显示：
 
 | 区域 | 样式 |
 |------|------|
@@ -174,7 +174,7 @@ read_file、search_files_rg、glob_files 等只读工具自动聚合：
 
 ## Spinner
 
-源码：`perihelion-widgets/src/spinner/`。位于消息区域底部：
+源码：`peri-widgets/src/spinner/`。位于消息区域底部：
 
 | 模式 | 显示格式 | 颜色 |
 |------|---------|------|
@@ -231,7 +231,7 @@ Spinner 下方附加 Tip 行：`⎿  Tip: ...`（MUTED 色）。
 
 ## 状态栏
 
-源码：`rust-agent-tui/src/ui/main_ui/status_bar.rs`。3 行高度。
+源码：`peri-tui/src/ui/main_ui/status_bar.rs`。3 行高度。
 
 ### 第一行（左→右）
 
@@ -271,7 +271,7 @@ Spinner 下方附加 Tip 行：`⎿  Tip: ...`（MUTED 色）。
 
 ## 面板系统
 
-源码：`rust-agent-tui/src/ui/main_ui/panels/`。基于 `PanelManager` + `PanelComponent` trait 组件化架构。
+源码：`peri-tui/src/ui/main_ui/panels/`。基于 `PanelManager` + `PanelComponent` trait 组件化架构。
 
 ### 面板列表
 
@@ -403,7 +403,7 @@ Spinner 下方附加 Tip 行：`⎿  Tip: ...`（MUTED 色）。
 
 ## Widget 库
 
-源码：`perihelion-widgets/src/`。独立 crate，零内部依赖。
+源码：`peri-widgets/src/`。独立 crate，零内部依赖。
 
 | Widget | 样式要点 |
 |--------|---------|
@@ -489,7 +489,7 @@ Spinner 下方附加 Tip 行：`⎿  Tip: ...`（MUTED 色）。
 
 ## 命令系统
 
-源码：`rust-agent-tui/src/command/mod.rs`。
+源码：`peri-tui/src/command/mod.rs`。
 
 ### 命令列表
 
@@ -529,7 +529,7 @@ Spinner 下方附加 Tip 行：`⎿  Tip: ...`（MUTED 色）。
 
 ## 权限模式
 
-源码：`rust-agent-middlewares/src/hitl/shared_mode.rs`。
+源码：`peri-middlewares/src/hitl/shared_mode.rs`。
 
 通过 `Shift+Tab` 循环切换，状态栏首列实时显示：
 

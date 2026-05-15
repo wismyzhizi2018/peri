@@ -20,19 +20,21 @@
 确保构建和测试工具链在当前开发环境中可用，避免后续 Task 因环境问题阻塞。
 
 **执行步骤:**
+
 - [x] 验证 Rust 工具链可用
   - `cargo --version`
   - 预期: 输出 cargo 版本号
 - [x] 验证项目可构建
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 编译成功，无 error
 
 **检查步骤:**
+
 - [x] 构建命令执行成功
-  - `cargo build -p rust-agent-middlewares 2>&1 | grep -E 'error|Finished'`
+  - `cargo build -p peri-middlewares 2>&1 | grep -E 'error|Finished'`
   - 预期: 输出包含 "Finished"，无 error
 - [x] 测试命令可用
-  - `cargo test -p rust-agent-middlewares --lib --no-run 2>&1 | tail -3`
+  - `cargo test -p peri-middlewares --lib --no-run 2>&1 | tail -3`
   - 预期: 编译成功，无配置错误
 
 ---
@@ -43,26 +45,28 @@
 实现 WebFetch 工具的核心逻辑——URL 安全校验、HTTP GET 请求、HTML→Markdown 转换、Content-Type 判断和响应截断。本 Task 仅实现 `WebFetchTool` struct 及其辅助函数，不包含 `WebMiddleware` struct（留给 Task 3）。Task 2（WebSearchTool）和 Task 3（集成注册）均依赖本 Task 创建的 `web.rs` 文件。
 
 **涉及文件:**
-- 新建: `rust-agent-middlewares/src/middleware/web.rs`
-- 修改: `rust-agent-middlewares/Cargo.toml`（添加 html2text 依赖）
-- 修改: `rust-agent-middlewares/src/middleware/mod.rs`（添加 `pub mod web;`）
+
+- 新建: `peri-middlewares/src/middleware/web.rs`
+- 修改: `peri-middlewares/Cargo.toml`（添加 html2text 依赖）
+- 修改: `peri-middlewares/src/middleware/mod.rs`（添加 `pub mod web;`）
 
 **执行步骤:**
 
-- [x] 在 `rust-agent-middlewares/Cargo.toml` 的 `[dependencies]` 段添加 html2text 依赖 — reqwest 和 url 已在 workspace 声明，无需新增
+- [x] 在 `peri-middlewares/Cargo.toml` 的 `[dependencies]` 段添加 html2text 依赖 — reqwest 和 url 已在 workspace 声明，无需新增
   - 位置: `Cargo.toml` 的 `reqwest.workspace = true` 行（~L35）之后
   - 追加: `html2text = "0.14"`
 
-- [x] 在 `rust-agent-middlewares/src/middleware/mod.rs` 添加模块声明
+- [x] 在 `peri-middlewares/src/middleware/mod.rs` 添加模块声明
   - 位置: `mod.rs` 现有 `pub mod` 声明段（~L3 `pub mod terminal;` 之后）
   - 追加: `pub mod web;`
   - 注意: 本 Task 不添加 `pub use` re-export（WebMiddleware re-export 留到 Task 3）
 
-- [x] 创建 `rust-agent-middlewares/src/middleware/web.rs`，实现完整文件结构
+- [x] 创建 `peri-middlewares/src/middleware/web.rs`，实现完整文件结构
   - 文件头部 imports:
+
     ```rust
     use async_trait::async_trait;
-    use rust_create_agent::tools::BaseTool;
+    use peri_agent::tools::BaseTool;
     use serde_json::Value;
     use std::net::IpAddr;
     use tokio::time::{timeout, Duration};
@@ -72,6 +76,7 @@
 - [x] 实现 `validate_url(url: &str) -> Result<Url, String>` 函数 — URL 安全校验，防止 SSRF
   - 位置: `web.rs` 顶部（struct 定义之前），作为模块级私有函数
   - 逻辑:
+
     ```
     1. Url::parse(url) → 失败则 Err("无效的 URL: ...")
     2. 检查 scheme，仅允许 "http" 或 "https" → 否则 Err("仅支持 http/https 协议")
@@ -94,6 +99,7 @@
 - [x] 实现 `truncate_content(content: &str, max_lines: usize) -> String` 函数 — 按行数截断
   - 位置: `html_to_text` 之后
   - 逻辑:
+
     ```
     1. content.lines() 收集为 Vec<&str>
     2. 行数 ≤ max_lines → 直接返回
@@ -103,14 +109,18 @@
 
 - [x] 定义 `WebFetchTool` struct 和 `impl` — 无状态工具
   - 结构体:
+
     ```rust
     pub struct WebFetchTool;
     ```
+
   - 常量 `DESCRIPTION`（参考 terminal.rs 的 `BASH_DESCRIPTION` 模式）:
+
     ```rust
     const WEB_FETCH_DESCRIPTION: &str = r#"Fetches a web page by URL and returns its content as text.
 
 Usage:
+
 - Only http:// and https:// URLs are allowed
 - HTML pages are converted to readable text; JSON is pretty-printed; plain text is returned as-is
 - Binary content returns only type and size information
@@ -118,10 +128,12 @@ Usage:
 - An optional 'prompt' parameter provides guidance for how to use the fetched content
 
 Security:
+
 - Internal/private/loopback IP addresses are blocked
 - Maximum response size: 10MB
 - Request timeout: 30 seconds
 - Maximum redirects: 5"#;
+
     ```
   - `impl WebFetchTool`:
     ```rust
@@ -132,6 +144,7 @@ Security:
   - `fn name(&self) -> &str` → `"WebFetch"`
   - `fn description(&self) -> &str` → `WEB_FETCH_DESCRIPTION`
   - `fn parameters(&self) -> Value` →
+
     ```rust
     serde_json::json!({
         "type": "object",
@@ -148,7 +161,9 @@ Security:
         "required": ["url"]
     })
     ```
+
   - `async fn invoke(&self, input: Value) -> Result<String, Box<dyn Error + Send + Sync>>`:
+
     ```
     1. 提取 url: input["url"].as_str() → 缺失则 Err("Missing url parameter")
     2. 提取 prompt: input["prompt"].as_str()（可选）
@@ -157,7 +172,7 @@ Security:
        - Client::builder()
        - .timeout(Duration::from_secs(30))
        - .redirect(Policy::limited(5))
-       - .user_agent("perihelion/1.0")
+       - .user_agent("peri/1.0")
        - .build()?
     5. client.get(parsed_url).send().await?
        - 错误处理: 超时/连接失败 → 返回 Err 描述性消息
@@ -188,29 +203,29 @@ Security:
     - `test_html_to_text_basic`: `"<p>Hello</p>"` → 包含 "Hello"
     - `test_tool_name_is_web_fetch`: `WebFetchTool::new().name()` → "WebFetch"
     - `test_tool_parameters_required_url`: parameters 的 required 数组包含 "url"
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- middleware::web::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 html2text 依赖已添加
-  - `grep 'html2text' rust-agent-middlewares/Cargo.toml`
+  - `grep 'html2text' peri-middlewares/Cargo.toml`
   - 预期: 输出包含 `html2text = "0.14"`
 
 - [x] 验证 web 模块已注册
-  - `grep 'pub mod web' rust-agent-middlewares/src/middleware/mod.rs`
+  - `grep 'pub mod web' peri-middlewares/src/middleware/mod.rs`
   - 预期: 输出包含 `pub mod web;`
 
 - [x] 验证 WebFetchTool 实现了 BaseTool trait
-  - `grep 'impl BaseTool for WebFetchTool' rust-agent-middlewares/src/middleware/web.rs`
+  - `grep 'impl BaseTool for WebFetchTool' peri-middlewares/src/middleware/web.rs`
   - 预期: 输出包含匹配行
 
 - [x] 验证单元测试全部通过
-  - `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests 2>&1 | tail -20`
+  - `cargo test -p peri-middlewares --lib -- middleware::web::tests 2>&1 | tail -20`
   - 预期: 所有 test 开头的行显示 "ok"，无 "FAILED"
 
 - [x] 验证编译无错误
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 输出包含 "Compiling" 或 "Finished"，无 error
 
 ---
@@ -221,13 +236,15 @@ Security:
 本 Task 在 Task 1 已创建的 `web.rs` 文件中追加 `WebSearchTool`，实现通过 Exa Search API 的网页搜索功能。Task 1 已完成文件骨架和 `WebFetchTool`，本 Task 在同文件中追加搜索工具的 struct、API 调用、响应解析和格式化逻辑。Task 3 将依赖本 Task 的 `WebSearchTool` 完成中间件注册。
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/middleware/web.rs`（在 Task 1 已有内容后追加 `WebSearchTool` struct 及实现）
+
+- 修改: `peri-middlewares/src/middleware/web.rs`（在 Task 1 已有内容后追加 `WebSearchTool` struct 及实现）
 
 **执行步骤:**
 
 - [x] 在 `web.rs` 中定义搜索结果数据结构 — 用于反序列化 Exa API 的 JSON 响应
   - 位置: `web.rs` 文件中 `WebFetchTool` 及其 `impl` 块之后
   - 定义:
+
     ```rust
     /// Exa 搜索结果单条条目
     #[derive(Debug, serde::Deserialize)]
@@ -243,21 +260,25 @@ Security:
         results: Vec<ExaSearchResult>,
     }
     ```
+
   - 原因: Exa API 返回 `{"results": [{"title": "...", "url": "...", "text": "..."}]}`，`text` 字段在 `contents.text=true` 时返回，可能为 null
 
 - [x] 定义 `WebSearchTool` 无状态 struct — 遵循 `BashTool` 的无状态模式
   - 位置: `web.rs`，Exa 数据结构定义之后
   - 定义:
+
     ```rust
     const WEBSEARCH_DESCRIPTION: &str = r#"Search the web using Exa Search API.
 
 Usage:
+
 - Provide a search query to find relevant web pages
 - Returns results as a numbered Markdown list with titles, URLs, and text snippets
 - Each result's text is truncated to 500 characters
 - Requires EXA_API_KEY environment variable to be set
 
 Parameters:
+
 - query (required): Search keywords
 - num_results (optional): Number of results, default 10, max 20"#;
 
@@ -266,11 +287,14 @@ Parameters:
     impl WebSearchTool {
         pub fn new() -> Self { Self }
     }
+
     ```
 
 - [x] 实现 `format_search_results` 辅助函数 — 将搜索结果格式化为 Markdown
+
   - 位置: `WebSearchTool` struct 定义之后、`impl BaseTool` 之前
   - 关键逻辑:
+
     ```rust
     /// 单条结果文本截断上限（字符数）
     const MAX_RESULT_TEXT_CHARS: usize = 500;
@@ -294,12 +318,14 @@ Parameters:
         output
     }
     ```
+
   - 截断使用 `chars().take(500)` — 字符级截断，符合 CLAUDE.md 编码规范
   - 原因: spec-design.md 要求单条 text 超过 500 字符时截断，Markdown 格式为 `1. **标题** - url` + 缩进摘要
 
 - [x] 实现 `#[async_trait] impl BaseTool for WebSearchTool` — 工具注册和入口
   - 位置: `format_search_results` 之后
   - 关键逻辑:
+
     ```rust
     #[async_trait::async_trait]
     impl BaseTool for WebSearchTool {
@@ -376,10 +402,11 @@ Parameters:
         }
     }
     ```
+
   - 原因: 遵循 `BashTool::invoke` 的错误处理模式，API 错误用 `Err` 返回
 
 - [x] 为 WebSearchTool 编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/middleware/web.rs`（`#[cfg(test)] mod tests` 块内，追加在 Task 1 的测试之后）
+  - 测试文件: `peri-middlewares/src/middleware/web.rs`（`#[cfg(test)] mod tests` 块内，追加在 Task 1 的测试之后）
   - 测试场景:
     - `test_websearch_name`: `WebSearchTool::new().name()` 返回 `"WebSearch"`
     - `test_websearch_parameters_required`: `parameters()` 返回的 JSON 中 `required` 包含 `"query"`
@@ -388,21 +415,21 @@ Parameters:
     - `test_format_search_results_text_truncation`: 构造 text 超过 500 字符的结果 → 截断后恰好 500 字符
     - `test_format_search_results_no_text`: 结果 text 为 None → 输出包含标题和 url，无摘要行
     - `test_websearch_missing_query`: `invoke(json!({}))` → 返回错误包含 `"Missing required parameter: query"`
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- middleware::web::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 编译通过，无类型错误
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
-  - 预期: 输出包含 `Compiling rust-agent-middlewares` 且最终无 error
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
+  - 预期: 输出包含 `Compiling peri-middlewares` 且最终无 error
 
 - [x] 单元测试全部通过
-  - `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests 2>&1 | tail -20`
+  - `cargo test -p peri-middlewares --lib -- middleware::web::tests 2>&1 | tail -20`
   - 预期: 所有 `test_websearch_*` 测试显示 `test result: ok`
 
 - [x] `WebSearchTool` struct 和 `impl BaseTool` 均存在
-  - `grep -n 'WebSearchTool' rust-agent-middlewares/src/middleware/web.rs`
+  - `grep -n 'WebSearchTool' peri-middlewares/src/middleware/web.rs`
   - 预期: 出现多处（struct 定义、new()、impl BaseTool）
 
 ---
@@ -413,18 +440,20 @@ Parameters:
 Task 1 和 Task 2 已在 `web.rs` 中定义 WebFetchTool 和 WebSearchTool，本 Task 将它们组装为 WebMiddleware 并接入系统——注册到中间件链、加入 HITL 默认审批清单、更新 prelude 导出和 CLAUDE.md 文档。本 Task 是功能上线的最后一环，完成后 LLM 即可使用 WebFetch/WebSearch 工具。
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/middleware/web.rs`（追加 WebMiddleware struct）
-- 修改: `rust-agent-middlewares/src/middleware/mod.rs`（添加 `pub use web::WebMiddleware;`）
-- 修改: `rust-agent-middlewares/src/hitl/mod.rs`（default_requires_approval 添加 WebFetch/WebSearch）
-- 修改: `rust-agent-middlewares/src/lib.rs`（prelude 添加 WebMiddleware）
-- 修改: `rust-agent-tui/src/app/agent.rs`（中间件链添加 WebMiddleware::new()）
+
+- 修改: `peri-middlewares/src/middleware/web.rs`（追加 WebMiddleware struct）
+- 修改: `peri-middlewares/src/middleware/mod.rs`（添加 `pub use web::WebMiddleware;`）
+- 修改: `peri-middlewares/src/hitl/mod.rs`（default_requires_approval 添加 WebFetch/WebSearch）
+- 修改: `peri-middlewares/src/lib.rs`（prelude 添加 WebMiddleware）
+- 修改: `peri-tui/src/app/agent.rs`（中间件链添加 WebMiddleware::new()）
 - 修改: `CLAUDE.md`（更新中间件链文档和 HITL 审批清单）
 
 **执行步骤:**
 
 - [x] 在 web.rs 末尾追加 WebMiddleware struct — 参考 TerminalMiddleware 模式（terminal.rs L215-246）
-  - 位置: `rust-agent-middlewares/src/middleware/web.rs`，在文件末尾（WebSearchTool 定义之后）追加
+  - 位置: `peri-middlewares/src/middleware/web.rs`，在文件末尾（WebSearchTool 定义之后）追加
   - 实现:
+
     ```rust
     /// Web 中间件，提供 WebFetch 和 WebSearch 工具
     pub struct WebMiddleware;
@@ -448,22 +477,24 @@ Task 1 和 Task 2 已在 `web.rs` 中定义 WebFetchTool 和 WebSearchTool，本
         }
     }
     ```
-  - 需在文件顶部 imports 中追加: `use rust_create_agent::agent::state::State;` 和 `use rust_create_agent::middleware::r#trait::Middleware;`（若 Task 1 尚未包含）
+
+  - 需在文件顶部 imports 中追加: `use peri_agent::agent::state::State;` 和 `use peri_agent::middleware::r#trait::Middleware;`（若 Task 1 尚未包含）
   - 原因: 无状态中间件，与 TerminalMiddleware/FilesystemMiddleware 模式一致
 
 - [x] 在 mod.rs 添加 WebMiddleware re-export — 使外部 crate 可通过 `middleware::WebMiddleware` 导入
-  - 位置: `rust-agent-middlewares/src/middleware/mod.rs` L10（`pub use todo::TodoMiddleware;` 之后）
+  - 位置: `peri-middlewares/src/middleware/mod.rs` L10（`pub use todo::TodoMiddleware;` 之后）
   - 追加: `pub use web::WebMiddleware;`
   - 原因: Task 1 已添加 `pub mod web;`，此处补齐 re-export
 
 - [x] 在 HITL default_requires_approval 中添加 WebFetch 和 WebSearch — 确保网络请求默认需用户审批
-  - 位置: `rust-agent-middlewares/src/hitl/mod.rs` L40-49，`default_requires_approval` 函数体
+  - 位置: `peri-middlewares/src/hitl/mod.rs` L40-49，`default_requires_approval` 函数体
   - 在 `|| tool_name.starts_with("mcp__")` 之前追加: `|| tool_name == "WebFetch" || tool_name == "WebSearch"`
   - 原因: 网络请求涉及外部数据获取，需 HITL 审控
 
 - [x] 在 HITL 测试中添加 WebFetch/WebSearch 断言 — 验证审批规则生效
-  - 位置: `rust-agent-middlewares/src/hitl/mod.rs` L453 `test_default_requires_approval` 测试函数
+  - 位置: `peri-middlewares/src/hitl/mod.rs` L453 `test_default_requires_approval` 测试函数
   - 在 `assert!(default_requires_approval("mcp__web__fetch"));` 之后（约 L466），添加:
+
     ```rust
     // Web 工具需审批
     assert!(default_requires_approval("WebFetch"));
@@ -471,18 +502,20 @@ Task 1 和 Task 2 已在 `web.rs` 中定义 WebFetchTool 和 WebSearchTool，本
     ```
 
 - [x] 在 lib.rs prelude 中添加 WebMiddleware — 供下游 crate 一次性导入
-  - 位置: `rust-agent-middlewares/src/lib.rs` L74
+  - 位置: `peri-middlewares/src/lib.rs` L74
   - 将 `pub use crate::middleware::{FilesystemMiddleware, TerminalMiddleware, TodoMiddleware};` 改为:
     `pub use crate::middleware::{FilesystemMiddleware, TerminalMiddleware, TodoMiddleware, WebMiddleware};`
   - 原因: 与其他中间件保持一致的导出方式
 
 - [x] 在 TUI agent 中间件链中注册 WebMiddleware — 插入到 TerminalMiddleware 之后、TodoMiddleware 之前
-  - 位置: `rust-agent-tui/src/app/agent.rs` L255-256
+  - 位置: `peri-tui/src/app/agent.rs` L255-256
   - 在 `.add_middleware(Box::new(TerminalMiddleware::new()))` (L255) 之后、`.add_middleware(Box::new(TodoMiddleware::new(todo_tx)))` (L256) 之前，插入:
+
     ```rust
     .add_middleware(Box::new(WebMiddleware::new()))
     ```
-  - 原因: agent.rs L8 使用 `use rust_agent_middlewares::prelude::*;`，WebMiddleware 已通过 prelude 导入，直接用 `WebMiddleware` 即可
+
+  - 原因: agent.rs L8 使用 `use peri_middlewares::prelude::*;`，WebMiddleware 已通过 prelude 导入，直接用 `WebMiddleware` 即可
 
 - [x] 更新 CLAUDE.md 中间件链文档 — 反映 WebMiddleware 的注册位置
   - 位置: `CLAUDE.md` "中间件链执行顺序" 代码块
@@ -496,22 +529,23 @@ Task 1 和 Task 2 已在 `web.rs` 中定义 WebFetchTool 和 WebSearchTool，本
   - 原因: 文档与代码保持同步
 
 - [x] 为 HITL default_requires_approval 新增断言运行单元测试
-  - 测试文件: `rust-agent-middlewares/src/hitl/mod.rs`（`test_default_requires_approval` 函数内，步骤 4 已添加断言）
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- hitl::tests::test_default_requires_approval`
+  - 测试文件: `peri-middlewares/src/hitl/mod.rs`（`test_default_requires_approval` 函数内，步骤 4 已添加断言）
+  - 运行命令: `cargo test -p peri-middlewares --lib -- hitl::tests::test_default_requires_approval`
   - 预期: 所有测试通过，包括新增的 WebFetch/WebSearch 断言
 
 **检查步骤:**
+
 - [x] 验证 WebMiddleware 编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
-  - 预期: 输出包含 `Compiling rust-agent-middlewares` 且无 error
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
+  - 预期: 输出包含 `Compiling peri-middlewares` 且无 error
 - [x] 验证 HITL 测试通过
-  - `cargo test -p rust-agent-middlewares --lib -- hitl::tests::test_default_requires_approval`
+  - `cargo test -p peri-middlewares --lib -- hitl::tests::test_default_requires_approval`
   - 预期: 所有测试通过，包括新增的 WebFetch/WebSearch 断言
 - [x] 验证 TUI 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 编译成功，无 error
 - [x] 验证 WebMiddleware re-export 可达
-  - `grep -n 'WebMiddleware' rust-agent-middlewares/src/middleware/mod.rs rust-agent-middlewares/src/lib.rs`
+  - `grep -n 'WebMiddleware' peri-middlewares/src/middleware/mod.rs peri-middlewares/src/lib.rs`
   - 预期: mod.rs 包含 `pub use web::WebMiddleware`，lib.rs L74 包含 `WebMiddleware`
 - [x] 验证 CLAUDE.md 已更新
   - `grep -n 'WebMiddleware\|WebFetch\|WebSearch' CLAUDE.md`
@@ -522,6 +556,7 @@ Task 1 和 Task 2 已在 `web.rs` 中定义 WebFetchTool 和 WebSearchTool，本
 ### Task 4: Web 工具中间件 验收
 
 **前置条件:**
+
 - 构建命令: `cargo build`
 - 测试命令: `cargo test`
 - 环境变量: 无（WebSearch 测试使用 mock 场景，无需真实 EXA_API_KEY）
@@ -534,17 +569,17 @@ Task 1 和 Task 2 已在 `web.rs` 中定义 WebFetchTool 和 WebSearchTool，本
    - 失败排查: 检查各 Task 的测试步骤，重点关注 `middleware::web::tests` 和 `hitl::tests::test_default_requires_approval`
 
 2. 验证 WebFetchTool URL 校验正确拦截内网地址
-   - `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests::test_validate_url 2>&1 | tail -15`
+   - `cargo test -p peri-middlewares --lib -- middleware::web::tests::test_validate_url 2>&1 | tail -15`
    - 预期: 所有 `test_validate_url_*` 测试通过（FTP 拒绝、localhost 拒绝、私有 IP 拒绝、https 通过）
    - 失败排查: 检查 Task 1 的 `validate_url` 实现
 
 3. 验证 WebSearchTool 格式化输出符合 Markdown 规范
-   - `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests::test_format_search 2>&1 | tail -15`
+   - `cargo test -p peri-middlewares --lib -- middleware::web::tests::test_format_search 2>&1 | tail -15`
    - 预期: 所有 `test_format_search_results_*` 测试通过（空结果、正常结果、截断、无 text）
    - 失败排查: 检查 Task 2 的 `format_search_results` 实现
 
 4. 验证 HITL 默认审批清单包含 WebFetch/WebSearch
-   - `cargo test -p rust-agent-middlewares --lib -- hitl::tests::test_default_requires_approval 2>&1 | tail -10`
+   - `cargo test -p peri-middlewares --lib -- hitl::tests::test_default_requires_approval 2>&1 | tail -10`
    - 预期: 测试通过，WebFetch 和 WebSearch 均被标记为需审批
    - 失败排查: 检查 Task 3 的 `default_requires_approval` 修改
 

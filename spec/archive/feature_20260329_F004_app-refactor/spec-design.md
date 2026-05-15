@@ -2,7 +2,7 @@
 
 ## 需求背景
 
-架构审查发现 `rust-agent-tui` 的 `App` 结构体包含 40+ 字段，混合了 UI 状态、Agent 通信、Relay 连接、Langfuse 可观测性、Thread 持久化等 5 种职责。每次新增弹窗或面板都需修改此结构体，导致：
+架构审查发现 `peri-tui` 的 `App` 结构体包含 40+ 字段，混合了 UI 状态、Agent 通信、Relay 连接、Langfuse 可观测性、Thread 持久化等 5 种职责。每次新增弹窗或面板都需修改此结构体，导致：
 
 1. **编译时间**：修改任何子职责字段都触发 App 全量重编译
 2. **认知负担**：开发者需理解 40+ 字段之间的关联才能安全修改
@@ -152,6 +152,6 @@ pub struct App {
 - [ ] App 结构体字段数从 40+ 降低到 ~12（顶层） + 4 个子结构体
 - [ ] 每个子结构体字段数 ≤ 20
 - [ ] `cargo test` 全量通过（含 headless 测试）
-- [ ] `cargo build -p rust-agent-tui` 无新 warning
+- [ ] `cargo build -p peri-tui` 无新 warning
 - [ ] 现有 `app/xxx_ops.rs` 函数签名不变（内部重构）
 - [ ] `run_universal_agent()` 调用方式不变

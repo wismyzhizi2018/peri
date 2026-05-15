@@ -69,7 +69,7 @@ fn render_messages(f: &mut Frame, app: &mut App, area: Rect) {
 ### 文件结构
 
 ```
-rust-agent-tui/src/ui/
+peri-tui/src/ui/
 ├── mod.rs              # 添加 pub mod welcome;
 ├── welcome.rs          # 新增：Welcome Card 渲染逻辑
 ├── main_ui.rs          # 修改：render_messages 中添加空消息判断

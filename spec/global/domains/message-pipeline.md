@@ -82,7 +82,7 @@ reconcile_tail(round_start_vm_idx)
 **通用模式:** 所有需要跨进程复用的序列化内容（system prompt、tools 数组）必须保证顺序稳定。任何参与缓存前缀的数据结构，其迭代顺序必须是确定性的
 **架构影响:** ToolSearchIndex 从 submit 级局部变量提升到 session 级共享 Arc，减少重复构建的同时保证缓存一致性
 **技术决策:** 工具列表按名称排序；ToolSearchIndex 会话级缓存；每轮注入缓存提示词而非重新构建
-**涉及文件:** rust-agent-middlewares/src/tool_search/tool_index.rs, rust-create-agent/src/agent/executor/mod.rs, rust-agent-tui/src/app/agent_comm.rs, rust-agent-tui/src/app/agent.rs, rust-agent-tui/src/app/agent_submit.rs
+**涉及文件:** peri-middlewares/src/tool_search/tool_index.rs, peri-agent/src/agent/executor/mod.rs, peri-tui/src/app/agent_comm.rs, peri-tui/src/app/agent.rs, peri-tui/src/app/agent_submit.rs
 **CLAUDE.md 链接:** true
 
 ### issue_2026-05-12-skill-preload-invalidates-prompt-cache
@@ -93,7 +93,7 @@ reconcile_tail(round_start_vm_idx)
 **问题本质:** SkillPreloadMiddleware 用 prepend_message 将合成消息插入 index 0，改变了第一条 user 消息的位置，Anthropic 的 cache_control 标记落在不稳定的合成消息上，导致首轮 cache miss
 **通用模式:** 向消息数组头部插入内容会改变缓存边界，应优先使用尾部追加（add_message）。缓存控制标记（cache_control）的位置决定了缓存前缀的稳定性
 **技术决策:** prepend_message 改为 add_message，使 preload 工具调用追加在用户消息之后
-**涉及文件:** rust-agent-middlewares/src/subagent/skill_preload.rs, rust-create-agent/src/agent/compact/re_inject.rs, rust-create-agent/src/llm/anthropic.rs
+**涉及文件:** peri-middlewares/src/subagent/skill_preload.rs, peri-agent/src/agent/compact/re_inject.rs, peri-agent/src/llm/anthropic.rs
 **CLAUDE.md 链接:** true
 
 ### issue_2026-05-12-systemnote-position-drift-on-rebuild
@@ -105,7 +105,7 @@ reconcile_tail(round_start_vm_idx)
 **通用模式:** 纯 UI 层的临时 VM（不在 BaseMessage 中）需要独立的锚点机制来维持位置。RebuildAll 的 drain+重建会破坏所有尾部追加内容的位置
 **架构影响:** 引入 ephemeral_notes 字段记录 (锚点, VM) 对，RebuildAll 时按锚点位置重新插入。这是 message-pipeline 处理纯 UI VM 生命周期的通用模式
 **技术决策:** VM 索引锚点方案——记录创建时 view_messages.len() 作为锚点，RebuildAll 时根据锚点与 prefix_len 的关系决定保留/丢弃/重插入
-**涉及文件:** rust-agent-tui/src/app/agent_render.rs, rust-agent-tui/src/app/message_pipeline.rs
+**涉及文件:** peri-tui/src/app/agent_render.rs, peri-tui/src/app/message_pipeline.rs
 **CLAUDE.md 链接:** false
 
 ### issue_2026-05-12-cache-warning-discarded-by-rebuild
@@ -115,7 +115,7 @@ reconcile_tail(round_start_vm_idx)
 **关键词:** CacheWarning, RebuildAll, saved_notes, ephemeral VM
 **问题本质:** RebuildAll 的 saved_notes 过滤器只保留 SystemNote 变体，不保留 CacheWarning，导致缓存警告一闪而过
 **通用模式:** 新增 ephemeral VM 变体时，必须同步更新 RebuildAll 的 saved_notes 过滤逻辑，否则会被 drain 丢弃
-**涉及文件:** rust-agent-tui/src/app/agent_ops.rs, rust-agent-tui/src/app/agent_render.rs, rust-agent-tui/src/ui/message_view.rs
+**涉及文件:** peri-tui/src/app/agent_ops.rs, peri-tui/src/app/agent_render.rs, peri-tui/src/ui/message_view.rs
 **CLAUDE.md 链接:** false
 
 ### issue_2026-05-12-compact-ephemeral-notes-not-cleared
@@ -125,7 +125,7 @@ reconcile_tail(round_start_vm_idx)
 **关键词:** ephemeral_notes, compact, RebuildAll, prefix_len: 0
 **问题本质:** Compact 完成后的 RebuildAll { prefix_len: 0 } 保留所有锚点 >= 0 的 ephemeral_notes，包括 compact 前的旧通知
 **通用模式:** 全量重建（prefix_len: 0）时，应先清理过期的 ephemeral_notes，否则所有历史临时通知都会被保留
-**涉及文件:** rust-agent-tui/src/app/agent_compact.rs, rust-agent-tui/src/app/thread_ops.rs, rust-agent-tui/src/app/agent_ops.rs, rust-agent-tui/src/app/agent_render.rs
+**涉及文件:** peri-tui/src/app/agent_compact.rs, peri-tui/src/app/thread_ops.rs, peri-tui/src/app/agent_ops.rs, peri-tui/src/app/agent_render.rs
 **CLAUDE.md 链接:** false
 
 ### issue_2026-05-14-cache-breakpoint-structural-inefficiency
@@ -137,7 +137,7 @@ reconcile_tail(round_start_vm_idx)
 **通用模式:** cache_control 断点策略需要回退搜索机制——目标消息不含 text block 时向前搜索最近的含 text 消息。断点覆盖范围之外的完整前缀缓存由 Provider 端管理，不受客户端控制。Provider 端的缓存驱逐是随机事件，客户端只能通过增加断点密度来提高小粒度缓存条目的存活概率。
 **架构影响:** 新增 system[last] cache_control 覆盖整个 system prompt 区域，移除被 msg[first] 隐式覆盖的 tools cache_control 冗余断点
 **技术决策:** apply_cache_to_messages 断点回退搜索；system 序列化时对最后一个 block 标记 cache_control
-**涉及文件:** rust-create-agent/src/llm/anthropic.rs
+**涉及文件:** peri-agent/src/llm/anthropic.rs
 **CLAUDE.md 链接:** true
 
 ### issue_2026-05-15-thinking-tail-preview
@@ -149,7 +149,7 @@ reconcile_tail(round_start_vm_idx)
 **通用模式:** ContentBlockView 的 Hash/PartialEq 设计中，语义身份字段（char_count）参与等价判断，展示辅助字段（text）不参与，触发重渲染的字段（tail_lines）选择性参与。这是一个"身份 ≠ 展示"的解耦模式——同一 semantic identity 可以有多种展示状态。
 **架构影响:** 后处理模式——在 build_tail_vms() 末尾执行 add_thinking_tail_snapshot()，遵循"组装→后处理"的管线阶段分隔
 **技术决策:** text 不参与 Hash（仅 char_count 决定等价性），tail_lines 参与 Hash（变化触发重渲染）
-**涉及文件:** rust-agent-tui/src/ui/message_view.rs, rust-agent-tui/src/app/message_pipeline.rs, rust-agent-tui/src/ui/message_render.rs
+**涉及文件:** peri-tui/src/ui/message_view.rs, peri-tui/src/app/message_pipeline.rs, peri-tui/src/ui/message_render.rs
 **CLAUDE.md 链接:** false
 
 ---

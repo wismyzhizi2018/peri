@@ -2,7 +2,7 @@
 
 ## 需求背景
 
-当前 perihelion 的多 agent 系统（SubAgentMiddleware + SubAgentTool）存在两个不足：
+当前 peri 的多 agent 系统（SubAgentMiddleware + SubAgentTool）存在两个不足：
 
 1. **无 Fork 路径**：所有子 agent 都是独立上下文（Normal 路径），无法复用父 agent 的消息历史。对于需要继承完整上下文的任务（如继续多文件重构、延续父 agent 的分析），Normal 路径需要将所有背景信息塞入 prompt，导致 token 浪费和 prompt 质量下降。
 2. **System Prompt 指导不足**：当前 `11_subagent.md` 仅 21 行，缺少"何时不用 Agent""如何写好 prompt""可用 agent 列表"等关键指导，LLM 的委派决策和 prompt 质量不稳定。
@@ -118,7 +118,7 @@ pub struct SubAgentTool {
 }
 ```
 
-通过 `with_parent_messages()` builder 设置。在 `rust-agent-tui/src/app/agent.rs` 组装 SubAgentTool 时，将 `AgentState.messages` 的共享引用传入。
+通过 `with_parent_messages()` builder 设置。在 `peri-tui/src/app/agent.rs` 组装 SubAgentTool 时，将 `AgentState.messages` 的共享引用传入。
 
 > 备选方案：在 `invoke()` 签名中增加 `context: &ToolContext` 参数（包含 messages、cwd 等），但这需要修改 `BaseTool` trait，影响面过大。共享引用方案侵入性最小。
 
@@ -127,6 +127,7 @@ pub struct SubAgentTool {
 #### 3.1 当前状态
 
 `11_subagent.md` 共 21 行，包含：
+
 - When to use（3 条）
 - Delegation guidelines（4 条）
 - Context isolation（1 段）
@@ -201,11 +202,13 @@ pub struct SubAgentTool {
 ### 4.1 Fork 路径实现
 
 **核心变更文件**：
-- `rust-agent-middlewares/src/subagent/tool.rs`：新增 `invoke_fork()` 方法
-- `rust-agent-middlewares/src/subagent/mod.rs`：新增 `with_parent_messages()` builder
-- `rust-agent-tui/src/app/agent.rs`：组装时传入 `parent_messages`
+
+- `peri-middlewares/src/subagent/tool.rs`：新增 `invoke_fork()` 方法
+- `peri-middlewares/src/subagent/mod.rs`：新增 `with_parent_messages()` builder
+- `peri-tui/src/app/agent.rs`：组装时传入 `parent_messages`
 
 **关键技术决策**：
+
 - 消息深拷贝：`BaseMessage` 已实现 `Clone`，使用 `clone_from()` 或手动遍历拷贝
 - Fork 子 agent 的 `AgentState` 初始化时需要设置已包含的消息列表（当前 `AgentState::new()` 创建空状态，需新增 `with_messages()` 方法或 `new_with_messages()` 构造器）
 - 事件透传：Fork 子 agent 与 Normal 子 agent 一样共享父事件处理器
@@ -213,9 +216,10 @@ pub struct SubAgentTool {
 ### 4.2 Prompt 指导优化
 
 **核心变更文件**：
-- `rust-agent-tui/prompts/sections/11_subagent.md`：重写
-- `rust-agent-tui/src/prompt.rs`：系统提示词构建函数增加 agent 列表扫描和占位符替换逻辑
-- `rust-agent-middlewares/src/subagent/tool.rs`：更新 `AGENT_DESCRIPTION`
+
+- `peri-tui/prompts/sections/11_subagent.md`：重写
+- `peri-tui/src/prompt.rs`：系统提示词构建函数增加 agent 列表扫描和占位符替换逻辑
+- `peri-middlewares/src/subagent/tool.rs`：更新 `AGENT_DESCRIPTION`
 
 ### 4.3 防递归
 

@@ -30,7 +30,7 @@
 
 ### 代码路径
 
-`parent_tools` 构造（`rust-agent-tui/src/app/agent.rs:198-213`）：
+`parent_tools` 构造（`peri-tui/src/app/agent.rs:198-213`）：
 
 ```rust
 let mut parent_tools: Vec<Box<dyn BaseTool>> = FilesystemMiddleware::build_tools(&cwd);
@@ -38,7 +38,7 @@ parent_tools.extend(TerminalMiddleware::build_tools(&cwd));
 // + MCP tools if pool exists
 ```
 
-`SubAgentMiddleware::new(parent_tools, ...)` 接收这些工具，Background agent 路径（`rust-agent-middlewares/src/subagent/tool.rs:472-475`）通过 `filter_tools()` 过滤：
+`SubAgentMiddleware::new(parent_tools, ...)` 接收这些工具，Background agent 路径（`peri-middlewares/src/subagent/tool.rs:472-475`）通过 `filter_tools()` 过滤：
 
 ```rust
 let filtered_tools = self.filter_tools(
@@ -110,10 +110,10 @@ agent_builder = agent_builder
 
 ## 相关代码
 
-- `rust-agent-tui/src/app/agent.rs:198-213` —— `parent_tools` 构造
-- `rust-agent-tui/src/app/agent.rs:271-283` —— `SubAgentMiddleware::new(parent_tools, ...)`
-- `rust-agent-middlewares/src/subagent/tool.rs:278-314` —— `filter_tools()` 实现
-- `rust-agent-middlewares/src/subagent/tool.rs:438-598` —— `invoke_background()` 完整路径
-- `rust-agent-middlewares/src/subagent/tool.rs:494-523` —— Background agent middleware 配置
-- `rust-agent-middlewares/src/subagent/built-in/general-purpose.md` —— general-purpose agent 定义（`tools: "*"`）
-- `rust-create-agent/src/agent/executor/mod.rs:188-222` —— 工具收集和过滤逻辑
+- `peri-tui/src/app/agent.rs:198-213` —— `parent_tools` 构造
+- `peri-tui/src/app/agent.rs:271-283` —— `SubAgentMiddleware::new(parent_tools, ...)`
+- `peri-middlewares/src/subagent/tool.rs:278-314` —— `filter_tools()` 实现
+- `peri-middlewares/src/subagent/tool.rs:438-598` —— `invoke_background()` 完整路径
+- `peri-middlewares/src/subagent/tool.rs:494-523` —— Background agent middleware 配置
+- `peri-middlewares/src/subagent/built-in/general-purpose.md` —— general-purpose agent 定义（`tools: "*"`）
+- `peri-agent/src/agent/executor/mod.rs:188-222` —— 工具收集和过滤逻辑

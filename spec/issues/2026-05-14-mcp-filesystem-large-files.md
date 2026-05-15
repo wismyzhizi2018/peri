@@ -6,14 +6,14 @@
 
 ## 问题描述
 
-`rust-agent-middlewares/src/mcp/client.rs`（1309 行）承载了 MCP 客户端池的全部实现（连接、重连、OAuth、shutdown）。`rust-agent-middlewares/src/tools/filesystem/grep.rs`（1162 行）混合了工具定义、参数解析、ripgrep 集成和结果格式化。两个文件职责过重，应按功能拆分。
+`peri-middlewares/src/mcp/client.rs`（1309 行）承载了 MCP 客户端池的全部实现（连接、重连、OAuth、shutdown）。`peri-middlewares/src/tools/filesystem/grep.rs`（1162 行）混合了工具定义、参数解析、ripgrep 集成和结果格式化。两个文件职责过重，应按功能拆分。
 
 ## 现状数据
 
 | 文件 | 行数 | 主要职责 |
 |------|------|---------|
-| `rust-agent-middlewares/src/mcp/client.rs` | 1309 | McpClientPool 全部实现 |
-| `rust-agent-middlewares/src/tools/filesystem/grep.rs` | 1162 | GrepTool 全部实现 |
+| `peri-middlewares/src/mcp/client.rs` | 1309 | McpClientPool 全部实现 |
+| `peri-middlewares/src/tools/filesystem/grep.rs` | 1162 | GrepTool 全部实现 |
 
 ### `client.rs` 内部分布
 
@@ -38,9 +38,9 @@
 
 | 文件 | 行数 | 说明 |
 |------|------|------|
-| `rust-agent-middlewares/src/subagent/tool.rs` | 980 | SubAgentTool + 4 种执行路径 + 中间件链构建 |
-| `rust-agent-middlewares/src/middleware/web.rs` | 773 | WebFetchTool + WebSearchTool + SSRF 防护混合 |
-| `rust-agent-middlewares/src/hooks/types.rs` | 854 | HookEvent + 7 个 HookInput 工厂方法 |
+| `peri-middlewares/src/subagent/tool.rs` | 980 | SubAgentTool + 4 种执行路径 + 中间件链构建 |
+| `peri-middlewares/src/middleware/web.rs` | 773 | WebFetchTool + WebSearchTool + SSRF 防护混合 |
+| `peri-middlewares/src/hooks/types.rs` | 854 | HookEvent + 7 个 HookInput 工厂方法 |
 
 ## 期望改进方向
 
@@ -74,8 +74,8 @@ middleware/
 
 ## 涉及文件
 
-- `rust-agent-middlewares/src/mcp/client.rs`（1309 行）
-- `rust-agent-middlewares/src/tools/filesystem/grep.rs`（1162 行）
-- `rust-agent-middlewares/src/subagent/tool.rs`（980 行）
-- `rust-agent-middlewares/src/middleware/web.rs`（773 行）
-- `rust-agent-middlewares/src/hooks/types.rs`（854 行）
+- `peri-middlewares/src/mcp/client.rs`（1309 行）
+- `peri-middlewares/src/tools/filesystem/grep.rs`（1162 行）
+- `peri-middlewares/src/subagent/tool.rs`（980 行）
+- `peri-middlewares/src/middleware/web.rs`（773 行）
+- `peri-middlewares/src/hooks/types.rs`（854 行）

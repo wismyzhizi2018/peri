@@ -9,9 +9,9 @@
 ## 改动总览
 
 本计划（spec-plan-1）覆盖核心层 compact 子系统的 4 个 Task：配置结构、工具对保护、Micro-compact 增强、Full Compact 增强。
-- 涉及 `rust-create-agent/src/agent/compact/` 目录（config.rs / invariant.rs / micro.rs / full.rs / mod.rs）和 `rust-create-agent/src/agent/` 目录（mod.rs / token.rs）
+- 涉及 `peri-agent/src/agent/compact/` 目录（config.rs / invariant.rs / micro.rs / full.rs / mod.rs）和 `peri-agent/src/agent/` 目录（mod.rs / token.rs）
 - Task 依赖链：Task 1（CompactConfig）→ Task 2（invariant）→ Task 3（micro，依赖 config + invariant）→ Task 4（full，依赖 config + invariant）
-- 关键决策：compact 核心逻辑全部放在 `rust-create-agent` 核心层，通过 `BaseModel` trait 调用 LLM，保持框架独立性；TUI 层集成在 spec-plan-2 中处理
+- 关键决策：compact 核心逻辑全部放在 `peri-agent` 核心层，通过 `BaseModel` trait 调用 LLM，保持框架独立性；TUI 层集成在 spec-plan-2 中处理
 
 ---
 
@@ -23,15 +23,15 @@
 **执行步骤:**
 - [x] 验证 Cargo 构建工具可用
   - `cargo --version`
-- [x] 验证 rust-create-agent crate 可独立构建
-  - `cargo build -p rust-create-agent 2>&1 | tail -5`
+- [x] 验证 peri-agent crate 可独立构建
+  - `cargo build -p peri-agent 2>&1 | tail -5`
 
 **检查步骤:**
 - [x] 构建命令执行成功
-  - `cargo build -p rust-create-agent 2>&1 | tail -3`
+  - `cargo build -p peri-agent 2>&1 | tail -3`
   - 预期: 输出包含 "Finished" 或 "Compiling"，无 error
 - [x] 测试命令可用
-  - `cargo test -p rust-create-agent --lib 2>&1 | tail -5`
+  - `cargo test -p peri-agent --lib 2>&1 | tail -5`
   - 预期: 输出包含 "test result:"，无配置错误
 
 ---
@@ -42,19 +42,19 @@
 Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_threshold 0.85、warning_threshold 0.70）硬编码在 `token.rs` 的 `ContextBudget` 常量中，工具白名单、重新注入预算等参数无处配置。本 Task 新建 `CompactConfig` 结构体，集中管理 compact 系统的全部可配置参数，支持 serde 反序列化（从 settings.json 读取）和环境变量运行时覆盖。后续 Task 2-6 的 MicroCompact、FullCompact、ReInjector 等组件将直接引用 `CompactConfig` 字段驱动行为。
 
 **涉及文件:**
-- 新建: `rust-create-agent/src/agent/compact/config.rs`
-- 新建: `rust-create-agent/src/agent/compact/mod.rs`
-- 修改: `rust-create-agent/src/agent/mod.rs`
+- 新建: `peri-agent/src/agent/compact/config.rs`
+- 新建: `peri-agent/src/agent/compact/mod.rs`
+- 修改: `peri-agent/src/agent/mod.rs`
 
 **执行步骤:**
 
 - [x] 新建 `compact/mod.rs` 模块入口文件
-  - 位置: `rust-create-agent/src/agent/compact/mod.rs`（新文件）
+  - 位置: `peri-agent/src/agent/compact/mod.rs`（新文件）
   - 内容: 声明 `pub mod config;` 和 `pub use config::CompactConfig;`，为后续 Task 预留扩展点
   - 原因: 作为 compact 子系统的模块入口，后续 Task 在此添加 micro / full / invariant / re_inject 子模块声明
 
 - [x] 新建 `CompactConfig` 结构体
-  - 位置: `rust-create-agent/src/agent/compact/config.rs`（新文件）
+  - 位置: `peri-agent/src/agent/compact/config.rs`（新文件）
   - 引入依赖: `use serde::{Deserialize, Serialize};`，`use std::env;`
   - 定义默认工具白名单常量:
     ```rust
@@ -113,7 +113,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: 每个字段使用独立的 default 函数，确保 serde 反序列化时部分字段缺失也能正确填充默认值，与项目中 `ThinkingConfig` / `AppConfig` 的模式一致
 
 - [x] 实现 `CompactConfig::default()` 方法
-  - 位置: `rust-create-agent/src/agent/compact/config.rs`，在 `CompactConfig` 定义之后
+  - 位置: `peri-agent/src/agent/compact/config.rs`，在 `CompactConfig` 定义之后
   - 使用 `impl Default for CompactConfig`:
     ```rust
     impl Default for CompactConfig {
@@ -138,7 +138,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: `Default` trait 允许 `CompactConfig::default()` 直接构造，用于不通过 settings.json 的场景（如测试、headless 模式）
 
 - [x] 实现 `CompactConfig::from_env()` 方法 — 环境变量覆盖
-  - 位置: `rust-create-agent/src/agent/compact/config.rs`，在 `impl Default` 之后
+  - 位置: `peri-agent/src/agent/compact/config.rs`，在 `impl Default` 之后
   - 方法签名: `pub fn from_env() -> Self`
   - 逻辑:
     ```rust
@@ -185,16 +185,16 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: 支持三种环境变量覆盖模式——`DISABLE_COMPACT` 完全禁用（micro 阈值设为 1.0 永不触发）、`DISABLE_AUTO_COMPACT` 仅禁用自动触发、`COMPACT_THRESHOLD` 覆盖自动压缩阈值。`from_env()` 用于无 settings.json 的场景，`apply_env_overrides()` 用于在 settings.json 配置基础上叠加环境变量覆盖
 
 - [x] 修改 `agent/mod.rs`，注册 compact 模块
-  - 位置: `rust-create-agent/src/agent/mod.rs`（现有文件）
+  - 位置: `peri-agent/src/agent/mod.rs`（现有文件）
   - 在 `pub mod token;` 行之后添加 `pub mod compact;`
   - 在 `pub use token::{...};` 行之后添加:
     ```rust
     pub use compact::CompactConfig;
     ```
-  - 原因: 将 compact 子模块暴露为 agent 模块的公共 API，下游 crate（rust-agent-tui）通过 `rust_create_agent::agent::CompactConfig` 引用
+  - 原因: 将 compact 子模块暴露为 agent 模块的公共 API，下游 crate（peri-tui）通过 `peri_agent::agent::CompactConfig` 引用
 
 - [x] 为 `CompactConfig` 编写单元测试
-  - 测试文件: `rust-create-agent/src/agent/compact/config.rs`（内联 `#[cfg(test)] mod tests`）
+  - 测试文件: `peri-agent/src/agent/compact/config.rs`（内联 `#[cfg(test)] mod tests`）
   - 测试场景:
     - `test_default_values`: `CompactConfig::default()` → 所有字段等于预期默认值（auto_compact_enabled=true, auto_compact_threshold=0.85, micro_compact_threshold=0.70, micro_compact_stale_steps=5, micro_compactable_tools 包含 6 个默认工具, summary_max_tokens=16000, re_inject_max_files=5, re_inject_max_tokens_per_file=5000, re_inject_file_budget=25000, re_inject_skills_budget=25000, max_consecutive_failures=3, ptl_max_retries=3）
     - `test_serde_roundtrip`: 构造自定义 `CompactConfig`（修改 3 个字段的值）→ serde_json 序列化 → 反序列化 → 断言所有字段与原始值一致
@@ -208,29 +208,29 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
     - `test_apply_env_overrides_on_custom_config`: 构造 `CompactConfig { auto_compact_threshold: 0.90, ..Default::default() }` → 设置 `COMPACT_THRESHOLD=0.80` → 调用 `apply_env_overrides()` → 断言 `auto_compact_threshold==0.80`（环境变量覆盖 settings.json 的值）
     - `test_compactable_tools_default_content`: 验证 `default().micro_compactable_tools` 包含 `["bash", "read_file", "glob_files", "search_files_rg", "write_file", "edit_file"]` 且长度为 6
   - 环境变量测试使用 `std::env::set_var` / `std::env::remove_var`，每个测试函数在开始时清理、结束时恢复，避免测试间污染
-  - 运行命令: `cargo test -p rust-create-agent --lib -- config::tests`
+  - 运行命令: `cargo test -p peri-agent --lib -- config::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 compact 模块编译通过
-  - `cargo build -p rust-create-agent 2>&1 | tail -5`
-  - 预期: 输出包含 "Compiling rust-create-agent" 且无 error
+  - `cargo build -p peri-agent 2>&1 | tail -5`
+  - 预期: 输出包含 "Compiling peri-agent" 且无 error
 
 - [x] 验证 CompactConfig 在 agent 模块中正确导出
-  - `grep -n 'pub mod compact' rust-create-agent/src/agent/mod.rs && grep -n 'pub use compact' rust-create-agent/src/agent/mod.rs`
+  - `grep -n 'pub mod compact' peri-agent/src/agent/mod.rs && grep -n 'pub use compact' peri-agent/src/agent/mod.rs`
   - 预期: 输出两行，分别包含 `pub mod compact` 和 `pub use compact::CompactConfig`
 
 - [x] 验证 config.rs 结构体字段与设计规格一致
-  - `grep -c 'pub ' rust-create-agent/src/agent/compact/config.rs`
+  - `grep -c 'pub ' peri-agent/src/agent/compact/config.rs`
   - 预期: 计数 >= 12（对应 12 个 pub 字段）
 
 - [x] 验证全部单元测试通过
-  - `cargo test -p rust-create-agent --lib -- config::tests 2>&1 | tail -20`
+  - `cargo test -p peri-agent --lib -- config::tests 2>&1 | tail -20`
   - 预期: 输出包含 "test result: ok" 且无 FAILED
 
 - [x] 验证全量测试无回归
-  - `cargo test -p rust-create-agent 2>&1 | tail -10`
+  - `cargo test -p peri-agent 2>&1 | tail -10`
   - 预期: 输出包含 "test result: ok"
 
 ---
@@ -241,13 +241,13 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
 当前 `micro_compact()` 函数按固定 `keep_recent` 位置截断，不感知工具调用对（Ai 消息含 `tool_calls` → 后续 Tool 消息用 `tool_call_id` 引用）的关联关系，可能拆开一对中的 Ai 父消息和 Tool 子消息，或仅清除同一 Ai 消息对应的多个 Tool 消息中的部分，破坏 API 级别的消息完整性约束。本 Task 新建 `invariant.rs` 模块，实现消息按 API round 分组的 `group_messages_by_round()` 函数和清除边界调整函数 `adjust_index_to_preserve_invariants()`，供后续 Task 3（Micro-compact 增强）和 Task 4（Full Compact PTL 降级）直接调用。
 
 **涉及文件:**
-- 新建: `rust-create-agent/src/agent/compact/invariant.rs`
-- 修改: `rust-create-agent/src/agent/compact/mod.rs`（Task 1 创建，添加 `pub mod invariant;`）
+- 新建: `peri-agent/src/agent/compact/invariant.rs`
+- 修改: `peri-agent/src/agent/compact/mod.rs`（Task 1 创建，添加 `pub mod invariant;`）
 
 **执行步骤:**
 
 - [x] 新建 `invariant.rs`，实现 `MessageRound` 分组结构体
-  - 位置: `rust-create-agent/src/agent/compact/invariant.rs`（新文件）
+  - 位置: `peri-agent/src/agent/compact/invariant.rs`（新文件）
   - 引入依赖: `use crate::messages::BaseMessage;`
   - 定义 `MessageRound` 结构体:
     ```rust
@@ -266,7 +266,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: PTL 降级（Task 4）需要按 round 粒度删除消息组，`MessageRound` 提供每个 round 的索引范围和关联的工具调用 ID
 
 - [x] 实现 `group_messages_by_round()` 函数
-  - 位置: `rust-create-agent/src/agent/compact/invariant.rs`，在 `MessageRound` 定义之后
+  - 位置: `peri-agent/src/agent/compact/invariant.rs`，在 `MessageRound` 定义之后
   - 函数签名: `pub fn group_messages_by_round(messages: &[BaseMessage]) -> Vec<MessageRound>`
   - 核心逻辑:
     ```rust
@@ -327,7 +327,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: `group_messages_by_round()` 是 PTL 降级（Task 4）的基础——按 round 粒度删除消息以缩减 prompt 长度
 
 - [x] 实现 `find_tool_pair_boundary()` 辅助函数
-  - 位置: `rust-create-agent/src/agent/compact/invariant.rs`，在 `group_messages_by_round()` 之后
+  - 位置: `peri-agent/src/agent/compact/invariant.rs`，在 `group_messages_by_round()` 之后
   - 函数签名: `fn find_tool_pair_boundary(messages: &[BaseMessage], index: usize) -> (usize, usize)`
   - 功能: 给定一个索引 `index`，如果 `messages[index]` 是一条 Tool 消息，向前查找包含其 `tool_call_id` 的 Ai 消息，向后查找同一 Ai 消息的所有其他 Tool 消息，返回完整工具对的 `[start, end)` 范围；如果 `messages[index]` 不是 Tool 消息，返回 `(index, index + 1)`
   - 核心逻辑:
@@ -375,7 +375,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: `adjust_index_to_preserve_invariants()` 需要在边界处快速定位一个索引的完整工具对范围，此辅助函数封装了前向/后向扫描逻辑
 
 - [x] 实现 `adjust_index_to_preserve_invariants()` 核心函数
-  - 位置: `rust-create-agent/src/agent/compact/invariant.rs`，在 `find_tool_pair_boundary()` 之后
+  - 位置: `peri-agent/src/agent/compact/invariant.rs`，在 `find_tool_pair_boundary()` 之后
   - 函数签名: `pub fn adjust_index_to_preserve_invariants(messages: &[BaseMessage], start: usize, end: usize) -> (usize, usize)`
   - 功能: 给定一个清除范围 `[start, end)`，调整边界以确保不会拆开工具对。返回调整后的 `[adjusted_start, adjusted_end)`
   - 核心逻辑:
@@ -435,7 +435,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: 此函数是 Micro-compact（Task 3）和 Full Compact PTL 降级（Task 4）的核心保护机制，确保压缩操作不会产生 API 不合法的消息序列
 
 - [x] 修改 `compact/mod.rs`，注册 `invariant` 子模块并导出公共 API
-  - 位置: `rust-create-agent/src/agent/compact/mod.rs`（Task 1 创建）
+  - 位置: `peri-agent/src/agent/compact/mod.rs`（Task 1 创建）
   - 在 `pub mod config;` 行之后添加:
     ```rust
     pub mod invariant;
@@ -451,7 +451,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: 将 invariant 模块的三个公共 API 暴露为 compact 模块的公共 API，供 Task 3/4 通过 `crate::agent::compact::adjust_index_to_preserve_invariants` 调用
 
 - [x] 为 `invariant` 模块编写单元测试
-  - 测试文件: `rust-create-agent/src/agent/compact/invariant.rs`（内联 `#[cfg(test)] mod tests`）
+  - 测试文件: `peri-agent/src/agent/compact/invariant.rs`（内联 `#[cfg(test)] mod tests`）
   - 引入测试依赖:
     ```rust
     use crate::messages::{BaseMessage, MessageContent, ToolCallRequest};
@@ -501,29 +501,29 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
       - `test_adjust_empty_messages`: `[]`，`adjust(0, 0)` → `(0, 0)`
       - `test_adjust_full_range`: 任意消息序列，`adjust(0, len)` → `(0, len)`（全范围不调整）
       - `test_adjust_start_at_end`: 任意消息序列，`adjust(len, len)` → `(len, len)`（空范围）
-    - 运行命令: `cargo test -p rust-create-agent --lib -- compact::invariant::tests`
+    - 运行命令: `cargo test -p peri-agent --lib -- compact::invariant::tests`
     - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 invariant.rs 编译通过
-  - `cargo build -p rust-create-agent 2>&1 | tail -5`
-  - 预期: 输出包含 "Compiling rust-create-agent" 且无 error
+  - `cargo build -p peri-agent 2>&1 | tail -5`
+  - 预期: 输出包含 "Compiling peri-agent" 且无 error
 
 - [x] 验证 invariant 模块在 compact/mod.rs 中正确注册
-  - `grep -n 'pub mod invariant' rust-create-agent/src/agent/compact/mod.rs && grep -n 'pub use invariant' rust-create-agent/src/agent/compact/mod.rs`
+  - `grep -n 'pub mod invariant' peri-agent/src/agent/compact/mod.rs && grep -n 'pub use invariant' peri-agent/src/agent/compact/mod.rs`
   - 预期: 输出两行，分别包含 `pub mod invariant` 和 `pub use invariant::{`
 
 - [x] 验证公共 API 导出完整
-  - `grep -c 'adjust_index_to_preserve_invariants\|group_messages_by_round\|MessageRound' rust-create-agent/src/agent/compact/mod.rs`
+  - `grep -c 'adjust_index_to_preserve_invariants\|group_messages_by_round\|MessageRound' peri-agent/src/agent/compact/mod.rs`
   - 预期: 计数 >= 3（三个导出项各出现一次）
 
 - [x] 验证全部单元测试通过
-  - `cargo test -p rust-create-agent --lib -- compact::invariant::tests 2>&1 | tail -20`
+  - `cargo test -p peri-agent --lib -- compact::invariant::tests 2>&1 | tail -20`
   - 预期: 输出包含 "test result: ok" 且无 FAILED
 
 - [x] 验证全量测试无回归
-  - `cargo test -p rust-create-agent 2>&1 | tail -10`
+  - `cargo test -p peri-agent 2>&1 | tail -10`
   - 预期: 输出包含 "test result: ok"
 
 ---
@@ -534,14 +534,14 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
 现有 `micro_compact()` 函数（`token.rs:96-110`）仅按字符数阈值（500 字符）机械清除旧工具结果，不区分工具类型（可能清除 `ask_user_question` 等重要交互结果）、不感知时间衰减（刚执行的 `bash` 结果与 20 步前的结果同等对待）、不清除图片/大文档等高 token 内容块、不保护工具对完整性（可能拆开 Ai 父消息与 Tool 子消息的关联）。本 Task 新建 `micro.rs` 模块，实现增强版 `micro_compact_enhanced()` 函数：基于 `CompactConfig.micro_compactable_tools` 白名单过滤、基于 `micro_compact_stale_steps` 时间衰减判断、图片/大文档 ContentBlock 清除、调用 `adjust_index_to_preserve_invariants()` 保护工具对完整性。同时将旧 `micro_compact()` 标记为 `#[deprecated]`，引导调用方迁移到新函数。本 Task 的输出是 Task 6（`compact_task()` 统一入口重写）中 Micro-compact 调用链的核心组件。
 
 **涉及文件:**
-- 新建: `rust-create-agent/src/agent/compact/micro.rs`
-- 修改: `rust-create-agent/src/agent/compact/mod.rs`（Task 1 创建，添加 `pub mod micro;`）
-- 修改: `rust-create-agent/src/agent/token.rs`（标记旧函数 `#[deprecated]`）
+- 新建: `peri-agent/src/agent/compact/micro.rs`
+- 修改: `peri-agent/src/agent/compact/mod.rs`（Task 1 创建，添加 `pub mod micro;`）
+- 修改: `peri-agent/src/agent/token.rs`（标记旧函数 `#[deprecated]`）
 
 **执行步骤:**
 
 - [x] 新建 `micro.rs`，实现辅助函数 `estimate_tokens()`
-  - 位置: `rust-create-agent/src/agent/compact/micro.rs`（新文件）
+  - 位置: `peri-agent/src/agent/compact/micro.rs`（新文件）
   - 引入依赖:
     ```rust
     use crate::agent::compact::config::CompactConfig;
@@ -558,7 +558,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: 图片/文档清除时需判断 token 大小是否超过阈值，使用字符数/4 估算（与设计规格一致）
 
 - [x] 实现 `find_tool_name_for_tool_result()` 辅助函数
-  - 位置: `rust-create-agent/src/agent/compact/micro.rs`，在 `estimate_tokens()` 之后
+  - 位置: `peri-agent/src/agent/compact/micro.rs`，在 `estimate_tokens()` 之后
   - 函数签名: `fn find_tool_name_for_tool_result(messages: &[BaseMessage], tool_call_id: &str) -> Option<String>`
   - 核心逻辑:
     ```rust
@@ -580,7 +580,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: `micro_compact_enhanced()` 需要根据工具名判断是否在白名单中，而 Tool 消息本身不存储工具名，必须回溯到对应的 Ai 消息的 `tool_calls` 中查找
 
 - [x] 实现 `compact_tool_result_content()` 辅助函数
-  - 位置: `rust-create-agent/src/agent/compact/micro.rs`，在 `find_tool_name_for_tool_result()` 之后
+  - 位置: `peri-agent/src/agent/compact/micro.rs`，在 `find_tool_name_for_tool_result()` 之后
   - 函数签名: `fn compact_tool_result_content(content: &mut MessageContent, config: &CompactConfig) -> bool`
   - 功能: 对单条 Tool 消息的 content 执行图片/文档清除。返回 `true` 表示内容被修改
   - 核心逻辑:
@@ -643,7 +643,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: 图片 Base64 编码和大型文档是 token 消耗的主要来源，替换为占位符可大幅降低上下文占用
 
 - [x] 实现 `micro_compact_enhanced()` 核心函数
-  - 位置: `rust-create-agent/src/agent/compact/micro.rs`，在 `compact_tool_result_content()` 之后
+  - 位置: `peri-agent/src/agent/compact/micro.rs`，在 `compact_tool_result_content()` 之后
   - 函数签名:
     ```rust
     /// 增强版 Micro-compact
@@ -757,7 +757,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: 替换 `token.rs` 中简单粗暴的 `micro_compact()`，引入白名单、时间衰减、图片清除、工具对保护四重策略
 
 - [x] 修改 `compact/mod.rs`，注册 `micro` 子模块并导出公共 API
-  - 位置: `rust-create-agent/src/agent/compact/mod.rs`（Task 1 创建）
+  - 位置: `peri-agent/src/agent/compact/mod.rs`（Task 1 创建）
   - 在 `pub mod invariant;` 行之后添加:
     ```rust
     pub mod micro;
@@ -769,7 +769,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: 将增强版 micro_compact_enhanced 暴露为 compact 模块的公共 API，供 Task 6 的 `compact_task()` 统一入口调用
 
 - [x] 标记旧 `micro_compact()` 为 `#[deprecated]`
-  - 位置: `rust-create-agent/src/agent/token.rs`，在 `pub fn micro_compact` 函数定义之前（~L93）
+  - 位置: `peri-agent/src/agent/token.rs`，在 `pub fn micro_compact` 函数定义之前（~L93）
   - 在 `/// 轻量级压缩：清除旧工具结果中的大段内容` 文档注释之前添加:
     ```rust
     #[deprecated(
@@ -780,7 +780,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: 保留旧函数保证编译兼容性（现有测试仍能运行），引导新代码使用增强版。待 Task 6 的 `compact_task()` 重写完成后可在后续版本移除
 
 - [x] 为 `micro` 模块编写单元测试
-  - 测试文件: `rust-create-agent/src/agent/compact/micro.rs`（内联 `#[cfg(test)] mod tests`）
+  - 测试文件: `peri-agent/src/agent/compact/micro.rs`（内联 `#[cfg(test)] mod tests`）
   - 引入测试依赖:
     ```rust
     use super::*;
@@ -884,37 +884,37 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
       - 输入: bash + ask_user_question + bash 混合序列
       - 预期: 仅 bash 结果被清除，ask_user_question 保持原样
 
-  - 运行命令: `cargo test -p rust-create-agent --lib -- compact::micro::tests`
+  - 运行命令: `cargo test -p peri-agent --lib -- compact::micro::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 micro.rs 编译通过
-  - `cargo build -p rust-create-agent 2>&1 | tail -5`
-  - 预期: 输出包含 "Compiling rust-create-agent" 且无 error
+  - `cargo build -p peri-agent 2>&1 | tail -5`
+  - 预期: 输出包含 "Compiling peri-agent" 且无 error
 
 - [x] 验证 micro 模块在 compact/mod.rs 中正确注册
-  - `grep -n 'pub mod micro' rust-create-agent/src/agent/compact/mod.rs && grep -n 'pub use micro' rust-create-agent/src/agent/compact/mod.rs`
+  - `grep -n 'pub mod micro' peri-agent/src/agent/compact/mod.rs && grep -n 'pub use micro' peri-agent/src/agent/compact/mod.rs`
   - 预期: 输出两行，分别包含 `pub mod micro` 和 `pub use micro::micro_compact_enhanced`
 
 - [x] 验证旧 micro_compact 标记为 deprecated
-  - `grep -n 'deprecated' rust-create-agent/src/agent/token.rs`
+  - `grep -n 'deprecated' peri-agent/src/agent/token.rs`
   - 预期: 输出包含 `#[deprecated` 且 note 中包含 `micro_compact_enhanced`
 
 - [x] 验证 micro_compact_enhanced 函数签名完整
-  - `grep -n 'pub fn micro_compact_enhanced' rust-create-agent/src/agent/compact/micro.rs`
+  - `grep -n 'pub fn micro_compact_enhanced' peri-agent/src/agent/compact/micro.rs`
   - 预期: 输出一行，包含 `config: &CompactConfig, messages: &mut [BaseMessage]`
 
 - [x] 验证全部单元测试通过
-  - `cargo test -p rust-create-agent --lib -- compact::micro::tests 2>&1 | tail -20`
+  - `cargo test -p peri-agent --lib -- compact::micro::tests 2>&1 | tail -20`
   - 预期: 输出包含 "test result: ok" 且无 FAILED
 
 - [x] 验证旧 micro_compact 测试仍可通过（deprecated 函数不报错）
-  - `cargo test -p rust-create-agent --lib -- token::tests::test_micro_compact 2>&1 | tail -10`
+  - `cargo test -p peri-agent --lib -- token::tests::test_micro_compact 2>&1 | tail -10`
   - 预期: 输出包含 "test result: ok"
 
 - [x] 验证全量测试无回归
-  - `cargo test -p rust-create-agent 2>&1 | tail -10`
+  - `cargo test -p peri-agent 2>&1 | tail -10`
   - 预期: 输出包含 "test result: ok"
 
 ---
@@ -922,16 +922,16 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
 ### Task 4: Full Compact 策略增强
 
 **背景:**
-现有 `compact_task()`（`rust-agent-tui/src/app/agent.rs:302-396`）使用自由格式三段式摘要 prompt（`## 目标 / ## 已完成操作 / ## 关键发现`），无预处理（图片 Base64 浪费大量 token）、无后处理（`<analysis>` 块泄露到摘要中）、无 PTL 降级（压缩请求本身超长时直接报错）。本 Task 新建 `full.rs` 模块，实现增强版 Full Compact 策略：预处理（图片替换为 `[image]` + 每条消息截断）+ 结构化 9 段摘要模板 + 后处理（移除 `<analysis>` 块 + 提取 `<summary>`）+ PTL 降级重试（按 round 分组逐步删除最旧消息）。本 Task 依赖 Task 1 的 `CompactConfig`（`summary_max_tokens`、`ptl_max_retries`）和 Task 2 的 `group_messages_by_round`（PTL 降级按组删除）。本 Task 的输出 `full_compact()` 函数将被 Task 6 的 `compact_task()` 统一入口调用。
+现有 `compact_task()`（`peri-tui/src/app/agent.rs:302-396`）使用自由格式三段式摘要 prompt（`## 目标 / ## 已完成操作 / ## 关键发现`），无预处理（图片 Base64 浪费大量 token）、无后处理（`<analysis>` 块泄露到摘要中）、无 PTL 降级（压缩请求本身超长时直接报错）。本 Task 新建 `full.rs` 模块，实现增强版 Full Compact 策略：预处理（图片替换为 `[image]` + 每条消息截断）+ 结构化 9 段摘要模板 + 后处理（移除 `<analysis>` 块 + 提取 `<summary>`）+ PTL 降级重试（按 round 分组逐步删除最旧消息）。本 Task 依赖 Task 1 的 `CompactConfig`（`summary_max_tokens`、`ptl_max_retries`）和 Task 2 的 `group_messages_by_round`（PTL 降级按组删除）。本 Task 的输出 `full_compact()` 函数将被 Task 6 的 `compact_task()` 统一入口调用。
 
 **涉及文件:**
-- 新建: `rust-create-agent/src/agent/compact/full.rs`
-- 修改: `rust-create-agent/src/agent/compact/mod.rs`（Task 1 创建，添加 `pub mod full;`）
+- 新建: `peri-agent/src/agent/compact/full.rs`
+- 修改: `peri-agent/src/agent/compact/mod.rs`（Task 1 创建，添加 `pub mod full;`）
 
 **执行步骤:**
 
 - [x] 新建 `full.rs`，定义 `FullCompactResult` 结构体和模块导入
-  - 位置: `rust-create-agent/src/agent/compact/full.rs`（新文件）
+  - 位置: `peri-agent/src/agent/compact/full.rs`（新文件）
   - 引入依赖:
     ```rust
     use crate::agent::compact::config::CompactConfig;
@@ -955,7 +955,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: `FullCompactResult` 封装摘要文本和元数据，PTL 降级后 `messages_used` 可能小于原始消息数，供 `compact_task()` 记录日志和决策
 
 - [x] 实现 `preprocess_messages()` 预处理函数
-  - 位置: `rust-create-agent/src/agent/compact/full.rs`，在 `FullCompactResult` 定义之后
+  - 位置: `peri-agent/src/agent/compact/full.rs`，在 `FullCompactResult` 定义之后
   - 函数签名: `fn preprocess_messages(messages: &[BaseMessage], truncate_chars: usize) -> Vec<String>`
   - 核心逻辑:
     ```rust
@@ -1027,7 +1027,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: 预处理消除 Base64 图片的 token 浪费（一张典型图片的 Base64 约占 5K-50K 字符），截断过长的工具输出，为 LLM 生成高质量摘要提供精炼输入
 
 - [x] 实现 `postprocess_summary()` 后处理函数
-  - 位置: `rust-create-agent/src/agent/compact/full.rs`，在 `preprocess_messages()` 之后
+  - 位置: `peri-agent/src/agent/compact/full.rs`，在 `preprocess_messages()` 之后
   - 函数签名: `fn postprocess_summary(raw: &str) -> String`
   - 辅助函数 `remove_analysis_blocks()`:
     ```rust
@@ -1101,7 +1101,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: LLM 输出的 `<analysis>` 块是思考过程，不应包含在最终摘要中。提取 `<summary>` 内容确保只保留结构化摘要。使用纯字符串操作而非 regex 避免引入额外依赖。前缀说明帮助 agent 理解这是压缩后的上下文
 
 - [x] 实现 PTL 降级相关函数
-  - 位置: `rust-create-agent/src/agent/compact/full.rs`，在 `postprocess_summary()` 之后
+  - 位置: `peri-agent/src/agent/compact/full.rs`，在 `postprocess_summary()` 之后
   - 辅助函数 `is_ptl_error()`:
     ```rust
     /// 判断错误是否为 PTL（Prompt Too Long）错误
@@ -1137,7 +1137,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: PTL 降级按 round 粒度删除消息，保持 API 级别的消息完整性（不会拆开工具对）。每次降级删除至少 1 个 round，保留至少 1 个 round。`is_ptl_error()` 覆盖主流 LLM provider 的 PTL 错误信息模式
 
 - [x] 实现 `full_compact()` 核心异步函数
-  - 位置: `rust-create-agent/src/agent/compact/full.rs`，在 `truncate_for_ptl()` 之后
+  - 位置: `peri-agent/src/agent/compact/full.rs`，在 `truncate_for_ptl()` 之后
   - 函数签名:
     ```rust
     /// 执行 Full Compact：预处理 -> LLM 摘要 -> 后处理，支持 PTL 降级重试
@@ -1274,7 +1274,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: 替换 `compact_task()` 中的简单三段式摘要，引入结构化 9 段模板对齐 Claude Code 的摘要质量，PTL 降级确保超长对话也能成功压缩
 
 - [x] 修改 `compact/mod.rs`，注册 `full` 子模块并导出公共 API
-  - 位置: `rust-create-agent/src/agent/compact/mod.rs`（Task 1 创建）
+  - 位置: `peri-agent/src/agent/compact/mod.rs`（Task 1 创建）
   - 在 `pub mod micro;` 行之后添加:
     ```rust
     pub mod full;
@@ -1286,7 +1286,7 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
   - 原因: 将 `full_compact` 和 `FullCompactResult` 暴露为 compact 模块的公共 API，供 Task 6 的 `compact_task()` 统一入口调用，以及未来 `compact_task()` 重写时引用
 
 - [x] 为 `full` 模块编写单元测试
-  - 测试文件: `rust-create-agent/src/agent/compact/full.rs`（内联 `#[cfg(test)] mod tests`）
+  - 测试文件: `peri-agent/src/agent/compact/full.rs`（内联 `#[cfg(test)] mod tests`）
   - 引入测试依赖:
     ```rust
     use super::*;
@@ -1422,41 +1422,41 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
       - 输入: 构造 MockBaseModel 在 invoke 中返回 "connection refused" 错误（非 PTL 关键字）
       - 预期: 返回 Err，不触发 PTL 降级重试（call_count==1）
 
-  - 运行命令: `cargo test -p rust-create-agent --lib -- compact::full::tests`
+  - 运行命令: `cargo test -p peri-agent --lib -- compact::full::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 full.rs 编译通过
-  - `cargo build -p rust-create-agent 2>&1 | tail -5`
-  - 预期: 输出包含 "Compiling rust-create-agent" 且无 error
+  - `cargo build -p peri-agent 2>&1 | tail -5`
+  - 预期: 输出包含 "Compiling peri-agent" 且无 error
 
 - [x] 验证 full 模块在 compact/mod.rs 中正确注册
-  - `grep -n 'pub mod full' rust-create-agent/src/agent/compact/mod.rs && grep -n 'pub use full' rust-create-agent/src/agent/compact/mod.rs`
+  - `grep -n 'pub mod full' peri-agent/src/agent/compact/mod.rs && grep -n 'pub use full' peri-agent/src/agent/compact/mod.rs`
   - 预期: 输出两行，分别包含 `pub mod full` 和 `pub use full::{full_compact, FullCompactResult}`
 
 - [x] 验证 full_compact 函数签名完整
-  - `grep -n 'pub async fn full_compact' rust-create-agent/src/agent/compact/full.rs`
+  - `grep -n 'pub async fn full_compact' peri-agent/src/agent/compact/full.rs`
   - 预期: 输出一行，包含 `model: &dyn BaseModel, config: &CompactConfig, instructions: &str`
 
 - [x] 验证 9 段摘要模板存在
-  - `grep -c 'Primary Request and Intent' rust-create-agent/src/agent/compact/full.rs`
+  - `grep -c 'Primary Request and Intent' peri-agent/src/agent/compact/full.rs`
   - 预期: 计数 >= 1
 
 - [x] 验证 PTL 降级逻辑存在
-  - `grep -c 'is_ptl_error\|truncate_for_ptl' rust-create-agent/src/agent/compact/full.rs`
+  - `grep -c 'is_ptl_error\|truncate_for_ptl' peri-agent/src/agent/compact/full.rs`
   - 预期: 计数 >= 4（函数定义 + 调用各至少出现 2 次）
 
 - [x] 验证后处理函数存在
-  - `grep -c 'postprocess_summary\|remove_analysis_blocks\|extract_summary_content' rust-create-agent/src/agent/compact/full.rs`
+  - `grep -c 'postprocess_summary\|remove_analysis_blocks\|extract_summary_content' peri-agent/src/agent/compact/full.rs`
   - 预期: 计数 >= 6（三个函数各定义 + 调用）
 
 - [x] 验证全部单元测试通过
-  - `cargo test -p rust-create-agent --lib -- compact::full::tests 2>&1 | tail -20`
+  - `cargo test -p peri-agent --lib -- compact::full::tests 2>&1 | tail -20`
   - 预期: 输出包含 "test result: ok" 且无 FAILED
 
 - [x] 验证全量测试无回归
-  - `cargo test -p rust-create-agent 2>&1 | tail -10`
+  - `cargo test -p peri-agent 2>&1 | tail -10`
   - 预期: 输出包含 "test result: ok"
 
 ---
@@ -1465,33 +1465,33 @@ Compact 系统当前缺少统一的配置结构——阈值（如 auto_compact_t
 ### Task 5: 核心层 Compact 模块本地验收
 
 **前置条件:**
-- Task 1-4 全部完成，`rust-create-agent/src/agent/compact/` 目录包含 config.rs / invariant.rs / micro.rs / full.rs / mod.rs
+- Task 1-4 全部完成，`peri-agent/src/agent/compact/` 目录包含 config.rs / invariant.rs / micro.rs / full.rs / mod.rs
 - 构建环境可用
 
 **端到端验证:**
 
-1. 运行 rust-create-agent 全量测试确保无回归
-   - `cargo test -p rust-create-agent 2>&1 | tail -10`
+1. 运行 peri-agent 全量测试确保无回归
+   - `cargo test -p peri-agent 2>&1 | tail -10`
    - 预期: 全部测试通过，输出包含 "test result: ok"
    - ✅ 通过
 
 2. 验证 compact 模块导出完整
-   - `grep -c 'pub mod\|pub use' rust-create-agent/src/agent/compact/mod.rs`
+   - `grep -c 'pub mod\|pub use' peri-agent/src/agent/compact/mod.rs`
    - 预期: 至少 5 条导出（config / invariant / micro / full / CompactConfig）
    - ✅ 8 条导出
 
 3. 验证 CompactConfig 默认值完整
-   - `cargo test -p rust-create-agent --lib -- compact::config::tests::test_default 2>&1 | tail -5`
+   - `cargo test -p peri-agent --lib -- compact::config::tests::test_default 2>&1 | tail -5`
    - 预期: 测试通过
    - ✅ 通过
 
 4. 验证 micro_compact_enhanced 编译通过
-   - `cargo test -p rust-create-agent --lib -- compact::micro::tests 2>&1 | tail -5`
+   - `cargo test -p peri-agent --lib -- compact::micro::tests 2>&1 | tail -5`
    - 预期: 所有 micro 测试通过
    - ✅ 17 passed
 
 5. 验证 full_compact 编译通过
-   - `cargo test -p rust-create-agent --lib -- compact::full::tests 2>&1 | tail -5`
+   - `cargo test -p peri-agent --lib -- compact::full::tests 2>&1 | tail -5`
    - 预期: 所有 full 测试通过
    - ✅ 24 passed
 

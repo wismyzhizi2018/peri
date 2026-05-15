@@ -55,9 +55,9 @@ agent 完成后所有 System 消息被过滤不写入 `agent_state_messages`（`
 
 ## 修改文件
 
-- `rust-agent-middlewares/src/tool_search/tool_index.rs` — `cached_prompt` 字段 + `format_deferred_list` 排序
-- `rust-agent-middlewares/src/tool_search/middleware.rs` — 首次构建+缓存，后续注入缓存内容
-- `rust-create-agent/src/agent/executor/mod.rs` — `tool_refs` 按名称排序
-- `rust-agent-tui/src/app/agent_comm.rs` — 新增 `tool_search_index`/`shared_tools` session 级字段
-- `rust-agent-tui/src/app/agent.rs` — `AgentRunConfig` 新增字段，`run_universal_agent` 使用共享实例
-- `rust-agent-tui/src/app/agent_submit.rs` — 首次 submit 初始化，后续复用
+- `peri-middlewares/src/tool_search/tool_index.rs` — `cached_prompt` 字段 + `format_deferred_list` 排序
+- `peri-middlewares/src/tool_search/middleware.rs` — 首次构建+缓存，后续注入缓存内容
+- `peri-agent/src/agent/executor/mod.rs` — `tool_refs` 按名称排序
+- `peri-tui/src/app/agent_comm.rs` — 新增 `tool_search_index`/`shared_tools` session 级字段
+- `peri-tui/src/app/agent.rs` — `AgentRunConfig` 新增字段，`run_universal_agent` 使用共享实例
+- `peri-tui/src/app/agent_submit.rs` — 首次 submit 初始化，后续复用

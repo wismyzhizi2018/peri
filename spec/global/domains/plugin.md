@@ -149,7 +149,7 @@ load_merged_config()
 **摘要:** Claude Code 插件生态兼容：发现/安装/加载 commands/skills/MCP/agents
 **关键决策:**
 
-- Plugin 模块嵌入 rust-agent-middlewares（仿 MCP 中间件组织方式）
+- Plugin 模块嵌入 peri-middlewares（仿 MCP 中间件组织方式）
 - 兼容 Claude Code `plugin.json` 清单格式（commands/agents/skills/mcp_servers/hooks/lsp_servers/channels/options/settings）
 - Marketplace 来源：GitHub/URL/File/Directory/NPM 四种类型
 - 配置读取优先级：项目级 `.claude/settings.json` > 用户级 `~/.claude/settings.json` > managed-settings.json

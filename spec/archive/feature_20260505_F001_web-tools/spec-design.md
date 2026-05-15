@@ -2,7 +2,7 @@
 
 ## 概述
 
-新增 `WebMiddleware`，作为 `rust-agent-middlewares` 的一个中间件，提供两个工具：
+新增 `WebMiddleware`，作为 `peri-middlewares` 的一个中间件，提供两个工具：
 
 | 工具名 | 功能 | 核心依赖 |
 |--------|------|----------|
@@ -70,7 +70,7 @@ LLM 调用 WebFetch(url, prompt?)
 3. reqwest GET
    - 超时 30s，响应体上限 10MB
    - 最多跟随 5 次重定向
-   - User-Agent: perihelion/1.0
+   - User-Agent: peri/1.0
 4. Content-Type 判断：
    - text/html → html2text 转 Markdown
    - text/plain → 直接使用
@@ -105,13 +105,15 @@ LLM 调用 WebSearch(query, num_results?)
    - 截断单条 text 超过 500 字符
 5. 格式化为 Markdown 编号列表：
    ```
-   ## 搜索结果
+
+## 搜索结果
 
    1. **标题** - url
       摘要文本...
 
    2. **标题** - url
       摘要文本...
+
    ```
 6. 返回搜索结果文本
 ```
@@ -150,11 +152,11 @@ LLM 调用 WebSearch(query, num_results?)
 
 | 文件 | 变更类型 | 说明 |
 |------|----------|------|
-| `rust-agent-middlewares/src/middleware/web.rs` | 新增 | WebMiddleware + WebFetchTool + WebSearchTool（~300 行） |
-| `rust-agent-middlewares/src/middleware/mod.rs` | 修改 | 添加 `pub mod web;` |
-| `rust-agent-middlewares/src/hitl/mod.rs` | 修改 | 默认拦截清单添加 `WebFetch`、`WebSearch` |
-| `rust-agent-middlewares/Cargo.toml` | 修改 | 添加 `html2text` 依赖 |
-| `rust-agent-tui/src/app/agent.rs` | 修改 | 中间件链添加 `WebMiddleware::new()` |
+| `peri-middlewares/src/middleware/web.rs` | 新增 | WebMiddleware + WebFetchTool + WebSearchTool（~300 行） |
+| `peri-middlewares/src/middleware/mod.rs` | 修改 | 添加 `pub mod web;` |
+| `peri-middlewares/src/hitl/mod.rs` | 修改 | 默认拦截清单添加 `WebFetch`、`WebSearch` |
+| `peri-middlewares/Cargo.toml` | 修改 | 添加 `html2text` 依赖 |
+| `peri-tui/src/app/agent.rs` | 修改 | 中间件链添加 `WebMiddleware::new()` |
 | `CLAUDE.md` | 修改 | 中间件链文档更新 |
 
 ## 新增依赖
@@ -163,12 +165,12 @@ LLM 调用 WebSearch(query, num_results?)
 |-------|------|------|
 | `html2text` | HTML→Markdown 纯文本转换 | 最新稳定版 |
 
-`reqwest` 已在 `rust-agent-middlewares` 依赖中存在，无需新增。
+`reqwest` 已在 `peri-middlewares` 依赖中存在，无需新增。
 
 ## 代码结构
 
 ```rust
-// rust-agent-middlewares/src/middleware/web.rs
+// peri-middlewares/src/middleware/web.rs
 
 /// Web 中间件，提供 WebFetch 和 WebSearch 工具
 pub struct WebMiddleware;

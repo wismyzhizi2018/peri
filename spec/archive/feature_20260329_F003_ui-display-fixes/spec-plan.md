@@ -11,8 +11,8 @@
 ### Task 1: SubAgentGroup 内部消息去序号
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/message_render.rs`
-- 修改: `rust-agent-tui/src/ui/render_thread.rs`
+- 修改: `peri-tui/src/ui/message_render.rs`
+- 修改: `peri-tui/src/ui/render_thread.rs`
 
 **执行步骤:**
 - [x] 修改 `render_view_model` 签名：`index: usize` → `index: Option<usize>`
@@ -28,10 +28,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 无编译错误
 - [x] SubAgentGroup headless 测试通过
-  - `cargo test -p rust-agent-tui --lib -- test_subagent_group 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- test_subagent_group 2>&1 | tail -10`
   - 预期: 3 个 subagent group 测试通过
 
 ---
@@ -39,7 +39,7 @@
 ### Task 2: AI 消息去除 ToolUse 渲染
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/message_render.rs`
+- 修改: `peri-tui/src/ui/message_render.rs`
 
 **执行步骤:**
 - [x] 在 `AssistantBubble` 渲染循环中，将 `ContentBlockView::ToolUse` 分支改为 `continue`
@@ -49,10 +49,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 无编译错误
 - [x] headless 测试通过（验证 ToolBlock 仍然正确渲染）
-  - `cargo test -p rust-agent-tui --lib -- test_tool_call 2>&1 | tail -5`
+  - `cargo test -p peri-tui --lib -- test_tool_call 2>&1 | tail -5`
   - 预期: 测试通过
 
 ---
@@ -60,7 +60,7 @@
 ### Task 3: 弹窗高度上限提升
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
 
 **执行步骤:**
 - [x] 修改 `active_panel_height` 函数中的 `max_h` 计算
@@ -69,7 +69,7 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 无编译错误
 
 ---
@@ -77,27 +77,27 @@
 ### Task 4: UI Display Fixes Acceptance
 
 **Prerequisites:**
-- Start command: `cargo build -p rust-agent-tui`
+- Start command: `cargo build -p peri-tui`
 - 所有 Task 1-3 已完成
 
 **End-to-end verification:**
 
 1. [x] 全量测试通过
-   - `cargo test -p rust-agent-tui 2>&1 | tail -10`
+   - `cargo test -p peri-tui 2>&1 | tail -10`
    - Expected: 所有测试通过，无失败
    - On failure: 检查 Task 1 (签名变更) 和 Task 2 (ToolUse 跳过)
 
 2. [x] SubAgentGroup 内部消息无序号
-   - `cargo test -p rust-agent-tui --lib -- test_subagent_group_basic 2>&1 | tail -5`
+   - `cargo test -p peri-tui --lib -- test_subagent_group_basic 2>&1 | tail -5`
    - Expected: 测试通过，snapshot 中内部工具调用无 `0`、`01` 等序号前缀
    - On failure: 检查 Task 1
 
 3. [x] AI 消息无 ToolUse 行
-   - `cargo test -p rust-agent-tui --lib -- test_ai_message_with_only_tool_calls 2>&1 | tail -5`
+   - `cargo test -p peri-tui --lib -- test_ai_message_with_only_tool_calls 2>&1 | tail -5`
    - Expected: `message_view.rs` 单元测试通过（数据层不变，仅渲染层跳过）
    - On failure: 检查 Task 2
 
 4. [x] 弹窗高度计算正确
-   - `cargo test -p rust-agent-tui --lib -- test_subagent_group_basic 2>&1 | tail -5`
+   - `cargo test -p peri-tui --lib -- test_subagent_group_basic 2>&1 | tail -5`
    - Expected: 测试通过（弹窗高度变更不影响 headless 渲染逻辑）
    - On failure: 检查 Task 3

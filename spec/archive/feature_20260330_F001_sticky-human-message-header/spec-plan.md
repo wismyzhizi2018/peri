@@ -2,7 +2,7 @@
 
 **目标:** 在聊天区顶部新增 sticky header，始终显示最后一条 Human 消息
 
-**技术栈:** ratatui 0.30，rust-agent-tui
+**技术栈:** ratatui 0.30，peri-tui
 
 **设计文档:** spec-design.md
 
@@ -11,7 +11,7 @@
 ### Task 1: AppCore 新增状态字段
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/core.rs`
+- 修改: `peri-tui/src/app/core.rs`
 
 **执行步骤:**
 - [x] 在 `AppCore` struct 中新增 `last_human_message: Option<String>` 字段
@@ -20,7 +20,7 @@
 
 **检查步骤:**
 - [x] 编译通过，无字段缺失错误
-  - `cd rust-agent-tui && cargo build -p rust-agent-tui 2>&1 | tail -10`
+  - `cd peri-tui && cargo build -p peri-tui 2>&1 | tail -10`
   - 预期: 无 error 输出
 
 ---
@@ -28,7 +28,7 @@
 ### Task 2: 状态更新——submit_message
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`
+- 修改: `peri-tui/src/app/agent_ops.rs`
 
 **执行步骤:**
 - [x] 在 `submit_message()` 函数中，用户消息推入 `view_messages` 后，更新 `self.core.last_human_message = Some(display)`
@@ -37,7 +37,7 @@
 
 **检查步骤:**
 - [x] `submit_message` 后 `last_human_message` 有值
-  - `grep -n "last_human_message" rust-agent-tui/src/app/agent_ops.rs`
+  - `grep -n "last_human_message" peri-tui/src/app/agent_ops.rs`
   - 预期: 至少 1 处赋值
 
 ---
@@ -45,8 +45,8 @@
 ### Task 3: 状态更新——/clear 和 open_thread
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/thread_ops.rs`
-- 修改: `rust-agent-tui/src/app/core.rs`
+- 修改: `peri-tui/src/app/thread_ops.rs`
+- 修改: `peri-tui/src/app/core.rs`
 
 **执行步骤:**
 - [x] 在 `new_thread()` 函数末尾，添加 `self.core.last_human_message = None`
@@ -56,7 +56,7 @@
 
 **检查步骤:**
 - [x] `/clear` 后 `last_human_message` 为 None
-  - `grep -n "last_human_message" rust-agent-tui/src/app/thread_ops.rs`
+  - `grep -n "last_human_message" peri-tui/src/app/thread_ops.rs`
   - 预期: `new_thread` 中有赋值 `None`，`open_thread` 中有赋值 `Some`
 - [x] `open_thread` 正确提取 Human 消息文本
   - 逻辑确认：`base_msgs.iter().filter_map(|m| if let Human { content }| ...)` 模式
@@ -66,8 +66,8 @@
 ### Task 4: 新建 sticky_header.rs 渲染模块
 
 **涉及文件:**
-- 新建: `rust-agent-tui/src/ui/main_ui/sticky_header.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
+- 新建: `peri-tui/src/ui/main_ui/sticky_header.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
 
 **执行步骤:**
 - [x] 新建 `sticky_header.rs`，导出 `pub fn render_sticky_header(f: &mut Frame, app: &App, area: Rect)`
@@ -82,7 +82,7 @@
 
 **检查步骤:**
 - [x] 新文件已创建且语法正确
-  - `ls rust-agent-tui/src/ui/main_ui/sticky_header.rs`
+  - `ls peri-tui/src/ui/main_ui/sticky_header.rs`
   - 预期: 文件存在
 
 ---
@@ -90,7 +90,7 @@
 ### Task 5: main_ui.rs Layout 拆分与渲染集成
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
 
 **执行步骤:**
 - [x] 计算 `sticky_header_height`
@@ -113,10 +113,10 @@
 
 **检查步骤:**
 - [x] Layout constraints 包含 sticky header 约束
-  - `grep -n "sticky_header_height\|Length.*header" rust-agent-tui/src/ui/main_ui.rs`
+  - `grep -n "sticky_header_height\|Length.*header" peri-tui/src/ui/main_ui.rs`
   - 预期: 有 `Length(sticky_header_height)` 约束
 - [x] 编译通过（零新增错误）
-  - `cargo build -p rust-agent-tui 2>&1 | grep "^error" | head -20`
+  - `cargo build -p peri-tui 2>&1 | grep "^error" | head -20`
   - 预期: 无 error（warning 可以）
 
 ---
@@ -124,42 +124,42 @@
 ### Task 6: sticky-human-message-header Acceptance
 
 **Prerequisites:**
-- Start command: `cargo run -p rust-agent-tui`
+- Start command: `cargo run -p peri-tui`
 
 **End-to-end verification:**
 
 1. **空消息时无 header**
-   - `cargo test -p rust-agent-tui --lib -- test_sticky_header_hidden_when_no_messages`
+   - `cargo test -p peri-tui --lib -- test_sticky_header_hidden_when_no_messages`
    - Expected: test passes, no "> " in snapshot
    - On failure: 检查 Task 4 `area.height == 0` guard + Task 5 Layout `Length(sticky_header_height)`
 
 2. **发送消息后显示 header**
-   - `cargo test -p rust-agent-tui --lib -- test_sticky_header_shows_after_submit`
+   - `cargo test -p peri-tui --lib -- test_sticky_header_shows_after_submit`
    - Expected: test passes, "> " + "hello from" visible
    - On failure: 检查 Task 2 `submit_message` 中 `last_human_message` 更新 + Task 5 `render_sticky_header` 调用
 
 3. **滚动时 sticky 效果**
-   - `cargo run -p rust-agent-tui` → 发送消息 → Agent 回复后滚动 → header 固定不动
+   - `cargo run -p peri-tui` → 发送消息 → Agent 回复后滚动 → header 固定不动
    - Expected: header 始终可见，不随消息滚动
    - On failure: 检查 Task 5 Layout 中 sticky header 在 scrollable messages 上方
 
 4. **连续发消息显示最后一条**
-   - `cargo test -p rust-agent-tui --lib -- test_sticky_header_shows_last_message_not_first`
+   - `cargo test -p peri-tui --lib -- test_sticky_header_shows_last_message_not_first`
    - Expected: test passes, "second" visible, "first" absent
    - On failure: 检查 Task 2 `submit_message` 每次都覆盖更新
 
 5. **/clear 后 header 消失**
-   - `cargo test -p rust-agent-tui --lib -- test_sticky_header_hidden_after_clear`
+   - `cargo test -p peri-tui --lib -- test_sticky_header_hidden_after_clear`
    - Expected: test passes, " > " absent after new_thread
    - On failure: 检查 Task 3 `new_thread` 中 `last_human_message = None`
 
 6. **打开历史 thread 恢复 header**
-   - `cargo run -p rust-agent-tui` → 发送消息 → `/history` → 选择 thread → header 恢复
+   - `cargo run -p peri-tui` → 发送消息 → `/history` → 选择 thread → header 恢复
    - Expected: header 显示该 thread 最后一条 Human 消息
    - On failure: 检查 Task 3 `open_thread` 中 `last_human_message` 恢复逻辑
 
 7. **长消息截断**
-   - `cargo test -p rust-agent-tui --lib -- test_sticky_header_truncation_long_message`
+   - `cargo test -p peri-tui --lib -- test_sticky_header_truncation_long_message`
    - Expected: test passes, long message wrapped and truncated
    - On failure: 检查 Task 4 `estimate_header_lines` clamp 到 3 + `wrap_message` 函数
 

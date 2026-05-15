@@ -56,7 +56,7 @@
 - [x] 在 `web_ws_handler` 中：`user_id` 缺失时返回 `StatusCode::BAD_REQUEST`；存在时传递给对应 handler
 - [x] 在 `agents_handler` 中：`user_id` 缺失时返回 `StatusCode::BAD_REQUEST`；存在时传递给 `state.agents_list(user_id)`
 - [x] 在 `Router` 中注册 `POST /register` 路由：`.route("/register", post(register_handler))`
-  - `Cargo.toml` 中 `uuid` 依赖已存在于 `rust-create-agent`；在 `rust-relay-server/Cargo.toml` 中确认或添加 `uuid = { version = "1", features = ["v4"] }`
+  - `Cargo.toml` 中 `uuid` 依赖已存在于 `peri-agent`；在 `rust-relay-server/Cargo.toml` 中确认或添加 `uuid = { version = "1", features = ["v4"] }`
 
 **检查步骤:**
 
@@ -83,12 +83,12 @@
 - [x] `connect(url, token, name, user_id: &str)` 函数签名新增 `user_id` 参数
   - WS URL 拼接：`format!("{}/agent/ws?token={}&user_id={}", url, token, user_id)`
   - 若有 name，继续追加 `&name={}`
-- [x] 检查所有调用 `RelayClient::connect` 的位置（仅 `rust-agent-tui/src/app/mod.rs`），更新调用签名
+- [x] 检查所有调用 `RelayClient::connect` 的位置（仅 `peri-tui/src/app/mod.rs`），更新调用签名
 
 **检查步骤:**
 
 - [x] 编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | grep "^error" | head -5`
+  - `cargo build -p peri-tui 2>&1 | grep "^error" | head -5`
   - 预期: 无输出
 
 ---
@@ -97,8 +97,8 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/config/types.rs`
-- 修改: `rust-agent-tui/src/app/relay_panel.rs`
+- 修改: `peri-tui/src/config/types.rs`
+- 修改: `peri-tui/src/app/relay_panel.rs`
 
 **执行步骤:**
 
@@ -110,10 +110,10 @@
 **检查步骤:**
 
 - [x] RemoteControlConfig 序列化不含 user_id（当为 None）
-  - `cargo test -p rust-agent-tui --lib test_remote_control_config_skip_when_none 2>&1 | tail -5`
+  - `cargo test -p peri-tui --lib test_remote_control_config_skip_when_none 2>&1 | tail -5`
   - 预期: `test result: ok.`
 - [x] 编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | grep "^error" | head -5`
+  - `cargo build -p peri-tui 2>&1 | grep "^error" | head -5`
   - 预期: 无输出
 
 ---
@@ -122,8 +122,8 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/relay_ops.rs`
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/relay_ops.rs`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
 

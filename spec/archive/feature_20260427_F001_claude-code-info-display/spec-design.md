@@ -8,11 +8,11 @@
 2. **工具调用显示**：每个工具调用有独立的状态指示器（闪烁黑圆点 = 进行中，静态 = 完成/失败），参数一行摘要，结果可折叠/展开。Claude Code 使用 `ToolUseLoader` 组件实现闪烁效果。
 3. **对话信息流**：Markdown 渲染增强（代码块语法高亮、diff 着色）、SubAgent 调用折叠展示、思考内容可折叠。
 
-当前 perihelion 的 `status_bar.rs` 只显示 `⠿ 运行中`，没有动词提示；`message_render.rs` 的工具调用显示已有基础折叠但缺乏状态指示器；Markdown 渲染无代码高亮和 diff 着色。
+当前 peri 的 `status_bar.rs` 只显示 `⠿ 运行中`，没有动词提示；`message_render.rs` 的工具调用显示已有基础折叠但缺乏状态指示器；Markdown 渲染无代码高亮和 diff 着色。
 
 ## 目标
 
-- 在 `perihelion-widgets` crate 中新增 **SpinnerWidget**、**ToolCallWidget**、**MessageBlockWidget** 三个核心 widget
+- 在 `peri-widgets` crate 中新增 **SpinnerWidget**、**ToolCallWidget**、**MessageBlockWidget** 三个核心 widget
 - 对标 Claude Code 的 Spinner 动词体系，提供动态动作提示 + Token 计数 + 已用时间
 - 增强工具调用显示：状态指示器 + 智能折叠策略（只读默认折叠、写操作默认展开）
 - 优化对话信息流：Markdown 代码高亮 + diff 着色 + 思考内容折叠 + SubAgent 显示优化
@@ -21,10 +21,10 @@
 
 ### 架构设计
 
-在已有 `perihelion-widgets` crate 内新增 3 个 widget 模块：
+在已有 `peri-widgets` crate 内新增 3 个 widget 模块：
 
 ```
-perihelion-widgets/src/
+peri-widgets/src/
 ├── spinner/           # SpinnerWidget
 │   ├── mod.rs         # SpinnerWidget + SpinnerState + SpinnerMode 枚举
 │   ├── verb.rs        # 动词管理：从 TODO activeForm 取 / 随机动词池
@@ -136,12 +136,14 @@ pub struct ToolCallWidget<'a> {
 **头行**：`[状态指示器] 工具名 (参数摘要)`
 
 状态指示器：
+
 - Running：闪烁黑圆点 `●`（每 500ms 闪烁）
 - Completed：静态圆点 `●`
 - Failed：红叉 `✗`
 - Pending：暗淡圆点
 
 结果区域：
+
 - 折叠时只显示头行 `▸ 工具名 (参数)`
 - 展开时显示结果 `▾ 工具名 (参数)` + 结果内容（缩进 + `│` 前缀）
 - **智能默认折叠**：只读工具（read_file、glob_files、search_files_rg）默认折叠；写操作（write_file、edit_file、bash）默认展开
@@ -190,13 +192,15 @@ pub struct MessageBlockWidget<'a> {
 #### Markdown 渲染增强
 
 从现有 `markdown.rs` 迁移，增加：
+
 - **代码块语法高亮**：基于文件扩展名推断语言，用颜色区分关键字/字符串/注释（简单正则匹配，不引入完整 parser）
-- **diff 着色**：检测 `+`/`-`/`@@ ` 行前缀，绿色/红色/蓝色着色
+- **diff 着色**：检测 `+`/`-`/`@@` 行前缀，绿色/红色/蓝色着色
 - **内联代码**：反引号包裹的内容用不同背景色显示
 
 #### SubAgent 显示优化
 
 参考 Claude Code 的 `GroupedToolUseContent`（同批次工具调用折叠）：
+
 - SubAgent 内部工具调用只在展开时显示摘要（工具名列表）
 - 完成后显示结果前 100 字符预览
 - 步数 > 4 时默认折叠内部消息，只显示最近 4 步
@@ -232,12 +236,12 @@ pub struct MessageBlockWidget<'a> {
 ### 依赖
 
 - 无新外部依赖（代码高亮用正则实现，不用 tree-sitter）
-- 依赖已有的 `perihelion-widgets` crate（F001_ratatui-widget-lib）
+- 依赖已有的 `peri-widgets` crate（F001_ratatui-widget-lib）
 - 需要 TODO 任务列表提供 `activeForm` 字段（已支持）
 
 ## 约束一致性
 
-- **Workspace 分层**：新增 widget 在 `perihelion-widgets`（纯通用库），不依赖项目业务逻辑，符合「禁止下层依赖上层」约束
+- **Workspace 分层**：新增 widget 在 `peri-widgets`（纯通用库），不依赖项目业务逻辑，符合「禁止下层依赖上层」约束
 - **异步优先**：Widget 渲染本身是同步的（ratatui 的 render 在主线程），动画帧通过事件驱动，不阻塞异步运行时
 - **事件驱动通信**：Widget 不直接访问 Agent 事件 channel，通过 `State` 中间层传递数据，与「禁止共享可变状态」约束一致
 - **编码规范**：遵循 Rust 标准 PascalCase/snake_case 命名，widget 通过 `StatefulWidget` trait 实现
@@ -250,7 +254,7 @@ pub struct MessageBlockWidget<'a> {
 - [ ] ToolCallWidget 显示状态指示器（闪烁 = 运行中，静态 = 完成/失败）
 - [ ] 只读工具默认折叠，写操作默认展开
 - [ ] MessageBlockWidget 代码块有基本语法高亮
-- [ ] diff 内容（`+`/`-`/`@@ ` 行）有颜色区分
+- [ ] diff 内容（`+`/`-`/`@@` 行）有颜色区分
 - [ ] 思考内容默认折叠，可展开查看
 - [ ] SubAgent 调用步数 > 4 时自动折叠内部消息
 - [ ] 所有 widget 通过 ratatui tick 事件驱动动画，无额外线程

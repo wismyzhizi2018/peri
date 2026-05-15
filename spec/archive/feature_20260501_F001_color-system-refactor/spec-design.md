@@ -2,13 +2,13 @@
 
 ## 需求背景
 
-perihelion TUI 当前颜色系统（`theme.rs`）采用暖棕色调（ACCENT #FF6B2B、TEXT #DACED0 冷白、BORDER #302620 暖棕），与 Claude Code CLI 的视觉风格差异明显。Claude Code 使用中性暖橙 #D77757 为品牌色、纯白文字、中性灰层级，整体观感更现代、对比度更高。
+peri TUI 当前颜色系统（`theme.rs`）采用暖棕色调（ACCENT #FF6B2B、TEXT #DACED0 冷白、BORDER #302620 暖棕），与 Claude Code CLI 的视觉风格差异明显。Claude Code 使用中性暖橙 #D77757 为品牌色、纯白文字、中性灰层级，整体观感更现代、对比度更高。
 
 此外，当前约有 28 处硬编码颜色（`Color::White` 18 处、`Color::DarkGray` 3 处等）散落在 17 个文件中，未通过主题常量统一管理。
 
 ## 目标
 
-- 将 perihelion TUI 配色方案对齐到 Claude Code Dark 主题，提升视觉一致性和品牌辨识度
+- 将 peri TUI 配色方案对齐到 Claude Code Dark 主题，提升视觉一致性和品牌辨识度
 - 清理全部硬编码颜色，统一通过 `theme::*` 常量引用
 - 保持现有命名体系和代码结构不变，仅替换 RGB 值和新增必要常量
 
@@ -16,7 +16,7 @@ perihelion TUI 当前颜色系统（`theme.rs`）采用暖棕色调（ACCENT #FF
 
 ### 1. 现有常量 RGB 值更新
 
-`rust-agent-tui/src/ui/theme.rs` 中 12 个常量的 RGB 值从 Claude Code Dark 主题语义映射：
+`peri-tui/src/ui/theme.rs` 中 12 个常量的 RGB 值从 Claude Code Dark 主题语义映射：
 
 | 常量名 | 旧 RGB | 新 RGB | Claude 来源 |
 |--------|--------|--------|------------|
@@ -34,7 +34,7 @@ perihelion TUI 当前颜色系统（`theme.rs`）采用暖棕色调（ACCENT #FF
 | `CURSOR_BG` | (38,22,10) #261608 | (38,38,38) #262626 | 调整为中性 |
 | `MODEL_INFO` | (160,130,95) #A0825F | 保留不变 | 无对应 |
 
-**映射原则：** 保留 perihelion 语义命名（ACCENT、SAGE、MUTED 等），仅将 RGB 值替换为 Claude Dark 主题中对应语义的值。整体色调从暖棕系转为中性灰系，品牌色从橙红转为 Claude 暖橙。
+**映射原则：** 保留 peri 语义命名（ACCENT、SAGE、MUTED 等），仅将 RGB 值替换为 Claude Dark 主题中对应语义的值。整体色调从暖棕系转为中性灰系，品牌色从橙红转为 Claude 暖橙。
 
 ### 2. 新增常量
 
@@ -88,9 +88,9 @@ pub const BASH_BORDER: Color = Color::Rgb(253, 93, 177);
 - 每个常量的注释更新 RGB 值和 Claude 来源
 - `TUI-STYLE.md` 风格指南对应更新
 
-### 5. perihelion-widgets 主题适配
+### 5. peri-widgets 主题适配
 
-`perihelion-widgets` crate 中的 `Theme` trait 定义颜色查询接口，本次变更只需确认 widgets crate 的 Theme 实现能正确传递新 RGB 值即可，无需修改 trait 接口。
+`peri-widgets` crate 中的 `Theme` trait 定义颜色查询接口，本次变更只需确认 widgets crate 的 Theme 实现能正确传递新 RGB 值即可，无需修改 trait 接口。
 
 ## 实现要点
 
@@ -102,7 +102,7 @@ pub const BASH_BORDER: Color = Color::Rgb(253, 93, 177);
 ## 约束一致性
 
 - 符合 `spec/global/constraints.md` 中"字符串显示宽度"约束（颜色变更不影响宽度计算）
-- 符合 `spec/global/architecture.md` 中 Workspace 依赖方向（theme.rs 在 rust-agent-tui 内部，widgets crate 通过 Theme trait 解耦）
+- 符合 `spec/global/architecture.md` 中 Workspace 依赖方向（theme.rs 在 peri-tui 内部，widgets crate 通过 Theme trait 解耦）
 - 无新增外部依赖
 - 无架构偏离
 

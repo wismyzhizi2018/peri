@@ -2,7 +2,7 @@
 
 **目标:** TUI 配色系统降噪，橙色只留给最高优先级交互，其余靠 MUTED/WARNING 自然分层
 
-**技术栈:** ratatui 0.30，rust-agent-tui
+**技术栈:** ratatui 0.30，peri-tui
 
 **设计文档:** ./spec-design.md
 
@@ -11,7 +11,7 @@
 ### Task 1: Markdown 标题降噪
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/markdown/render_state.rs`
+- 修改: `peri-tui/src/ui/markdown/render_state.rs`
 
 **执行步骤:**
 - [x] 修改 `handle_event` 中 H1/H2 的颜色：`theme::ACCENT` → `theme::WARNING`
@@ -20,7 +20,7 @@
 
 **检查步骤:**
 - [x] 验证 render_state.rs 中 H1/H2 不再引用 theme::ACCENT
-  - `grep -n "ACCENT" rust-agent-tui/src/ui/markdown/render_state.rs`
+  - `grep -n "ACCENT" peri-tui/src/ui/markdown/render_state.rs`
   - 预期: H1/H2 分支消失，仅 H3 及其以上保留原样
 
 ---
@@ -28,7 +28,7 @@
 ### Task 2: 工具名颜色分级
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/message_view.rs`
+- 修改: `peri-tui/src/ui/message_view.rs`
 
 **执行步骤:**
 - [x] 重写 `tool_color(name: &str) -> Color` 函数：
@@ -50,10 +50,10 @@
 
 **检查步骤:**
 - [x] 验证 write_file/edit_file/folder_operations 返回 WARNING
-  - `grep -A5 "fn tool_color" rust-agent-tui/src/ui/message_view.rs | grep "WARNING"`
+  - `grep -A5 "fn tool_color" peri-tui/src/ui/message_view.rs | grep "WARNING"`
   - 预期: write_file/edit_file/folder_operations 在 WARNING 分支
 - [x] 验证 bash 返回 ACCENT
-  - `grep "bash" rust-agent-tui/src/ui/message_view.rs`
+  - `grep "bash" peri-tui/src/ui/message_view.rs`
   - 预期: bash => theme::ACCENT
 
 ---
@@ -61,7 +61,7 @@
 ### Task 3: SubAgent 组边框语义化
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/message_render.rs`
+- 修改: `peri-tui/src/ui/message_render.rs`
 
 **执行步骤:**
 - [x] 确认 SubAgentGroup 渲染路径（render_view_model 返回 Vec<Line>，无 Block 边框）
@@ -69,7 +69,7 @@
 
 **检查步骤:**
 - [x] 确认 agent_panel.rs 或 main_ui 中 SubAgent 渲染边框颜色为 SAGE
-  - `grep -n "SAGE\|ACCENT" rust-agent-tui/src/ui/main_ui/panels/agent.rs | head -10`
+  - `grep -n "SAGE\|ACCENT" peri-tui/src/ui/main_ui/panels/agent.rs | head -10`
   - 预期: SubAgent 相关边框为 SAGE 而非 ACCENT
 
 ---
@@ -77,7 +77,7 @@
 ### Task 4: 状态栏信息降噪
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/main_ui/status_bar.rs`
+- 修改: `peri-tui/src/ui/main_ui/status_bar.rs`
 
 **执行步骤:**
 - [x] 非 loading 状态下的 timer_color：`theme::ACCENT` → `theme::MUTED`
@@ -88,7 +88,7 @@
 
 **检查步骤:**
 - [x] 验证状态栏不再有 ACCENT
-  - `grep -n "ACCENT" rust-agent-tui/src/ui/main_ui/status_bar.rs`
+  - `grep -n "ACCENT" peri-tui/src/ui/main_ui/status_bar.rs`
   - 预期: 无输出（仅 loading 分支保留 LOADING 色）
 
 ---
@@ -96,10 +96,10 @@
 ### Task 5: 配置面板边框分层
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/model.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/relay.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/agent.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/thread_browser.rs`
+- 修改: `peri-tui/src/ui/main_ui/panels/model.rs`
+- 修改: `peri-tui/src/ui/main_ui/panels/relay.rs`
+- 修改: `peri-tui/src/ui/main_ui/panels/agent.rs`
+- 修改: `peri-tui/src/ui/main_ui/panels/thread_browser.rs`
 
 **执行步骤:**
 - [x] `model.rs` 第 22-23 行：`AliasConfig` 和 `Browse` 模式的 border_color `theme::ACCENT` → `theme::MUTED`
@@ -110,7 +110,7 @@
 
 **检查步骤:**
 - [x] 验证所有配置面板边框不再是纯 ACCENT
-  - `grep -n "border_color.*ACCENT\|border_style.*ACCENT" rust-agent-tui/src/ui/main_ui/panels/model.rs rust-agent-tui/src/ui/main_ui/panels/relay.rs rust-agent-tui/src/ui/main_ui/panels/agent.rs rust-agent-tui/src/ui/main_ui/panels/thread_browser.rs`
+  - `grep -n "border_color.*ACCENT\|border_style.*ACCENT" peri-tui/src/ui/main_ui/panels/model.rs peri-tui/src/ui/main_ui/panels/relay.rs peri-tui/src/ui/main_ui/panels/agent.rs peri-tui/src/ui/main_ui/panels/thread_browser.rs`
   - 预期: 仅 model.rs 的 Edit 模式/ConfirmDelete 模式、relay.rs 的 Edit 模式可保留 ACCENT，其他为 MUTED
 
 ---
@@ -118,7 +118,7 @@
 ### Task 6: AskUser 弹窗边框 WARNING 化
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/main_ui/popups/ask_user.rs`
+- 修改: `peri-tui/src/ui/main_ui/popups/ask_user.rs`
 
 **执行步骤:**
 - [x] `ask_user.rs` 第 23 行和第 26 行：边框 `theme::ACCENT` → `theme::WARNING`
@@ -127,7 +127,7 @@
 
 **检查步骤:**
 - [x] 验证 ask_user 边框和标题色为 WARNING
-  - `grep -n "ACCENT\|WARNING" rust-agent-tui/src/ui/main_ui/popups/ask_user.rs | grep -E "border|title|Style.*fg""
+  - `grep -n "ACCENT\|WARNING" peri-tui/src/ui/main_ui/popups/ask_user.rs | grep -E "border|title|Style.*fg""
   - 预期: 边框和标题为 WARNING；active tab 背景色仍可保留 ACCENT（用于操作区分）
 
 ---
@@ -156,7 +156,7 @@
 ### Task 8: tui-color-refresh Acceptance
 
 **Prerequisites:**
-- 启动命令: `cargo run -p rust-agent-tui`
+- 启动命令: `cargo run -p peri-tui`
 - 测试数据: 无需特殊数据，使用任意对话即可触发各 UI 元素
 
 **End-to-end verification:**

@@ -1,66 +1,71 @@
-# perihelion-widgets 组件库执行计划（3/3）
+# peri-widgets 组件库执行计划（3/3）
 
-**目标:** 在 rust-agent-tui 中集成 perihelion-widgets，替换所有重复的 UI 渲染代码
+**目标:** 在 peri-tui 中集成 peri-widgets，替换所有重复的 UI 渲染代码
 
-**技术栈:** Rust 2021 edition, ratatui ≥0.30, perihelion-widgets
+**技术栈:** Rust 2021 edition, ratatui ≥0.30, peri-widgets
 
 **设计文档:** spec/feature_20260427_F001_ratatui-widget-lib/spec-design.md
 
 ## 改动总览
 
-- 本文件在 rust-agent-tui 中引入 perihelion-widgets 依赖，分三批替换现有重复代码：Task 8 替换 BorderedPanel + ScrollableArea（10 处 Clear+Block + 5 处手动滚动），Task 9 替换 SelectableList/InputField/TabBar/RadioGroup/CheckboxGroup 渲染，Task 10 替换 EditField+buf 为 FormState
+- 本文件在 peri-tui 中引入 peri-widgets 依赖，分三批替换现有重复代码：Task 8 替换 BorderedPanel + ScrollableArea（10 处 Clear+Block + 5 处手动滚动），Task 9 替换 SelectableList/InputField/TabBar/RadioGroup/CheckboxGroup 渲染，Task 10 替换 EditField+buf 为 FormState
 - Task 8 是基础（Cargo.toml 依赖 + theme 桥接），Task 9 依赖 Task 8，Task 10 依赖 Task 9
-- 关键决策：theme.rs 常量保留不变（保持向后兼容），新增 `use_perihelion_theme()` 辅助函数桥接 DarkTheme；FormState 替换仅涉及状态层，渲染层由 Task 9 的 InputField 组件处理
+- 关键决策：theme.rs 常量保留不变（保持向后兼容），新增 `use_peri_theme()` 辅助函数桥接 DarkTheme；FormState 替换仅涉及状态层，渲染层由 Task 9 的 InputField 组件处理
 
 ---
 
 ### Task 0: 环境准备
 
 **背景:**
-验证 spec-plan-1.md 和 spec-plan-2.md 中的 Task 1-7 已全部完成，perihelion-widgets crate 可独立编译和测试。
+验证 spec-plan-1.md 和 spec-plan-2.md 中的 Task 1-7 已全部完成，peri-widgets crate 可独立编译和测试。
 
 **执行步骤:**
-- [x] 验证 perihelion-widgets 独立编译
-  - `cargo build -p perihelion-widgets`
+
+- [x] 验证 peri-widgets 独立编译
+  - `cargo build -p peri-widgets`
   - 预期: 编译成功
-- [x] 验证 perihelion-widgets 全量测试
-  - `cargo test -p perihelion-widgets`
+- [x] 验证 peri-widgets 全量测试
+  - `cargo test -p peri-widgets`
   - 预期: 所有测试通过
 
 **检查步骤:**
-- [x] perihelion-widgets 编译无错误
-- [x] perihelion-widgets 测试全部通过
+
+- [x] peri-widgets 编译无错误
+- [x] peri-widgets 测试全部通过
 
 ---
 
 ### Task 8: TUI 集成 — 主题桥接与基础组件替换
 
 **背景:**
-在 rust-agent-tui 中引入 perihelion-widgets 依赖，并替换所有 BorderedPanel（Clear+Block+border 模式，10 处）和 ScrollableArea（手动 scroll 管理，5 处）的重复代码。现有 theme.rs 的 15 个颜色常量保留不变（保持向后兼容，避免一次性改太多），新增桥接代码让 TUI 可以使用 DarkTheme。本 Task 是 Task 9 和 Task 10 的前置条件——后续 Task 依赖 Cargo.toml 中已添加的 perihelion-widgets 依赖。
+在 peri-tui 中引入 peri-widgets 依赖，并替换所有 BorderedPanel（Clear+Block+border 模式，10 处）和 ScrollableArea（手动 scroll 管理，5 处）的重复代码。现有 theme.rs 的 15 个颜色常量保留不变（保持向后兼容，避免一次性改太多），新增桥接代码让 TUI 可以使用 DarkTheme。本 Task 是 Task 9 和 Task 10 的前置条件——后续 Task 依赖 Cargo.toml 中已添加的 peri-widgets 依赖。
 
 **涉及文件:**
-- 修改: `rust-agent-tui/Cargo.toml`（添加 perihelion-widgets 依赖）
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/model.rs`（render_model_panel 中 Clear+Block 替换）
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/agent.rs`（render_agent_panel 中 Clear+Block 替换）
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/relay.rs`（render_relay_panel 中 Clear+Block 替换）
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/thread_browser.rs`（render_thread_browser 中 Clear+Block + scroll 替换）
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/cron.rs`（render_cron_panel 中 Clear+Block + scroll 替换）
-- 修改: `rust-agent-tui/src/ui/main_ui/popups/hitl.rs`（render_hitl_popup 中 Clear+Block 替换）
-- 修改: `rust-agent-tui/src/ui/main_ui/popups/ask_user.rs`（render_ask_user_popup 中 Clear+Block + scroll 替换）
-- 修改: `rust-agent-tui/src/ui/main_ui/popups/setup_wizard.rs`（render_setup_wizard 中 Clear+Block 替换）
-- 修改: `rust-agent-tui/src/ui/main_ui/popups/hints.rs`（render_command_hint + render_skill_hint 中 Clear+Block 替换）
+
+- 修改: `peri-tui/Cargo.toml`（添加 peri-widgets 依赖）
+- 修改: `peri-tui/src/ui/main_ui/panels/model.rs`（render_model_panel 中 Clear+Block 替换）
+- 修改: `peri-tui/src/ui/main_ui/panels/agent.rs`（render_agent_panel 中 Clear+Block 替换）
+- 修改: `peri-tui/src/ui/main_ui/panels/relay.rs`（render_relay_panel 中 Clear+Block 替换）
+- 修改: `peri-tui/src/ui/main_ui/panels/thread_browser.rs`（render_thread_browser 中 Clear+Block + scroll 替换）
+- 修改: `peri-tui/src/ui/main_ui/panels/cron.rs`（render_cron_panel 中 Clear+Block + scroll 替换）
+- 修改: `peri-tui/src/ui/main_ui/popups/hitl.rs`（render_hitl_popup 中 Clear+Block 替换）
+- 修改: `peri-tui/src/ui/main_ui/popups/ask_user.rs`（render_ask_user_popup 中 Clear+Block + scroll 替换）
+- 修改: `peri-tui/src/ui/main_ui/popups/setup_wizard.rs`（render_setup_wizard 中 Clear+Block 替换）
+- 修改: `peri-tui/src/ui/main_ui/popups/hints.rs`（render_command_hint + render_skill_hint 中 Clear+Block 替换）
 
 **执行步骤:**
-- [x] 在 `rust-agent-tui/Cargo.toml` 添加 perihelion-widgets 依赖
+
+- [x] 在 `peri-tui/Cargo.toml` 添加 peri-widgets 依赖
   - 位置: dependencies 区域末尾（`langfuse-client` 行之后）
-  - 添加: `perihelion-widgets = { path = "../perihelion-widgets", features = ["markdown"] }`
+  - 添加: `peri-widgets = { path = "../peri-widgets", features = ["markdown"] }`
   - 原因: 启用 markdown feature 以使用 MarkdownRenderer
 
 - [x] 替换所有 render_*_panel 函数中的 BorderedPanel 模式
   - 位置: 以下 10 个文件中的 `f.render_widget(Clear, ...)` + `Block::default()...` 模式
   - 替换为:
+
     ```rust
-    use perihelion_widgets::BorderedPanel;
+    use peri_widgets::BorderedPanel;
     // 旧代码:
     //   f.render_widget(Clear, area);
     //   let block = Block::default().title(...).borders(Borders::ALL).border_style(...);
@@ -71,6 +76,7 @@
     //       .border_style(border_style)
     //       .render(f, area);
     ```
+
   - 涉及函数（每个函数做相同模式的替换）:
     - `panels/model.rs:render_model_panel` (~L18-33)
     - `panels/agent.rs:render_agent_panel` (~L19-31)
@@ -87,8 +93,9 @@
 - [x] 替换 ScrollableArea 模式（5 处）
   - 位置: 以下函数中的手动 Paragraph+scroll+Scrollbar 渲染
   - 替换为:
+
     ```rust
-    use perihelion_widgets::{ScrollableArea, ScrollState};
+    use peri_widgets::{ScrollableArea, ScrollState};
     // 旧代码:
     //   let text_area = Rect { width: inner.width.saturating_sub(1), ..inner };
     //   f.render_widget(Paragraph::new(Text::from(lines)).scroll((offset, 0)).wrap(Wrap{trim:false}), text_area);
@@ -98,6 +105,7 @@
     //       .scrollbar_style(Style::default().fg(theme::MUTED))
     //       .render(f, inner, &mut scroll_state);
     ```
+
   - 涉及函数:
     - `panels/agent.rs:render_agent_panel` (~L98-114) — 列表滚动
     - `panels/thread_browser.rs:render_thread_browser` (~L68-82) — 列表滚动
@@ -108,25 +116,26 @@
   - 原因: 5 处手动滚动管理统一为 ScrollableArea 组件
 
 - [x] 验证全量编译
-  - `cargo build -p rust-agent-tui`
+  - `cargo build -p peri-tui`
   - 预期: 编译成功（可能有 unused import 警告，后续 Task 清理）
 
 - [x] 为 BorderedPanel 集成编写 headless 冒烟测试
-  - 测试文件: `rust-agent-tui/src/ui/headless.rs` 底部 `#[cfg(test)] mod tests` 追加
+  - 测试文件: `peri-tui/src/ui/headless.rs` 底部 `#[cfg(test)] mod tests` 追加
   - 测试场景:
     - `bordered_panel_integration`: 创建 headless app，渲染 agent panel，验证输出包含 "Agent" 且无 panic
-  - 运行命令: `cargo test -p rust-agent-tui -- bordered_panel_integration`
+  - 运行命令: `cargo test -p peri-tui -- bordered_panel_integration`
   - 预期: 测试通过
 
 **检查步骤:**
+
 - [x] TUI 编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 输出包含 "Finished"，无 error
 - [x] 无 `f.render_widget(Clear,` 残留（BorderedPanel 替换完成）
-  - `grep -c "f.render_widget(Clear" rust-agent-tui/src/ui/main_ui/panels/*.rs rust-agent-tui/src/ui/main_ui/popups/*.rs`
+  - `grep -c "f.render_widget(Clear" peri-tui/src/ui/main_ui/panels/*.rs peri-tui/src/ui/main_ui/popups/*.rs`
   - 预期: 输出全部为 0（或仅 main_ui.rs 中的非面板 Clear 使用保留）
 - [x] 现有 headless 测试不受影响
-  - `cargo test -p rust-agent-tui --lib 2>&1 | grep "test result"`
+  - `cargo test -p peri-tui --lib 2>&1 | grep "test result"`
   - 预期: 153+ passed（与当前基线一致）
 
 ---
@@ -134,27 +143,31 @@
 ### Task 9: TUI 集成 — 列表/输入/选择组件渲染替换
 
 **背景:**
-替换 TUI 中 SelectableList（5 处列表渲染）、InputField（4 处表单字段渲染）、TabBar（2 处标签渲染）、RadioGroup（1 处单选列表）、CheckboxGroup（1 处多选列表）的渲染代码。本 Task 仅替换渲染层代码，不修改状态管理（状态管理替换在 Task 10）。各面板/弹窗结构体保持不变，渲染函数内部使用 perihelion-widgets 组件替换手动 for 循环 + Span 拼接。
+替换 TUI 中 SelectableList（5 处列表渲染）、InputField（4 处表单字段渲染）、TabBar（2 处标签渲染）、RadioGroup（1 处单选列表）、CheckboxGroup（1 处多选列表）的渲染代码。本 Task 仅替换渲染层代码，不修改状态管理（状态管理替换在 Task 10）。各面板/弹窗结构体保持不变，渲染函数内部使用 peri-widgets 组件替换手动 for 循环 + Span 拼接。
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/agent.rs`（列表渲染替换为 SelectableList）
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/thread_browser.rs`（列表渲染替换为 SelectableList）
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/cron.rs`（列表渲染替换为 SelectableList）
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/model.rs`（Browse 模式列表 + Edit 模式输入字段）
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/relay.rs`（Edit 模式输入字段）
-- 修改: `rust-agent-tui/src/ui/main_ui/popups/hitl.rs`（CheckboxGroup 替换）
-- 修改: `rust-agent-tui/src/ui/main_ui/popups/ask_user.rs`（TabBar + RadioGroup + 自定义输入替换）
+
+- 修改: `peri-tui/src/ui/main_ui/panels/agent.rs`（列表渲染替换为 SelectableList）
+- 修改: `peri-tui/src/ui/main_ui/panels/thread_browser.rs`（列表渲染替换为 SelectableList）
+- 修改: `peri-tui/src/ui/main_ui/panels/cron.rs`（列表渲染替换为 SelectableList）
+- 修改: `peri-tui/src/ui/main_ui/panels/model.rs`（Browse 模式列表 + Edit 模式输入字段）
+- 修改: `peri-tui/src/ui/main_ui/panels/relay.rs`（Edit 模式输入字段）
+- 修改: `peri-tui/src/ui/main_ui/popups/hitl.rs`（CheckboxGroup 替换）
+- 修改: `peri-tui/src/ui/main_ui/popups/ask_user.rs`（TabBar + RadioGroup + 自定义输入替换）
 
 **执行步骤:**
+
 - [x] 替换 AskUser popup 的 TabBar 渲染
   - 位置: `popups/ask_user.rs:render_ask_user_popup` (~L31-55)
   - 替换手动 tab Span 拼接为:
+
     ```rust
-    use perihelion_widgets::{TabBar, TabState};
+    use peri_widgets::{TabBar, TabState};
     let mut tab_state = TabState::new(labels);
     tab_state.set_indicator(i, if confirmed[i] { Some('✓') } else { None });
     f.render_stateful_widget(TabBar::new().style(tab_style), tab_area, &mut tab_state);
     ```
+
   - 注意: 为 TabState 添加了 `set_active()` 方法
   - 原因: 标签导航渲染统一
 
@@ -184,22 +197,23 @@
   - 原因: 多选列表渲染统一
 
 - [x] 验证全量编译和测试
-  - `cargo build -p rust-agent-tui && cargo test -p rust-agent-tui --lib`
+  - `cargo build -p peri-tui && cargo test -p peri-tui --lib`
   - 预期: 编译成功，153+ 测试通过
 
 - [x] 为组件集成编写 headless 回归测试
-  - 测试文件: `rust-agent-tui/src/ui/headless.rs` 底部追加
+  - 测试文件: `peri-tui/src/ui/headless.rs` 底部追加
   - 测试场景:
     - `tab_bar_integration`: 渲染 ask_user popup（构造 mock 数据），验证包含 tab 标签
-  - 运行命令: `cargo test -p rust-agent-tui -- tab_bar_integration`
+  - 运行命令: `cargo test -p peri-tui -- tab_bar_integration`
   - 预期: 测试通过
 
 **检查步骤:**
+
 - [x] TUI 编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: "Finished"，无 error
 - [x] 全量测试通过
-  - `cargo test -p rust-agent-tui --lib 2>&1 | grep "test result"`
+  - `cargo test -p peri-tui --lib 2>&1 | grep "test result"`
   - 预期: 153+ passed
 - [ ] SelectableList 渲染无残留的手动 for 循环列表
   - 跳过: SelectableList 替换未执行（widget 限制），此检查不适用
@@ -209,22 +223,25 @@
 ### Task 10: TUI 集成 — FormState 状态管理替换
 
 **背景:**
-将 RelayPanel（3 个 buf_* 字段 + RelayEditField 枚举）和 ModelPanel（6 个 buf_* 字段 + EditField 枚举）的 EditField+buffer 模式替换为 FormState<F>。这是最复杂的集成步骤——涉及状态结构体、事件处理、操作方法的重构。RelayPanel 的 RelayEditField 实现 FormField trait，ModelPanel 的 EditField 实现 FormField trait。ModelPanel 的 `buf_thinking_enabled: bool` 和 `buf_thinking_budget: String` 需要特殊处理（thinking_enabled 不进 FormState，thinking_budget 作为普通 InputState 进 FormState）。
+将 RelayPanel（3 个 buf_*字段 + RelayEditField 枚举）和 ModelPanel（6 个 buf_* 字段 + EditField 枚举）的 EditField+buffer 模式替换为 FormState<F>。这是最复杂的集成步骤——涉及状态结构体、事件处理、操作方法的重构。RelayPanel 的 RelayEditField 实现 FormField trait，ModelPanel 的 EditField 实现 FormField trait。ModelPanel 的 `buf_thinking_enabled: bool` 和 `buf_thinking_budget: String` 需要特殊处理（thinking_enabled 不进 FormState，thinking_budget 作为普通 InputState 进 FormState）。
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/relay_panel.rs`（RelayPanel 结构体重构，实现 FormField）
-- 修改: `rust-agent-tui/src/app/model_panel.rs`（ModelPanel 结构体重构，实现 FormField）
-- 修改: `rust-agent-tui/src/app/panel_ops.rs`（relay panel 操作适配 FormState API）
-- 修改: `rust-agent-tui/src/event.rs`（键盘事件处理适配 FormState API）
-- 修改: `rust-agent-tui/src/app/hitl_ops.rs`（如有 relay 相关操作引用）
-- 修改: `rust-agent-tui/src/app/ask_user_ops.rs`（custom_input 如适用）
+
+- 修改: `peri-tui/src/app/relay_panel.rs`（RelayPanel 结构体重构，实现 FormField）
+- 修改: `peri-tui/src/app/model_panel.rs`（ModelPanel 结构体重构，实现 FormField）
+- 修改: `peri-tui/src/app/panel_ops.rs`（relay panel 操作适配 FormState API）
+- 修改: `peri-tui/src/event.rs`（键盘事件处理适配 FormState API）
+- 修改: `peri-tui/src/app/hitl_ops.rs`（如有 relay 相关操作引用）
+- 修改: `peri-tui/src/app/ask_user_ops.rs`（custom_input 如适用）
 
 **执行步骤:**
+
 - [x] 为 RelayEditField 实现 FormField trait
-  - 位置: `rust-agent-tui/src/app/relay_panel.rs` 顶部
+  - 位置: `peri-tui/src/app/relay_panel.rs` 顶部
   - 内容:
+
     ```rust
-    use perihelion_widgets::FormField;
+    use peri_widgets::FormField;
     impl FormField for RelayEditField {
         fn next(self) -> Self { match self { Self::Url => Self::Token, Self::Token => Self::Name, Self::Name => Self::Url } }
         fn prev(self) -> Self { match self { Self::Url => Self::Name, Self::Token => Self::Url, Self::Name => Self::Token } }
@@ -233,7 +250,7 @@
     ```
 
 - [x] 重构 RelayPanel 结构体
-  - 位置: `rust-agent-tui/src/app/relay_panel.rs`
+  - 位置: `peri-tui/src/app/relay_panel.rs`
   - 删除字段: `buf_url`, `buf_token`, `buf_name`, `cursor`
   - 新增字段: `form: FormState<RelayEditField>`
   - 修改 `from_config()` 初始化 FormState
@@ -247,8 +264,9 @@
   - 原因: 3 个 buf_* + cursor 完全由 FormState 管理
 
 - [x] 为 EditField 实现 FormField trait
-  - 位置: `rust-agent-tui/src/app/model_panel.rs` 顶部
+  - 位置: `peri-tui/src/app/model_panel.rs` 顶部
   - 内容:
+
     ```rust
     impl FormField for EditField {
         fn next(self) -> Self { match self {
@@ -269,7 +287,7 @@
     ```
 
 - [x] 重构 ModelPanel 结构体
-  - 位置: `rust-agent-tui/src/app/model_panel.rs`
+  - 位置: `peri-tui/src/app/model_panel.rs`
   - 删除字段: `buf_name`, `buf_type`, `buf_model`, `buf_api_key`, `buf_base_url`, `buf_thinking_budget`
   - 新增字段: `form: FormState<EditField>`
   - 保留字段: `buf_thinking_enabled: bool`（不在 FormState 中，因为是 bool toggle 而非文本输入）
@@ -282,48 +300,50 @@
   - 原因: 6 个 buf_* 字段由 FormState 管理，buf_thinking_enabled 保持原样
 
 - [x] 适配 event.rs 中的键盘事件处理
-  - 位置: `rust-agent-tui/src/event.rs` 中 relay_panel 和 model_panel 的字符输入处理
+  - 位置: `peri-tui/src/event.rs` 中 relay_panel 和 model_panel 的字符输入处理
   - 将 `panel.push_char(c)` 改为 `panel.form.handle_char(c)`
   - 将 `panel.pop_char()` 改为 `panel.form.handle_backspace()`
   - 将 `panel.paste_text(text)` 改为 `panel.form.handle_paste(text)`
   - 同理适配 cursor_left/right/home/end
 
 - [x] 适配 panel_ops.rs 中的面板操作
-  - 位置: `rust-agent-tui/src/app/panel_ops.rs`
+  - 位置: `peri-tui/src/app/panel_ops.rs`
   - 将 `panel.field_next()` 改为 `panel.form.next_field()`
   - 确保所有对 buf_* 字段的直接引用改为通过 `form.input(field).value()`
 
 - [x] 验证全量编译和测试
-  - `cargo build -p rust-agent-tui && cargo test -p rust-agent-tui --lib`
+  - `cargo build -p peri-tui && cargo test -p peri-tui --lib`
   - 预期: 编译成功，153+ 测试通过
 
 - [x] 为 FormState 集成编写单元测试
-  - 测试文件: `rust-agent-tui/src/app/relay_panel.rs` 底部 `#[cfg(test)] mod tests`
+  - 测试文件: `peri-tui/src/app/relay_panel.rs` 底部 `#[cfg(test)] mod tests`
   - 测试场景:
     - `relay_form_state_field_navigation`: 创建 RelayPanel，调用 field_next() 3 次，验证循环回到 Url
     - `relay_form_state_text_editing`: 调用 form.handle_char() 系列，验证 input(RelayEditField::Url).value() 正确
-  - 运行命令: `cargo test -p rust-agent-tui -- relay_form_state`
+  - 运行命令: `cargo test -p peri-tui -- relay_form_state`
   - 预期: 测试通过
 
 **检查步骤:**
+
 - [x] TUI 编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: "Finished"，无 error
 - [x] 无 buf_* 字段残留（RelayPanel 已完全迁移到 FormState）
-  - `grep "buf_url\|buf_token\|buf_name" rust-agent-tui/src/app/relay_panel.rs`
+  - `grep "buf_url\|buf_token\|buf_name" peri-tui/src/app/relay_panel.rs`
   - 预期: 无输出（已删除）
 - [x] ModelPanel 的文本 buf_* 已迁移（buf_thinking_enabled 除外）
-  - `grep -c "buf_name\|buf_type\|buf_model\|buf_api_key\|buf_base_url\|buf_thinking_budget" rust-agent-tui/src/app/model_panel.rs`
+  - `grep -c "buf_name\|buf_type\|buf_model\|buf_api_key\|buf_base_url\|buf_thinking_budget" peri-tui/src/app/model_panel.rs`
   - 预期: 0
 - [ ] 全量测试通过
-  - `cargo test -p rust-agent-tui --lib 2>&1 | grep "test result"`
+  - `cargo test -p peri-tui --lib 2>&1 | grep "test result"`
   - 预期: 153+ passed
 
 ---
 
-### Task 11: perihelion-widgets 组件库验收
+### Task 11: peri-widgets 组件库验收
 
 **前置条件:**
+
 - spec-plan-1.md 的 Task 1-3 已完成
 - spec-plan-2.md 的 Task 4-7 已完成
 - 本文件 Task 8-10 已完成
@@ -337,37 +357,37 @@
    - 预期: 所有 crate 测试通过（允许 1 个已知多线程运行时失败）
    - 失败排查: 检查各 Task 的检查步骤，逐个 crate 运行 `cargo test -p <crate>`
 
-2. perihelion-widgets 可独立编译和发布
-   - `cargo build -p perihelion-widgets --features markdown 2>&1 | tail -3`
+2. peri-widgets 可独立编译和发布
+   - `cargo build -p peri-widgets --features markdown 2>&1 | tail -3`
    - 预期: "Finished"，无 error
    - 失败排查: 检查 Task 1 的 Cargo.toml 配置
 
 3. 无循环依赖验证
-   - `cargo tree -p perihelion-widgets 2>&1 | head -20`
-   - 预期: 依赖树仅包含 ratatui、pulldown-cmark、unicode-width，不包含 rust-create-agent 或 rust-agent-tui
-   - 失败排查: 检查 perihelion-widgets/Cargo.toml 确保无内部依赖
+   - `cargo tree -p peri-widgets 2>&1 | head -20`
+   - 预期: 依赖树仅包含 ratatui、pulldown-cmark、unicode-width，不包含 peri-agent 或 peri-tui
+   - 失败排查: 检查 peri-widgets/Cargo.toml 确保无内部依赖
 
 4. BorderedPanel 替换完整性
-   - `grep -rn "f.render_widget(Clear" rust-agent-tui/src/ui/main_ui/panels/ rust-agent-tui/src/ui/main_ui/popups/ 2>/dev/null`
+   - `grep -rn "f.render_widget(Clear" peri-tui/src/ui/main_ui/panels/ peri-tui/src/ui/main_ui/popups/ 2>/dev/null`
    - 预期: 无输出（所有 10 处已替换为 BorderedPanel）
    - 失败排查: 检查 Task 8 中遗漏的文件
 
 5. MarkdownRenderer 迁移验证
-   - `grep "use perihelion_widgets.*markdown" rust-agent-tui/src/ui/markdown/mod.rs`
-   - 预期: 输出包含 perihelion_widgets 的 markdown 模块引用
+   - `grep "use peri_widgets.*markdown" peri-tui/src/ui/markdown/mod.rs`
+   - 预期: 输出包含 peri_widgets 的 markdown 模块引用
    - 失败排查: 检查 Task 7 的 TUI 层适配
 
 6. Headless 测试回归验证
-   - `cargo test -p rust-agent-tui --lib -- ui::headless 2>&1 | grep "test result"`
+   - `cargo test -p peri-tui --lib -- ui::headless 2>&1 | grep "test result"`
    - 预期: 所有 headless 测试通过（渲染输出与迁移前一致）
    - 失败排查: 对比迁移前后 headless snapshot，检查颜色/布局变化
 
 7. workspace 全量编译
    - `cargo build 2>&1 | tail -5`
-   - 预期: 所有 6 个 crate（含新增 perihelion-widgets）编译成功
+   - 预期: 所有 6 个 crate（含新增 peri-widgets）编译成功
    - 失败排查: 逐个 crate 编译定位错误
 
-8. perihelion-widgets 全部 11 个组件测试通过
-   - `cargo test -p perihelion-widgets --features markdown 2>&1 | grep "test result"`
+8. peri-widgets 全部 11 个组件测试通过
+   - `cargo test -p peri-widgets --features markdown 2>&1 | grep "test result"`
    - 预期: 所有测试通过（覆盖 Theme、BorderedPanel、ScrollState、SelectableList、InputState、TabBar、RadioGroup、CheckboxGroup、FormState、MarkdownRenderer 共 11 个组件）
-   - 失败排查: 检查各 Task 的检查步骤，按模块逐个运行 `cargo test -p perihelion-widgets --features markdown -- module_name`
+   - 失败排查: 检查各 Task 的检查步骤，按模块逐个运行 `cargo test -p peri-widgets --features markdown -- module_name`

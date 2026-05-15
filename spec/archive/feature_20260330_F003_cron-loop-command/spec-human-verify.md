@@ -25,7 +25,7 @@
 - **来源:** spec-plan.md Task 1
 - **目的:** 验证注册、删除、tick 触发等核心逻辑
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- cron` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- cron` → 期望包含: `test result: ok`
 ---
 
 ### 场景 2：CronMiddleware + 三个工具
@@ -34,13 +34,13 @@
 - **来源:** spec-plan.md Task 2
 - **目的:** 确认中间件和工具集成无误
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-middlewares` → 期望包含: `Finished`
+  1. [A] `cargo build -p peri-middlewares` → 期望包含: `Finished`
 
 #### - [x] 2.2 Cron 工具单元测试通过
 - **来源:** spec-plan.md Task 2
 - **目的:** 验证 cron_register/cron_list/cron_remove 工具行为
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- cron::tools` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- cron::tools` → 期望包含: `test result: ok`
 ---
 
 ### 场景 3：TUI 集成编译与已有测试
@@ -49,13 +49,13 @@
 - **来源:** spec-plan.md Task 3 + Task 4
 - **目的:** 确认 CronState、CronTrigger 消费、中间件链集成无误
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui` → 期望包含: `Finished`
+  1. [A] `cargo build -p peri-tui` → 期望包含: `Finished`
 
 #### - [x] 3.2 TUI 已有测试不受影响
 - **来源:** spec-plan.md Task 3 + Task 4
 - **目的:** 回归验证 cron 集成未破坏现有功能
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui` → 期望包含: `test result: ok`
 ---
 
 ### 场景 4：/loop 和 /cron 命令注册
@@ -64,14 +64,14 @@
 - **来源:** spec-plan.md Task 5
 - **目的:** 确认命令已正确注册
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- command::tests::test_list_returns_all` → 期望包含: `test result: ok`
-  2. [A] `cargo test -p rust-agent-tui --lib -- command::tests::test_list_returns_all 2>&1 | grep -i "cron\|loop"` → 期望包含: 无报错（命令在 list 中）
+  1. [A] `cargo test -p peri-tui --lib -- command::tests::test_list_returns_all` → 期望包含: `test result: ok`
+  2. [A] `cargo test -p peri-tui --lib -- command::tests::test_list_returns_all 2>&1 | grep -i "cron\|loop"` → 期望包含: 无报错（命令在 list 中）
 
 #### - [x] 4.2 命令逻辑单元测试
 - **来源:** spec-plan.md Task 5
 - **目的:** 验证 loop_cmd 注册成功/失败路径
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- loop_cmd` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui --lib -- loop_cmd` → 期望包含: `test result: ok`
 ---
 
 ### 场景 5：CronPanel UI 渲染
@@ -80,7 +80,7 @@
 - **来源:** spec-plan.md Task 6
 - **目的:** 验证 CronPanel UI 渲染输出包含面板标题
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- test_cron_panel_render` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui --lib -- test_cron_panel_render` → 期望包含: `test result: ok`
 ---
 
 ### 场景 6：边界与回归
@@ -89,25 +89,25 @@
 - **来源:** spec-plan.md Task 1 / spec-design.md §实现要点
 - **目的:** 确认超出上限返回错误
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- test_max_tasks` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- test_max_tasks` → 期望包含: `test result: ok`
 
 #### - [x] 6.2 无效 cron 表达式拒绝
 - **来源:** spec-plan.md Task 1 / spec-design.md §实现要点
 - **目的:** 确认无效表达式返回明确错误
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- test_register_invalid_expression` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- test_register_invalid_expression` → 期望包含: `test result: ok`
 
 #### - [x] 6.3 disabled 任务不触发
 - **来源:** spec-plan.md Task 1 / spec-design.md §CronScheduler
 - **目的:** 确认禁用任务被 tick 跳过
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- test_tick_skips_disabled` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- test_tick_skips_disabled` → 期望包含: `test result: ok`
 
 #### - [x] 6.4 toggle 切换启用/禁用
 - **来源:** spec-plan.md Task 1
 - **目的:** 确认 toggle 正确反转 enabled 状态
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- test_toggle` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- test_toggle` → 期望包含: `test result: ok`
 ---
 
 ### 场景 7：端到端交互验证
@@ -116,7 +116,7 @@
 - **来源:** spec-plan.md Task 7 步骤 1 / spec-design.md §TUI 命令
 - **目的:** 确认用户可通过自然语言描述让 Agent 自动注册 cron 任务
 - **操作步骤:**
-  1. [H] 启动 TUI（`cargo run -p rust-agent-tui`），输入 `/loop 每隔5分钟提醒我喝水`，查看消息流 → Agent 调用 cron_register 成功注册 是/否
+  1. [H] 启动 TUI（`cargo run -p peri-tui`），输入 `/loop 每隔5分钟提醒我喝水`，查看消息流 → Agent 调用 cron_register 成功注册 是/否
 
 #### - [x] 7.2 /cron 面板显示所有任务
 - **来源:** spec-plan.md Task 7 步骤 3 / spec-design.md §/cron

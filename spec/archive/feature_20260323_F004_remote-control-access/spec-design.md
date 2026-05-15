@@ -2,7 +2,7 @@
 
 ## 需求背景
 
-当前 `rust-agent-tui` 是一个本地 TUI 应用，只能在运行它的终端上操作。用户需要从另一台机器（手机、平板、异地电脑）远程查看和操控本地 Agent 的执行过程，包括：发送消息、响应 HITL 审批、回答 ask_user 问题、查看 TODO 面板等。
+当前 `peri-tui` 是一个本地 TUI 应用，只能在运行它的终端上操作。用户需要从另一台机器（手机、平板、异地电脑）远程查看和操控本地 Agent 的执行过程，包括：发送消息、响应 HITL 审批、回答 ask_user 问题、查看 TODO 面板等。
 
 现有架构缺乏网络暴露层，且直接暴露本地端口存在防火墙和安全隐患。为此需要一套基于中心化 Relay Server 的远程控制方案，支持多台机器上的多个 Agent 同时接入，通过 Web 前端 Tab 切换协同查看与操控。
 
@@ -12,7 +12,7 @@
 - 支持多个 Agent 同时连接同一 Relay，每个 Agent 有全局唯一 session_id 和可选名称
 - Web 浏览器前端通过 Tab 切换访问不同 Agent，全功能交互（等同于 TUI）
 - 全局单 Token 认证，持有即可访问 Relay 上全部已连接 Agent
-- RelayClient 库代码内置于 `rust-relay-server` crate，供 `rust-agent-tui` 等应用引用
+- RelayClient 库代码内置于 `rust-relay-server` crate，供 `peri-tui` 等应用引用
 - 支持断线自动重连，连接稳定可靠
 
 ## 方案设计
@@ -22,7 +22,7 @@
 系统由三个部分组成：
 
 1. **Relay Server + Client 库**（新 Crate `rust-relay-server`）：运行在公网服务器，负责多 Agent session 注册与管理、WebSocket 双向路由转发、Web 前端静态文件服务；内置 `client` 模块供本地 Agent 引用
-2. **本地 Agent 客户端**（`rust-agent-tui` 引用 `rust-relay-server::client`）：主动外连 Relay Server，将 AgentEvent 实时转发
+2. **本地 Agent 客户端**（`peri-tui` 引用 `rust-relay-server::client`）：主动外连 Relay Server，将 AgentEvent 实时转发
 3. **Web 前端**（纯 HTML + Vanilla JS，内嵌在 Relay Server 中）：浏览器访问，Tab 切换多 Agent，全功能操控
 
 ![总体架构图](./images/01-architecture.png)
@@ -186,7 +186,7 @@ struct RelayState {
 
 ### RelayClient 模块（`rust-relay-server::client`）
 
-`rust-relay-server` crate 通过 feature flag `client` 暴露 RelayClient 库，供 `rust-agent-tui` 等引用：
+`rust-relay-server` crate 通过 feature flag `client` 暴露 RelayClient 库，供 `peri-tui` 等引用：
 
 ```rust
 // rust-relay-server/src/client/mod.rs
@@ -200,7 +200,7 @@ impl RelayClient {
 }
 ```
 
-`rust-agent-tui/Cargo.toml` 引用方式：
+`peri-tui/Cargo.toml` 引用方式：
 
 ```toml
 [dependencies]
@@ -210,10 +210,10 @@ rust-relay-server = { path = "../rust-relay-server", default-features = false, f
 ### 项目结构变更
 
 ```
-perihelion/
-├── rust-create-agent/          # 不变
-├── rust-agent-middlewares/     # 不变
-├── rust-agent-tui/
+peri/
+├── peri-agent/          # 不变
+├── peri-middlewares/     # 不变
+├── peri-tui/
 │   ├── Cargo.toml              # 新增依赖 rust-relay-server（features=["client"]）
 │   └── src/
 │       └── app/mod.rs          # 修改：集成 RelayClient，处理 relay 事件
@@ -232,7 +232,7 @@ perihelion/
         └── style.css
 ```
 
-### rust-agent-tui 改动
+### peri-tui 改动
 
 **`app/mod.rs` 改动：**
 
@@ -267,11 +267,11 @@ perihelion/
 - **Tokio 异步运行时**：Relay Server 完全基于 tokio，与现有所有 Crate 一致
 - **Workspace Crate**：新增 `rust-relay-server` 作为独立 Crate 加入 Workspace，不修改现有 Crate 的公共 API
 - **消息类型复用**：`AgentEvent` 扩展 `serde::Serialize`，不改变内部结构；新增 `RelayMessage` 枚举描述协议消息
-- **无破坏性变更**：`rust-agent-tui` 的 relay 功能为可选（未配置 relay_url 时行为与现在完全一致）
+- **无破坏性变更**：`peri-tui` 的 relay 功能为可选（未配置 relay_url 时行为与现在完全一致）
 
 ## 验收标准
 
-- [ ] 两个本地 `rust-agent-tui` 实例同时启动，均自动连接 Relay 并分别打印不同的 session_id
+- [ ] 两个本地 `peri-tui` 实例同时启动，均自动连接 Relay 并分别打印不同的 session_id
 - [ ] Relay Server 独立启动，`/health` 返回 200，`/agents` 返回在线 Agent 列表 JSON
 - [ ] 浏览器访问 `https://<relay>/web/?token=<token>`，页面正常加载，顶部显示两个 Agent Tab
 - [ ] 切换 Tab 后，消息区域切换到对应 Agent 的消息历史
@@ -281,5 +281,5 @@ perihelion/
 - [ ] TODO 面板内容按 Agent 隔离，切换 Tab 后展示对应 Agent 的 TODO
 - [ ] 某个 Agent 断线后，对应 Tab 显示灰点 `○`，消息历史保留；重连后自动恢复绿点
 - [ ] 新 Agent 上线时，所有已打开的 Web 页面动态增加新 Tab（无需刷新）
-- [ ] `rust-agent-tui` 在未配置 relay_url 时，行为与现有版本完全一致（无回归）
+- [ ] `peri-tui` 在未配置 relay_url 时，行为与现有版本完全一致（无回归）
 - [ ] feature flag 隔离验证：仅启用 `features=["client"]` 时，编译不引入 Axum 等服务端依赖

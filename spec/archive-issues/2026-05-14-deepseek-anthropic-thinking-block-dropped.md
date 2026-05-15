@@ -23,7 +23,7 @@ DeepSeek 要求 thinking 模式下**所有** assistant 消息都必须回传 thi
 
 ### 代码定位
 
-`rust-agent-middlewares/src/subagent/skill_preload.rs:115`：
+`peri-middlewares/src/subagent/skill_preload.rs:115`：
 
 ```rust
 state.add_message(BaseMessage::ai_from_blocks(tool_use_blocks));
@@ -114,10 +114,10 @@ Session `019e2603-d767-7592-b24a-6c9dcd89e6ce` 的 6 个成功 API 响应中，*
 
 ## 相关代码
 
-- `rust-agent-middlewares/src/subagent/skill_preload.rs:115` — 构造伪 Ai 消息（不含 Reasoning）
-- `rust-create-agent/src/llm/anthropic.rs:201` — `messages_to_anthropic()` 序列化
-- `rust-create-agent/src/llm/anthropic.rs:458-462` — `redacted_thinking` block 解析
-- `rust-create-agent/src/llm/anthropic.rs:134-140` — `Reasoning` 序列化为 thinking block
+- `peri-middlewares/src/subagent/skill_preload.rs:115` — 构造伪 Ai 消息（不含 Reasoning）
+- `peri-agent/src/llm/anthropic.rs:201` — `messages_to_anthropic()` 序列化
+- `peri-agent/src/llm/anthropic.rs:458-462` — `redacted_thinking` block 解析
+- `peri-agent/src/llm/anthropic.rs:134-140` — `Reasoning` 序列化为 thinking block
 
 ## 关联 Issue
 

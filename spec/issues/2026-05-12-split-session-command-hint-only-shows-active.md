@@ -32,7 +32,7 @@
 
 ## 相关代码
 
-- `rust-agent-tui/src/ui/main_ui.rs:297-299` — 命令浮层只在 `is_active == true` 时渲染
+- `peri-tui/src/ui/main_ui.rs:297-299` — 命令浮层只在 `is_active == true` 时渲染
   ```rust
   if is_active {
       // 统一命令/Skills 提示条
@@ -40,13 +40,13 @@
   }
   ```
 
-- `rust-agent-tui/src/ui/main_ui.rs:80-82` — `render_session_column` 临时切换 active
+- `peri-tui/src/ui/main_ui.rs:80-82` — `render_session_column` 临时切换 active
   ```rust
   let prev_active = app.session_mgr.active;
   app.session_mgr.active = session_idx;
   ```
 
-- `rust-agent-tui/src/ui/main_ui/popups/hints.rs:24-33` — `render_unified_hint` 读取 active session 的输入和命令列表
+- `peri-tui/src/ui/main_ui/popups/hints.rs:24-33` — `render_unified_hint` 读取 active session 的输入和命令列表
   ```rust
   let first_line = app.session_mgr.sessions[app.session_mgr.active]
       .ui

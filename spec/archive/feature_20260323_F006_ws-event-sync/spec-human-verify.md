@@ -12,7 +12,7 @@
 - [ ] [AUTO] 确认 Rust 工具链可用: `rustc --version`
 - [ ] [AUTO] 全量编译通过: `cargo build 2>&1 | grep -E "^error" | wc -l` → 期望: 输出 0
 - [ ] [AUTO/SERVICE] 启动 Relay Server: `RELAY_TOKEN=test RELAY_PORT=18080 cargo run -p rust-relay-server` (port: 18080)
-- [ ] [MANUAL] 准备 TUI Agent（配置 relay 后，在单独终端启动: `cargo run -p rust-agent-tui -- --remote-control ws://localhost:18080 --relay-token test --relay-name Agent-A`）
+- [ ] [MANUAL] 准备 TUI Agent（配置 relay 后，在单独终端启动: `cargo run -p peri-tui -- --remote-control ws://localhost:18080 --relay-token test --relay-name Agent-A`）
 
 ### 测试数据准备
 - [ ] [MANUAL] 准备浏览器，访问 `http://localhost:18080/web/?token=test`
@@ -45,13 +45,13 @@
 #### - [ ] 1.3 TUI SyncRequest 处理与全量测试
 - **来源:** Task 3 检查步骤
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | tail -3` → 期望: 输出包含 "Finished"，无 error
-  2. [A] `grep -c "SyncRequest" rust-agent-tui/src/app/mod.rs` → 期望: 输出 >= 1（SyncRequest 处理分支存在）
-  3. [A] `grep -c "sync_response" rust-agent-tui/src/app/mod.rs` → 期望: 输出 >= 1（sync_response 构造逻辑存在）
-  4. [A] `cargo test -p rust-agent-tui 2>&1 | tail -5` → 期望: 输出包含 "test result: ok"，0 failed
+  1. [A] `cargo build -p peri-tui 2>&1 | tail -3` → 期望: 输出包含 "Finished"，无 error
+  2. [A] `grep -c "SyncRequest" peri-tui/src/app/mod.rs` → 期望: 输出 >= 1（SyncRequest 处理分支存在）
+  3. [A] `grep -c "sync_response" peri-tui/src/app/mod.rs` → 期望: 输出 >= 1（sync_response 构造逻辑存在）
+  4. [A] `cargo test -p peri-tui 2>&1 | tail -5` → 期望: 输出包含 "test result: ok"，0 failed
 - **异常排查:**
   - 如果 SyncRequest 未找到: 检查 `poll_relay` 的 `match web_msg` 是否包含 `WebMessage::SyncRequest { since_seq }` 分支
-  - 如果测试失败: 运行 `cargo test -p rust-agent-tui -- --nocapture` 查看详细输出
+  - 如果测试失败: 运行 `cargo test -p peri-tui -- --nocapture` 查看详细输出
 
 ---
 
@@ -122,15 +122,15 @@
 - **来源:** Task 6 检查步骤
 - **操作步骤:**
   1. [A] `cargo build --all 2>&1 | tail -3` → 期望: 输出包含 "Finished"，无 error
-  2. [A] `grep -c "MessageAdded" rust-create-agent/src/agent/events.rs` → 期望: 输出 >= 1（新增变体存在）
+  2. [A] `grep -c "MessageAdded" peri-agent/src/agent/events.rs` → 期望: 输出 >= 1（新增变体存在）
 - **异常排查:**
-  - 如果编译失败: 检查 `rust-create-agent/src/agent/events.rs` 中 `MessageAdded` 变体语法
+  - 如果编译失败: 检查 `peri-agent/src/agent/events.rs` 中 `MessageAdded` 变体语法
 
 #### - [x] 4.2 executor.rs 消息添加时触发事件
 - **来源:** Task 7 检查步骤
 - **操作步骤:**
-  1. [A] `grep -c "MessageAdded" rust-create-agent/src/agent/executor.rs` → 期望: 输出 >= 4（4 个 emit 位置）
-  2. [A] `cargo test -p rust-create-agent 2>&1 | tail -5` → 期望: 输出包含 "test result: ok"，0 failed
+  1. [A] `grep -c "MessageAdded" peri-agent/src/agent/executor.rs` → 期望: 输出 >= 4（4 个 emit 位置）
+  2. [A] `cargo test -p peri-agent 2>&1 | tail -5` → 期望: 输出包含 "test result: ok"，0 failed
 - **异常排查:**
   - 如果 emit 调用数不足: 检查 4 个消息添加位置是否都添加了 `emit(AgentEvent::MessageAdded(...))`
 

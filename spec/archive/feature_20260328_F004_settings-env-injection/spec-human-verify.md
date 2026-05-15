@@ -11,7 +11,7 @@
 ### 环境要求
 
 - [ ] [AUTO] 检查 Rust 工具链: `rustc --version && cargo --version`
-- [ ] [AUTO] 编译 release 版本: `cargo build -p rust-agent-tui --release`
+- [ ] [AUTO] 编译 release 版本: `cargo build -p peri-tui --release`
 - [ ] [AUTO] 备份现有配置（如存在）: `test -f ~/.peri/settings.json && cp ~/.peri/settings.json ~/.peri/settings.json.backup || true`
 
 ---
@@ -24,15 +24,15 @@
 
 - **来源:** Task 1 检查步骤
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | tail -5` → 期望: 输出包含 "Finished" 且无 error
+  1. [A] `cargo build -p peri-tui 2>&1 | tail -5` → 期望: 输出包含 "Finished" 且无 error
 - **异常排查:**
-  - 如果出现编译错误: 检查 `rust-agent-tui/src/config/types.rs` 中 `env` 字段定义
+  - 如果出现编译错误: 检查 `peri-tui/src/config/types.rs` 中 `env` 字段定义
 
 #### - [x] 1.2 serde 反序列化测试
 
 - **来源:** Task 1/3 检查步骤
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib test_app_config_env 2>&1 | tail -15` → 期望: 3 个测试通过
+  1. [A] `cargo test -p peri-tui --lib test_app_config_env 2>&1 | tail -15` → 期望: 3 个测试通过
 - **异常排查:**
   - 如果测试失败: 检查 `types.rs` 中 `test_app_config_env_*` 系列测试代码
 
@@ -40,7 +40,7 @@
 
 - **来源:** Task 2 检查步骤
 - **操作步骤:**
-  1. [A] `grep -n "dotenvy" rust-agent-tui/src/main.rs` → 期望: 无匹配输出
+  1. [A] `grep -n "dotenvy" peri-tui/src/main.rs` → 期望: 无匹配输出
 - **异常排查:**
   - 如果有匹配: 移除 main.rs 中的 dotenvy 相关代码
 
@@ -48,8 +48,8 @@
 
 - **来源:** Task 3 检查步骤
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib test_app_config_env 2>&1 | grep -E "^test|^running|ok|FAILED"` → 期望: 显示 3 个 test ... ok
-  2. [A] `cargo test -p rust-agent-tui --bin agent-tui test_env_priority 2>&1 | grep -E "^test|^running|ok|FAILED"` → 期望: 显示 1 个 test ... ok
+  1. [A] `cargo test -p peri-tui --lib test_app_config_env 2>&1 | grep -E "^test|^running|ok|FAILED"` → 期望: 显示 3 个 test ... ok
+  2. [A] `cargo test -p peri-tui --bin agent-tui test_env_priority 2>&1 | grep -E "^test|^running|ok|FAILED"` → 期望: 显示 1 个 test ... ok
 - **异常排查:**
   - types.rs 测试失败: 检查 serde 序列化/反序列化逻辑
   - main.rs 测试失败: 检查 `inject_env_from_settings()` 函数优先级逻辑
@@ -102,7 +102,7 @@ EOF` → 期望: 文件创建成功（无输出）
 - **来源:** Task 5 End-to-end verification
 - **操作步骤:**
   1. [A] `TEST_ENV_VAR_123="from_process" ./target/release/agent-tui --help 2>&1; echo "Exit code: $?"` → 期望: Exit code 为 0（进程环境变量不被覆盖）
-  2. [A] `cargo test -p rust-agent-tui --bin agent-tui test_env_priority 2>&1 | tail -5` → 期望: 测试通过
+  2. [A] `cargo test -p peri-tui --bin agent-tui test_env_priority 2>&1 | tail -5` → 期望: 测试通过
 - **异常排查:**
   - 如果优先级错误: 检查 `std::env::var(key).is_err()` 判断逻辑
 

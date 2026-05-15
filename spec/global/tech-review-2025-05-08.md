@@ -203,7 +203,7 @@
 
 ## 各 Crate 详细评估
 
-### rust-create-agent（核心框架）— 7.5/10
+### peri-agent（核心框架）— 7.5/10
 
 **优势**：清晰的 trait 抽象（Middleware/BaseTool/ReactLLM）、零 unsafe、良好测试覆盖、合理生命周期管理
 
@@ -216,7 +216,7 @@
 - State trait 12 方法职责混杂（agent/state.rs:11-28）
 - BaseModelReactLLM 职责外溢（llm/react_adapter.rs:11-27）
 
-### rust-agent-middlewares（中间件层）— 6.5/10
+### peri-middlewares（中间件层）— 6.5/10
 
 **优势**：中间件 trait 实现规范、MCP 模块文件职责划分清晰、Arc/RwLock 并发处理得当
 
@@ -229,7 +229,7 @@
 - HITL decide_by_mode 圈复杂度 ~15（hitl/mod.rs:150-268）
 - scan_agents / scan_agents_with_extra_dirs 80% 重复
 
-### rust-agent-tui（TUI 应用）— 7.8/10 ↑（原 6.0）
+### peri-tui（TUI 应用）— 7.8/10 ↑（原 6.0）
 
 **优势**：MessagePipeline 设计优秀、会话隔离良好、渲染线程解耦、插件系统扩展性强、面板系统完全组件化
 

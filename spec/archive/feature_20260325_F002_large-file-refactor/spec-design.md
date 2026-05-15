@@ -2,7 +2,7 @@
 
 ## 需求背景
 
-`rust-agent-tui` 中两个文件已过度膨胀，严重影响可维护性：
+`peri-tui` 中两个文件已过度膨胀，严重影响可维护性：
 
 - **`src/app/mod.rs`（1931 行）**：混合了 AgentEvent、HitlBatchPrompt、QuestionState、AskUserBatchPrompt 等类型定义，App 结构体声明，以及跨越 agent 事件处理、HITL、AskUser、线程管理、面板管理等多个功能域的 impl 方法块。其中 `handle_agent_event` 单函数超过 350 行，`submit_message` 约 150 行。
 - **`src/ui/main_ui.rs`（1305 行）**：将标题栏、消息列表、状态栏、所有弹窗（HITL/AskUser/Command/Skill）、所有面板（Model/ThreadBrowser/Agent）的渲染函数全部集中在一个文件里。`render_model_panel` 单函数约 330 行。
@@ -29,7 +29,7 @@ Rust 允许同一模块（`app/`）内的不同文件各自包含独立的 `impl
 #### 拆分后目录结构
 
 ```
-rust-agent-tui/src/app/
+peri-tui/src/app/
 ├── mod.rs              (~400 行)  App struct 定义 + new() + poll_relay + 基础读写方法 + 模块声明
 ├── agent.rs            (已有)     run_universal_agent()
 ├── agent_panel.rs      (已有)     AgentPanel
@@ -99,7 +99,7 @@ impl App {
 #### 拆分后目录结构
 
 ```
-rust-agent-tui/src/ui/
+peri-tui/src/ui/
 ├── main_ui.rs          (~250 行)  render() 主函数 + 布局 + render_title/messages/attachment_bar/todo_panel
 ├── message_view.rs     (已有)
 ├── message_render.rs   (已有)
@@ -162,18 +162,18 @@ pub fn render(f: &mut Frame, app: &mut App) {
 ### 执行顺序
 
 1. **先拆 `app/mod.rs`**（改动更复杂，优先完成）
-   - 每建一个新子文件后立即执行 `cargo build -p rust-agent-tui` 验证编译
+   - 每建一个新子文件后立即执行 `cargo build -p peri-tui` 验证编译
    - 顺序：hitl_prompt.rs → ask_user_prompt.rs → hitl_ops.rs → ask_user_ops.rs → thread_ops.rs → panel_ops.rs → agent_ops.rs（最后，最大）
 2. **再拆 `ui/main_ui.rs`**
    - 先建 `popups/` 和 `panels/` 目录及 `mod.rs`
    - 顺序：status_bar.rs → panels/model.rs（最大）→ panels/thread_browser.rs → panels/agent.rs → popups/hitl.rs → popups/ask_user.rs → popups/hints.rs
-3. **最终验证**：`cargo test -p rust-agent-tui`
+3. **最终验证**：`cargo test -p peri-tui`
 
 ## 实现要点
 
 1. **纯机械搬移，禁止顺手重构**：只移动代码，不改写逻辑、不重命名变量、不改接口签名，避免引入意外 bug。
 
-2. **循环依赖检查**：`hitl_prompt.rs` / `ask_user_prompt.rs` 只依赖外部 crate（`rust-create-agent`、`tokio::sync::oneshot` 等），不依赖 App 类型，天然无循环依赖。
+2. **循环依赖检查**：`hitl_prompt.rs` / `ask_user_prompt.rs` 只依赖外部 crate（`peri-agent`、`tokio::sync::oneshot` 等），不依赖 App 类型，天然无循环依赖。
 
 3. **AgentEvent 位置**：`AgentEvent` 枚举目前在 `mod.rs` 第 37 行，被 `agent_ops.rs` 和 TUI 事件循环大量使用，建议**保留在 `mod.rs`** 中（不单独提取），减少依赖传播。
 
@@ -185,7 +185,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
 
 | 约束 | 符合情况 |
 |------|---------|
-| Workspace 分层：禁止下层依赖上层 | ✅ 全部改动在 `rust-agent-tui` 内，无跨 crate 依赖变化 |
+| Workspace 分层：禁止下层依赖上层 | ✅ 全部改动在 `peri-tui` 内，无跨 crate 依赖变化 |
 | 文件组织：每个模块一个目录，`mod.rs` 作为入口 | ✅ `popups/` 和 `panels/` 新建子目录均遵循此约定 |
 | 测试：bin crate 集成测试在 `src/` 内 | ✅ `headless.rs` 位置不变 |
 | 不引入新外部依赖 | ✅ 纯代码组织，无新 crate 引入 |
@@ -193,8 +193,8 @@ pub fn render(f: &mut Frame, app: &mut App) {
 
 ## 验收标准
 
-- [ ] `cargo build -p rust-agent-tui` 编译无错误、无新 clippy 警告
-- [ ] `cargo test -p rust-agent-tui` 所有测试（含 headless 测试）全部通过
+- [ ] `cargo build -p peri-tui` 编译无错误、无新 clippy 警告
+- [ ] `cargo test -p peri-tui` 所有测试（含 headless 测试）全部通过
 - [ ] `app/mod.rs` 行数 ≤ 450 行
 - [ ] `ui/main_ui.rs` 行数 ≤ 300 行
 - [ ] 单个新建文件行数均 ≤ 600 行

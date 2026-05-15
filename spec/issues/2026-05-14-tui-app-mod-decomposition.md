@@ -6,7 +6,7 @@
 
 ## 问题描述
 
-`rust-agent-tui/src/app/mod.rs` 包含 48 个子模块声明，是整个代码库内聚度最低的文件。`app/` 目录下的文件普遍过大（7 个文件超 1000 行），混合了面板组件定义、App struct 扩展操作、状态管理等多种职责。
+`peri-tui/src/app/mod.rs` 包含 48 个子模块声明，是整个代码库内聚度最低的文件。`app/` 目录下的文件普遍过大（7 个文件超 1000 行），混合了面板组件定义、App struct 扩展操作、状态管理等多种职责。
 
 ## 现状数据
 
@@ -60,9 +60,9 @@
 
 ## 涉及文件
 
-- `rust-agent-tui/src/app/mod.rs`（762 行，48 子模块）
-- `rust-agent-tui/src/app/plugin_panel.rs`（2017 行）
-- `rust-agent-tui/src/app/mcp_panel.rs`（1218 行）
-- `rust-agent-tui/src/app/panel_ops.rs`（1084 行）
-- `rust-agent-tui/src/app/login_panel.rs`（1021 行）
-- `rust-agent-tui/src/app/panel_manager.rs`（35 pub）
+- `peri-tui/src/app/mod.rs`（762 行，48 子模块）
+- `peri-tui/src/app/plugin_panel.rs`（2017 行）
+- `peri-tui/src/app/mcp_panel.rs`（1218 行）
+- `peri-tui/src/app/panel_ops.rs`（1084 行）
+- `peri-tui/src/app/login_panel.rs`（1021 行）
+- `peri-tui/src/app/panel_manager.rs`（35 pub）

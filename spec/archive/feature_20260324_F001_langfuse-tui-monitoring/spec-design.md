@@ -4,7 +4,7 @@
 
 项目已具备完整的 Agent 执行链路（ReAct 循环、工具调用、多轮对话），但缺乏可观测性：无法追踪每次 LLM 调用的 token 消耗、工具调用的耗时与错误率、各会话的整体质量。Langfuse 是专为 LLM 应用设计的监控平台，支持 Trace / Generation / Span 三级结构，可直接对接成本分析和质量评估。
 
-本 feature 在 **TUI 层**（`rust-agent-tui`）接入 Langfuse，不侵染核心 agent 框架（`rust-create-agent`）。核心 agent 层仅通过扩展现有事件枚举的方式暴露必要 hook，所有 Langfuse 依赖和上报逻辑均封装在 TUI 层。
+本 feature 在 **TUI 层**（`peri-tui`）接入 Langfuse，不侵染核心 agent 框架（`peri-agent`）。核心 agent 层仅通过扩展现有事件枚举的方式暴露必要 hook，所有 Langfuse 依赖和上报逻辑均封装在 TUI 层。
 
 ## 目标
 
@@ -23,14 +23,14 @@
 
 | 层次 | 改动内容 |
 |------|---------|
-| `rust-create-agent` | `AgentEvent` 枚举新增 `LlmCallStart` / `LlmCallEnd` 两个变体；`ReActAgent` 在 LLM 调用前后 emit |
-| `rust-agent-tui` | 新增 `src/langfuse/` 模块；`app/agent.rs` 构造 `LangfuseTracer`；`handle_agent_event` 中调用 tracer |
+| `peri-agent` | `AgentEvent` 枚举新增 `LlmCallStart` / `LlmCallEnd` 两个变体；`ReActAgent` 在 LLM 调用前后 emit |
+| `peri-tui` | 新增 `src/langfuse/` 模块；`app/agent.rs` 构造 `LangfuseTracer`；`handle_agent_event` 中调用 tracer |
 
-`rust-langfuse-ergonomic`（即 `langfuse-ergonomic = "0.6.3"` crate）作为上报客户端，只在 `rust-agent-tui` 的 `Cargo.toml` 中依赖。
+`rust-langfuse-ergonomic`（即 `langfuse-ergonomic = "0.6.3"` crate）作为上报客户端，只在 `peri-tui` 的 `Cargo.toml` 中依赖。
 
-### Agent 层 Hook 扩展（`rust-create-agent`）
+### Agent 层 Hook 扩展（`peri-agent`）
 
-在 `rust-create-agent/src/agent/events.rs` 中新增两个变体：
+在 `peri-agent/src/agent/events.rs` 中新增两个变体：
 
 ```rust
 /// LLM 调用开始（携带完整 input messages 快照）
@@ -58,7 +58,7 @@ pub struct TokenUsage {
 }
 ```
 
-`rust-create-agent/src/agent/react.rs` 在 `llm.generate_reasoning()` 调用前 emit `LlmCallStart`，调用后 emit `LlmCallEnd`（model 名从 `ReactLLM` trait 获取，usage 来自 LLM 响应可选字段）。
+`peri-agent/src/agent/react.rs` 在 `llm.generate_reasoning()` 调用前 emit `LlmCallStart`，调用后 emit `LlmCallEnd`（model 名从 `ReactLLM` trait 获取，usage 来自 LLM 响应可选字段）。
 
 ### Langfuse 数据模型映射
 
@@ -77,7 +77,7 @@ Generation 嵌套在 Trace 内，Span（工具调用）也嵌套在当前 Trace 
 
 ### `LangfuseTracer` 设计
 
-新增文件：`rust-agent-tui/src/langfuse/mod.rs`
+新增文件：`peri-tui/src/langfuse/mod.rs`
 
 ```rust
 pub struct LangfuseTracer {
@@ -105,7 +105,7 @@ pub fn on_tool_end(&mut self, tool_call_id: &str, output: &str, is_error: bool)
 pub fn on_trace_end(&mut self, final_answer: &str)
 ```
 
-新增文件：`rust-agent-tui/src/langfuse/config.rs`
+新增文件：`peri-tui/src/langfuse/config.rs`
 
 ```rust
 pub struct LangfuseConfig {
@@ -180,8 +180,8 @@ let tracer = LangfuseConfig::from_env().map(|cfg| {
 
 ## 约束一致性
 
-- 不在 `rust-create-agent` 或 `rust-agent-middlewares` 引入 Langfuse 依赖，保持核心层轻量
-- 仅在 `rust-agent-tui` 的 `Cargo.toml` 引入 `langfuse-ergonomic`，符合"仅在 TUI 层使用"的要求
+- 不在 `peri-agent` 或 `peri-middlewares` 引入 Langfuse 依赖，保持核心层轻量
+- 仅在 `peri-tui` 的 `Cargo.toml` 引入 `langfuse-ergonomic`，符合"仅在 TUI 层使用"的要求
 - `AgentEvent` 新增的 2 个变体完全向后兼容（枚举新增变体，调用方 match 添加 `_ => {}` 即可）
 - `LangfuseTracer` 使用 `parking_lot::Mutex`，与项目现有锁库一致（`app/mod.rs` 已使用 `parking_lot`）
 - `Batcher` 异步批量上报不阻塞 tokio 主线程，符合 TUI 响应性要求

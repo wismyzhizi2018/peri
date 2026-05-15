@@ -24,7 +24,7 @@
 
 ### 候选 1：ServiceRegistry 职责扩散 ⚠️ 中优先级
 
-**文件**: `rust-agent-tui/src/app/service_registry.rs`（82 行，21 个 pub 字段）
+**文件**: `peri-tui/src/app/service_registry.rs`（82 行，21 个 pub 字段）
 
 **问题**: ServiceRegistry 混合了 3 种不相关职责——
 
@@ -39,6 +39,7 @@
 **方案**: 将 UI 状态字段移入 `UiState` 或新建 `GlobalUiState`（setup_wizard, oauth_prompt, highlight timers）。ServiceRegistry 仅保留服务字段（10→10，但语义更纯粹）。
 
 **收益**:
+
 - Locality：setup_wizard/oauth_prompt 逻辑集中在 UI 层而非散落在 ServiceRegistry
 - Testability：测试 ServiceRegistry 不需要构造 UI 状态
 
@@ -46,7 +47,7 @@
 
 ### 候选 2：SubAgent 硬编码中间件链（4×3 重复） ⚠️ 中优先级
 
-**文件**: `rust-agent-middlewares/src/subagent/tool.rs`（979 行）
+**文件**: `peri-middlewares/src/subagent/tool.rs`（979 行）
 
 **问题**: 4 条执行路径（Normal/Fork/Background/Fork+Background）各自硬编码 5 个中间件构造。每次新增中间件需同步修改 4 处（已确认行号：299-301, 455-465, 606-608, 848-859）。
 
@@ -55,6 +56,7 @@
 **方案**: 提取 `fn build_subagent_middlewares(config: SubAgentMiddlewareConfig) -> Vec<Box<dyn Middleware<AgentState>>>`，4 条路径调用同一构造函数。`SubAgentMiddlewareConfig` 参数化差异（是否含 SkillPreload、Todo channel 等）。
 
 **收益**:
+
 - Locality：中间件构造逻辑集中在一处
 - Leverage：新增中间件只需修改 1 处
 - 测试改进：可单独测试构造函数
@@ -63,7 +65,7 @@
 
 ### 候选 3：compact 子系统零测试 🔴 高优先级
 
-**文件**: `rust-create-agent/src/agent/compact/`（4 个文件，~2100 行非测试代码）
+**文件**: `peri-agent/src/agent/compact/`（4 个文件，~2100 行非测试代码）
 
 | 文件 | 行数 | 测试行数 |
 |------|------|----------|
@@ -79,6 +81,7 @@
 **方案**: 优先为 `invariant.rs` 添加单元测试（compact 前后不变量校验），然后为 `micro.rs` 添加结构化测试（已知输入→预期输出）。`full.rs` 和 `re_inject.rs` 需要 MockLLM 集成测试。
 
 **收益**:
+
 - 安全网：防止 compact 引入数据损坏回归
 - 文档价值：测试用例本身就是 compact 行为的规范文档
 
@@ -86,7 +89,7 @@
 
 ### 候选 4：event.rs `std::mem::take` 借用检查器 workaround ⚠️ 中优先级
 
-**文件**: `rust-agent-tui/src/event.rs`（1408 行，12 处 `std::mem::take`）
+**文件**: `peri-tui/src/event.rs`（1408 行，12 处 `std::mem::take`）
 
 **问题**: PanelManager dispatch 需要 `&mut self`（面板）+ `&mut App 其余字段`（PanelContext），Rust 借用检查器无法证明两者不重叠。当前用 `std::mem::take` + 归还模式绕过（349, 394, 761, 978, 999, 1027, 1042, 1067, 1082, 1111, 1127 行）。
 
@@ -106,6 +109,7 @@ fn dispatch_panel_key(
 ```
 
 **收益**:
+
 - 消除 12 处 `std::mem::take` workaround（take 后忘记归还 = 运行时 panic）
 - 编译时安全：如果签名有重叠，编译器会直接报错
 
@@ -113,22 +117,25 @@ fn dispatch_panel_key(
 
 ### 候选 5：TUI 直接访问核心框架内部类型 ⚠️ 低优先级
 
-**文件**: `rust-agent-tui/src/app/agent.rs:633`, `agent_compact.rs:252`
+**文件**: `peri-tui/src/app/agent.rs:633`, `agent_compact.rs:252`
 
-**问题**: TUI 层直接调用 `rust-create-agent` 的内部函数：
-- `rust_create_agent::agent::compact::micro_compact_enhanced`
-- `rust_create_agent::agent::compact::full_compact`
-- `rust_create_agent::agent::compact::re_inject`
+**问题**: TUI 层直接调用 `peri-agent` 的内部函数：
 
-这些函数不在 `rust-create-agent` 的公共 API 中（通过 `pub(crate)` 或模块可见性暴露）。跨 crate 访问内部类型违反了分层架构的意图。
+- `peri_agent::agent::compact::micro_compact_enhanced`
+- `peri_agent::agent::compact::full_compact`
+- `peri_agent::agent::compact::re_inject`
 
-**方案**: 在 `rust-create-agent` 中创建 facade 层，将 compact 操作封装为公共 API：
+这些函数不在 `peri-agent` 的公共 API 中（通过 `pub(crate)` 或模块可见性暴露）。跨 crate 访问内部类型违反了分层架构的意图。
+
+**方案**: 在 `peri-agent` 中创建 facade 层，将 compact 操作封装为公共 API：
+
 ```rust
-// rust-create-agent/src/lib.rs
+// peri-agent/src/lib.rs
 pub fn compact_messages(state: &mut AgentState, config: CompactConfig) -> AgentResult<()>;
 ```
 
 **收益**:
+
 - 真正的 crate 边界隔离
 - 未来可替换 compact 实现而不影响 TUI
 
@@ -136,21 +143,24 @@ pub fn compact_messages(state: &mut AgentState, config: CompactConfig) -> AgentR
 
 ### 候选 6：AgentState 持久化耦合 ⚠️ 低优先级
 
-**文件**: `rust-create-agent/src/agent/state.rs`（245 行）
+**文件**: `peri-agent/src/agent/state.rs`（245 行）
 
 **问题**: `AgentState` 将持久化逻辑直接嵌入状态结构体——`store`、`thread_id`、`persist_tx` 三个字段（43-51 行）与 `with_persistence()` 构造方法（95-113 行）。`add_message()` 方法（142-148 行）混合了状态追加和持久化写入两个职责。
 
 **删除测试**: 删除 `with_persistence()`，持久化逻辑重新出现在调用方——**持久化在 earning its keep**，但应通过 seam 而非直接耦合。
 
 **方案**: 提取 `StatePersistence` trait：
+
 ```rust
 trait StatePersistence: Send + Sync {
     fn persist_message(&self, message: &BaseMessage) -> AgentResult<()>;
 }
 ```
+
 `AgentState` 持有 `Option<Arc<dyn StatePersistence>>` 而非直接持有 channel。
 
 **收益**:
+
 - 可测试性：测试 AgentState 不需要 channel
 - 灵活性：可替换为 batch persistence、no-op persistence 等
 
@@ -158,13 +168,14 @@ trait StatePersistence: Send + Sync {
 
 ### 候选 7：HITL→ToolSearch 字符串协议耦合 ⚠️ 低优先级
 
-**文件**: `rust-agent-middlewares/src/hitl/mod.rs:67-77`
+**文件**: `peri-middlewares/src/hitl/mod.rs:67-77`
 
 **问题**: HITL 中间件通过字符串匹配 `"ExecuteExtraTool"` 来解析实际工具名。这是跨中间件的隐式协议——HITL 需要知道 ToolSearch 的内部工具命名约定。
 
 **方案**: 将工具名解析逻辑移入 ToolSearch 中间件（作为 `before_tool` 钩子的一部分），或定义共享常量。
 
 **收益**:
+
 - HITL 中间件可独立于 ToolSearch
 - 命名变更只需修改一处
 
@@ -217,18 +228,18 @@ trait StatePersistence: Send + Sync {
 
 ### Phase 3B — 借用检查器清理（2-3 天）
 
-3. **event.rs dispatch 签名重构**：消除 12 处 `std::mem::take`
-4. **ServiceRegistry 职责分离**：UI 状态字段移出
+1. **event.rs dispatch 签名重构**：消除 12 处 `std::mem::take`
+2. **ServiceRegistry 职责分离**：UI 状态字段移出
 
 ### Phase 3C — crate 边界加固（2-3 天）
 
-5. **compact facade**：TUI 不再直接调用内部函数
-6. **HITL→ToolSearch 解耦**：消除字符串协议
+1. **compact facade**：TUI 不再直接调用内部函数
+2. **HITL→ToolSearch 解耦**：消除字符串协议
 
 ### Phase 3D — 内层 seam（可选，3-5 天）
 
-7. **AgentState 持久化提取**：`StatePersistence` trait
-8. **TokenEstimator trait**：可插拔 token 估算策略
+1. **AgentState 持久化提取**：`StatePersistence` trait
+2. **TokenEstimator trait**：可插拔 token 估算策略
 
 ---
 
@@ -238,11 +249,12 @@ trait StatePersistence: Send + Sync {
 
 | Agent | 范围 | 工具调用 | 耗时 |
 |-------|------|---------|------|
-| Agent 1 | rust-create-agent 深度 & seam 分析 | 46 | 140s |
-| Agent 2 | rust-agent-middlewares 耦合 & seam 分析 | 44 | 155s |
+| Agent 1 | peri-agent 深度 & seam 分析 | 46 | 140s |
+| Agent 2 | peri-middlewares 耦合 & seam 分析 | 44 | 155s |
 | Agent 3 | 域模型 & 架构决策探索 | 38 | 297s |
 
 **交叉验证**：
+
 - Agent 1 指出 "compact 零测试" → 手动确认 4 个文件均无 `#[cfg(test)]`
 - Agent 2 指出 "SubAgent 4×3 重复" → 手动确认 4 处行号（299/455/606/848）
 - Agent 1 指出 "State 持久化耦合" → 手动确认 state.rs:43-51 三字段
@@ -250,9 +262,10 @@ trait StatePersistence: Send + Sync {
 - 三个 Agent 一致确认：BaseModel/ThreadStore/BaseTool/Middleware 为真实 seam
 
 **未覆盖**：
+
 - `langfuse-client`（独立 crate，上次审查已确认隔离良好）
-- `perihelion-lsp`（独立 crate，上次审查已确认接口清晰）
-- `perihelion-widgets`（11 组件，零内部依赖，上次审查已确认深度适当）
+- `peri-lsp`（独立 crate，上次审查已确认接口清晰）
+- `peri-widgets`（11 组件，零内部依赖，上次审查已确认深度适当）
 - `rust-mcp-patch/`（临时补丁，上游修复后删除）
 
 ---

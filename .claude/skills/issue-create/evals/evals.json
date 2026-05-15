@@ -11,7 +11,7 @@
     {
       "id": 2,
       "name": "tech-debt-plugin-loader",
-      "prompt": "rust-agent-middlewares/src/plugin/loader.rs 的 load_enabled_plugins 函数太长了，1400 多行，混合了文件 I/O、YAML 解析、命令加载、MCP 配置合并等很多职责。改一个地方要读半天。",
+      "prompt": "peri-middlewares/src/plugin/loader.rs 的 load_enabled_plugins 函数太长了，1400 多行，混合了文件 I/O、YAML 解析、命令加载、MCP 配置合并等很多职责。改一个地方要读半天。",
       "expected_output": "创建一个技术债/重构类型的 issue 文档，包含现状数据表格（行数、职责分析）、拆分方案、涉及文件列表、收益分析。文件路径应为 spec/issues/YYYY-MM-DD-*.md",
       "files": []
     },

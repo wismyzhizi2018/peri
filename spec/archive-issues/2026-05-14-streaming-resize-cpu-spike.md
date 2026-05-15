@@ -51,9 +51,9 @@ event.rs:264   仅清除 text_selection，返回 Action::Redraw
 
 ## 涉及文件
 
-- `rust-agent-tui/src/ui/main_ui.rs:462-467` —— 每帧发送 Resize 事件，无去抖/节流
-- `rust-agent-tui/src/ui/render_thread.rs:376-384` —— Resize 事件处理，hash 全量清除
-- `rust-agent-tui/src/ui/render_thread.rs:119-155, 258-345` —— `build_wrap_map()` 和 `rebuild()`，全量重建逻辑
+- `peri-tui/src/ui/main_ui.rs:462-467` —— 每帧发送 Resize 事件，无去抖/节流
+- `peri-tui/src/ui/render_thread.rs:376-384` —— Resize 事件处理，hash 全量清除
+- `peri-tui/src/ui/render_thread.rs:119-155, 258-345` —— `build_wrap_map()` 和 `rebuild()`，全量重建逻辑
 
 ## 修复
 
@@ -67,6 +67,6 @@ event.rs:264   仅清除 text_selection，返回 Action::Redraw
 
 ### 变更文件
 
-- `rust-agent-tui/src/app/message_state.rs` —— 新增 `last_resize_width` 字段
-- `rust-agent-tui/src/ui/main_ui.rs` —— resize 发送去抖
-- `rust-agent-tui/src/ui/render_thread.rs` —— drain coalescing
+- `peri-tui/src/app/message_state.rs` —— 新增 `last_resize_width` 字段
+- `peri-tui/src/ui/main_ui.rs` —— resize 发送去抖
+- `peri-tui/src/ui/render_thread.rs` —— drain coalescing

@@ -6,7 +6,7 @@
         "peri-cli": "bin/peri-cli.js"
     },
     "keywords": [
-        "perihelion",
+        "peri",
         "rust",
         "agent",
         "cli"

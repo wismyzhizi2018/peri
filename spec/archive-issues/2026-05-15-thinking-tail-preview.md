@@ -73,10 +73,10 @@ fn extract_tail_lines(text: &str, max_lines: usize) -> String {
 
 | 文件 | 改动 |
 |------|------|
-| `rust-agent-tui/src/ui/message_view.rs` | `ContentBlockView::Reasoning` 新增 `text: String`、`tail_lines: Option<String>` 字段 |
-| `rust-agent-tui/src/app/message_pipeline.rs` | `build_streaming_bubble()` 传入 text、新增 `extract_tail_lines()` 和 `add_thinking_tail_snapshot()` |
-| `rust-agent-tui/src/app/message_pipeline_test.rs` | 3 个 `extract_tail_lines` 单元测试 |
-| `rust-agent-tui/src/ui/message_render.rs` | Reasoning 渲染追加 `⎿ ` 前缀的 dim 尾部行 |
+| `peri-tui/src/ui/message_view.rs` | `ContentBlockView::Reasoning` 新增 `text: String`、`tail_lines: Option<String>` 字段 |
+| `peri-tui/src/app/message_pipeline.rs` | `build_streaming_bubble()` 传入 text、新增 `extract_tail_lines()` 和 `add_thinking_tail_snapshot()` |
+| `peri-tui/src/app/message_pipeline_test.rs` | 3 个 `extract_tail_lines` 单元测试 |
+| `peri-tui/src/ui/message_render.rs` | Reasoning 渲染追加 `⎿ ` 前缀的 dim 尾部行 |
 
 **实现要点：**
 - `tail_lines` 参与 Hash（变化触发重渲染），`text` 不参与（仅 char_count 决定等价性）

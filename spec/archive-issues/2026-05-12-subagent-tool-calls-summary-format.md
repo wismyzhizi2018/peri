@@ -33,7 +33,7 @@ SubAgent 完成后显示的工具调用列表采用展开格式（如 `Glob, Glo
 
 ## 相关代码
 
-- `rust-agent-middlewares/src/subagent/tool.rs:945-963` — `format_subagent_result()` 函数，当前使用 `.join(", ")` 展开所有工具名
+- `peri-middlewares/src/subagent/tool.rs:945-963` — `format_subagent_result()` 函数，当前使用 `.join(", ")` 展开所有工具名
 
   ```rust
   let tool_summary = output
@@ -44,7 +44,7 @@ SubAgent 完成后显示的工具调用列表采用展开格式（如 `Glob, Glo
       .join(", ");
   ```
 
-- `rust-agent-tui/src/ui/message_view.rs:826-850` — `parse_subagent_tool_count()` 解析工具调用次数，修改格式时需同步更新
+- `peri-tui/src/ui/message_view.rs:826-850` — `parse_subagent_tool_count()` 解析工具调用次数，修改格式时需同步更新
 
 ## 期望改进方向
 

@@ -11,7 +11,7 @@
 ### Task 1: 添加 uuid serde 依赖
 
 **涉及文件:**
-- 修改: `rust-create-agent/Cargo.toml`
+- 修改: `peri-agent/Cargo.toml`
 
 **执行步骤:**
 - [x] 在 `uuid` 依赖中添加 `"serde"` feature
@@ -22,7 +22,7 @@
 
 **检查步骤:**
 - [x] 验证 uuid serde feature 已添加
-  - `grep -n 'uuid.*serde' rust-create-agent/Cargo.toml`
+  - `grep -n 'uuid.*serde' peri-agent/Cargo.toml`
   - 预期: 行包含 `"serde"`
 
 ---
@@ -30,8 +30,8 @@
 ### Task 2: 定义 MessageId 类型
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/messages/mod.rs`
-- 修改: `rust-create-agent/src/messages/message.rs`
+- 修改: `peri-agent/src/messages/mod.rs`
+- 修改: `peri-agent/src/messages/message.rs`
 
 **执行步骤:**
 - [x] 在 `messages/mod.rs` 中定义 `MessageId` 类型
@@ -46,7 +46,7 @@
 ### Task 3: BaseMessage 四个变体增加 id 字段
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/messages/message.rs`
+- 修改: `peri-agent/src/messages/message.rs`
 
 **执行步骤:**
 - [x] 为 `BaseMessage` 的四个变体增加 `id: MessageId` 字段
@@ -75,7 +75,7 @@
 ### Task 5: SQLite Schema 重建
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/thread/sqlite_store.rs`
+- 修改: `peri-agent/src/thread/sqlite_store.rs`
 
 **执行步骤:**
 - [x] 更新 `init_schema` 方法：messages 表主键改为 `message_id TEXT PRIMARY KEY`，移除 `seq` 列
@@ -91,7 +91,7 @@
 ### Task 6: 更新单元测试
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/messages/message.rs` 中的 `#[cfg(test)]`
+- 修改: `peri-agent/src/messages/message.rs` 中的 `#[cfg(test)]`
 
 **执行步骤:**
 - [x] 新增 `test_message_id_generated` 测试：验证不同消息 id 不同，序列化/反序列化后 id 一致
@@ -105,10 +105,10 @@
 ### Task 7: TUI Headless 测试
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/headless.rs`
+- 修改: `peri-tui/src/ui/headless.rs`
 
 **执行步骤:**
-- [x] `rust-agent-tui` 全量编译通过（base message struct literal 无需修改）
+- [x] `peri-tui` 全量编译通过（base message struct literal 无需修改）
 - [x] 跳过 headless 测试（耗时过长，用户要求跳过）
 
 **检查步骤:**
@@ -121,12 +121,12 @@
 **End-to-end verification:**
 
 1. `BaseMessage::human("x").id()` 返回有效 UUID v7
-   - `cargo test -p rust-create-agent --lib -- message_id` ✅
+   - `cargo test -p peri-agent --lib -- message_id` ✅
 2. SQLite roundtrip（写入 → 读取 → id 一致）
-   - `cargo test -p rust-create-agent --lib -- test_create_append_load` ✅
+   - `cargo test -p peri-agent --lib -- test_create_append_load` ✅
 3. Provider 适配层序列化无 `id` 字段
-   - `cargo test -p rust-create-agent --lib -- test_from_base_messages` ✅（5 tests passed）
+   - `cargo test -p peri-agent --lib -- test_from_base_messages` ✅（5 tests passed）
 4. 全 crate 编译零错误
    - `cargo build --all` ✅
 5. ThreadStore roundtrip
-   - `cargo test -p rust-create-agent --lib -- test_message_order_after_multiple_appends` ✅
+   - `cargo test -p peri-agent --lib -- test_message_order_after_multiple_appends` ✅

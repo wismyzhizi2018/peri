@@ -41,7 +41,7 @@
 
 **执行步骤:**
 - [x] 在 `RelayClient` 的 `impl` 块末尾添加 `send_thread_reset` 方法
-  - 签名：`pub fn send_thread_reset(&self, messages: &[rust_create_agent::messages::BaseMessage])`
+  - 签名：`pub fn send_thread_reset(&self, messages: &[peri_agent::messages::BaseMessage])`
   - 实现：将每条 BaseMessage 序列化为 `serde_json::Value`，构造 `{"type":"thread_reset","messages":[...]}` JSON
   - 调用 `self.send_raw(&s)` 发送（不注入 seq，不进历史缓存）
   - 若 `connected` 为 false 则静默跳过（与其他方法保持一致）
@@ -59,7 +59,7 @@
 ### Task 3: Agent relay_ops.rs 改动
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/relay_ops.rs`
+- 修改: `peri-tui/src/app/relay_ops.rs`
 
 **执行步骤:**
 - [x] 在 `WebMessage::ClearThread` 分支中，`relay.clear_history()` 调用之后、`self.new_thread()` 调用之前，追加 `relay.send_thread_reset(&[])`
@@ -70,13 +70,13 @@
 
 **检查步骤:**
 - [x] relay_ops.rs 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 无 error
 - [x] ClearThread 分支包含 send_thread_reset 调用
-  - `grep -A 10 "WebMessage::ClearThread" rust-agent-tui/src/app/relay_ops.rs`
+  - `grep -A 10 "WebMessage::ClearThread" peri-tui/src/app/relay_ops.rs`
   - 预期: 输出中包含 `send_thread_reset`
 - [x] CompactThread 分支存在
-  - `grep -n "CompactThread\|start_compact" rust-agent-tui/src/app/relay_ops.rs`
+  - `grep -n "CompactThread\|start_compact" peri-tui/src/app/relay_ops.rs`
   - 预期: 至少两行，分别包含 `CompactThread` 和 `start_compact`
 
 ---
@@ -84,8 +84,8 @@
 ### Task 4: Agent thread_ops.rs + agent_ops.rs 状态变更通知
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/thread_ops.rs`
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`
+- 修改: `peri-tui/src/app/thread_ops.rs`
+- 修改: `peri-tui/src/app/agent_ops.rs`
 
 **执行步骤:**
 - [x] **thread_ops.rs `new_thread()`**：在 `self.thread_browser = None; self.langfuse_session = None;` 之后追加
@@ -113,16 +113,16 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 无 error
 - [x] new_thread 中含 send_thread_reset
-  - `grep -A 15 "pub fn new_thread" rust-agent-tui/src/app/thread_ops.rs | grep "send_thread_reset"`
+  - `grep -A 15 "pub fn new_thread" peri-tui/src/app/thread_ops.rs | grep "send_thread_reset"`
   - 预期: 至少一行匹配
 - [x] open_thread 中含 send_thread_reset 和 clear_history
-  - `grep -A 50 "pub fn open_thread" rust-agent-tui/src/app/thread_ops.rs | grep -E "send_thread_reset|clear_history"`
+  - `grep -A 50 "pub fn open_thread" peri-tui/src/app/thread_ops.rs | grep -E "send_thread_reset|clear_history"`
   - 预期: 两行分别匹配
 - [x] CompactDone 中含 send_thread_reset
-  - `grep -A 60 "AgentEvent::CompactDone" rust-agent-tui/src/app/agent_ops.rs | grep "send_thread_reset"`
+  - `grep -A 60 "AgentEvent::CompactDone" peri-tui/src/app/agent_ops.rs | grep "send_thread_reset"`
   - 预期: 至少一行匹配
 
 ---
@@ -169,7 +169,7 @@
 
 **Prerequisites:**
 - 启动命令: `cargo run -p rust-relay-server --features server`（默认监听 8080）
-- Agent TUI 连接命令: `cargo run -p rust-agent-tui -- --remote-control ws://localhost:8080 --relay-token <token> --relay-name test-agent`
+- Agent TUI 连接命令: `cargo run -p peri-tui -- --remote-control ws://localhost:8080 --relay-token <token> --relay-name test-agent`
 - 浏览器访问: `http://localhost:8080/web/?token=<token>`
 
 **端到端验证:**
@@ -200,6 +200,6 @@
    - On failure: 检查 Task 5（前端文件）
 
 6. [x] Agent 侧 ThreadReset 发送点覆盖检查
-   - `grep -rn "send_thread_reset" rust-agent-tui/src/app/`
+   - `grep -rn "send_thread_reset" peri-tui/src/app/`
    - Expected: 至少 4 行匹配（relay_ops.rs×1，thread_ops.rs×2，agent_ops.rs×1）
    - On failure: 检查 Task 3-4 对应文件

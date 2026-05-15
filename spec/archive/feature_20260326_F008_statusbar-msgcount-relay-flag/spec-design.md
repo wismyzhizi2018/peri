@@ -17,7 +17,7 @@
 
 ### 1. Status Bar 消息数显示
 
-在 `rust-agent-tui/src/ui/main_ui/status_bar.rs` 的 `render_status_bar` 函数中，模型信息 Span 之后、Agent 面板信息之前，追加一组 Span：
+在 `peri-tui/src/ui/main_ui/status_bar.rs` 的 `render_status_bar` 函数中，模型信息 Span 之后、Agent 面板信息之前，追加一组 Span：
 
 ```
 │ 🗨 N 条
@@ -33,7 +33,7 @@ Status bar 布局示意：
 
 ### 2. 远程连接仅显式触发
 
-修改 `rust-agent-tui/src/app/mod.rs` 中 `try_connect_relay` 函数的 `else` 分支：
+修改 `peri-tui/src/app/mod.rs` 中 `try_connect_relay` 函数的 `else` 分支：
 
 **修改前：**
 
@@ -73,7 +73,7 @@ Status bar 布局示意：
 ## 约束一致性
 
 - 符合「事件驱动 TUI 通信」约束：status bar 消息数从 `App` 状态直接读取，不引入新通道
-- 符合「禁止下层依赖上层」架构：修改均在 `rust-agent-tui`（应用层）内
+- 符合「禁止下层依赖上层」架构：修改均在 `peri-tui`（应用层）内
 - 符合编码规范：无新的 `println!`，无跨 crate 公开接口变动
 
 ## 验收标准

@@ -1,6 +1,6 @@
 # App 结构体拆分重构 执行计划
 
-**目标:** 将 `rust-agent-tui` 的 `App` 结构体（40+ 字段）拆分为 4 个职责单一的子结构体，保持对外 API 不变
+**目标:** 将 `peri-tui` 的 `App` 结构体（40+ 字段）拆分为 4 个职责单一的子结构体，保持对外 API 不变
 
 **技术栈:** Rust, ratatui, tokio mpsc channels
 
@@ -12,7 +12,7 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/app/agent_comm.rs`
+- 新建: `peri-tui/src/app/agent_comm.rs`
 
 **执行步骤:**
 
@@ -33,7 +33,7 @@
 **检查步骤:**
 
 - [x] 验证 `agent_comm.rs` 编译通过（仅定义结构体，暂不迁移 App 字段）
-  - `cargo build -p rust-agent-tui 2>&1 | grep agent_comm`
+  - `cargo build -p peri-tui 2>&1 | grep agent_comm`
   - 预期: 无 agent_comm 相关错误
 
 ---
@@ -42,7 +42,7 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/app/relay_state.rs`
+- 新建: `peri-tui/src/app/relay_state.rs`
 
 **执行步骤:**
 
@@ -57,7 +57,7 @@
 **检查步骤:**
 
 - [x] 验证新增文件编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep relay_state`
+  - `cargo build -p peri-tui 2>&1 | grep relay_state`
   - 预期: 无 relay_state 相关错误
 
 ---
@@ -66,7 +66,7 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/app/langfuse_state.rs`
+- 新建: `peri-tui/src/app/langfuse_state.rs`
 
 **执行步骤:**
 
@@ -80,7 +80,7 @@
 **检查步骤:**
 
 - [x] 验证新增文件编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep langfuse_state`
+  - `cargo build -p peri-tui 2>&1 | grep langfuse_state`
   - 预期: 无 langfuse_state 相关错误
 
 ---
@@ -89,7 +89,7 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/app/core.rs`
+- 新建: `peri-tui/src/app/core.rs`
 
 **执行步骤:**
 
@@ -120,7 +120,7 @@
 **检查步骤:**
 
 - [x] 验证新增文件编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep "core\.rs"`
+  - `cargo build -p peri-tui 2>&1 | grep "core\.rs"`
   - 预期: 无 core.rs 相关错误
 
 ---
@@ -129,7 +129,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
 
@@ -171,10 +171,10 @@
 **检查步骤:**
 
 - [x] 验证 `App` 结构体顶层字段数 ≤ 12
-  - `grep -c 'pub [a-z_]*:' rust-agent-tui/src/app/mod.rs | head`
+  - `grep -c 'pub [a-z_]*:' peri-tui/src/app/mod.rs | head`
   - 预期: App 顶层字段 7-12 个（4 个子结构体 + 胶水字段）
 - [x] 编译通过，无 warning（ops 文件迁移将在 Task 6 完成）
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "warning|error" | head -20`
+  - `cargo build -p peri-tui 2>&1 | grep -E "warning|error" | head -20`
 
 ---
 
@@ -182,18 +182,18 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`
-- 修改: `rust-agent-tui/src/app/hitl_ops.rs`
-- 修改: `rust-agent-tui/src/app/ask_user_ops.rs`
-- 修改: `rust-agent-tui/src/app/relay_ops.rs`
-- 修改: `rust-agent-tui/src/app/thread_ops.rs`
-- 修改: `rust-agent-tui/src/app/panel_ops.rs`
-- 修改: `rust-agent-tui/src/app/hint_ops.rs`
-- 修改: `rust-agent-tui/src/event.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/status_bar.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/popups/*.rs`
-- 修改: `rust-agent-tui/src/main.rs`
+- 修改: `peri-tui/src/app/agent_ops.rs`
+- 修改: `peri-tui/src/app/hitl_ops.rs`
+- 修改: `peri-tui/src/app/ask_user_ops.rs`
+- 修改: `peri-tui/src/app/relay_ops.rs`
+- 修改: `peri-tui/src/app/thread_ops.rs`
+- 修改: `peri-tui/src/app/panel_ops.rs`
+- 修改: `peri-tui/src/app/hint_ops.rs`
+- 修改: `peri-tui/src/event.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/ui/main_ui/status_bar.rs`
+- 修改: `peri-tui/src/ui/main_ui/popups/*.rs`
+- 修改: `peri-tui/src/main.rs`
 
 **执行步骤:**
 
@@ -227,16 +227,16 @@
 **检查步骤:**
 
 - [ ] 全量编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 输出包含 "Finished" 且无 error
 - [ ] 全量编译无新 warning
-  - `cargo build -p rust-agent-tui 2>&1 | grep -c "warning"`
+  - `cargo build -p peri-tui 2>&1 | grep -c "warning"`
   - 预期: warning 数量不增加（或减少）
 - [ ] 全量测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | tail -10`
+  - `cargo test -p peri-tui 2>&1 | tail -10`
   - 预期: 所有测试通过
 - [ ] Headless 测试通过
-  - `cargo test -p rust-agent-tui --features headless 2>&1 | tail -10`
+  - `cargo test -p peri-tui --features headless 2>&1 | tail -10`
   - 预期: 所有 headless 测试通过
 
 ---
@@ -245,21 +245,21 @@
 
 **Prerequisites:**
 
-- Start command: `cargo build -p rust-agent-tui`
-- Test command: `cargo test -p rust-agent-tui`
+- Start command: `cargo build -p peri-tui`
+- Test command: `cargo test -p peri-tui`
 
 **End-to-end verification:**
 
 1. App 结构体顶层字段数验证
-   - `grep -E '^\s+pub [a-z_]+:' rust-agent-tui/src/app/mod.rs | wc -l`
+   - `grep -E '^\s+pub [a-z_]+:' peri-tui/src/app/mod.rs | wc -l`
    - Expected: ≤ 12（4 个子结构体 + 8 个胶水字段）
    - On failure: 检查 Task 5 的字段归属
 
 2. 每个子结构体字段数验证
-   - `grep -E '^\s+pub [a-z_]+:' rust-agent-tui/src/app/core.rs | wc -l`
-   - `grep -E '^\s+pub [a-z_]+:' rust-agent-tui/src/app/agent_comm.rs | wc -l`
-   - `grep -E '^\s+pub [a-z_]+:' rust-agent-tui/src/app/relay_state.rs | wc -l`
-   - `grep -E '^\s+pub [a-z_]+:' rust-agent-tui/src/app/langfuse_state.rs | wc -l`
+   - `grep -E '^\s+pub [a-z_]+:' peri-tui/src/app/core.rs | wc -l`
+   - `grep -E '^\s+pub [a-z_]+:' peri-tui/src/app/agent_comm.rs | wc -l`
+   - `grep -E '^\s+pub [a-z_]+:' peri-tui/src/app/relay_state.rs | wc -l`
+   - `grep -E '^\s+pub [a-z_]+:' peri-tui/src/app/langfuse_state.rs | wc -l`
    - Expected: core ≤ 20, agent_comm ≤ 15, relay_state ≤ 6, langfuse_state ≤ 5
    - On failure: 检查 Task 1-4 的字段列表
 
@@ -269,11 +269,11 @@
    - On failure: 检查 Task 6 的字段迁移是否遗漏
 
 4. 编译无新 warning
-   - `cargo build -p rust-agent-tui 2>&1 | grep "warning" | wc -l`
+   - `cargo build -p peri-tui 2>&1 | grep "warning" | wc -l`
    - Expected: 无新增 warning（与重构前对比）
    - On failure: 检查是否有未使用的转发方法或字段
 
 5. Headless 测试通过
-   - `cargo test -p rust-agent-tui --features headless 2>&1 | grep -E "test result|FAILED"`
+   - `cargo test -p peri-tui --features headless 2>&1 | grep -E "test result|FAILED"`
    - Expected: 所有测试通过，无 FAILED
    - On failure: 检查 `new_headless()` 构造是否正确初始化子结构体

@@ -39,12 +39,12 @@
 
 ### 核心文件
 
-- `rust-agent-tui/src/app/message_pipeline.rs` — 统一消息渲染管线
+- `peri-tui/src/app/message_pipeline.rs` — 统一消息渲染管线
   - `build_tail_vms()` — 构建尾部 VMs，决定流式显示内容
   - `build_streaming_bubble()` — 构建流式 AssistantBubble
   - `has_streaming_content()` — 判断是否有流式内容
 
-- `rust-agent-tui/src/ui/message_view.rs` — 视图模型定义
+- `peri-tui/src/ui/message_view.rs` — 视图模型定义
   - `MessageViewModel::AssistantBubble` — AI 消息视图
   - `ContentBlockView::Reasoning` — thinking 内容视图
 
@@ -84,6 +84,6 @@
 
 ## 涉及文件
 
-- `rust-agent-tui/src/app/message_pipeline.rs`
-- `rust-agent-tui/src/ui/message_view.rs`
-- `rust-agent-tui/src/app/agent_ops.rs` — agent 事件处理
+- `peri-tui/src/app/message_pipeline.rs`
+- `peri-tui/src/ui/message_view.rs`
+- `peri-tui/src/app/agent_ops.rs` — agent 事件处理

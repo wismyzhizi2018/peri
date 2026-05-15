@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-在 `rust-create-agent` 核心层新增 `TokenTracker` 累积追踪 token 用量 + `ContextBudget` 计算上下文窗口阈值，在 TUI 层于 agent 完成（`Done` 事件）后检查是否触发 auto-compact。分两个阶段交付：P0 先做 token 追踪与状态栏展示，P1 再做 auto-compact 自动触发。
+在 `peri-agent` 核心层新增 `TokenTracker` 累积追踪 token 用量 + `ContextBudget` 计算上下文窗口阈值，在 TUI 层于 agent 完成（`Done` 事件）后检查是否触发 auto-compact。分两个阶段交付：P0 先做 token 追踪与状态栏展示，P1 再做 auto-compact 自动触发。
 
 ---
 
@@ -12,11 +12,11 @@
 
 | 组件 | 位置 | 现状 |
 |------|------|------|
-| `TokenUsage` | `rust-create-agent/src/llm/types.rs` | 已有结构体（input/output/cache_create/cache_read），仅用于 Langfuse 追踪 |
-| `LlmCallEnd` 事件 | `rust-create-agent/src/agent/events.rs` | 每轮 LLM 调用后发出，携带 `usage: Option<TokenUsage>` |
-| `/compact` 命令 | `rust-agent-tui/src/command/compact.rs` | 手动触发压缩，调用 LLM 生成摘要 |
-| `compact_task()` | `rust-agent-tui/src/app/agent.rs:286` | 独立异步任务，格式化消息 → LLM 摘要 → 替换 thread |
-| `AgentState` | `rust-create-agent/src/agent/state.rs` | 仅追踪 `messages: Vec<BaseMessage>` 和 `current_step`，无 token 感知 |
+| `TokenUsage` | `peri-agent/src/llm/types.rs` | 已有结构体（input/output/cache_create/cache_read），仅用于 Langfuse 追踪 |
+| `LlmCallEnd` 事件 | `peri-agent/src/agent/events.rs` | 每轮 LLM 调用后发出，携带 `usage: Option<TokenUsage>` |
+| `/compact` 命令 | `peri-tui/src/command/compact.rs` | 手动触发压缩，调用 LLM 生成摘要 |
+| `compact_task()` | `peri-tui/src/app/agent.rs:286` | 独立异步任务，格式化消息 → LLM 摘要 → 替换 thread |
+| `AgentState` | `peri-agent/src/agent/state.rs` | 仅追踪 `messages: Vec<BaseMessage>` 和 `current_step`，无 token 感知 |
 
 ### 1.2 缺失的关键能力
 
@@ -33,13 +33,13 @@
 ### 2.1 模块职责划分
 
 ```
-rust-create-agent（核心框架）
+peri-agent（核心框架）
 ├── llm/types.rs          TokenUsage（已有，扩展）
 ├── agent/state.rs        AgentState（已有，扩展）
 ├── agent/token.rs        [新增] TokenTracker + ContextBudget
 ├── agent/events.rs       AgentEvent（已有，新增事件变体）
 │
-rust-agent-tui（TUI 应用层）
+peri-tui（TUI 应用层）
 ├── app/agent.rs          compact_task（已有，重构）
 ├── app/agent_ops.rs      事件处理（已有，扩展 auto-compact 分支）
 ├── app/token_tracker.rs  [新增] 会话级 token 聚合器
@@ -69,7 +69,7 @@ LLM 调用结束
 
 ### 2.3 核心层新增类型
 
-#### `TokenTracker`（rust-create-agent/src/agent/token.rs）
+#### `TokenTracker`（peri-agent/src/agent/token.rs）
 
 ```rust
 /// 会话级 token 用量追踪器
@@ -103,7 +103,7 @@ impl TokenTracker {
 }
 ```
 
-#### `ContextBudget`（rust-create-agent/src/agent/token.rs）
+#### `ContextBudget`（peri-agent/src/agent/token.rs）
 
 ```rust
 /// 上下文窗口预算配置
@@ -297,12 +297,12 @@ pub trait ReactLLM: Send + Sync {
 
 | 步骤 | 文件 | 变更内容 |
 |------|------|---------|
-| 1 | `rust-create-agent/src/agent/token.rs` | 新增 `TokenTracker` + `ContextBudget` |
-| 2 | `rust-create-agent/src/agent/state.rs` | `AgentState` 新增 `token_tracker` 字段 |
-| 3 | `rust-create-agent/src/agent/executor.rs` | `execute()` 中每轮 LLM 调用后自动 accumulate |
-| 4 | `rust-create-agent/src/agent/events.rs` | 新增 `ContextWarning` 事件变体 |
-| 5 | `rust-create-agent/src/lib.rs` | 导出 `token` 模块 |
-| 6 | `rust-agent-tui/src/app/agent_ops.rs` | 处理 `LlmCallEnd` 时更新 token 展示 |
+| 1 | `peri-agent/src/agent/token.rs` | 新增 `TokenTracker` + `ContextBudget` |
+| 2 | `peri-agent/src/agent/state.rs` | `AgentState` 新增 `token_tracker` 字段 |
+| 3 | `peri-agent/src/agent/executor.rs` | `execute()` 中每轮 LLM 调用后自动 accumulate |
+| 4 | `peri-agent/src/agent/events.rs` | 新增 `ContextWarning` 事件变体 |
+| 5 | `peri-agent/src/lib.rs` | 导出 `token` 模块 |
+| 6 | `peri-tui/src/app/agent_ops.rs` | 处理 `LlmCallEnd` 时更新 token 展示 |
 | 7 | TUI 状态栏 | 显示 context 使用百分比 |
 | 8 | 单元测试 | `TokenTracker` 和 `ContextBudget` 测试 |
 
@@ -312,10 +312,10 @@ pub trait ReactLLM: Send + Sync {
 
 | 步骤 | 文件 | 变更内容 |
 |------|------|---------|
-| 1 | `rust-create-agent/src/agent/token.rs` | micro-compact 实现（纯函数，操作 `&mut Vec<BaseMessage>`） |
-| 2 | `rust-agent-tui/src/app/auto_compact.rs` | auto-compact 触发逻辑（阈值检查 + 流程编排） |
-| 3 | `rust-agent-tui/src/app/agent_ops.rs` | 集成 auto-compact 检查到事件循环 |
-| 4 | `rust-agent-tui/src/app/agent.rs` | 重构 `compact_task()`，支持 auto 模式 |
+| 1 | `peri-agent/src/agent/token.rs` | micro-compact 实现（纯函数，操作 `&mut Vec<BaseMessage>`） |
+| 2 | `peri-tui/src/app/auto_compact.rs` | auto-compact 触发逻辑（阈值检查 + 流程编排） |
+| 3 | `peri-tui/src/app/agent_ops.rs` | 集成 auto-compact 检查到事件循环 |
+| 4 | `peri-tui/src/app/agent.rs` | 重构 `compact_task()`，支持 auto 模式 |
 | 5 | `BaseModelReactLLM` | 实现 `context_window()` 方法 |
 | 6 | 集成测试 | 验证 auto-compact 触发时机和结果 |
 

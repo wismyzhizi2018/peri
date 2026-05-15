@@ -11,8 +11,8 @@
 ### Task 1: ExecutorEvent 扩展
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/agent/events.rs`
-- 修改: `rust-create-agent/src/agent/executor.rs`
+- 修改: `peri-agent/src/agent/events.rs`
+- 修改: `peri-agent/src/agent/executor.rs`
 
 **执行步骤:**
 - [x] 修改 `AgentEvent::ToolStart` 增加 `tool_call_id: String` 字段
@@ -24,10 +24,10 @@
 
 **检查步骤:**
 - [x] 验证编译通过
-  - `cargo build -p rust-create-agent 2>&1 | tail -5`
+  - `cargo build -p peri-agent 2>&1 | tail -5`
   - 预期: 输出包含 "Compiling" 且无 error
 - [x] 验证单元测试通过
-  - `cargo test -p rust-create-agent --lib 2>&1 | tail -10`
+  - `cargo test -p peri-agent --lib 2>&1 | tail -10`
   - 预期: 所有测试通过，无 failure
 
 ---
@@ -35,8 +35,8 @@
 ### Task 2: TUI 事件转换适配
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/agent.rs`
 
 **执行步骤:**
 - [x] 修改 `AgentEvent::ToolCall` 增加 `tool_call_id: String` 字段
@@ -47,7 +47,7 @@
 
 **检查步骤:**
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 输出包含 "Compiling" 且无 error
 
 ---
@@ -55,9 +55,9 @@
 ### Task 3: 历史恢复统一渲染
 
 **涉及文件:**
-- 新建: `rust-agent-tui/src/app/tool_display.rs`
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/ui/message_view.rs`
+- 新建: `peri-tui/src/app/tool_display.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/ui/message_view.rs`
 
 **执行步骤:**
 - [x] 创建 `tool_display.rs` 提取公共格式化函数
@@ -74,10 +74,10 @@
 
 **检查步骤:**
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 输出包含 "Compiling" 且无 error
 - [x] 验证历史恢复逻辑
-  - `cargo test -p rust-agent-tui --lib tool_display 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib tool_display 2>&1 | tail -10`
   - 预期: 测试通过（如有）
 
 ---
@@ -85,7 +85,7 @@
 ### Task 4: Data Pipeline Acceptance
 
 **Prerequisites:**
-- Start command: `cargo build -p rust-agent-tui`
+- Start command: `cargo build -p peri-tui`
 - Test data setup: 准备包含工具调用的历史 thread（可手动创建或使用已有测试数据）
 
 **End-to-end verification:**

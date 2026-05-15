@@ -11,11 +11,11 @@
 ### 环境要求
 - [ ] [AUTO] 确认当前目录为项目根目录: `test -f Cargo.toml && echo "OK"`
 - [ ] [AUTO] 编译全 workspace（首次可能需要下载依赖，耗时较长）: `cargo build 2>&1 | tail -3`
-- [ ] [AUTO] 确认 langfuse-ergonomic 依赖已下载: `grep "langfuse-ergonomic" rust-agent-tui/Cargo.toml`
+- [ ] [AUTO] 确认 langfuse-ergonomic 依赖已下载: `grep "langfuse-ergonomic" peri-tui/Cargo.toml`
 
 ### 端到端测试数据准备（场景 6 需要）
 - [ ] [MANUAL] 准备 Langfuse 账号：前往 https://cloud.langfuse.com 注册或登录，创建项目，生成 Public Key（pk-lf-...）和 Secret Key（sk-lf-...）
-- [ ] [AUTO] 在 rust-agent-tui/.env 设置密钥（替换 YOUR_PK 和 YOUR_SK 为真实密钥）: `echo "LANGFUSE_PUBLIC_KEY=YOUR_PK\nLANGFUSE_SECRET_KEY=YOUR_SK" >> rust-agent-tui/.env`
+- [ ] [AUTO] 在 peri-tui/.env 设置密钥（替换 YOUR_PK 和 YOUR_SK 为真实密钥）: `echo "LANGFUSE_PUBLIC_KEY=YOUR_PK\nLANGFUSE_SECRET_KEY=YOUR_SK" >> peri-tui/.env`
 
 ---
 
@@ -29,13 +29,13 @@
 - **操作步骤:**
   1. [A] `cargo build 2>&1 | grep -E "^error" | head -5` → 期望: 无任何输出（零编译错误）
 - **异常排查:**
-  - 若有编译错误: 检查 `rust-create-agent/src/llm/types.rs` 中 `TokenUsage` derive 属性是否完整；检查 `rust-agent-tui/src/langfuse/mod.rs` 中 import 是否正确
+  - 若有编译错误: 检查 `peri-agent/src/llm/types.rs` 中 `TokenUsage` derive 属性是否完整；检查 `peri-tui/src/langfuse/mod.rs` 中 import 是否正确
 
-#### - [x] 1.2 rust-create-agent 单元测试全绿
+#### - [x] 1.2 peri-agent 单元测试全绿
 
 - **来源:** Task 1/2/4 检查步骤
 - **操作步骤:**
-  1. [A] `cargo test -p rust-create-agent --lib 2>&1 | tail -5` → 期望: 输出最后一行包含 `test result: ok`，passed 数量 ≥ 32，failed 为 0
+  1. [A] `cargo test -p peri-agent --lib 2>&1 | tail -5` → 期望: 输出最后一行包含 `test result: ok`，passed 数量 ≥ 32，failed 为 0
 - **异常排查:**
   - 若测试失败: 查看失败测试名称，检查对应文件是否正确初始化了新字段（`usage: None, model: String::new()`）
 
@@ -47,17 +47,17 @@
 
 - **来源:** Task 2 检查步骤
 - **操作步骤:**
-  1. [A] `grep -n "LlmCallStart\|LlmCallEnd" rust-create-agent/src/agent/events.rs` → 期望: 至少 2 行输出，分别包含 `LlmCallStart` 和 `LlmCallEnd`
-  2. [A] `grep -c "LlmCallStart\|LlmCallEnd" rust-create-agent/src/agent/events.rs` → 期望: 输出 `2` 或更大数字
+  1. [A] `grep -n "LlmCallStart\|LlmCallEnd" peri-agent/src/agent/events.rs` → 期望: 至少 2 行输出，分别包含 `LlmCallStart` 和 `LlmCallEnd`
+  2. [A] `grep -c "LlmCallStart\|LlmCallEnd" peri-agent/src/agent/events.rs` → 期望: 输出 `2` 或更大数字
 - **异常排查:**
-  - 若无输出: 检查 `rust-create-agent/src/agent/events.rs` 文件是否包含两个新变体定义
+  - 若无输出: 检查 `peri-agent/src/agent/events.rs` 文件是否包含两个新变体定义
 
 #### - [x] 2.2 executor.rs 正确 emit LlmCallStart 和 LlmCallEnd 事件
 
 - **来源:** Task 2 执行步骤
 - **操作步骤:**
-  1. [A] `grep -n "LlmCallStart\|LlmCallEnd" rust-create-agent/src/agent/executor.rs` → 期望: 至少 2 行输出（emit 调用处）
-  2. [A] `grep -n "emit.*LlmCall" rust-create-agent/src/agent/executor.rs` → 期望: 含 `self.emit(AgentEvent::LlmCallStart` 和 `self.emit(AgentEvent::LlmCallEnd`
+  1. [A] `grep -n "LlmCallStart\|LlmCallEnd" peri-agent/src/agent/executor.rs` → 期望: 至少 2 行输出（emit 调用处）
+  2. [A] `grep -n "emit.*LlmCall" peri-agent/src/agent/executor.rs` → 期望: 含 `self.emit(AgentEvent::LlmCallStart` 和 `self.emit(AgentEvent::LlmCallEnd`
 - **异常排查:**
   - 若无 emit 调用: 检查 executor.rs 在 `generate_reasoning` 调用前后是否有 `self.emit(AgentEvent::LlmCallStart` 和 `self.emit(AgentEvent::LlmCallEnd`
 
@@ -65,7 +65,7 @@
 
 - **来源:** Task 2 执行步骤
 - **操作步骤:**
-  1. [A] `grep -n "model_name" rust-create-agent/src/agent/react.rs` → 期望: 至少 2 行输出（trait 定义处 + blanket impl 处）
+  1. [A] `grep -n "model_name" peri-agent/src/agent/react.rs` → 期望: 至少 2 行输出（trait 定义处 + blanket impl 处）
 - **异常排查:**
   - 若无输出: 检查 `ReactLLM` trait 定义是否包含 `fn model_name(&self) -> String { "unknown".to_string() }`
 
@@ -77,16 +77,16 @@
 
 - **来源:** Task 3 检查步骤
 - **操作步骤:**
-  1. [A] `ls rust-agent-tui/src/langfuse/` → 期望: 输出包含 `config.rs` 和 `mod.rs` 两个文件名
-  2. [A] `wc -l rust-agent-tui/src/langfuse/mod.rs` → 期望: 行数 > 50（实现非空）
+  1. [A] `ls peri-tui/src/langfuse/` → 期望: 输出包含 `config.rs` 和 `mod.rs` 两个文件名
+  2. [A] `wc -l peri-tui/src/langfuse/mod.rs` → 期望: 行数 > 50（实现非空）
 - **异常排查:**
-  - 若文件不存在: 检查 `rust-agent-tui/src/langfuse/` 目录是否已创建
+  - 若文件不存在: 检查 `peri-tui/src/langfuse/` 目录是否已创建
 
 #### - [x] 3.2 config.rs 正确引用三个环境变量
 
 - **来源:** Task 3 检查步骤、spec-design.md 配置要求
 - **操作步骤:**
-  1. [A] `grep -n "LANGFUSE_PUBLIC_KEY\|LANGFUSE_SECRET_KEY\|LANGFUSE_HOST" rust-agent-tui/src/langfuse/config.rs` → 期望: 至少 3 行输出，分别包含三个变量名
+  1. [A] `grep -n "LANGFUSE_PUBLIC_KEY\|LANGFUSE_SECRET_KEY\|LANGFUSE_HOST" peri-tui/src/langfuse/config.rs` → 期望: 至少 3 行输出，分别包含三个变量名
 - **异常排查:**
   - 若输出不足 3 行: 检查 `LangfuseConfig::from_env()` 实现是否包含全部三个环境变量读取
 
@@ -94,7 +94,7 @@
 
 - **来源:** Task 3 执行步骤
 - **操作步骤:**
-  1. [A] `grep -n "pub fn on_" rust-agent-tui/src/langfuse/mod.rs` → 期望: 至少 5 行输出，包含 `on_trace_start`、`on_llm_start`、`on_llm_end`、`on_tool_start`、`on_trace_end`
+  1. [A] `grep -n "pub fn on_" peri-tui/src/langfuse/mod.rs` → 期望: 至少 5 行输出，包含 `on_trace_start`、`on_llm_start`、`on_llm_end`、`on_tool_start`、`on_trace_end`
 - **异常排查:**
   - 若缺少方法: 检查 `LangfuseTracer` 结构体实现是否完整
 
@@ -102,9 +102,9 @@
 
 - **来源:** Task 4 执行步骤
 - **操作步骤:**
-  1. [A] `grep "langfuse-ergonomic" rust-agent-tui/Cargo.toml` → 期望: 输出包含 `langfuse-ergonomic = "0.6.3"`
+  1. [A] `grep "langfuse-ergonomic" peri-tui/Cargo.toml` → 期望: 输出包含 `langfuse-ergonomic = "0.6.3"`
 - **异常排查:**
-  - 若无输出: 检查 `rust-agent-tui/Cargo.toml` 的 `[dependencies]` 部分是否添加了该依赖
+  - 若无输出: 检查 `peri-tui/Cargo.toml` 的 `[dependencies]` 部分是否添加了该依赖
 
 ---
 
@@ -114,9 +114,9 @@
 
 - **来源:** Task 4 执行步骤
 - **操作步骤:**
-  1. [A] `grep -n "mod langfuse" rust-agent-tui/src/main.rs` → 期望: 1 行输出，包含 `mod langfuse;`
-  2. [A] `grep -n "langfuse_tracer" rust-agent-tui/src/app/mod.rs` → 期望: 至少 3 行输出（字段定义、App::new 初始化、new_headless 初始化）
-  3. [A] `grep -c "langfuse_tracer" rust-agent-tui/src/app/mod.rs` → 期望: 数字 ≥ 3
+  1. [A] `grep -n "mod langfuse" peri-tui/src/main.rs` → 期望: 1 行输出，包含 `mod langfuse;`
+  2. [A] `grep -n "langfuse_tracer" peri-tui/src/app/mod.rs` → 期望: 至少 3 行输出（字段定义、App::new 初始化、new_headless 初始化）
+  3. [A] `grep -c "langfuse_tracer" peri-tui/src/app/mod.rs` → 期望: 数字 ≥ 3
 - **异常排查:**
   - 若 mod langfuse 不存在: 检查 main.rs 中模块声明列表
   - 若 langfuse_tracer 出现次数不足: 检查 App::new() 和 new_headless() 初始化块
@@ -125,8 +125,8 @@
 
 - **来源:** Task 4 检查步骤
 - **操作步骤:**
-  1. [A] `grep -n "LlmCallStart\|LlmCallEnd\|on_llm_start\|on_llm_end" rust-agent-tui/src/app/agent.rs` → 期望: ≥ 4 行输出
-  2. [A] `grep -n "langfuse_tracer\|langfuse_for_handler" rust-agent-tui/src/app/agent.rs` → 期望: ≥ 2 行输出（函数参数声明处 + 闭包克隆处）
+  1. [A] `grep -n "LlmCallStart\|LlmCallEnd\|on_llm_start\|on_llm_end" peri-tui/src/app/agent.rs` → 期望: ≥ 4 行输出
+  2. [A] `grep -n "langfuse_tracer\|langfuse_for_handler" peri-tui/src/app/agent.rs` → 期望: ≥ 2 行输出（函数参数声明处 + 闭包克隆处）
 - **异常排查:**
   - 若调用行数不足: 检查 `run_universal_agent` 中 `langfuse_tracer` 参数和 `FnEventHandler` 内的 match 分支
 
@@ -138,8 +138,8 @@
 
 - **来源:** Task 4 检查步骤、spec-design.md 目标
 - **操作步骤:**
-  1. [A] `env -i HOME=$HOME timeout 3 cargo run -p rust-agent-tui -- -y 2>&1 | grep -c "panic"` → 期望: 输出为 `0`（零 panic）
-  2. [A] `env -i HOME=$HOME LANGFUSE_PUBLIC_KEY="" timeout 3 cargo run -p rust-agent-tui -- -y 2>&1 | grep -i "langfuse\|panic" | head -5` → 期望: 无输出或无包含 panic/error 的行
+  1. [A] `env -i HOME=$HOME timeout 3 cargo run -p peri-tui -- -y 2>&1 | grep -c "panic"` → 期望: 输出为 `0`（零 panic）
+  2. [A] `env -i HOME=$HOME LANGFUSE_PUBLIC_KEY="" timeout 3 cargo run -p peri-tui -- -y 2>&1 | grep -i "langfuse\|panic" | head -5` → 期望: 无输出或无包含 panic/error 的行
 - **异常排查:**
   - 若出现 panic: 检查 `LangfuseConfig::from_env()` 返回 `None` 时的代码路径，确认 `langfuse_tracer: None` 分支被正确处理
 
@@ -153,7 +153,7 @@
 
 - **来源:** spec-design.md 验收标准
 - **操作步骤:**
-  1. [H] 在终端执行（替换真实 Key）：`LANGFUSE_PUBLIC_KEY=<pk> LANGFUSE_SECRET_KEY=<sk> cargo run -p rust-agent-tui`，启动 TUI 后输入任意问题并发送，等待回答完成 → 操作是否成功（TUI 显示了 AI 回答）？ 是/否
+  1. [H] 在终端执行（替换真实 Key）：`LANGFUSE_PUBLIC_KEY=<pk> LANGFUSE_SECRET_KEY=<sk> cargo run -p peri-tui`，启动 TUI 后输入任意问题并发送，等待回答完成 → 操作是否成功（TUI 显示了 AI 回答）？ 是/否
   2. [H] 打开 https://cloud.langfuse.com（或自托管地址），进入对应项目的「Traces」列表，刷新页面，查看是否出现名为 `agent-run` 的新 Trace，且时间戳与刚才发送时间接近 → 是否可见新 Trace？ 是/否
   3. [H] 点击进入该 Trace，查看 Trace 详情页，确认存在至少 1 个 Generation 类型的子节点（名称格式为 `llm-call-step-N`）→ 是否存在 Generation？ 是/否
 - **异常排查:**
@@ -177,7 +177,7 @@
 | 场景 | 序号 | 验收项 | 自动步骤 | 人工步骤 | 结果 | 备注 |
 |------|------|--------|----------|----------|------|------|
 | 编译与单元测试 | 1.1 | 全 workspace 编译通过 | 1 | 0 | ⬜ | |
-| 编译与单元测试 | 1.2 | rust-create-agent 单元测试全绿 | 1 | 0 | ⬜ | |
+| 编译与单元测试 | 1.2 | peri-agent 单元测试全绿 | 1 | 0 | ⬜ | |
 | 核心层 Hook 扩展 | 2.1 | AgentEvent 新变体存在 | 2 | 0 | ⬜ | |
 | 核心层 Hook 扩展 | 2.2 | executor.rs emit 调用存在 | 2 | 0 | ⬜ | |
 | 核心层 Hook 扩展 | 2.3 | ReactLLM::model_name 方法存在 | 1 | 0 | ⬜ | |

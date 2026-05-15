@@ -13,7 +13,7 @@
 
 **`map_executor_event` 丢弃了 ReAct 循环中间的 StateSnapshot。**
 
-`rust-agent-tui/src/app/agent.rs:551` 中 `map_executor_event` 将 `ExecutorEvent::StateSnapshot(_)` 映射为 `None`，导致 ReAct 循环中间 `emit_snapshot_and_drain_notifications()` 发射的所有 StateSnapshot 被静默丢弃。
+`peri-tui/src/app/agent.rs:551` 中 `map_executor_event` 将 `ExecutorEvent::StateSnapshot(_)` 映射为 `None`，导致 ReAct 循环中间 `emit_snapshot_and_drain_notifications()` 发射的所有 StateSnapshot 被静默丢弃。
 
 **因果链**：
 
@@ -42,11 +42,11 @@
 
 ## 相关代码
 
-- `rust-agent-tui/src/app/agent.rs:550` — **修复点**：`ExecutorEvent::StateSnapshot(msgs) => AgentEvent::StateSnapshot(msgs)`
-- `rust-create-agent/src/agent/executor/final_answer.rs:38-53` — `emit_snapshot_and_drain_notifications()` 每次工具调用后发射 StateSnapshot
-- `rust-agent-tui/src/app/agent.rs:442` — `run_universal_agent` 末尾直接发送最终 StateSnapshot（绕过 map_executor_event）
-- `rust-agent-tui/src/app/message_pipeline.rs:301-303` — `handle_event(StateSnapshot)` 调用 `set_completed()`
-- `rust-agent-tui/src/app/message_pipeline.rs:744-753` — `set_completed()` 清空 `current_ai_text` 并设 `has_snapshot_this_round = true`
+- `peri-tui/src/app/agent.rs:550` — **修复点**：`ExecutorEvent::StateSnapshot(msgs) => AgentEvent::StateSnapshot(msgs)`
+- `peri-agent/src/agent/executor/final_answer.rs:38-53` — `emit_snapshot_and_drain_notifications()` 每次工具调用后发射 StateSnapshot
+- `peri-tui/src/app/agent.rs:442` — `run_universal_agent` 末尾直接发送最终 StateSnapshot（绕过 map_executor_event）
+- `peri-tui/src/app/message_pipeline.rs:301-303` — `handle_event(StateSnapshot)` 调用 `set_completed()`
+- `peri-tui/src/app/message_pipeline.rs:744-753` — `set_completed()` 清空 `current_ai_text` 并设 `has_snapshot_this_round = true`
 
 ## 复现条件
 

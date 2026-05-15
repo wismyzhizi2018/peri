@@ -40,11 +40,11 @@
 
 ## 相关代码
 
-- `rust-agent-tui/src/app/agent_compact.rs:125-189` —— `handle_compact_done` resubmit 逻辑，当前不区分触发来源
-- `rust-agent-tui/src/app/thread_ops.rs:302` —— `start_compact(instructions)`，`instructions` 参数区分 `"auto"` 和用户输入
-- `rust-agent-tui/src/app/agent_ops.rs:395` —— Done 事件中 auto-compact 触发（`start_compact("auto")`）
-- `rust-agent-tui/src/app/agent_events_bg.rs:190` —— 后台任务完成后延迟 auto-compact 触发
-- `rust-agent-tui/src/command/compact.rs:25` —— `/compact` 命令触发（`start_compact(args)`）
+- `peri-tui/src/app/agent_compact.rs:125-189` —— `handle_compact_done` resubmit 逻辑，当前不区分触发来源
+- `peri-tui/src/app/thread_ops.rs:302` —— `start_compact(instructions)`，`instructions` 参数区分 `"auto"` 和用户输入
+- `peri-tui/src/app/agent_ops.rs:395` —— Done 事件中 auto-compact 触发（`start_compact("auto")`）
+- `peri-tui/src/app/agent_events_bg.rs:190` —— 后台任务完成后延迟 auto-compact 触发
+- `peri-tui/src/command/compact.rs:25` —— `/compact` 命令触发（`start_compact(args)`）
 
 ## 关联 Issue
 

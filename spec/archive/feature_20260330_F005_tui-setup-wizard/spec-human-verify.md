@@ -4,7 +4,7 @@
 
 ### - [x] 1.1 构建工具可用性验证
 
-[A] `cargo build -p rust-agent-tui --no-default-features 2>&1 | grep -c "error"`
+[A] `cargo build -p peri-tui --no-default-features 2>&1 | grep -c "error"`
 → 期望包含: 0
 **来源:** spec-plan.md Task 0 检查步骤
 **目的:** 验证构建环境配置正确
@@ -12,7 +12,7 @@
 
 ### - [x] 1.2 测试工具可用性验证
 
-[A] `cargo test -p rust-agent-tui --lib -- test_thinking_effort_low 2>&1 | grep -c "ok"`
+[A] `cargo test -p peri-tui --lib -- test_thinking_effort_low 2>&1 | grep -c "ok"`
 → 期望包含: ≥ 1
 **来源:** spec-plan.md Task 0 检查步骤
 **目的:** 验证测试环境配置正确
@@ -24,7 +24,7 @@
 
 ### - [x] 2.1 模块注册验证
 
-[A] `grep -c "pub mod setup_wizard" rust-agent-tui/src/app/mod.rs`
+[A] `grep -c "pub mod setup_wizard" peri-tui/src/app/mod.rs`
 → 期望包含: 1
 **来源:** spec-plan.md Task 1 检查步骤
 **目的:** 验证 setup_wizard 模块正确注册
@@ -32,7 +32,7 @@
 
 ### - [x] 2.2 App 结构体字段验证
 
-[A] `grep -c "setup_wizard" rust-agent-tui/src/app/mod.rs`
+[A] `grep -c "setup_wizard" peri-tui/src/app/mod.rs`
 → 期望包含: ≥ 3
 **来源:** spec-plan.md Task 1 检查步骤
 **目的:** 验证 App 结构体包含 setup_wizard 相关字段
@@ -40,7 +40,7 @@
 
 ### - [x] 2.3 needs_setup 调用验证
 
-[A] `grep -c "needs_setup" rust-agent-tui/src/main.rs`
+[A] `grep -c "needs_setup" peri-tui/src/main.rs`
 → 期望包含: 1
 **来源:** spec-plan.md Task 1 检查步骤
 **目的:** 验证 main.rs 正确调用 needs_setup 检测
@@ -48,7 +48,7 @@
 
 ### - [x] 2.4 编译验证
 
-[A] `cargo build -p rust-agent-tui 2>&1 | grep -c "error"`
+[A] `cargo build -p peri-tui 2>&1 | grep -c "error"`
 → 期望包含: 0
 **来源:** spec-plan.md Task 1 检查步骤
 **目的:** 验证代码编译通过无错误
@@ -56,7 +56,7 @@
 
 ### - [x] 2.5 单元测试验证
 
-[A] `cargo test -p rust-agent-tui --lib -- setup_wizard 2>&1 | grep "test result"`
+[A] `cargo test -p peri-tui --lib -- setup_wizard 2>&1 | grep "test result"`
 → 期望包含: ok
 **来源:** spec-plan.md Task 1 检查步骤
 **目的:** 验证数据模型单元测试通过
@@ -68,7 +68,7 @@
 
 ### - [x] 3.1 渲染文件存在验证
 
-[A] `test -f rust-agent-tui/src/ui/main_ui/popups/setup_wizard.rs && echo OK`
+[A] `test -f peri-tui/src/ui/main_ui/popups/setup_wizard.rs && echo OK`
 → 期望包含: OK
 **来源:** spec-plan.md Task 2 检查步骤
 **目的:** 验证渲染文件已创建
@@ -76,7 +76,7 @@
 
 ### - [x] 3.2 popup 模块注册验证
 
-[A] `grep -c "pub mod setup_wizard" rust-agent-tui/src/ui/main_ui/popups/mod.rs`
+[A] `grep -c "pub mod setup_wizard" peri-tui/src/ui/main_ui/popups/mod.rs`
 → 期望包含: 1
 **来源:** spec-plan.md Task 2 检查步骤
 **目的:** 验证 popup 模块正确注册
@@ -84,7 +84,7 @@
 
 ### - [x] 3.3 main_ui 优先检查验证
 
-[A] `grep -c "setup_wizard" rust-agent-tui/src/ui/main_ui.rs`
+[A] `grep -c "setup_wizard" peri-tui/src/ui/main_ui.rs`
 → 期望包含: ≥ 2
 **来源:** spec-plan.md Task 2 检查步骤
 **目的:** 验证 main_ui 正确拦截 setup_wizard 渲染
@@ -92,7 +92,7 @@
 
 ### - [x] 3.4 渲染编译验证
 
-[A] `cargo build -p rust-agent-tui 2>&1 | grep -c "error"`
+[A] `cargo build -p peri-tui 2>&1 | grep -c "error"`
 → 期望包含: 0
 **来源:** spec-plan.md Task 2 检查步骤
 **目的:** 验证渲染代码编译通过
@@ -100,7 +100,7 @@
 
 ### - [x] 3.5 渲染单元测试验证
 
-[A] `cargo test -p rust-agent-tui --lib -- setup_wizard 2>&1 | grep "test result"`
+[A] `cargo test -p peri-tui --lib -- setup_wizard 2>&1 | grep "test result"`
 → 期望包含: ok
 **来源:** spec-plan.md Task 2 检查步骤
 **目的:** 验证渲染逻辑单元测试通过
@@ -112,7 +112,7 @@
 
 ### - [x] 4.1 event.rs 拦截验证
 
-[A] `grep -c "setup_wizard" rust-agent-tui/src/event.rs`
+[A] `grep -c "setup_wizard" peri-tui/src/event.rs`
 → 期望包含: ≥ 3
 **来源:** spec-plan.md Task 3 检查步骤
 **目的:** 验证事件层正确拦截 setup_wizard
@@ -120,7 +120,7 @@
 
 ### - [x] 4.2 按键处理函数验证
 
-[A] `grep -c "pub fn handle_setup_wizard_key\|pub fn save_setup\|pub enum SetupWizardAction" rust-agent-tui/src/app/setup_wizard.rs`
+[A] `grep -c "pub fn handle_setup_wizard_key\|pub fn save_setup\|pub enum SetupWizardAction" peri-tui/src/app/setup_wizard.rs`
 → 期望包含: 3
 **来源:** spec-plan.md Task 3 检查步骤
 **目的:** 验证按键处理和保存函数存在
@@ -128,7 +128,7 @@
 
 ### - [x] 4.3 App 刷新方法验证
 
-[A] `grep -c "fn refresh_after_setup" rust-agent-tui/src/app/mod.rs`
+[A] `grep -c "fn refresh_after_setup" peri-tui/src/app/mod.rs`
 → 期望包含: 1
 **来源:** spec-plan.md Task 3 检查步骤
 **目的:** 验证 App::refresh_after_setup 方法存在
@@ -136,7 +136,7 @@
 
 ### - [x] 4.4 new_headless 字段验证
 
-[A] `grep -c "setup_wizard" rust-agent-tui/src/app/panel_ops.rs`
+[A] `grep -c "setup_wizard" peri-tui/src/app/panel_ops.rs`
 → 期望包含: 1
 **来源:** spec-plan.md Task 3 检查步骤
 **目的:** 验证 headless 模式包含 setup_wizard 字段
@@ -144,7 +144,7 @@
 
 ### - [x] 4.5 事件处理编译验证
 
-[A] `cargo build -p rust-agent-tui 2>&1 | grep -c "error"`
+[A] `cargo build -p peri-tui 2>&1 | grep -c "error"`
 → 期望包含: 0
 **来源:** spec-plan.md Task 3 检查步骤
 **目的:** 验证事件处理代码编译通过
@@ -152,7 +152,7 @@
 
 ### - [x] 4.6 事件处理测试验证
 
-[A] `cargo test -p rust-agent-tui --lib -- setup_wizard 2>&1 | grep "test result"`
+[A] `cargo test -p peri-tui --lib -- setup_wizard 2>&1 | grep "test result"`
 → 期望包含: ok
 **来源:** spec-plan.md Task 3 检查步骤
 **目的:** 验证事件处理单元测试通过
@@ -164,7 +164,7 @@
 
 ### - [x] 5.1 headless 模块存在验证
 
-[A] `grep -c "mod setup_wizard_e2e" rust-agent-tui/src/ui/headless.rs`
+[A] `grep -c "mod setup_wizard_e2e" peri-tui/src/ui/headless.rs`
 → 期望包含: 1
 **来源:** spec-plan.md Task 4 检查步骤
 **目的:** 验证 headless 集成测试模块已添加
@@ -172,7 +172,7 @@
 
 ### - [x] 5.2 save_setup_to 函数验证
 
-[A] `grep -c "pub fn save_setup_to" rust-agent-tui/src/app/setup_wizard.rs`
+[A] `grep -c "pub fn save_setup_to" peri-tui/src/app/setup_wizard.rs`
 → 期望包含: 1
 **来源:** spec-plan.md Task 4 检查步骤
 **目的:** 验证测试用保存函数存在
@@ -180,7 +180,7 @@
 
 ### - [x] 5.3 集成测试编译验证
 
-[A] `cargo build -p rust-agent-tui 2>&1 | grep -c "error"`
+[A] `cargo build -p peri-tui 2>&1 | grep -c "error"`
 → 期望包含: 0
 **来源:** spec-plan.md Task 4 检查步骤
 **目的:** 验证集成测试代码编译通过
@@ -188,7 +188,7 @@
 
 ### - [x] 5.4 setup_wizard 测试套件验证
 
-[A] `cargo test -p rust-agent-tui --lib -- setup_wizard 2>&1 | grep "test result"`
+[A] `cargo test -p peri-tui --lib -- setup_wizard 2>&1 | grep "test result"`
 → 期望包含: ok (且 passed ≥ 10)
 **来源:** spec-plan.md Task 4 检查步骤
 **目的:** 验证所有 setup_wizard 测试通过
@@ -196,7 +196,7 @@
 
 ### - [x] 5.5 headless 测试套件无回归验证
 
-[A] `cargo test -p rust-agent-tui --lib -- ui::headless 2>&1 | grep "test result"`
+[A] `cargo test -p peri-tui --lib -- ui::headless 2>&1 | grep "test result"`
 → 期望包含: ok
 **来源:** spec-plan.md Task 4 检查步骤
 **目的:** 验证原有 headless 测试无回归
@@ -208,7 +208,7 @@
 
 ### - [x] 6.1 完整测试套件验证
 
-[A] `cargo test -p rust-agent-tui --lib 2>&1 | grep "test result"`
+[A] `cargo test -p peri-tui --lib 2>&1 | grep "test result"`
 → 期望包含: ok (0 failed)
 **来源:** spec-plan.md Task 5 端到端验证
 **目的:** 验证所有单元测试通过无回归
@@ -216,7 +216,7 @@
 
 ### - [x] 6.2 Headless 端到端测试验证
 
-[A] `cargo test -p rust-agent-tui --lib -- setup_wizard_e2e 2>&1 | grep "test result"`
+[A] `cargo test -p peri-tui --lib -- setup_wizard_e2e 2>&1 | grep "test result"`
 → 期望包含: ok (8 个测试)
 **来源:** spec-plan.md Task 5 端到端验证
 **目的:** 验证 8 个集成测试全部通过
@@ -224,7 +224,7 @@
 
 ### - [x] 6.3 首次启动触发验证
 
-[A] `cargo test -p rust-agent-tui --lib -- test_needs_setup_triggers_for_empty_config 2>&1 | grep "ok"`
+[A] `cargo test -p peri-tui --lib -- test_needs_setup_triggers_for_empty_config 2>&1 | grep "ok"`
 → 期望包含: ok
 **来源:** spec-plan.md Task 5 端到端验证
 **目的:** 验证首次启动自动触发 setup 向导
@@ -232,7 +232,7 @@
 
 ### - [x] 6.4 配置完成不再触发验证
 
-[A] `cargo test -p rust-agent-tui --lib -- test_setup_wizard_saves_and_clears 2>&1 | grep "ok"`
+[A] `cargo test -p peri-tui --lib -- test_setup_wizard_saves_and_clears 2>&1 | grep "ok"`
 → 期望包含: ok
 **来源:** spec-plan.md Task 5 端到端验证
 **目的:** 验证配置完成后不再触发 setup
@@ -240,7 +240,7 @@
 
 ### - [x] 6.5 跳过二次确认验证
 
-[A] `cargo test -p rust-agent-tui --lib -- test_setup_wizard_skip_with_confirm 2>&1 | grep "ok"`
+[A] `cargo test -p peri-tui --lib -- test_setup_wizard_skip_with_confirm 2>&1 | grep "ok"`
 → 期望包含: ok
 **来源:** spec-plan.md Task 5 端到端验证
 **目的:** 验证跳过 setup 时二次确认
@@ -248,7 +248,7 @@
 
 ### - [x] 6.6 编译无警告验证
 
-[A] `cargo build -p rust-agent-tui 2>&1 | grep -c "warning"`
+[A] `cargo build -p peri-tui 2>&1 | grep -c "warning"`
 → 期望包含: 0 (setup_wizard 相关)
 **来源:** spec-plan.md Task 5 端到端验证
 **目的:** 验证编译无警告
@@ -348,7 +348,7 @@
 
 ### - [x] 7.12 Headless 代码驱动验证
 
-[H] 运行 `cargo test -p rust-agent-tui --lib -- setup_wizard_e2e` → 观察所有测试是否通过
+[H] 运行 `cargo test -p peri-tui --lib -- setup_wizard_e2e` → 观察所有测试是否通过
 → 是/否
 **来源:** spec-design.md 验收标准
 **目的:** 验证 headless 模式下可代码驱动完成

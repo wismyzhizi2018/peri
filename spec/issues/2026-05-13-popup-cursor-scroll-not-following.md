@@ -89,15 +89,15 @@ let visible_items = &items[scroll_offset..scroll_offset + viewport];
 
 ## 相关代码
 
-- `rust-agent-tui/src/app/ask_user_ops.rs:26-37` —— ask_user 光标移动与滚动跟随（`cursor_row` 计算错误）
-- `rust-agent-tui/src/app/ask_user_prompt.rs:32-38` —— `QuestionState::move_option_cursor` 只改光标，不自知行号
-- `rust-agent-tui/src/ui/main_ui/popups/ask_user.rs:173-176` —— `ScrollState::with_offset` 使用 `prompt.scroll_offset`
-- `rust-agent-tui/src/app/hitl_ops.rs:5-13` —— HITL 光标移动，无滚动处理
-- `rust-agent-tui/src/app/hitl_prompt.rs:20-29` —— `HitlBatchPrompt` 无 `scroll_offset` 字段
-- `rust-agent-tui/src/ui/main_ui/popups/hitl.rs:99-100` —— HITL 渲染使用 `Paragraph`，无 `ScrollableArea`
-- `rust-agent-tui/src/ui/main_ui/popups/hints.rs:78-89` —— hint 浮层 `scroll_offset` 计算，存在越界风险
-- `rust-agent-tui/src/event.rs:545-595` —— hint Up/Down 事件处理，未在列表缩小后 clamp cursor
-- `rust-agent-tui/src/app/mod.rs:572-583` —— `ensure_cursor_visible` 工具函数本身正确，但调用方传递错误参数
+- `peri-tui/src/app/ask_user_ops.rs:26-37` —— ask_user 光标移动与滚动跟随（`cursor_row` 计算错误）
+- `peri-tui/src/app/ask_user_prompt.rs:32-38` —— `QuestionState::move_option_cursor` 只改光标，不自知行号
+- `peri-tui/src/ui/main_ui/popups/ask_user.rs:173-176` —— `ScrollState::with_offset` 使用 `prompt.scroll_offset`
+- `peri-tui/src/app/hitl_ops.rs:5-13` —— HITL 光标移动，无滚动处理
+- `peri-tui/src/app/hitl_prompt.rs:20-29` —— `HitlBatchPrompt` 无 `scroll_offset` 字段
+- `peri-tui/src/ui/main_ui/popups/hitl.rs:99-100` —— HITL 渲染使用 `Paragraph`，无 `ScrollableArea`
+- `peri-tui/src/ui/main_ui/popups/hints.rs:78-89` —— hint 浮层 `scroll_offset` 计算，存在越界风险
+- `peri-tui/src/event.rs:545-595` —— hint Up/Down 事件处理，未在列表缩小后 clamp cursor
+- `peri-tui/src/app/mod.rs:572-583` —— `ensure_cursor_visible` 工具函数本身正确，但调用方传递错误参数
 
 ## 影响范围
 

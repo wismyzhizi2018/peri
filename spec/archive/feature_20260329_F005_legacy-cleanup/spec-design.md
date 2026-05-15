@@ -4,17 +4,17 @@
 
 架构审查发现 `HitlHandler` trait 和 `AskUserInvoker` trait 是旧的交互接口，已被 `UserInteractionBroker` 统一替代，但仍保留在代码中：
 
-- `rust-create-agent/src/hitl/mod.rs` 导出 `HitlHandler` trait + `BatchItem` + `HitlDecision` 类型
-- `rust-create-agent/src/ask_user/mod.rs` 导出 `AskUserInvoker` trait
-- `rust-agent-middlewares/src/lib.rs` 重导出这些类型"保留向后兼容"
-- `rust-agent-middlewares/src/hitl/mod.rs` 标注 `#[allow(deprecated)]` 重导出旧类型
+- `peri-agent/src/hitl/mod.rs` 导出 `HitlHandler` trait + `BatchItem` + `HitlDecision` 类型
+- `peri-agent/src/ask_user/mod.rs` 导出 `AskUserInvoker` trait
+- `peri-middlewares/src/lib.rs` 重导出这些类型"保留向后兼容"
+- `peri-middlewares/src/hitl/mod.rs` 标注 `#[allow(deprecated)]` 重导出旧类型
 
 实际搜索后确认：所有业务代码已使用 `UserInteractionBroker`，这些旧类型零引用（仅测试代码中有少数使用）。
 
 ## 目标
 
-- 删除 `HitlHandler` trait（`rust-create-agent/src/hitl/mod.rs` 中的 trait 定义）
-- 删除 `AskUserInvoker` trait（`rust-create-agent/src/ask_user/mod.rs` 中的 trait 定义）
+- 删除 `HitlHandler` trait（`peri-agent/src/hitl/mod.rs` 中的 trait 定义）
+- 删除 `AskUserInvoker` trait（`peri-agent/src/ask_user/mod.rs` 中的 trait 定义）
 - 清理 middlewares 的重导出（`lib.rs` 中的 `#[allow(deprecated)]` 行）
 - 保留数据类型：`HitlDecision`、`BatchItem`、`AskUserOption`、`AskUserQuestionData`、`AskUserBatchRequest` 仍被使用，不删除
 - 修复引用这些旧 trait 的测试代码
@@ -37,27 +37,27 @@
 
 ### 改动文件清单
 
-1. **`rust-create-agent/src/hitl/mod.rs`**
+1. **`peri-agent/src/hitl/mod.rs`**
    - 删除 `HitlHandler` trait 定义（第 31-53 行）
    - 保留 `HitlDecision`、`BatchItem` 数据类型
 
-2. **`rust-create-agent/src/ask_user/mod.rs`**
+2. **`peri-agent/src/ask_user/mod.rs`**
    - 删除 `AskUserInvoker` trait 定义（第 49-53 行）
    - 保留 `AskUserOption`、`AskUserQuestionData`、`AskUserBatchRequest`
 
-3. **`rust-create-agent/src/lib.rs`**
+3. **`peri-agent/src/lib.rs`**
    - 从 prelude 中移除 `HitlHandler`
 
-4. **`rust-agent-middlewares/src/hitl/mod.rs`**
+4. **`peri-middlewares/src/hitl/mod.rs`**
    - 移除 `#[allow(deprecated)]` 行（第 13-14 行）
-   - 移除 `use rust_create_agent::hitl::{BatchItem, HitlDecision, HitlHandler};` 中的 `HitlHandler`
+   - 移除 `use peri_agent::hitl::{BatchItem, HitlDecision, HitlHandler};` 中的 `HitlHandler`
 
-5. **`rust-agent-middlewares/src/lib.rs`**
-   - 移除 `pub use rust_create_agent::ask_user::AskUserInvoker;`（第 38 行）
-   - 移除 `pub use rust_create_agent::ask_user::AskUserInvoker as AskUserHandler;`（第 39 行）
+5. **`peri-middlewares/src/lib.rs`**
+   - 移除 `pub use peri_agent::ask_user::AskUserInvoker;`（第 38 行）
+   - 移除 `pub use peri_agent::ask_user::AskUserInvoker as AskUserHandler;`（第 39 行）
    - 移除 `#[allow(deprecated)]` 标记
 
-6. **`rust-agent-middlewares/src/lib.rs` prelude**
+6. **`peri-middlewares/src/lib.rs` prelude**
    - 移除 `AskUserHandler` 重导出
 
 7. **测试代码修复**

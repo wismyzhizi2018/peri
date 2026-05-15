@@ -17,16 +17,16 @@ Claude Code 已经建立了完整的插件生态——通过 `.claude-plugin/plu
 
 ## 方案设计
 
-### 选定方案：Plugin 模块嵌入 rust-agent-middlewares
+### 选定方案：Plugin 模块嵌入 peri-middlewares
 
-在 `rust-agent-middlewares/src/plugin/` 下新建模块，仿照现有 MCP 中间件（`src/mcp/`）的组织方式。不新增 crate，不修改核心框架。
+在 `peri-middlewares/src/plugin/` 下新建模块，仿照现有 MCP 中间件（`src/mcp/`）的组织方式。不新增 crate，不修改核心框架。
 
 理由：插件系统和 MCP 中间件性质相同——都是外部资源的发现、桥接和注入。MCP 已验证"middlewares 内独立模块"模式可行。插件系统不涉及核心框架改动，放在 middlewares 层最自然。
 
 ### 模块结构
 
 ```
-rust-agent-middlewares/src/plugin/
+peri-middlewares/src/plugin/
 ├── mod.rs              # 模块入口，导出公共 API
 ├── types.rs            # Claude Code plugin.json 兼容类型
 ├── marketplace.rs      # Marketplace 拉取、缓存、更新
@@ -407,7 +407,7 @@ pub struct CommandEntry {
 
 ## 约束一致性
 
-- **核心框架零内部依赖**：插件系统全部在 `rust-agent-middlewares` 层实现，不修改 `rust-create-agent` 核心。✓
+- **核心框架零内部依赖**：插件系统全部在 `peri-middlewares` 层实现，不修改 `peri-agent` 核心。✓
 - **中间件模式**：`PluginMiddleware` 遵循 `Middleware` trait 接口。✓
 - **字符串截断使用字符级操作**：插件名/描述在 TUI 显示时遵循此约束。✓
 - **面板快捷键设计规范**：`/plugin` 面板遵循统一按键约定，状态栏负责快捷键提示。✓

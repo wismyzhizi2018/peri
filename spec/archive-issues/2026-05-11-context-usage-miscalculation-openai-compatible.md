@@ -58,8 +58,8 @@ TUI 显示的上下文用量（203k/200K，101%）与 API 实际报告的 input 
 
 ## 相关代码
 
-- `rust-create-agent/src/agent/token.rs:57-65` —— `cache_hit_rate()` 实现（会话累计）
-- `rust-create-agent/src/agent/token.rs:70-78` —— `last_cache_hit_rate()` 实现（当次，应改用此方法）
-- `rust-create-agent/src/llm/openai.rs:557-576` —— OpenAI adapter 的 usage 解析：`input_tokens = prompt_tokens`，`cache_read = cached_tokens`
-- `rust-create-agent/src/agent/token.rs:21-36` —— `accumulate()` 方法：`total_input_tokens` 累加逻辑
-- `rust-agent-tui/src/ui/main_ui/status_bar.rs:104` —— **修复点**：`cache_hit_rate()` → `last_cache_hit_rate()`
+- `peri-agent/src/agent/token.rs:57-65` —— `cache_hit_rate()` 实现（会话累计）
+- `peri-agent/src/agent/token.rs:70-78` —— `last_cache_hit_rate()` 实现（当次，应改用此方法）
+- `peri-agent/src/llm/openai.rs:557-576` —— OpenAI adapter 的 usage 解析：`input_tokens = prompt_tokens`，`cache_read = cached_tokens`
+- `peri-agent/src/agent/token.rs:21-36` —— `accumulate()` 方法：`total_input_tokens` 累加逻辑
+- `peri-tui/src/ui/main_ui/status_bar.rs:104` —— **修复点**：`cache_hit_rate()` → `last_cache_hit_rate()`

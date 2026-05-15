@@ -102,7 +102,7 @@ Langfuse Sessions 列表:
 
 ### 改动文件
 
-**`rust-agent-tui/src/langfuse/mod.rs`**
+**`peri-tui/src/langfuse/mod.rs`**
 
 | 操作 | 内容 |
 |------|------|
@@ -112,7 +112,7 @@ Langfuse Sessions 列表:
 | 修改 | `on_trace_start(&mut self, input: &str)`：移除 `thread_id` 参数，从 `session.session_id` 读取 |
 | 修改 | 所有方法内部引用从 `self.client` → `self.session.client`，`self.batcher` → `self.session.batcher` |
 
-**`rust-agent-tui/src/app/mod.rs`**
+**`peri-tui/src/app/mod.rs`**
 
 | 操作 | 内容 |
 |------|------|
@@ -135,7 +135,7 @@ Langfuse Sessions 列表:
 ## 约束一致性
 
 - 遵守 `architecture.md` 中「事件驱动 TUI 通信」约束：Session 生命周期管理在 App（主线程）上，不引入额外线程共享状态
-- 遵守「Workspace 多 crate 分层」约束：改动仅在 `rust-agent-tui`（应用层），不影响 `rust-create-agent` 和 `rust-agent-middlewares`
+- 遵守「Workspace 多 crate 分层」约束：改动仅在 `peri-tui`（应用层），不影响 `peri-agent` 和 `peri-middlewares`
 - 遵守「异步优先」约束：`LangfuseSession::new()` 为 async，通过 `block_in_place` 在同步上下文中调用（与现有 `LangfuseTracer::new()` 调用方式完全一致）
 - 无新增依赖，无 API 变更，无破坏性重构
 
@@ -145,4 +145,4 @@ Langfuse Sessions 列表:
 - [ ] 新建对话（`new_thread()`）后发消息，在 Langfuse 中生成新的 Session
 - [ ] 打开历史 Thread 后发消息，新的 Trace 归入对应历史 Thread 的 Session（不是新 Session，也不是上一个 Thread 的 Session）
 - [ ] 未配置 Langfuse 环境变量时，程序正常运行，无 panic 或 warning
-- [ ] `cargo build -p rust-agent-tui` 编译通过，`cargo test -p rust-agent-tui` 测试全部通过
+- [ ] `cargo build -p peri-tui` 编译通过，`cargo test -p peri-tui` 测试全部通过

@@ -4,25 +4,25 @@
 
 | 组件 | 类型 | 职责 |
 |------|------|------|
-| `rust-create-agent` | 核心库 | ReAct 执行器、LLM 适配层、Middleware trait、工具系统、消息类型、线程持久化（SQLite + Filesystem）、遥测（OTel） |
-| `rust-agent-middlewares` | 中间件库 | 文件系统、终端、HITL（含 SharedPermissionMode/Auto 分类器）、SubAgent、Skills、SkillPreload、AgentsMd、AgentDefine、Todo、CronMiddleware、MCP（Client 连接池、OAuth 2.0、工具桥接）、grep 进程内搜索 等具体实现 |
-| `rust-agent-tui` | 可执行文件 | 基于 ratatui 的交互式 TUI，异步渲染、多会话管理、HITL/AskUser 弹窗、配置面板、Langfuse 追踪 |
+| `peri-agent` | 核心库 | ReAct 执行器、LLM 适配层、Middleware trait、工具系统、消息类型、线程持久化（SQLite + Filesystem）、遥测（OTel） |
+| `peri-middlewares` | 中间件库 | 文件系统、终端、HITL（含 SharedPermissionMode/Auto 分类器）、SubAgent、Skills、SkillPreload、AgentsMd、AgentDefine、Todo、CronMiddleware、MCP（Client 连接池、OAuth 2.0、工具桥接）、grep 进程内搜索 等具体实现 |
+| `peri-tui` | 可执行文件 | 基于 ratatui 的交互式 TUI，异步渲染、多会话管理、HITL/AskUser 弹窗、配置面板、Langfuse 追踪 |
 
 ## Workspace 依赖关系
 
 ```
-rust-create-agent           ← 零内部依赖，纯核心框架
+peri-agent           ← 零内部依赖，纯核心框架
     ↑
-rust-agent-middlewares      ← 依赖 rust-create-agent
+peri-middlewares      ← 依赖 peri-agent
     ↑
-perihelion-widgets          ← 零内部依赖，仅依赖 ratatui + pulldown-cmark
+peri-widgets          ← 零内部依赖，仅依赖 ratatui + pulldown-cmark
     ↑
-rust-agent-tui              ← 依赖 perihelion-widgets + rust-agent-middlewares
+peri-tui              ← 依赖 peri-widgets + peri-middlewares
 ```
 
 ## 模块划分
 
-### rust-create-agent 内部模块
+### peri-agent 内部模块
 
 ```
 src/
@@ -69,7 +69,7 @@ src/
     └── otel.rs           — OpenTelemetry OTLP HTTP 导出，tracing-opentelemetry 桥接
 ```
 
-### rust-agent-middlewares 内部模块
+### peri-middlewares 内部模块
 
 ```
 src/
@@ -113,7 +113,7 @@ src/
     └── mod.rs            — BoxToolWrapper / ArcToolWrapper 适配器
 ```
 
-### rust-agent-tui 内部模块
+### peri-tui 内部模块
 
 ```
 src/
@@ -301,7 +301,7 @@ LlmCallEnd 携带 usage
 中间件按注册顺序执行，典型组装顺序：
 
 ```
-主 Agent（rust-agent-tui 组装）：
+主 Agent（peri-tui 组装）：
 1. AgentDefineMiddleware      ← 解析 agent 定义，设置 model/maxTurns 等覆盖
 2. AgentsMdMiddleware         ← 读 CLAUDE.md/AGENTS.md 注入 system
 3. SkillsMiddleware           ← 扫描 Skills 目录，摘要注入 system
@@ -341,7 +341,7 @@ LlmCallEnd 携带 usage
 
 ```
 用户终端
-  └─ cargo run -p rust-agent-tui
+  └─ cargo run -p peri-tui
        ├─ 直接调用 Anthropic/OpenAI API（reqwest HTTP）
        ├─ 读写本地文件系统（FilesystemMiddleware）
        ├─ 执行 bash 命令（TerminalMiddleware）
@@ -352,7 +352,7 @@ LlmCallEnd 携带 usage
 **可观测性（可选）：**
 
 ```
-rust-create-agent（tracing spans）
+peri-agent（tracing spans）
   ├─ opentelemetry-otlp HTTP → Jaeger / OTLP Collector
   └─ Langfuse（TUI 层 LangfuseTracer → Langfuse API）
        └─ Trace > Span > Generation 三级层次

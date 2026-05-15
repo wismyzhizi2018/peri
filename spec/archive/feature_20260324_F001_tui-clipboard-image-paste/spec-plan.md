@@ -2,7 +2,7 @@
 
 **目标:** 允许用户通过 Ctrl+V 将剪贴板图片附加到 Human 消息，以 base64 PNG 形式发送给 LLM
 
-**技术栈:** arboard 3、png 0.17、base64 0.22、ratatui、rust-create-agent ContentBlock
+**技术栈:** arboard 3、png 0.17、base64 0.22、ratatui、peri-agent ContentBlock
 
 **设计文档:** [spec-design.md](./spec-design.md)
 
@@ -11,11 +11,11 @@
 ### Task 1: 依赖与数据结构
 
 **涉及文件:**
-- 修改: `rust-agent-tui/Cargo.toml`
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 修改: `peri-tui/Cargo.toml`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
-- [x] 在 `rust-agent-tui/Cargo.toml` 的 `[dependencies]` 中添加三个 crate
+- [x] 在 `peri-tui/Cargo.toml` 的 `[dependencies]` 中添加三个 crate
   - `arboard = "3"` — 跨平台剪贴板访问
   - `png = "0.17"` — RGBA bytes → PNG 编码
   - `base64 = { version = "0.22", features = ["alloc"] }` — PNG 二进制 → base64 字符串
@@ -31,10 +31,10 @@
 
 **检查步骤:**
 - [x] 编译通过，无 unused import 警告
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无输出（无编译错误）
 - [x] 字段初始化正确（App::new() 和 new_headless() 均包含 pending_attachments）
-  - `grep -n "pending_attachments" rust-agent-tui/src/app/mod.rs | head -20`
+  - `grep -n "pending_attachments" peri-tui/src/app/mod.rs | head -20`
   - 预期: 出现 struct 定义、字段声明、new() 初始化、new_headless() 初始化、new_thread() 清空 共 5 处以上
 
 ---
@@ -42,7 +42,7 @@
 ### Task 2: 剪贴板读取与事件拦截
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/event.rs`
+- 修改: `peri-tui/src/event.rs`
 
 **执行步骤:**
 - [x] 在 `event.rs` 顶部添加辅助函数 `rgba_to_png_base64(width: u32, height: u32, rgba_bytes: &[u8]) -> Result<(String, usize)>`
@@ -55,13 +55,13 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无输出
 - [x] Ctrl+V 拦截逻辑存在于 event.rs
-  - `grep -n "Char('v').*ctrl\|ctrl.*Char('v')" rust-agent-tui/src/event.rs`
+  - `grep -n "Char('v').*ctrl\|ctrl.*Char('v')" peri-tui/src/event.rs`
   - 预期: 找到至少一处匹配
 - [x] rgba_to_png_base64 函数存在
-  - `grep -n "rgba_to_png_base64" rust-agent-tui/src/event.rs`
+  - `grep -n "rgba_to_png_base64" peri-tui/src/event.rs`
   - 预期: 找到函数定义和调用两处
 
 ---
@@ -69,7 +69,7 @@
 ### Task 3: 附件栏 UI 渲染
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
 
 **执行步骤:**
 - [x] 在 `render()` 函数中计算 `attachment_height`（类似 `todo_height`）
@@ -80,16 +80,16 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无输出
 - [x] attachment_height 变量存在
-  - `grep -n "attachment_height" rust-agent-tui/src/ui/main_ui.rs`
+  - `grep -n "attachment_height" peri-tui/src/ui/main_ui.rs`
   - 预期: 至少 2 处（定义 + Constraint 使用）
 - [x] render_attachment_bar 函数存在
-  - `grep -n "render_attachment_bar" rust-agent-tui/src/ui/main_ui.rs`
+  - `grep -n "render_attachment_bar" peri-tui/src/ui/main_ui.rs`
   - 预期: 找到函数定义和调用两处
 - [x] Layout constraints 数量正确（原 5 个改为 6 个）
-  - `grep -A 8 "Constraint::Length(1).*标题" rust-agent-tui/src/ui/main_ui.rs | grep -c "Constraint"`
+  - `grep -A 8 "Constraint::Length(1).*标题" peri-tui/src/ui/main_ui.rs | grep -c "Constraint"`
   - 预期: 输出 6
 
 ---
@@ -97,9 +97,9 @@
 ### Task 4: 多模态消息提交
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/app/agent.rs`
-- 修改: `rust-agent-tui/src/ui/message_view.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/ui/message_view.rs`
 
 **执行步骤:**
 - [x] 修改 `app/mod.rs` 中的 `submit_message` 函数：消费附件、构建多模态 AgentInput 和 user_msg、传 agent_input
@@ -109,16 +109,16 @@
 
 **检查步骤:**
 - [x] 编译通过（无 unused variable 警告）
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error|^warning.*unused"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error|^warning.*unused"`
   - 预期: 无 error，no unused 相关警告
 - [x] run_universal_agent 签名已更新为 AgentInput
-  - `grep -n "fn run_universal_agent" rust-agent-tui/src/app/agent.rs`
+  - `grep -n "fn run_universal_agent" peri-tui/src/app/agent.rs`
   - 预期: 输出包含 `input: AgentInput` 而非 `input: String`
 - [x] submit_message 中 attachments 消费逻辑存在
-  - `grep -n "pending_attachments\|ContentBlock::image_base64\|AgentInput::blocks" rust-agent-tui/src/app/mod.rs | head -15`
+  - `grep -n "pending_attachments\|ContentBlock::image_base64\|AgentInput::blocks" peri-tui/src/app/mod.rs | head -15`
   - 预期: 三者均出现
 - [x] 全量测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | tail -10`
+  - `cargo test -p peri-tui 2>&1 | tail -10`
   - 预期: 输出包含 "test result: ok"
 
 ---
@@ -126,28 +126,28 @@
 ### Task 5: TUI 剪贴板粘贴图片 Acceptance
 
 **Prerequisites:**
-- 启动命令: `cargo run -p rust-agent-tui`
+- 启动命令: `cargo run -p peri-tui`
 - 测试前置: 终端已启动，剪贴板中准备好一张图片（截图或复制图片）
 - 确认 API Key 已配置（Anthropic 或 OpenAI vision 支持的模型）
 
 **端到端验证:**
 
 1. [x] **剪贴板有图片时 Ctrl+V 拦截逻辑存在**
-   - `grep -c "add_pending_attachment\|PendingAttachment" rust-agent-tui/src/event.rs`
+   - `grep -c "add_pending_attachment\|PendingAttachment" peri-tui/src/event.rs`
    - 预期: 输出 ≥ 2 ✅
 
 2. [x] **剪贴板无图片时 fallback get_text 逻辑存在**
-   - `grep -n "get_image\|get_text" rust-agent-tui/src/event.rs`
+   - `grep -n "get_image\|get_text" peri-tui/src/event.rs`
    - 预期: get_image 先行，失败后 fallback get_text ✅
 
 3. [x] **Del 键删除逻辑存在**
-   - `grep -n "Delete\|pop_pending" rust-agent-tui/src/event.rs`
+   - `grep -n "Delete\|pop_pending" peri-tui/src/event.rs`
    - 预期: Key::Delete → pop_pending_attachment ✅
 
 4. [x] **无附件时布局不占空间**
-   - `grep -n "attachment_height" rust-agent-tui/src/ui/main_ui.rs`
+   - `grep -n "attachment_height" peri-tui/src/ui/main_ui.rs`
    - 预期: is_empty() 时值为 0，Constraint::Length(0) ✅
 
 5. [x] **全量测试通过，多模态构建逻辑正确**
-   - `cargo test -p rust-agent-tui 2>&1 | grep "test result"`
+   - `cargo test -p peri-tui 2>&1 | grep "test result"`
    - 结果: test result: ok. 43 passed; 0 failed ✅

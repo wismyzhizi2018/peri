@@ -21,9 +21,9 @@
 #### - [x] 1.1 文件系统工具测试全部通过
 - **来源:** Task 1 检查步骤
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares -- tools::filesystem 2>&1 | tail -20` → 期望: 输出含 `test result: ok. N passed; 0 failed`，N ≥ 24
+  1. [A] `cargo test -p peri-middlewares -- tools::filesystem 2>&1 | tail -20` → 期望: 输出含 `test result: ok. N passed; 0 failed`，N ≥ 24
 - **异常排查:**
-  - 如果测试失败: 检查 `rust-agent-middlewares/src/tools/filesystem/` 下的测试代码
+  - 如果测试失败: 检查 `peri-middlewares/src/tools/filesystem/` 下的测试代码
   - 如果找不到测试: 确认 `#[cfg(test)] mod tests` 已添加到各文件末尾
 
 ---
@@ -52,9 +52,9 @@
 #### - [x] 3.1 ask_user_tool 测试全部通过
 - **来源:** Task 3 检查步骤
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares -- tools::ask_user_tool 2>&1 | tail -10` → 期望: `test result: ok. N passed; 0 failed`，N ≥ 10
+  1. [A] `cargo test -p peri-middlewares -- tools::ask_user_tool 2>&1 | tail -10` → 期望: `test result: ok. N passed; 0 failed`，N ≥ 10
 - **异常排查:**
-  - 如果测试失败: 检查 `rust-agent-middlewares/src/tools/ask_user_tool.rs` 中的 MockBroker 实现
+  - 如果测试失败: 检查 `peri-middlewares/src/tools/ask_user_tool.rs` 中的 MockBroker 实现
   - 如果类型不匹配: 确认 `InteractionResponse` 和 `QuestionAnswer` 导入正确
 
 ---
@@ -64,7 +64,7 @@
 #### - [x] 4.1 TUI 命令系统测试全部通过
 - **来源:** Task 4 检查步骤
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui -- command 2>&1 | tail -10` → 期望: `test result: ok. N passed; 0 failed`，N ≥ 8
+  1. [A] `cargo test -p peri-tui -- command 2>&1 | tail -10` → 期望: `test result: ok. N passed; 0 failed`，N ≥ 8
 - **异常排查:**
   - 如果 reactor 错误: 确认使用 `#[tokio::test]` 而非 `#[test]`
   - 如果 App 创建失败: 检查 `headless_app()` 函数是否正确调用 `App::new_headless()`
@@ -73,10 +73,10 @@
 
 ### 场景 5：全 Workspace 验收
 
-#### - [x] 5.1 rust-agent-middlewares 全量测试通过
+#### - [x] 5.1 peri-middlewares 全量测试通过
 - **来源:** Task 5 End-to-end verification
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares 2>&1 | tail -5` → 期望: `test result: ok. N passed; 0 failed`，N ≥ 125
+  1. [A] `cargo test -p peri-middlewares 2>&1 | tail -5` → 期望: `test result: ok. N passed; 0 failed`，N ≥ 125
 - **异常排查:**
   - 失败时检查 Task 1（文件系统工具）、Task 3（AskUserTool）
 
@@ -87,10 +87,10 @@
 - **异常排查:**
   - 失败时检查 Task 2（Relay Server auth + client）
 
-#### - [!] 5.3 rust-agent-tui 全量测试通过
+#### - [!] 5.3 peri-tui 全量测试通过
 - **来源:** Task 5 End-to-end verification
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui 2>&1 | tail -5` → 期望: `test result: ok. N passed; 0 failed`，N ≥ 63
+  1. [A] `cargo test -p peri-tui 2>&1 | tail -5` → 期望: `test result: ok. N passed; 0 failed`，N ≥ 63
 - **异常排查:**
   - 失败时检查 Task 4（TUI 命令系统）
 

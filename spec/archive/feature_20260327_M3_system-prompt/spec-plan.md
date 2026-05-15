@@ -2,7 +2,7 @@
 
 **目标:** 在 `ReActAgent` 上提供 `with_system_prompt()` 专用方法，executor 内部固定在 `run_before_agent` 之后 prepend system 消息，彻底消除中间件注册顺序约束
 
-**技术栈:** Rust / async_trait / rust-create-agent / rust-agent-middlewares / rust-agent-tui
+**技术栈:** Rust / async_trait / peri-agent / peri-middlewares / peri-tui
 
 **设计文档:** Plan-M3-system-prompt.md
 
@@ -11,7 +11,7 @@
 ### Task 1: ReActAgent 添加 with_system_prompt 支持
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/agent/executor.rs`
+- 修改: `peri-agent/src/agent/executor.rs`
 
 **执行步骤:**
 - [x] 在 `ReActAgent<L, S>` 结构体中新增字段 `system_prompt: Option<String>`，初始值为 `None`
@@ -27,13 +27,13 @@
 
 **检查步骤:**
 - [x] 编译核心库无报错
-  - `cargo build -p rust-create-agent 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-agent 2>&1 | grep -E "^error"`
   - 预期: 无输出（无编译错误）
 - [x] 新增 `with_system_prompt` 方法存在
-  - `grep -n "with_system_prompt" rust-create-agent/src/agent/executor.rs`
+  - `grep -n "with_system_prompt" peri-agent/src/agent/executor.rs`
   - 预期: 找到至少 2 处（字段定义 + builder 方法）
 - [x] 核心库原有测试全部通过
-  - `cargo test -p rust-create-agent --lib 2>&1 | tail -5`
+  - `cargo test -p peri-agent --lib 2>&1 | tail -5`
   - 预期: `test result: ok. N passed; 0 failed`
 
 ---
@@ -41,22 +41,22 @@
 ### Task 2: TUI agent.rs 迁移 PrependSystemMiddleware → with_system_prompt
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/agent.rs`
 
 **执行步骤:**
-- [x] 删除 `.add_middleware(Box::new(rust_agent_middlewares::PrependSystemMiddleware::new(system_prompt)))` 这一行（当前最后一个 add_middleware 调用）
+- [x] 删除 `.add_middleware(Box::new(peri_middlewares::PrependSystemMiddleware::new(system_prompt)))` 这一行（当前最后一个 add_middleware 调用）
 - [x] 在 `ReActAgent::new(model)` 的 builder 链中任意位置添加 `.with_system_prompt(system_prompt)`（推荐紧接 `.max_iterations(500)` 之后，语义清晰）
-- [x] 检查是否有其他模块也 use PrependSystemMiddleware 而仅为 TUI 主 agent 服务，若有则清理对应 import（`use rust_agent_middlewares::PrependSystemMiddleware` 等）
+- [x] 检查是否有其他模块也 use PrependSystemMiddleware 而仅为 TUI 主 agent 服务，若有则清理对应 import（`use peri_middlewares::PrependSystemMiddleware` 等）
 
 **检查步骤:**
 - [x] TUI 编译无报错
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无输出
 - [x] 确认旧调用已删除
-  - `grep -n "PrependSystemMiddleware" rust-agent-tui/src/app/agent.rs`
+  - `grep -n "PrependSystemMiddleware" peri-tui/src/app/agent.rs`
   - 预期: 无输出（已完全移除）
 - [x] 确认新调用已存在
-  - `grep -n "with_system_prompt" rust-agent-tui/src/app/agent.rs`
+  - `grep -n "with_system_prompt" peri-tui/src/app/agent.rs`
   - 预期: 找到 1 处
 
 ---
@@ -64,7 +64,7 @@
 ### Task 3: SubAgentTool 迁移 PrependSystemMiddleware → with_system_prompt
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/subagent/tool.rs`
+- 修改: `peri-middlewares/src/subagent/tool.rs`
 
 **执行步骤:**
 - [x] 定位当前使用 `PrependSystemMiddleware` 的代码块（invoke 方法第 216-223 行附近）：
@@ -91,13 +91,13 @@
 
 **检查步骤:**
 - [x] 中间件库编译无报错
-  - `cargo build -p rust-agent-middlewares 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-middlewares 2>&1 | grep -E "^error"`
   - 预期: 无输出
 - [x] 确认旧调用已删除
-  - `grep -n "PrependSystemMiddleware" rust-agent-middlewares/src/subagent/tool.rs`
+  - `grep -n "PrependSystemMiddleware" peri-middlewares/src/subagent/tool.rs`
   - 预期: 无输出
 - [x] 中间件库原有测试全部通过（含 test_system_builder_injects_system_message）
-  - `cargo test -p rust-agent-middlewares --lib subagent 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib subagent 2>&1 | tail -10`
   - 预期: `test result: ok. N passed; 0 failed`
 
 ---
@@ -105,7 +105,7 @@
 ### Task 4: PrependSystemMiddleware 标记废弃
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/middleware/prepend_system.rs`
+- 修改: `peri-middlewares/src/middleware/prepend_system.rs`
 
 **执行步骤:**
 - [x] 在 `pub struct PrependSystemMiddleware` 定义上方添加 `#[deprecated]` 属性和说明注释：
@@ -122,14 +122,14 @@
   pub struct PrependSystemMiddleware {
   ```
 - [x] 同步更新 `new()` 方法，加上 `#[allow(deprecated)]` 以避免内部自引用警告（若有的话）
-- [x] 检查 `rust-agent-middlewares/src/lib.rs` 的 prelude 导出，若仍导出 `PrependSystemMiddleware`，在导出处加 `#[allow(deprecated)]` 属性
+- [x] 检查 `peri-middlewares/src/lib.rs` 的 prelude 导出，若仍导出 `PrependSystemMiddleware`，在导出处加 `#[allow(deprecated)]` 属性
 
 **检查步骤:**
 - [x] 编译全量 workspace，确认废弃警告出现在预期位置
   - `cargo build 2>&1 | grep -i deprecated`
   - 预期: 出现 `deprecated` 相关警告（表示标注生效）
 - [x] 全量测试无新增失败
-  - `cargo test -p rust-create-agent -p rust-agent-middlewares 2>&1 | grep -E "FAILED|test result"`
+  - `cargo test -p peri-agent -p peri-middlewares 2>&1 | grep -E "FAILED|test result"`
   - 预期: 所有 `test result: ok`，无 `FAILED`
 
 ---
@@ -143,22 +143,22 @@
 **端到端验证:**
 
 1. **system prompt 在消息列表最前（核心验证）**
-   - `cargo test -p rust-create-agent --lib -- test_system_prompt_is_first 2>&1 | tail -5`
+   - `cargo test -p peri-agent --lib -- test_system_prompt_is_first 2>&1 | tail -5`
    - 预期: `test result: ok. 1 passed`
    - 失败排查: 检查 Task 1，确认 prepend 位置在 run_before_agent 之后
 
 2. **中间件任意顺序注册不影响 system prompt 位置**
-   - `cargo test -p rust-create-agent --lib -- test_system_prompt_order_independent 2>&1 | tail -5`
+   - `cargo test -p peri-agent --lib -- test_system_prompt_order_independent 2>&1 | tail -5`
    - 预期: `test result: ok. 1 passed`
    - 失败排查: 检查 Task 1 中 prepend 是否真的在所有 before_agent 之后
 
 3. **SubAgent 系统提示词仍可正确注入（回归验证）**
-   - `cargo test -p rust-agent-middlewares --lib -- test_system_builder_injects_system_message 2>&1 | tail -5`
+   - `cargo test -p peri-middlewares --lib -- test_system_builder_injects_system_message 2>&1 | tail -5`
    - 预期: `test result: ok. 1 passed`
    - 失败排查: 检查 Task 3，确认 with_system_prompt 调用正确
 
 4. **全量测试无回归**
-   - `cargo test -p rust-create-agent -p rust-agent-middlewares -p rust-agent-tui 2>&1 | grep -E "FAILED|test result"`
+   - `cargo test -p peri-agent -p peri-middlewares -p peri-tui 2>&1 | grep -E "FAILED|test result"`
    - 预期: 所有 `test result: ok`，无 `FAILED`
    - 失败排查: 根据失败 crate 对应检查 Task 1-4
 

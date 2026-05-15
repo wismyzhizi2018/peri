@@ -3,7 +3,7 @@
 cd "$(dirname "$0")/.."
 export RELAY_TOKEN=test-token
 export RELAY_PORT=3001
-cargo run -p rust-agent-tui -- \
+cargo run -p peri-tui -- \
   --remote-control
 
 # ws://localhost:3001 \

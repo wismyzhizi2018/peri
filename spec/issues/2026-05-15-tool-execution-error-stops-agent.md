@@ -30,7 +30,7 @@ dispatch_tools() 阶段三结果处理循环（tool_dispatch.rs:175-247）
 
 ## 根因（原分析，代码已部分修复）
 
-`rust-create-agent/src/agent/executor/tool_dispatch.rs` 阶段三结果处理循环
+`peri-agent/src/agent/executor/tool_dispatch.rs` 阶段三结果处理循环
 
 ~~原问题代码（已修复）~~：
 ```rust
@@ -62,7 +62,7 @@ if let Err(e) = agent.chain.run_after_tool(state, &modified_call, &result).await
 
 ## 涉及文件
 
-- `rust-create-agent/src/agent/executor/tool_dispatch.rs:178-181` —— ToolNotFound 错误处理
-- `rust-create-agent/src/agent/executor/tool_dispatch.rs:187-191` —— ToolExecutionFailed 错误处理
-- `rust-create-agent/src/agent/executor/tool_dispatch.rs:211-218` —— after_tool 中间件错误处理
-- `rust-create-agent/src/agent/executor/tool_dispatch.rs:242-247` —— deferred_error 终止点
+- `peri-agent/src/agent/executor/tool_dispatch.rs:178-181` —— ToolNotFound 错误处理
+- `peri-agent/src/agent/executor/tool_dispatch.rs:187-191` —— ToolExecutionFailed 错误处理
+- `peri-agent/src/agent/executor/tool_dispatch.rs:211-218` —— after_tool 中间件错误处理
+- `peri-agent/src/agent/executor/tool_dispatch.rs:242-247` —— deferred_error 终止点

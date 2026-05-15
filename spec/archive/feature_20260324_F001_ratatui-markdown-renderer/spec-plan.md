@@ -11,16 +11,16 @@
 ### Task 1: 添加依赖与更新约束文档
 
 **涉及文件:**
-- 修改: `rust-agent-tui/Cargo.toml`
+- 修改: `peri-tui/Cargo.toml`
 - 修改: `spec/global/constraints.md`
 
 **执行步骤:**
-- [x] 在 `rust-agent-tui/Cargo.toml` 的 `[dependencies]` 中追加 `pulldown-cmark = "0.12"`
+- [x] 在 `peri-tui/Cargo.toml` 的 `[dependencies]` 中追加 `pulldown-cmark = "0.12"`
 - [x] 在 `spec/global/constraints.md` 的技术栈一节，将 `tui-markdown 0.3` 替换为 `pulldown-cmark 0.12`
 
 **检查步骤:**
 - [x] 验证依赖已写入
-  - `grep 'pulldown-cmark' rust-agent-tui/Cargo.toml`
+  - `grep 'pulldown-cmark' peri-tui/Cargo.toml`
   - 预期: 输出 `pulldown-cmark = "0.12"`
 - [x] 验证约束文档已更新
   - `grep 'pulldown-cmark' spec/global/constraints.md`
@@ -29,7 +29,7 @@
   - `grep 'tui-markdown' spec/global/constraints.md`
   - 预期: 无输出（exit code 1）
 - [x] 验证依赖可正常解析（不引入冲突）
-  - `cargo fetch -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo fetch -p peri-tui 2>&1 | tail -3`
   - 预期: 无 error 输出
 
 ---
@@ -37,7 +37,7 @@
 ### Task 2: 实现 MarkdownRenderer
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/markdown.rs`
+- 修改: `peri-tui/src/ui/markdown.rs`
 
 **执行步骤:**
 - [x] 引入 pulldown-cmark，定义辅助类型
@@ -65,10 +65,10 @@
 
 **检查步骤:**
 - [x] 验证编译无错误
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
-  - 预期: 输出包含 `Compiling rust-agent-tui` 且无 `error[E`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
+  - 预期: 输出包含 `Compiling peri-tui` 且无 `error[E`
 - [x] 验证接口签名未变
-  - `grep -A1 'pub fn parse_markdown\|pub fn ensure_rendered' rust-agent-tui/src/ui/markdown.rs`
+  - `grep -A1 'pub fn parse_markdown\|pub fn ensure_rendered' peri-tui/src/ui/markdown.rs`
   - 预期: 两个函数签名与原 stub 相同
 
 ---
@@ -76,7 +76,7 @@
 ### Task 3: 编写 Headless 单元测试
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/headless.rs`
+- 修改: `peri-tui/src/ui/headless.rs`
 
 **执行步骤:**
 - [x] 在 `headless.rs` 的 `#[cfg(test)] mod tests` 末尾新增 `mod markdown_tests`，引入 `parse_markdown`
@@ -92,10 +92,10 @@
 
 **检查步骤:**
 - [x] 运行全部 markdown 测试
-  - `cargo test -p rust-agent-tui markdown -- --nocapture 2>&1 | tail -20`
+  - `cargo test -p peri-tui markdown -- --nocapture 2>&1 | tail -20`
   - 预期: 输出 `test result: ok. 9 passed; 0 failed`
 - [x] 运行全部 headless 测试（回归验证）
-  - `cargo test -p rust-agent-tui 2>&1 | tail -10`
+  - `cargo test -p peri-tui 2>&1 | tail -10`
   - 预期: 所有测试通过，无新增 FAILED（test_tool_call_message_visible_when_toggled 为 pre-existing 失败，与本 feature 无关）
 
 ---
@@ -103,8 +103,8 @@
 ### Task 4: ratatui-markdown-renderer Acceptance
 
 **前置条件:**
-- 构建命令: `cargo build -p rust-agent-tui`
-- 全量测试: `cargo test -p rust-agent-tui`
+- 构建命令: `cargo build -p peri-tui`
+- 全量测试: `cargo test -p peri-tui`
 
 **端到端验证：**
 

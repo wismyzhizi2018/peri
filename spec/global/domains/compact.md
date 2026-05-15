@@ -74,7 +74,7 @@
 **问题本质:** last_user_input 在 compact 异步执行期间可能为 None 或被覆盖，导致 handle_compact_done 的 resubmit 被静默跳过，无任何日志或用户提示
 **通用模式:** 跨异步操作的状态依赖（如 compact 后需要原始输入 resubmit）应在操作开始时保存到独立字段，防止异步执行期间被清理。静默跳过关键操作（如 resubmit）是危险的，应至少记录 warn 日志
 **技术决策:** compact 开始时保存 last_user_input 到独立字段，防止异步期间被清理
-**涉及文件:** rust-agent-tui/src/app/agent_compact.rs, rust-agent-tui/src/app/agent_submit.rs, rust-agent-tui/src/app/agent_ops.rs, rust-agent-tui/src/app/agent_comm.rs
+**涉及文件:** peri-tui/src/app/agent_compact.rs, peri-tui/src/app/agent_submit.rs, peri-tui/src/app/agent_ops.rs, peri-tui/src/app/agent_comm.rs
 **CLAUDE.md 链接:** false
 
 ---

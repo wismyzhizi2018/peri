@@ -24,7 +24,7 @@
 
 ### 改动点
 
-#### 1. `rust-agent-tui/src/app/thread_ops.rs`
+#### 1. `peri-tui/src/app/thread_ops.rs`
 
 `open_thread_browser()` 方法增加 cwd 过滤逻辑：
 
@@ -48,7 +48,7 @@ pub fn open_thread_browser(&mut self) {
 
 #### 2. Thread 浏览面板标题（可选优化）
 
-`rust-agent-tui/src/ui/main_ui/panels/thread_browser.rs` 标题栏可显示当前工作区路径：
+`peri-tui/src/ui/main_ui/panels/thread_browser.rs` 标题栏可显示当前工作区路径：
 
 ```
 📝 选择对话 [/Users/konghayao/project]  ↑↓:移动 Enter:确认 d:删除 Esc:关闭
@@ -70,7 +70,7 @@ pub fn open_thread_browser(&mut self) {
 ## 约束一致性
 
 - 符合 `spec/global/constraints.md` 中的架构约束
-- 符合 `spec/global/architecture.md` 中的 Workspace 依赖关系（改动仅在 rust-agent-tui）
+- 符合 `spec/global/architecture.md` 中的 Workspace 依赖关系（改动仅在 peri-tui）
 - 无新增约束
 
 ## 验收标准

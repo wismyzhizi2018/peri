@@ -77,7 +77,7 @@
 ### Task 3: Specialized Agents Acceptance
 
 **Prerequisites:**
-- Start command: `cargo build -p rust-agent-middlewares 2>&1 | tail -5`（验证代码编译无误）
+- Start command: `cargo build -p peri-middlewares 2>&1 | tail -5`（验证代码编译无误）
 - 确认 `.claude/agents/` 目录下两个文件均已创建
 
 **End-to-end verification:**
@@ -93,6 +93,6 @@
    - On failure: 检查 Task 2 执行步骤
 
 3. [x] 验证 agent_define.rs 的 YAML 解析逻辑能兼容 YAML 列表格式
-   - `cargo test -p rust-agent-middlewares -- claude_agent_parser 2>&1 | tail -10`
+   - `cargo test -p peri-middlewares -- claude_agent_parser 2>&1 | tail -10`
    - Expected: 测试全部通过（`test result: ok`），无 FAILED
    - On failure: 检查 frontmatter YAML 格式是否符合 serde_yaml 解析要求（字段名、列表缩进）

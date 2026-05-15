@@ -27,9 +27,9 @@ SystemNote 应保持在它被创建时的位置附近，不会因为后续的 Re
 
 ## 相关代码
 
-- `rust-agent-tui/src/app/agent_render.rs:43-48` —— `AddMessage` 直接 push 到 view_messages 末尾
-- `rust-agent-tui/src/app/agent_render.rs:70-101` —— `RebuildAll` 的 `saved_notes` 机制：保存被 drain 的 SystemNote 并追加到末尾
-- `rust-agent-tui/src/app/message_pipeline.rs:61` —— `PipelineAction::AddMessage` 定义
+- `peri-tui/src/app/agent_render.rs:43-48` —— `AddMessage` 直接 push 到 view_messages 末尾
+- `peri-tui/src/app/agent_render.rs:70-101` —— `RebuildAll` 的 `saved_notes` 机制：保存被 drain 的 SystemNote 并追加到末尾
+- `peri-tui/src/app/message_pipeline.rs:61` —— `PipelineAction::AddMessage` 定义
 
 ### AddMessage 的产生点（部分）
 

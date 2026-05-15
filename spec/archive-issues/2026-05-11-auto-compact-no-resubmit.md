@@ -31,7 +31,7 @@
 
 ### Resubmit 逻辑
 
-`handle_compact_done`（`rust-agent-tui/src/app/agent_compact.rs:133-168`）中的 resubmit 逻辑：
+`handle_compact_done`（`peri-tui/src/app/agent_compact.rs:133-168`）中的 resubmit 逻辑：
 
 ```rust
 const MAX_AUTO_COMPACT_RESUBMITS: u32 = 3;
@@ -113,9 +113,9 @@ self.session_mgr.sessions[...].agent.pre_compact_user_input =
 
 ## 相关代码
 
-- `rust-agent-tui/src/app/agent_compact.rs:133-168` —— `handle_compact_done` resubmit 逻辑
-- `rust-agent-tui/src/app/agent_submit.rs:131-137` —— `last_user_input` 设置和计数器重置
-- `rust-agent-tui/src/app/agent_ops.rs:342-382` —— Done 事件中的 auto-compact 两级策略
-- `rust-agent-tui/src/app/agent_ops.rs:67-89` —— `ContextWarning` 设置 `needs_auto_compact`
-- `rust-agent-tui/src/app/agent_comm.rs:74` —— `last_user_input` 字段定义
-- `rust-agent-tui/src/app/agent_comm.rs:109` —— `last_user_input` 默认值 `None`
+- `peri-tui/src/app/agent_compact.rs:133-168` —— `handle_compact_done` resubmit 逻辑
+- `peri-tui/src/app/agent_submit.rs:131-137` —— `last_user_input` 设置和计数器重置
+- `peri-tui/src/app/agent_ops.rs:342-382` —— Done 事件中的 auto-compact 两级策略
+- `peri-tui/src/app/agent_ops.rs:67-89` —— `ContextWarning` 设置 `needs_auto_compact`
+- `peri-tui/src/app/agent_comm.rs:74` —— `last_user_input` 字段定义
+- `peri-tui/src/app/agent_comm.rs:109` —— `last_user_input` 默认值 `None`

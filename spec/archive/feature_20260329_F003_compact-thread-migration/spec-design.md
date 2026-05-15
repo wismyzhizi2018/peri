@@ -91,9 +91,9 @@ Web 端收到后：
 
 | 文件 | 改动内容 |
 |------|----------|
-| `rust-agent-tui/src/app/events.rs` | `CompactDone` 从 `CompactDone(String)` 改为结构体变体 |
-| `rust-agent-tui/src/app/agent_ops.rs` | `CompactDone` 分支：创建新 Thread、切换 `current_thread_id`、持久化、Relay 通知 |
-| `rust-agent-tui/src/app/agent.rs` | `compact_task()` 签名不变，返回值通过 channel 传递 summary（Thread 创建在 poll_agent 侧） |
+| `peri-tui/src/app/events.rs` | `CompactDone` 从 `CompactDone(String)` 改为结构体变体 |
+| `peri-tui/src/app/agent_ops.rs` | `CompactDone` 分支：创建新 Thread、切换 `current_thread_id`、持久化、Relay 通知 |
+| `peri-tui/src/app/agent.rs` | `compact_task()` 签名不变，返回值通过 channel 传递 summary（Thread 创建在 poll_agent 侧） |
 | `rust-relay-server/src/protocol.rs` | `RelayMessage` 新增 `CompactDone` 变体 |
 | `rust-relay-server/web/components/events.js` | 新增 `compact_done` 事件处理 |
 | `rust-relay-server/web/components/Pane.js` | compact_done 后 UI 更新（清空消息、显示摘要） |

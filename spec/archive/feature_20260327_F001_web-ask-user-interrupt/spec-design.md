@@ -18,7 +18,7 @@ Web 远程控制端目前存在两个缺陷：
 
 ### 架构总览
 
-本次改动跨越三层：协议层（`rust-relay-server`）、TUI 应用层（`rust-agent-tui`）、Web 前端（`web/js/`）。各层职责独立，互不侵入。
+本次改动跨越三层：协议层（`rust-relay-server`）、TUI 应用层（`peri-tui`）、Web 前端（`web/js/`）。各层职责独立，互不侵入。
 
 ![完整数据流：AskUser 与 CancelAgent 流向](./images/01-flow.png)
 
@@ -59,7 +59,7 @@ pub enum WebMessage {
 }
 ```
 
-### 二、TUI 应用层改动（rust-agent-tui）
+### 二、TUI 应用层改动（peri-tui）
 
 #### relay_ops.rs — CancelAgent 处理
 

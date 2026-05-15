@@ -71,7 +71,7 @@ block[1] 内容包含 Deferred Tools 说明、SubAgent 文档、Skills 列表、
 
 当目标 user 消息（second-to-last / last）无 text block 时，沿 `user_indices` 向前搜索最近的含 text block 的 user message，对其添加 cache_control。保留去重逻辑避免重复标记。
 
-**文件**：`rust-create-agent/src/llm/anthropic.rs` `apply_cache_to_messages()`
+**文件**：`peri-agent/src/llm/anthropic.rs` `apply_cache_to_messages()`
 
 ### Fix 2: 断点重组
 
@@ -91,14 +91,14 @@ block[1] 内容包含 Deferred Tools 说明、SubAgent 文档、Skills 列表、
 3. `msg[first]` cc — system + tools + first user
 4. `msg[second-to-last]` cc — **Fix 1 使其生效**，缓存上一轮前缀
 
-**文件**：`rust-create-agent/src/llm/anthropic.rs`
+**文件**：`peri-agent/src/llm/anthropic.rs`
 
 - 删除 tools cache_control（L472-478）
 - 新增 system[last] cache_control（序列化逻辑 L511-525）
 
 ## 涉及文件
 
-- `rust-create-agent/src/llm/anthropic.rs` — `apply_cache_to_messages()`、system 序列化、tools 序列化
+- `peri-agent/src/llm/anthropic.rs` — `apply_cache_to_messages()`、system 序列化、tools 序列化
 
 ## 现象 2（Reopen 2026-05-14）：cache_control 断点迁移导致消息区域缓存批量失效
 

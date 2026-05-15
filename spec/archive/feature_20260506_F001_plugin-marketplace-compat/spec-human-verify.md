@@ -12,8 +12,8 @@
 
 ### 环境要求
 - [ ] [AUTO] 编译全 workspace: `cargo build 2>&1 | tail -5`
-- [ ] [AUTO] 编译 middlewares crate: `cargo build -p rust-agent-middlewares 2>&1 | tail -3`
-- [ ] [AUTO] 编译 TUI crate: `cargo build -p rust-agent-tui 2>&1 | tail -3`
+- [ ] [AUTO] 编译 middlewares crate: `cargo build -p peri-middlewares 2>&1 | tail -3`
+- [ ] [AUTO] 编译 TUI crate: `cargo build -p peri-tui 2>&1 | tail -3`
 
 ---
 
@@ -31,13 +31,13 @@
 - **来源:** spec-plan-2.md Task 0 检查步骤
 - **目的:** 确认 plugin 模块在 lib.rs 中公开导出
 - **操作步骤:**
-  1. [A] `grep "pub mod plugin" rust-agent-middlewares/src/lib.rs` → 期望包含: `pub mod plugin`
+  1. [A] `grep "pub mod plugin" peri-middlewares/src/lib.rs` → 期望包含: `pub mod plugin`
 
 #### - [x] 1.3 PluginManifest 类型可导入
 - **来源:** spec-plan-2.md Task 0 检查步骤
 - **目的:** 确认 PluginManifest 类型已从 plugin 模块导出
 - **操作步骤:**
-  1. [A] `grep "PluginManifest" rust-agent-middlewares/src/plugin/mod.rs` → 期望包含: `PluginManifest`
+  1. [A] `grep "PluginManifest" peri-middlewares/src/plugin/mod.rs` → 期望包含: `PluginManifest`
 
 ---
 
@@ -47,13 +47,13 @@
 - **来源:** spec-plan-2.md Task 7 步骤 2 / spec-design.md 验收标准 "能解析 Claude Code 格式的 plugin.json"
 - **目的:** 确认 Claude Code schemas.ts 格式的 plugin.json 可正确反序列化
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- plugin::types::tests 2>&1 | tail -15` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- plugin::types::tests 2>&1 | tail -15` → 期望包含: `test result: ok`
 
 #### - [x] 2.2 PluginLoadResult 和 SinglePluginLoad 类型导出
 - **来源:** spec-plan-2.md Task 5 步骤 1-2
 - **目的:** 确认聚合加载结果类型已公开导出
 - **操作步骤:**
-  1. [A] `grep "PluginLoadResult" rust-agent-middlewares/src/plugin/mod.rs` → 期望包含: `PluginLoadResult`
+  1. [A] `grep "PluginLoadResult" peri-middlewares/src/plugin/mod.rs` → 期望包含: `PluginLoadResult`
 
 ---
 
@@ -63,7 +63,7 @@
 - **来源:** spec-plan-2.md Task 7 步骤 3 / spec-design.md 验收标准 "能从 GitHub/URL/本地拉取"
 - **目的:** 确认 GitHub/URL/local/NPM 拉取逻辑正确
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- plugin::marketplace 2>&1 | tail -10` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- plugin::marketplace 2>&1 | tail -10` → 期望包含: `test result: ok`
 
 ---
 
@@ -73,25 +73,25 @@
 - **来源:** spec-plan-2.md Task 5 步骤 3 / spec-design.md 验收标准 "skills 追加到搜索路径"
 - **目的:** 确认插件 skills 路径注入扩展点已实现
 - **操作步骤:**
-  1. [A] `grep "with_extra_dirs" rust-agent-middlewares/src/skills/mod.rs` → 期望包含: `with_extra_dirs`
+  1. [A] `grep "with_extra_dirs" peri-middlewares/src/skills/mod.rs` → 期望包含: `with_extra_dirs`
 
 #### - [x] 4.2 extra_dirs 注入测试通过
 - **来源:** spec-plan-2.md Task 5 步骤 13
 - **目的:** 确认额外目录正确追加到搜索路径
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- skills::tests::test_extra_dirs_injected 2>&1 | tail -3` → 期望包含: `ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- skills::tests::test_extra_dirs_injected 2>&1 | tail -3` → 期望包含: `ok`
 
 #### - [x] 4.3 extra_dirs 优先级测试通过
 - **来源:** spec-plan-2.md Task 5 步骤 13
 - **目的:** 确认插件目录在项目级目录之后（同名先到先得）
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- skills::tests::test_extra_dirs_priority_after_project 2>&1 | tail -3` → 期望包含: `ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- skills::tests::test_extra_dirs_priority_after_project 2>&1 | tail -3` → 期望包含: `ok`
 
 #### - [x] 4.4 extra_dirs 不存在路径跳过测试通过
 - **来源:** spec-plan-2.md Task 5 步骤 13
 - **目的:** 确认不存在的目录不会出现在搜索路径中
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- skills::tests::test_extra_dirs_nonexistent_skipped 2>&1 | tail -3` → 期望包含: `ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- skills::tests::test_extra_dirs_nonexistent_skipped 2>&1 | tail -3` → 期望包含: `ok`
 
 ---
 
@@ -101,25 +101,25 @@
 - **来源:** spec-plan-2.md Task 5 步骤 4 / spec-design.md "插件 MCP 命名空间"
 - **目的:** 确认插件配置来源标记已定义
 - **操作步骤:**
-  1. [A] `grep "Plugin" rust-agent-middlewares/src/mcp/config.rs | grep -i "source\|enum"` → 期望包含: `Plugin`
+  1. [A] `grep "Plugin" peri-middlewares/src/mcp/config.rs | grep -i "source\|enum"` → 期望包含: `Plugin`
 
 #### - [x] 5.2 merge_plugin_servers 命名空间测试通过
 - **来源:** spec-plan-2.md Task 5 步骤 14 / spec-design.md 验收标准 "mcpServers 合并到连接池"
 - **目的:** 确认合并后 key 格式为 `{plugin_name}__{server_name}`
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests::test_merge_plugin_servers_namespaced 2>&1 | tail -3` → 期望包含: `ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- mcp::config::tests::test_merge_plugin_servers_namespaced 2>&1 | tail -3` → 期望包含: `ok`
 
 #### - [x] 5.3 merge_plugin_servers 保留已有配置测试通过
 - **来源:** spec-plan-2.md Task 5 步骤 14
 - **目的:** 确认合并后原有服务器不被覆盖
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests::test_merge_plugin_servers_preserves_existing 2>&1 | tail -3` → 期望包含: `ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- mcp::config::tests::test_merge_plugin_servers_preserves_existing 2>&1 | tail -3` → 期望包含: `ok`
 
 #### - [x] 5.4 merge_plugin_servers 来源标记测试通过
 - **来源:** spec-plan-2.md Task 5 步骤 14
 - **目的:** 确认合并后的服务器 source 为 ConfigSource::Plugin
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests::test_merge_plugin_servers_source_tag 2>&1 | tail -3` → 期望包含: `ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- mcp::config::tests::test_merge_plugin_servers_source_tag 2>&1 | tail -3` → 期望包含: `ok`
 
 ---
 
@@ -129,13 +129,13 @@
 - **来源:** spec-plan-2.md Task 5 步骤 7-8 / spec-design.md 验收标准 "SubAgent 搜索路径追加"
 - **目的:** 确认扩展 agent 扫描函数已公开导出
 - **操作步骤:**
-  1. [A] `grep "scan_agents_with_extra_dirs" rust-agent-middlewares/src/lib.rs` → 期望包含: `scan_agents_with_extra_dirs`
+  1. [A] `grep "scan_agents_with_extra_dirs" peri-middlewares/src/lib.rs` → 期望包含: `scan_agents_with_extra_dirs`
 
 #### - [x] 6.2 scan_agents_with_extra_dirs 测试通过
 - **来源:** spec-plan-2.md Task 5 步骤 15
 - **目的:** 确认插件 agent 路径追加和去重逻辑正确
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- subagent::tests::test_scan_agents_with_extra 2>&1 | tail -5` → 期望包含: `ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- subagent::tests::test_scan_agents_with_extra 2>&1 | tail -5` → 期望包含: `ok`
 
 ---
 
@@ -145,13 +145,13 @@
 - **来源:** spec-plan-2.md Task 5 检查步骤
 - **目的:** 确认聚合加载函数已从 plugin 模块导出
 - **操作步骤:**
-  1. [A] `grep "load_enabled_plugins" rust-agent-middlewares/src/plugin/mod.rs` → 期望包含: `load_enabled_plugins`
+  1. [A] `grep "load_enabled_plugins" peri-middlewares/src/plugin/mod.rs` → 期望包含: `load_enabled_plugins`
 
 #### - [x] 7.2 load_enabled_plugins 测试通过
 - **来源:** spec-plan-2.md Task 5 步骤 16 / spec-design.md 验收标准 "写入 installed_plugins.json"
 - **目的:** 确认只加载启用插件，目录不存在时安全返回空结果
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- plugin::loader::tests::test_load_enabled 2>&1 | tail -5` → 期望包含: `ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- plugin::loader::tests::test_load_enabled 2>&1 | tail -5` → 期望包含: `ok`
 
 ---
 
@@ -161,13 +161,13 @@
 - **来源:** spec-plan-2.md Task 6 步骤 5-6 / spec-design.md 验收标准 "/plugin TUI 面板"
 - **目的:** 确认 PluginCommand 在 default_registry 中注册
 - **操作步骤:**
-  1. [A] `grep -r "PluginCommand" rust-agent-tui/src/command/` → 期望包含: `PluginCommand`
+  1. [A] `grep -r "PluginCommand" peri-tui/src/command/` → 期望包含: `PluginCommand`
 
 #### - [x] 8.2 PluginCommandAdapter 测试通过
 - **来源:** spec-plan-2.md Task 5 步骤 17 / spec-design.md 验收标准 "commands 在 / 浮层可见"
 - **目的:** 确认适配器正确桥接 CommandEntry 到 Command trait
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- command::plugin_command::tests 2>&1 | tail -5` → 期望包含: `ok`
+  1. [A] `cargo test -p peri-tui --lib -- command::plugin_command::tests 2>&1 | tail -5` → 期望包含: `ok`
 
 ---
 
@@ -177,31 +177,31 @@
 - **来源:** spec-plan-2.md Task 6 步骤 7-9
 - **目的:** 确认面板渲染模块已创建并注册
 - **操作步骤:**
-  1. [A] `grep "render_plugin_panel" rust-agent-tui/src/ui/main_ui/panels/plugin.rs` → 期望包含: `render_plugin_panel`
+  1. [A] `grep "render_plugin_panel" peri-tui/src/ui/main_ui/panels/plugin.rs` → 期望包含: `render_plugin_panel`
 
 #### - [x] 9.2 main_ui 集成 plugin_panel 渲染与高度计算
 - **来源:** spec-plan-2.md Task 6 步骤 10 / spec-design.md "TUI 集成面板操作"
 - **目的:** 确认面板在 main_ui 中正确集成（渲染 + 高度计算）
 - **操作步骤:**
-  1. [A] `grep "plugin_panel" rust-agent-tui/src/ui/main_ui.rs` → 期望包含: `plugin_panel`
+  1. [A] `grep "plugin_panel" peri-tui/src/ui/main_ui.rs` → 期望包含: `plugin_panel`
 
 #### - [x] 9.3 状态栏快捷键分支存在
 - **来源:** spec-plan-2.md Task 6 步骤 11 / spec-design.md 验收标准 "状态栏显示快捷键"
 - **目的:** 确认 render_second_row 包含 plugin_panel 快捷键提示
 - **操作步骤:**
-  1. [A] `grep "plugin_panel" rust-agent-tui/src/ui/main_ui/status_bar.rs` → 期望包含: `plugin_panel`
+  1. [A] `grep "plugin_panel" peri-tui/src/ui/main_ui/status_bar.rs` → 期望包含: `plugin_panel`
 
 #### - [x] 9.4 event.rs 按键处理函数存在
 - **来源:** spec-plan-2.md Task 6 步骤 12
 - **目的:** 确认 handle_plugin_panel 函数已定义并调用
 - **操作步骤:**
-  1. [A] `grep "handle_plugin_panel" rust-agent-tui/src/event.rs` → 期望包含: `handle_plugin_panel`
+  1. [A] `grep "handle_plugin_panel" peri-tui/src/event.rs` → 期望包含: `handle_plugin_panel`
 
 #### - [x] 9.5 PluginPanel 单元测试通过
 - **来源:** spec-plan-2.md Task 6 步骤 13
 - **目的:** 确认面板状态管理（构造、光标、Tab切换、删除确认）正确
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- plugin_panel 2>&1 | tail -10` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui --lib -- plugin_panel 2>&1 | tail -10` → 期望包含: `test result: ok`
 
 ---
 
@@ -211,13 +211,13 @@
 - **来源:** spec-plan-2.md Task 5 检查步骤
 - **目的:** 确认 middlewares 无回归
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib 2>&1 | tail -20` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-middlewares --lib 2>&1 | tail -20` → 期望包含: `test result: ok`
 
 #### - [x] 10.2 TUI crate 全量测试通过
 - **来源:** spec-plan-2.md Task 5 检查步骤
 - **目的:** 确认 TUI 无回归
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib 2>&1 | tail -20` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui --lib 2>&1 | tail -20` → 期望包含: `test result: ok`
 
 #### - [x] 10.3 Workspace 全量测试通过
 - **来源:** spec-plan-2.md Task 7 步骤 1
@@ -233,7 +233,7 @@
 - **来源:** spec-design.md 验收标准 "Headless 测试不写入真实 ~/.claude/"
 - **目的:** 确认插件面板配置写入使用 override 路径，不影响用户真实配置
 - **操作步骤:**
-  1. [A] `grep "config_path_override" rust-agent-tui/src/app/plugin_panel.rs` → 期望包含: `config_path_override`
+  1. [A] `grep "config_path_override" peri-tui/src/app/plugin_panel.rs` → 期望包含: `config_path_override`
 
 #### - [x] 11.2 插件 MCP 命名空间约定在 CLAUDE.md 中记录
 - **来源:** spec-plan-2.md Task 5 认知变更 / spec-design.md "插件 MCP 命名空间"

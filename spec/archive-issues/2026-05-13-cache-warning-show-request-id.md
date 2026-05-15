@@ -26,8 +26,8 @@
 
 ## 涉及文件
 
-- `rust-create-agent/src/llm/anthropic.rs` —— 需从响应头提取 `x-request-id`
-- `rust-create-agent/src/llm/openai.rs` —— 需从响应体提取 `id` 字段
-- `rust-create-agent/src/agent/token.rs` —— `SessionTokenTracker` 需记录最近一次 request ID
-- `rust-agent-tui/src/app/agent_ops.rs:152-171` —— 缓存率检查逻辑，拼接警告消息时附带 request ID
-- `rust-agent-tui/src/ui/main_ui/status_bar.rs:104-105` —— status bar 的缓存率显示（可选）
+- `peri-agent/src/llm/anthropic.rs` —— 需从响应头提取 `x-request-id`
+- `peri-agent/src/llm/openai.rs` —— 需从响应体提取 `id` 字段
+- `peri-agent/src/agent/token.rs` —— `SessionTokenTracker` 需记录最近一次 request ID
+- `peri-tui/src/app/agent_ops.rs:152-171` —— 缓存率检查逻辑，拼接警告消息时附带 request ID
+- `peri-tui/src/ui/main_ui/status_bar.rs:104-105` —— status bar 的缓存率显示（可选）

@@ -39,7 +39,7 @@ LLM 首轮推理即可看到 sdd-brainstorming 完整内容 → 按完整 skill 
 
 ### 变更点（最小改动，3 处）
 
-**1. `AgentRunConfig` 扩展（`rust-agent-tui/src/app/agent.rs`）**
+**1. `AgentRunConfig` 扩展（`peri-tui/src/app/agent.rs`）**
 
 ```rust
 pub struct AgentRunConfig {
@@ -48,7 +48,7 @@ pub struct AgentRunConfig {
 }
 ```
 
-**2. `submit_message` 解析（`rust-agent-tui/src/app/agent_ops.rs`）**
+**2. `submit_message` 解析（`peri-tui/src/app/agent_ops.rs`）**
 
 ```rust
 // 解析消息中的 #skill-name（如 #sdd-brainstorming #code-review 等）
@@ -65,7 +65,7 @@ agent::run_universal_agent(agent::AgentRunConfig {
 }).await;
 ```
 
-**3. `run_universal_agent` 插入中间件（`rust-agent-tui/src/app/agent.rs`）**
+**3. `run_universal_agent` 插入中间件（`peri-tui/src/app/agent.rs`）**
 
 ```rust
 let executor = ReActAgent::new(model)
@@ -101,13 +101,13 @@ TerminalMiddleware      ← bash 工具
 ## 实现要点
 
 - **正则**：`#([a-zA-Z0-9_-]+)` 匹配合法 skill 名（含字母、数字、连字符、下划线），避免误匹配 `#123` 等非 skill token
-- **依赖**：`rust-agent-tui` 需添加 `regex` crate（或使用标准库手动解析，可选）
+- **依赖**：`peri-tui` 需添加 `regex` crate（或使用标准库手动解析，可选）
 - **无 `#` 的普通消息**：`preload_skills` 为空 → `SkillPreloadMiddleware.before_agent` early return → 行为与现有完全一致，无任何额外开销
 - **`regex` crate 复用**：可考虑用简单字符串分割（`split_whitespace + starts_with('#')` + `trim_start_matches('#')`）代替 regex，消除外部依赖
 
 ## 约束一致性
 
-- 遵循 **Workspace 分层约束**：修改仅在 `rust-agent-tui`（应用层），`rust-agent-middlewares` 的 `SkillPreloadMiddleware` 无需改动
+- 遵循 **Workspace 分层约束**：修改仅在 `peri-tui`（应用层），`peri-middlewares` 的 `SkillPreloadMiddleware` 无需改动
 - 遵循 **Middleware Chain 模式**：通过 `add_middleware` 接口插入，不侵入 ReAct 执行器核心
 - 遵循 **消息不可变历史**：`prepend_message` 是 `before_agent` 阶段的合法操作，skill 注入消息在正式 ReAct 循环开始前完成
 

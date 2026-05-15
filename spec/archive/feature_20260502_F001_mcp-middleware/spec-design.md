@@ -272,7 +272,7 @@ LLM 选择 mcp__filesystem__read_file 工具
 ### 模块结构
 
 ```
-rust-agent-middlewares/src/
+peri-middlewares/src/
 ├── mcp/
 │   ├── mod.rs              # pub mod 声明 + McpMiddleware 重导出
 │   ├── config.rs           # McpConfig、McpServerConfig、合并逻辑、环境变量展开
@@ -321,7 +321,7 @@ AgentRunConfig 新增:
 
 ### 依赖引入
 
-`rust-agent-middlewares/Cargo.toml` 新增：
+`peri-middlewares/Cargo.toml` 新增：
 
 ```toml
 [dependencies]
@@ -377,7 +377,7 @@ ACP（Agent Client Protocol）和 MCP（Model Context Protocol）是两个独立
 - **ACP**：IDE/编辑器如何驱动 Agent（会话管理、权限审批、UI 更新）
 - **MCP**：Agent 如何连接外部工具/资源服务器
 
-两者互补，不冲突。ACP 实现位于 `rust-agent-tui/src/acp/`，MCP middleware 位于 `rust-agent-middlewares/src/mcp/`。
+两者互补，不冲突。ACP 实现位于 `peri-tui/src/acp/`，MCP middleware 位于 `peri-middlewares/src/mcp/`。
 
 ## 约束一致性
 

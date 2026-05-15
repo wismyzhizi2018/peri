@@ -31,13 +31,13 @@
 - **来源:** spec-plan.md Task 1
 - **目的:** 确认 McpInitStatus/Pool 扩展单元测试全部通过
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- mcp:: 2>&1 | tail -10` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- mcp:: 2>&1 | tail -10` → 期望包含: `test result: ok`
 
 #### - [x] 1.3 TUI 模块单元测试通过
 - **来源:** spec-plan.md Task 3/4/5
 - **目的:** 确认 TUI 层所有新增测试通过（含 mcp_panel、headless 渲染）
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib 2>&1 | tail -15` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui --lib 2>&1 | tail -15` → 期望包含: `test result: ok`
 
 #### - [x] 1.4 全量测试无回归
 - **来源:** spec-plan.md Task 6 / spec-design.md 验收标准
@@ -53,26 +53,26 @@
 - **来源:** spec-plan.md Task 1 / spec-design.md McpInitStatus 状态机
 - **目的:** 确认状态机四个变体存在
 - **操作步骤:**
-  1. [A] `grep -n "McpInitStatus" rust-agent-middlewares/src/mcp/client.rs | head -10` → 期望包含: `Pending` 和 `Initializing` 和 `Ready` 和 `Failed`
-  2. [A] `grep -n "McpInitStatus" rust-agent-middlewares/src/mcp/mod.rs` → 期望包含: `McpInitStatus`
+  1. [A] `grep -n "McpInitStatus" peri-middlewares/src/mcp/client.rs | head -10` → 期望包含: `Pending` 和 `Initializing` 和 `Ready` 和 `Failed`
+  2. [A] `grep -n "McpInitStatus" peri-middlewares/src/mcp/mod.rs` → 期望包含: `McpInitStatus`
 
 #### - [x] 2.2 McpClientPool 并发安全结构
 - **来源:** spec-plan.md Task 1 / spec-design.md McpClientPool 扩展
 - **目的:** 确认 clients 改为 RwLock、services 改为 Mutex
 - **操作步骤:**
-  1. [A] `grep -A 6 "pub struct McpClientPool" rust-agent-middlewares/src/mcp/client.rs` → 期望包含: `RwLock` 和 `Mutex` 和 `configs`
+  1. [A] `grep -A 6 "pub struct McpClientPool" peri-middlewares/src/mcp/client.rs` → 期望包含: `RwLock` 和 `Mutex` 和 `configs`
 
 #### - [x] 2.3 McpClientPool 新增方法完整
 - **来源:** spec-plan.md Task 1 / spec-design.md McpClientPool 新增方法
 - **目的:** 确认 6 个核心方法存在
 - **操作步骤:**
-  1. [A] `grep -n "pub async fn run_initialize\|pub async fn reconnect\|pub async fn remove_server\|pub fn server_infos\|pub fn get_tools\|pub fn get_resources\|pub fn new_pending" rust-agent-middlewares/src/mcp/client.rs` → 期望精确: 每个方法名各出现一次
+  1. [A] `grep -n "pub async fn run_initialize\|pub async fn reconnect\|pub async fn remove_server\|pub fn server_infos\|pub fn get_tools\|pub fn get_resources\|pub fn new_pending" peri-middlewares/src/mcp/client.rs` → 期望精确: 每个方法名各出现一次
 
 #### - [x] 2.4 ServerInfo 类型已导出
 - **来源:** spec-plan.md Task 1
 - **目的:** 确认 TUI 层可引用 ServerInfo
 - **操作步骤:**
-  1. [A] `grep -n "ServerInfo" rust-agent-middlewares/src/mcp/mod.rs` → 期望包含: `ServerInfo`
+  1. [A] `grep -n "ServerInfo" peri-middlewares/src/mcp/mod.rs` → 期望包含: `ServerInfo`
 
 ---
 
@@ -82,25 +82,25 @@
 - **来源:** spec-plan.md Task 2 / spec-design.md McpConfig 持久化扩展
 - **目的:** 确认配置删除入口函数已实现
 - **操作步骤:**
-  1. [A] `grep -n "pub fn remove_server_from_config" rust-agent-middlewares/src/mcp/config.rs` → 期望包含: `cwd: &Path, server_name: &str`
+  1. [A] `grep -n "pub fn remove_server_from_config" peri-middlewares/src/mcp/config.rs` → 期望包含: `cwd: &Path, server_name: &str`
 
 #### - [x] 3.2 McpConfigError 包含 WriteError
 - **来源:** spec-plan.md Task 2
 - **目的:** 确认写入错误类型已定义
 - **操作步骤:**
-  1. [A] `grep -n "WriteError" rust-agent-middlewares/src/mcp/config.rs` → 期望包含: `WriteError`
+  1. [A] `grep -n "WriteError" peri-middlewares/src/mcp/config.rs` → 期望包含: `WriteError`
 
 #### - [x] 3.3 原子写入使用 tempfile + rename
 - **来源:** spec-plan.md Task 2 / spec-design.md 配置文件修改的原子性
 - **目的:** 确认配置写入不会因中断导致数据丢失
 - **操作步骤:**
-  1. [A] `grep -n "atomic_write_json\|tempfile\|rename" rust-agent-middlewares/src/mcp/config.rs` → 期望包含: `tempfile` 和 `rename`
+  1. [A] `grep -n "atomic_write_json\|tempfile\|rename" peri-middlewares/src/mcp/config.rs` → 期望包含: `tempfile` 和 `rename`
 
 #### - [x] 3.4 配置删除测试通过
 - **来源:** spec-plan.md Task 2
 - **目的:** 确认项目级/全局/不存在的 server 删除场景均覆盖
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests::test_remove_server 2>&1 | tail -10` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-middlewares --lib -- mcp::config::tests::test_remove_server 2>&1 | tail -10` → 期望包含: `test result: ok`
 
 ---
 
@@ -110,32 +110,32 @@
 - **来源:** spec-plan.md Task 3 / spec-design.md 验收标准（不阻塞 UI）
 - **目的:** 确认旧的同步阻塞初始化逻辑已删除
 - **操作步骤:**
-  1. [A] `grep -n "block_in_place\|McpClientPool::initialize" rust-agent-tui/src/app/agent_ops.rs` → 期望精确: 无 MCP 初始化相关的 `block_in_place` 匹配
+  1. [A] `grep -n "block_in_place\|McpClientPool::initialize" peri-tui/src/app/agent_ops.rs` → 期望精确: 无 MCP 初始化相关的 `block_in_place` 匹配
 
 #### - [x] 4.2 spawn_mcp_init 在 run_app 中调用
 - **来源:** spec-plan.md Task 3 / spec-design.md MCP 提前初始化
 - **目的:** 确认 MCP 在 App 创建后立即后台初始化
 - **操作步骤:**
-  1. [A] `grep -n "spawn_mcp_init" rust-agent-tui/src/main.rs` → 期望包含: `spawn_mcp_init`
+  1. [A] `grep -n "spawn_mcp_init" peri-tui/src/main.rs` → 期望包含: `spawn_mcp_init`
 
 #### - [x] 4.3 App 包含 mcp_init_rx 字段
 - **来源:** spec-plan.md Task 3
 - **目的:** 确认 agent task 可通过 watch channel 等待 MCP 就绪
 - **操作步骤:**
-  1. [A] `grep -n "mcp_init_rx" rust-agent-tui/src/app/mod.rs` → 期望包含: 字段定义和 `None` 初始化
+  1. [A] `grep -n "mcp_init_rx" peri-tui/src/app/mod.rs` → 期望包含: 字段定义和 `None` 初始化
 
 #### - [x] 4.4 agent task 内异步等待 MCP 就绪
 - **来源:** spec-plan.md Task 3 / spec-design.md Lazy Wait 策略
 - **目的:** 确认首条消息如 MCP 未就绪则异步等待（最多 30s）
 - **操作步骤:**
-  1. [A] `grep -n "mcp_init_rx\|McpInitStatus::Ready" rust-agent-tui/src/app/agent_ops.rs` → 期望包含: `mcp_init_rx` clone 和 `Ready` 匹配
-  2. [A] `grep -n "from_secs(30)\|Duration::from_secs(30)" rust-agent-tui/src/app/agent_ops.rs` → 期望包含: `30`
+  1. [A] `grep -n "mcp_init_rx\|McpInitStatus::Ready" peri-tui/src/app/agent_ops.rs` → 期望包含: `mcp_init_rx` clone 和 `Ready` 匹配
+  2. [A] `grep -n "from_secs(30)\|Duration::from_secs(30)" peri-tui/src/app/agent_ops.rs` → 期望包含: `30`
 
 #### - [x] 4.5 App 包含 mcp_ready_shown_until 字段
 - **来源:** spec-plan.md Task 5
 - **目的:** 确认就绪提示 3 秒自动消失有字段支撑
 - **操作步骤:**
-  1. [A] `grep -n "mcp_ready_shown_until" rust-agent-tui/src/app/mod.rs` → 期望包含: 字段定义和 `None` 初始化
+  1. [A] `grep -n "mcp_ready_shown_until" peri-tui/src/app/mod.rs` → 期望包含: 字段定义和 `None` 初始化
 
 ---
 
@@ -145,31 +145,31 @@
 - **来源:** spec-plan.md Task 4 / spec-design.md 命令注册
 - **目的:** 确认 /mcp 命令可被 dispatch
 - **操作步骤:**
-  1. [A] `grep -n "mcp::McpCommand\|pub mod mcp" rust-agent-tui/src/command/mod.rs` → 期望精确: 两行匹配（模块声明 + 注册调用）
+  1. [A] `grep -n "mcp::McpCommand\|pub mod mcp" peri-tui/src/command/mod.rs` → 期望精确: 两行匹配（模块声明 + 注册调用）
 
 #### - [x] 5.2 McpPanel / McpPanelView 定义完整
 - **来源:** spec-plan.md Task 4 / spec-design.md 数据结构
 - **目的:** 确认面板状态管理结构就绪
 - **操作步骤:**
-  1. [A] `grep -n "pub struct McpPanel\|pub enum McpPanelView" rust-agent-tui/src/app/mcp_panel.rs` → 期望精确: 各匹配一次
+  1. [A] `grep -n "pub struct McpPanel\|pub enum McpPanelView" peri-tui/src/app/mcp_panel.rs` → 期望精确: 各匹配一次
 
 #### - [x] 5.3 面板操作方法完整（10 个）
 - **来源:** spec-plan.md Task 4 / spec-design.md 面板交互
 - **目的:** 确认导航/详情/Tab/删除/重连/关闭操作全覆盖
 - **操作步骤:**
-  1. [A] `grep -n "pub fn mcp_panel_" rust-agent-tui/src/app/mcp_panel.rs` → 期望包含: `mcp_panel_move_up` 和 `mcp_panel_move_down` 和 `mcp_panel_enter` 和 `mcp_panel_back` 和 `mcp_panel_tab` 和 `mcp_panel_request_delete` 和 `mcp_panel_confirm_delete` 和 `mcp_panel_cancel_delete` 和 `mcp_panel_reconnect` 和 `mcp_panel_close`
+  1. [A] `grep -n "pub fn mcp_panel_" peri-tui/src/app/mcp_panel.rs` → 期望包含: `mcp_panel_move_up` 和 `mcp_panel_move_down` 和 `mcp_panel_enter` 和 `mcp_panel_back` 和 `mcp_panel_tab` 和 `mcp_panel_request_delete` 和 `mcp_panel_confirm_delete` 和 `mcp_panel_cancel_delete` 和 `mcp_panel_reconnect` 和 `mcp_panel_close`
 
 #### - [x] 5.4 App 包含 mcp_panel 字段
 - **来源:** spec-plan.md Task 4
 - **目的:** 确认 TUI 可持有面板状态
 - **操作步骤:**
-  1. [A] `grep -n "mcp_panel" rust-agent-tui/src/app/mod.rs` → 期望包含: 模块声明和 re-export 和字段定义和 `None` 初始化
+  1. [A] `grep -n "mcp_panel" peri-tui/src/app/mod.rs` → 期望包含: 模块声明和 re-export 和字段定义和 `None` 初始化
 
 #### - [x] 5.5 McpPanel 单元测试通过
 - **来源:** spec-plan.md Task 4
 - **目的:** 确认面板数据结构和操作方法测试覆盖
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- app::mcp_panel::tests 2>&1 | tail -10` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui --lib -- app::mcp_panel::tests 2>&1 | tail -10` → 期望包含: `test result: ok`
 
 ---
 
@@ -179,49 +179,49 @@
 - **来源:** spec-plan.md Task 5 / spec-design.md 渲染
 - **目的:** 确认 MCP 面板有渲染入口
 - **操作步骤:**
-  1. [A] `grep -n "pub(crate) fn render_mcp_panel" rust-agent-tui/src/ui/main_ui/panels/mcp.rs` → 期望包含: `render_mcp_panel`
+  1. [A] `grep -n "pub(crate) fn render_mcp_panel" peri-tui/src/ui/main_ui/panels/mcp.rs` → 期望包含: `render_mcp_panel`
 
 #### - [x] 6.2 MCP 模块注册到 panels/mod.rs
 - **来源:** spec-plan.md Task 5
 - **目的:** 确认面板模块可被发现
 - **操作步骤:**
-  1. [A] `grep -n "pub mod mcp" rust-agent-tui/src/ui/main_ui/panels/mod.rs` → 期望包含: `pub mod mcp`
+  1. [A] `grep -n "pub mod mcp" peri-tui/src/ui/main_ui/panels/mod.rs` → 期望包含: `pub mod mcp`
 
 #### - [x] 6.3 main_ui.rs 包含 MCP 面板渲染分发和高度计算
 - **来源:** spec-plan.md Task 5 / spec-design.md 渲染
 - **目的:** 确认面板在主 UI 中被正确调度
 - **操作步骤:**
-  1. [A] `grep -n "mcp_panel\|panels::mcp" rust-agent-tui/src/ui/main_ui.rs` → 期望包含: 渲染调用和高度计算分支
+  1. [A] `grep -n "mcp_panel\|panels::mcp" peri-tui/src/ui/main_ui.rs` → 期望包含: 渲染调用和高度计算分支
 
 #### - [x] 6.4 状态栏显示 MCP 初始化进度
 - **来源:** spec-plan.md Task 5 / spec-design.md 状态栏显示
 - **目的:** 确认用户可感知 MCP 后台连接状态
 - **操作步骤:**
-  1. [A] `grep -n "McpInitStatus\|mcp_init_rx\|MCP" rust-agent-tui/src/ui/main_ui/status_bar.rs` → 期望包含: `McpInitStatus` 和 `Initializing` 和 `Ready` 和 `Failed`
+  1. [A] `grep -n "McpInitStatus\|mcp_init_rx\|MCP" peri-tui/src/ui/main_ui/status_bar.rs` → 期望包含: `McpInitStatus` 和 `Initializing` 和 `Ready` 和 `Failed`
 
 #### - [x] 6.5 状态栏显示 MCP 面板快捷键提示
 - **来源:** spec-plan.md Task 5 / spec-design.md 面板交互
 - **目的:** 确认面板操作有按键引导
 - **操作步骤:**
-  1. [A] `grep -n "mcp_panel\|McpPanelView" rust-agent-tui/src/ui/main_ui/status_bar.rs` → 期望包含: `mcp_panel` 和 `McpPanelView`
+  1. [A] `grep -n "mcp_panel\|McpPanelView" peri-tui/src/ui/main_ui/status_bar.rs` → 期望包含: `mcp_panel` 和 `McpPanelView`
 
 #### - [x] 6.6 event.rs 包含 handle_mcp_panel 函数
 - **来源:** spec-plan.md Task 5 / spec-design.md 面板交互
 - **目的:** 确认面板键盘事件有处理入口
 - **操作步骤:**
-  1. [A] `grep -n "handle_mcp_panel\|mcp_panel.is_some()" rust-agent-tui/src/event.rs` → 期望包含: 函数定义和分发调用
+  1. [A] `grep -n "handle_mcp_panel\|mcp_panel.is_some()" peri-tui/src/event.rs` → 期望包含: 函数定义和分发调用
 
 #### - [x] 6.7 Paste 事件拦截 MCP 面板
 - **来源:** spec-plan.md Task 5 / CLAUDE.md 面板注意事项
 - **目的:** 确认粘贴文本不会穿透到 textarea
 - **操作步骤:**
-  1. [A] `grep -n "mcp_panel.is_some()" rust-agent-tui/src/event.rs` → 期望包含: 在 paste 拦截条件链中
+  1. [A] `grep -n "mcp_panel.is_some()" peri-tui/src/event.rs` → 期望包含: 在 paste 拦截条件链中
 
 #### - [x] 6.8 MCP 面板 headless 渲染测试通过
 - **来源:** spec-plan.md Task 5
 - **目的:** 确认面板渲染逻辑可测试
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- ui::main_ui::panels::mcp::tests 2>&1 | tail -10` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui --lib -- ui::main_ui::panels::mcp::tests 2>&1 | tail -10` → 期望包含: `test result: ok`
 
 ---
 
@@ -231,7 +231,7 @@
 - **来源:** spec-design.md 验收标准 / spec-plan.md Task 3
 - **目的:** 确认用户可在 MCP 连接期间正常输入和交互
 - **操作步骤:**
-  1. [H] 运行 `cargo run -p rust-agent-tui`，观察启动后是否可立即输入文字 → 是/否
+  1. [H] 运行 `cargo run -p peri-tui`，观察启动后是否可立即输入文字 → 是/否
 
 #### - [x] 7.2 状态栏显示 MCP 连接进度
 - **来源:** spec-design.md 状态栏显示
@@ -299,7 +299,7 @@
 - **来源:** spec-design.md 验收标准 / spec-plan.md Task 3
 - **目的:** 确认后台初始化不影响 headless 测试
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- ui::headless 2>&1 | tail -10` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui --lib -- ui::headless 2>&1 | tail -10` → 期望包含: `test result: ok`
 
 ---
 

@@ -15,10 +15,10 @@
 
 | 限制 | 位置 | 行为 |
 |------|------|------|
-| `budget_tokens` 最小 1024 | `rust-create-agent/src/llm/anthropic.rs:53` | `budget_tokens.max(1024)`，传入更小的值被静默提升 |
-| `max_tokens` 强制提升 | `rust-create-agent/src/llm/anthropic.rs:405-406` | 当 `max_tokens <= thinking_budget` 时自动设为 `thinking_budget + 4096` |
+| `budget_tokens` 最小 1024 | `peri-agent/src/llm/anthropic.rs:53` | `budget_tokens.max(1024)`，传入更小的值被静默提升 |
+| `max_tokens` 强制提升 | `peri-agent/src/llm/anthropic.rs:405-406` | 当 `max_tokens <= thinking_budget` 时自动设为 `thinking_budget + 4096` |
 
 ## 涉及文件
 
-- `rust-create-agent/src/llm/anthropic.rs:50-56` — `with_extended_thinking` 方法，删除 `.max(1024)`
-- `rust-create-agent/src/llm/anthropic.rs:404-407` — `max_tokens` 强制提升逻辑，整块删除
+- `peri-agent/src/llm/anthropic.rs:50-56` — `with_extended_thinking` 方法，删除 `.max(1024)`
+- `peri-agent/src/llm/anthropic.rs:404-407` — `max_tokens` 强制提升逻辑，整块删除

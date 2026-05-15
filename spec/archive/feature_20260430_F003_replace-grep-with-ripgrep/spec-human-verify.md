@@ -10,10 +10,10 @@
 
 ### 环境要求
 - [ ] [AUTO] 检查 Rust 工具链版本: `rustc --version`
-- [ ] [AUTO] 编译 middlewares crate: `cargo build -p rust-agent-middlewares 2>&1 | tail -3`
+- [ ] [AUTO] 编译 middlewares crate: `cargo build -p peri-middlewares 2>&1 | tail -3`
 
 ### 测试数据准备
-- [ ] [AUTO] 运行现有 grep 测试确认基线: `cargo test -p rust-agent-middlewares --lib -- tools::filesystem::grep 2>&1 | tail -10`
+- [ ] [AUTO] 运行现有 grep 测试确认基线: `cargo test -p peri-middlewares --lib -- tools::filesystem::grep 2>&1 | tail -10`
 
 ---
 
@@ -25,19 +25,19 @@
 - **来源:** spec-plan.md Task 1 执行步骤
 - **目的:** 确认新依赖正确引入
 - **操作步骤:**
-  1. [A] `grep "grep = " rust-agent-middlewares/Cargo.toml` → 期望包含: `grep = "0.4"`
+  1. [A] `grep "grep = " peri-middlewares/Cargo.toml` → 期望包含: `grep = "0.4"`
 
 #### - [x] 1.2 旧外部进程调用代码已完全移除
 - **来源:** spec-plan.md Task 1 检查步骤
 - **目的:** 确认无残留外部进程依赖
 - **操作步骤:**
-  1. [A] `grep -c "which_rg\|tokio::process::Command\|OnceLock\|Stdio" rust-agent-middlewares/src/tools/filesystem/grep.rs` → 期望精确: `0`
+  1. [A] `grep -c "which_rg\|tokio::process::Command\|OnceLock\|Stdio" peri-middlewares/src/tools/filesystem/grep.rs` → 期望精确: `0`
 
 #### - [x] 1.3 新 crate API 关键调用已引入
 - **来源:** spec-plan.md Task 1 检查步骤
 - **目的:** 确认进程内搜索核心组件到位
 - **操作步骤:**
-  1. [A] `grep -c "RegexMatcher\|WalkBuilder\|SearcherBuilder\|SearchSink\|spawn_blocking" rust-agent-middlewares/src/tools/filesystem/grep.rs` → 期望包含: 输出为正整数
+  1. [A] `grep -c "RegexMatcher\|WalkBuilder\|SearcherBuilder\|SearchSink\|spawn_blocking" peri-middlewares/src/tools/filesystem/grep.rs` → 期望包含: 输出为正整数
 
 ---
 
@@ -47,7 +47,7 @@
 - **来源:** spec-plan.md Task 1 检查步骤
 - **目的:** 确认重写后编译无错误
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-middlewares 2>&1 | tail -3` → 期望包含: `Finished` 且无 `error`
+  1. [A] `cargo build -p peri-middlewares 2>&1 | tail -3` → 期望包含: `Finished` 且无 `error`
 
 #### - [x] 2.2 全 workspace 构建无破坏
 - **来源:** spec-plan.md Task 2 端到端验证
@@ -59,7 +59,7 @@
 - **来源:** spec-plan.md Task 2 端到端验证
 - **目的:** 确认 TUI 层无编译问题
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | tail -5` → 期望包含: `Finished` 且无 `error`
+  1. [A] `cargo build -p peri-tui 2>&1 | tail -5` → 期望包含: `Finished` 且无 `error`
 
 ---
 
@@ -69,31 +69,31 @@
 - **来源:** spec-plan.md Task 1 执行步骤（更新测试用例）
 - **目的:** 确认重写后所有现有+新增测试通过
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- tools::filesystem::grep 2>&1 | tail -5` → 期望包含: `test result` 且无 `FAILED` 且无 `skipped`
+  1. [A] `cargo test -p peri-middlewares --lib -- tools::filesystem::grep 2>&1 | tail -5` → 期望包含: `test result` 且无 `FAILED` 且无 `skipped`
 
 #### - [x] 3.2 新增 -l (FilesOnly) 模式测试
 - **来源:** spec-plan.md Task 1 执行步骤（新增测试）
 - **目的:** 确认仅输出匹配文件路径功能
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- tools::filesystem::grep::tests::test_search_files_rg_files_only 2>&1` → 期望包含: `test result` 且无 `FAILED`
+  1. [A] `cargo test -p peri-middlewares --lib -- tools::filesystem::grep::tests::test_search_files_rg_files_only 2>&1` → 期望包含: `test result` 且无 `FAILED`
 
 #### - [x] 3.3 新增 -c (CountOnly) 模式测试
 - **来源:** spec-plan.md Task 1 执行步骤（新增测试）
 - **目的:** 确认匹配行数计数功能
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- tools::filesystem::grep::tests::test_search_files_rg_count 2>&1` → 期望包含: `test result` 且无 `FAILED`
+  1. [A] `cargo test -p peri-middlewares --lib -- tools::filesystem::grep::tests::test_search_files_rg_count 2>&1` → 期望包含: `test result` 且无 `FAILED`
 
 #### - [x] 3.4 新增 -i (case insensitive) 测试
 - **来源:** spec-plan.md Task 1 执行步骤（新增测试）
 - **目的:** 确认大小写不敏感搜索
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- tools::filesystem::grep::tests::test_search_files_rg_case_insensitive 2>&1` → 期望包含: `test result` 且无 `FAILED`
+  1. [A] `cargo test -p peri-middlewares --lib -- tools::filesystem::grep::tests::test_search_files_rg_case_insensitive 2>&1` → 期望包含: `test result` 且无 `FAILED`
 
 #### - [x] 3.5 新增 -g (glob filter) 测试
 - **来源:** spec-plan.md Task 1 执行步骤（新增测试）
 - **目的:** 确认 glob 文件过滤功能
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- tools::filesystem::grep::tests::test_search_files_rg_glob_filter 2>&1` → 期望包含: `test result` 且无 `FAILED`
+  1. [A] `cargo test -p peri-middlewares --lib -- tools::filesystem::grep::tests::test_search_files_rg_glob_filter 2>&1` → 期望包含: `test result` 且无 `FAILED`
 
 ---
 
@@ -103,7 +103,7 @@
 - **来源:** spec-plan.md Task 2 端到端验证
 - **目的:** 确认 grep 重写未引入其他模块回归
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib 2>&1 | tail -10` → 期望包含: `test result` 且无 `FAILED`
+  1. [A] `cargo test -p peri-middlewares --lib 2>&1 | tail -10` → 期望包含: `test result` 且无 `FAILED`
 
 #### - [x] 4.2 全 workspace 测试通过
 - **来源:** spec-plan.md Task 2 端到端验证
@@ -119,25 +119,25 @@
 - **来源:** spec-design.md 目标（消除外部依赖）
 - **目的:** 确认运行时确实不依赖系统 rg
 - **操作步骤:**
-  1. [A] `grep -rn "which_rg\|\"rg\"\|rg_binary\|ripgrep.*binary" rust-agent-middlewares/src/tools/filesystem/grep.rs` → 期望精确: 无输出（返回码非0）
+  1. [A] `grep -rn "which_rg\|\"rg\"\|rg_binary\|ripgrep.*binary" peri-middlewares/src/tools/filesystem/grep.rs` → 期望精确: 无输出（返回码非0）
 
 #### - [x] 5.2 公开接口未变（name/description/parameters）
 - **来源:** spec-design.md 范围（LLM 侧无感知）
 - **目的:** 确认工具对外契约保持不变
 - **操作步骤:**
-  1. [A] `grep -n "fn name\|fn description\|fn parameters" rust-agent-middlewares/src/tools/filesystem/grep.rs` → 期望包含: 三个函数签名均存在
+  1. [A] `grep -n "fn name\|fn description\|fn parameters" peri-middlewares/src/tools/filesystem/grep.rs` → 期望包含: 三个函数签名均存在
 
 #### - [x] 5.3 超时机制仍为 15 秒
 - **来源:** spec-design.md 超时控制
 - **目的:** 确认搜索超时行为不变
 - **操作步骤:**
-  1. [A] `grep "15\|Duration::from_secs" rust-agent-middlewares/src/tools/filesystem/grep.rs` → 期望包含: `15` 或 `from_secs`
+  1. [A] `grep "15\|Duration::from_secs" peri-middlewares/src/tools/filesystem/grep.rs` → 期望包含: `15` 或 `from_secs`
 
 #### - [x] 5.4 head_limit 默认值仍为 500
 - **来源:** spec-design.md 结果收集（500 行上限）
 - **目的:** 确认输出行数限制行为不变
 - **操作步骤:**
-  1. [A] `grep "500\|head_limit" rust-agent-middlewares/src/tools/filesystem/grep.rs` → 期望包含: `500`
+  1. [A] `grep "500\|head_limit" peri-middlewares/src/tools/filesystem/grep.rs` → 期望包含: `500`
 
 ---
 

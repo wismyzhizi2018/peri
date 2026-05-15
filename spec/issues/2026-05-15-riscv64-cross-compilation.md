@@ -28,8 +28,8 @@ Release workflow（`.github/workflows/release-agent.yml`）目前构建 5 个目
 
 | # | 入口 | 链 | 影响 Crate |
 |---|------|-----|-----------|
-| 1 | workspace `reqwest` (Cargo.toml:39-42)<br>`features = ["rustls"]` | `reqwest` 0.13 → `rustls` 0.23 → **`aws-lc-rs`** 1.16 → **`aws-lc-sys`** 0.39 | `rust-create-agent`<br>`rust-agent-middlewares`<br>`rust-agent-tui`<br>`langfuse-client` |
-| 2 | rmcp `reqwest` feature<br>(rust-mcp-patch/Cargo.toml:90-93)<br>`"reqwest?/rustls"` | rmcp → `reqwest` 0.13 → `rustls` 0.23 → **`aws-lc-rs`** → **`aws-lc-sys`** | `rust-agent-middlewares`（通过 `transport-streamable-http-client-reqwest`） |
+| 1 | workspace `reqwest` (Cargo.toml:39-42)<br>`features = ["rustls"]` | `reqwest` 0.13 → `rustls` 0.23 → **`aws-lc-rs`** 1.16 → **`aws-lc-sys`** 0.39 | `peri-agent`<br>`peri-middlewares`<br>`peri-tui`<br>`langfuse-client` |
+| 2 | rmcp `reqwest` feature<br>(rust-mcp-patch/Cargo.toml:90-93)<br>`"reqwest?/rustls"` | rmcp → `reqwest` 0.13 → `rustls` 0.23 → **`aws-lc-rs`** → **`aws-lc-sys`** | `peri-middlewares`（通过 `transport-streamable-http-client-reqwest`） |
 
 **根因**：`rustls` 0.23 起默认加密后端改为 `aws-lc-rs`（替代 `ring`），`aws-lc-sys` 的 `build.rs` 调用 CMake 编译 C/手写汇编，其构建系统不识别 `riscv64gc` 目标。
 
@@ -50,8 +50,8 @@ rustls-webpki 0.103.10 → aws-lc-rs + ring 0.17.14  (同时依赖两个后端)
 
 | 依赖 | 使用的 Crate | 风险 |
 |------|-------------|------|
-| `libsqlite3-sys` (sqlx sqlite) | `rust-create-agent` | 低——纯 C89 sqlite3 源码编译，RISC-V 交叉工具链即可 |
-| `crossterm` / `ratatui` | `rust-agent-tui`、`perihelion-widgets` | 低——纯 Rust + POSIX，与架构无关 |
+| `libsqlite3-sys` (sqlx sqlite) | `peri-agent` | 低——纯 C89 sqlite3 源码编译，RISC-V 交叉工具链即可 |
+| `crossterm` / `ratatui` | `peri-tui`、`peri-widgets` | 低——纯 Rust + POSIX，与架构无关 |
 | `sysinfo` / `num_cpus` | 多 crate | 低——读取 `/proc`/`/sys`，架构无关 |
 
 ## 期望改进方向
@@ -102,7 +102,7 @@ reqwest = [
 
 ### 验证方式
 
-1. 本地：`cross build -p rust-agent-tui --release --target riscv64gc-unknown-linux-gnu`（需先确认 `aws-lc-sys` 已消除）
+1. 本地：`cross build -p peri-tui --release --target riscv64gc-unknown-linux-gnu`（需先确认 `aws-lc-sys` 已消除）
 2. Release：tag `agent-v*` 自动触发全矩阵构建（含 RISC-V）
 
 ## 进度

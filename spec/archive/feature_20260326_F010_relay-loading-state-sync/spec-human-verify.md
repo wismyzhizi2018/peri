@@ -10,10 +10,10 @@
 
 ### 环境要求
 - [ ] [AUTO] 检查 Rust 工具链可用: `cargo --version`
-- [ ] [AUTO] 编译 relay server 和 TUI: `cargo build -p rust-relay-server -p rust-agent-tui 2>&1 | tail -3`
+- [ ] [AUTO] 编译 relay server 和 TUI: `cargo build -p rust-relay-server -p peri-tui 2>&1 | tail -3`
 - [ ] [AUTO] 确认 RELAY_TOKEN 环境变量已设置（或在命令行指定）: `echo "将在启动命令中通过 RELAY_TOKEN=test 指定"`
 - [ ] [AUTO/SERVICE] 启动 Relay Server（新终端）: `RELAY_TOKEN=test cargo run -p rust-relay-server` (port: 8080)
-- [ ] [MANUAL] 启动 TUI 并连接 relay（另一个新终端，需要有效的 API Key 配置）: `cargo run -p rust-agent-tui -- --remote-control ws://localhost:8080 --relay-token test -y`
+- [ ] [MANUAL] 启动 TUI 并连接 relay（另一个新终端，需要有效的 API Key 配置）: `cargo run -p peri-tui -- --remote-control ws://localhost:8080 --relay-token test -y`
 - [ ] [MANUAL] 在浏览器中打开页面：`http://localhost:8080?token=test`，确认侧边栏出现已连接的 Agent
 
 ### 测试数据准备
@@ -30,16 +30,16 @@
 #### - [x] 1.1 后端事件注入代码正确性
 - **来源:** Task 1 执行步骤
 - **操作步骤:**
-  1. [A] `grep -n "agent_running" rust-agent-tui/src/app/agent.rs` → 期望: 输出至少 1 行，包含 `agent_running`
-  2. [A] `grep -n "agent_done" rust-agent-tui/src/app/agent.rs` → 期望: 输出至少 1 行，包含 `agent_done`
-  3. [A] `grep -c "send_value" rust-agent-tui/src/app/agent.rs` → 期望: 输出数字 `>= 2`（agent_running + agent_done 各一次）
+  1. [A] `grep -n "agent_running" peri-tui/src/app/agent.rs` → 期望: 输出至少 1 行，包含 `agent_running`
+  2. [A] `grep -n "agent_done" peri-tui/src/app/agent.rs` → 期望: 输出至少 1 行，包含 `agent_done`
+  3. [A] `grep -c "send_value" peri-tui/src/app/agent.rs` → 期望: 输出数字 `>= 2`（agent_running + agent_done 各一次）
 - **异常排查:**
-  - 若找不到 agent_running: 检查 `rust-agent-tui/src/app/agent.rs` 第 229-235 行是否已添加 send_value 调用
+  - 若找不到 agent_running: 检查 `peri-tui/src/app/agent.rs` 第 229-235 行是否已添加 send_value 调用
 
 #### - [x] 1.2 编译与单元测试通过
 - **来源:** Task 1 检查步骤
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | grep -E "^error|Finished"` → 期望: 输出含 `Finished` 且无 `error:` 开头的行
+  1. [A] `cargo build -p peri-tui 2>&1 | grep -E "^error|Finished"` → 期望: 输出含 `Finished` 且无 `error:` 开头的行
   2. [A] `cargo test -p rust-relay-server --lib -- test_relay 2>&1 | tail -3` → 期望: 输出含 `ok` 且无 `FAILED`
 - **异常排查:**
   - 编译失败: 检查 relay_client 变量是否在 match 块之后仍然可用（未被 move）

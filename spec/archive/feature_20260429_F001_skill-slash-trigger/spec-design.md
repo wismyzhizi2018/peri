@@ -201,13 +201,13 @@ Tips 中涉及 Tab 补全的描述也需确认一致性：
 
 | 文件 | 改动 |
 |------|------|
-| `rust-agent-tui/src/ui/main_ui/popups/hints.rs` | 合并两个浮层函数为 `render_unified_hint`，移除 `render_skill_hint` |
-| `rust-agent-tui/src/app/hint_ops.rs` | 合并候选计数和 Tab 补全逻辑 |
-| `rust-agent-tui/src/event.rs` | Enter 处理中增加 Skill 匹配 fallback |
-| `rust-agent-tui/src/app/agent_ops.rs` | 消息解析 `#` → `/` |
-| `rust-agent-middlewares/src/skills/mod.rs` | 提示词 `#skill_name` → `/skill-name` |
-| `rust-agent-tui/src/ui/tips.rs` | 提示文案更新 |
-| `rust-agent-tui/src/ui/main_ui/mod.rs` | 浮层调用点更新（移除 `render_skill_hint` 调用） |
+| `peri-tui/src/ui/main_ui/popups/hints.rs` | 合并两个浮层函数为 `render_unified_hint`，移除 `render_skill_hint` |
+| `peri-tui/src/app/hint_ops.rs` | 合并候选计数和 Tab 补全逻辑 |
+| `peri-tui/src/event.rs` | Enter 处理中增加 Skill 匹配 fallback |
+| `peri-tui/src/app/agent_ops.rs` | 消息解析 `#` → `/` |
+| `peri-middlewares/src/skills/mod.rs` | 提示词 `#skill_name` → `/skill-name` |
+| `peri-tui/src/ui/tips.rs` | 提示文案更新 |
+| `peri-tui/src/ui/main_ui/mod.rs` | 浮层调用点更新（移除 `render_skill_hint` 调用） |
 
 ### 潜在风险
 
@@ -222,7 +222,7 @@ Tips 中涉及 Tab 补全的描述也需确认一致性：
 - 保持事件驱动 TUI 通信模式（mpsc channel）
 - 保持 Middleware Chain 模式不变
 - 保持命令注册表 `CommandRegistry` 的 dispatch 语义不变（精确匹配 > 前缀唯一匹配）
-- 无违反 Workspace 分层规则（所有改动在 `rust-agent-tui` 和 `rust-agent-middlewares` 内部）
+- 无违反 Workspace 分层规则（所有改动在 `peri-tui` 和 `peri-middlewares` 内部）
 
 ## 验收标准
 

@@ -16,7 +16,7 @@
 - 在 `langfuse-client/` 目录下新建独立 Rust crate，手工实现 Langfuse Ingestion API 客户端
 - 两层设计：底层 Client（认证 + HTTP）+ 上层 Batcher（批量聚合 + 背压 + flush）
 - 仅覆盖 V4 ingestion 端点（`POST /api/public/ingestion`），不涉及查询/管理 API
-- 替换 `rust-agent-tui` 中的 `langfuse-ergonomic` + `langfuse-client-base` 依赖
+- 替换 `peri-tui` 中的 `langfuse-ergonomic` + `langfuse-client-base` 依赖
 - 所有类型手工定义，无生成代码，消除 `Option<Option<T>>` 嵌套
 
 ## 方案设计
@@ -270,12 +270,12 @@ enum BatcherCommand {
 替换路径：
 
 ```
-rust-agent-tui/Cargo.toml:
+peri-tui/Cargo.toml:
   - 移除: langfuse-ergonomic = "0.6.3"
   - 移除: langfuse-client-base = "0.7.1"
   - 新增: langfuse-client = { path = "../../langfuse-client" }
 
-rust-agent-tui/src/langfuse/:
+peri-tui/src/langfuse/:
   session.rs  → 改用 langfuse_client::Batcher + LangfuseClient
   tracer.rs   → 改用 langfuse_client::types::* (IngestionEvent, ObservationBody 等)
   config.rs   → 保持不变（环境变量读取逻辑不变）
@@ -295,7 +295,7 @@ rust-agent-tui/src/langfuse/:
 ## 约束一致性
 
 - **技术栈**：符合 constraints.md — Rust 2021 edition + tokio 异步 + reqwest HTTP + thiserror 错误处理
-- **依赖方向**：新 crate 无内部依赖，独立于 workspace；`rust-agent-tui` 引用新 crate（单向依赖）
+- **依赖方向**：新 crate 无内部依赖，独立于 workspace；`peri-tui` 引用新 crate（单向依赖）
 - **编码规范**：遵循 snake_case + PascalCase 命名约定，`thiserror` 定义错误类型
 - **日志**：使用 `tracing` 宏记录 warn/error，不使用 `println!`
 - **架构偏离**：新 crate 不在 workspace Cargo.toml 中注册，作为 path dependency 引用 — 这是因为它设计为可独立发布的 crate
@@ -309,5 +309,5 @@ rust-agent-tui/src/langfuse/:
 - [ ] `ObservationBody` 字段无 `Option<Option<T>>` 嵌套
 - [ ] 207 Multi-Status 响应正确解析（successes + errors 列表）
 - [ ] 网络错误自动重试（指数退避）
-- [ ] 替换后 `rust-agent-tui` 的 Langfuse 功能正常工作（Trace/Span/Generation/Tool 上报）
+- [ ] 替换后 `peri-tui` 的 Langfuse 功能正常工作（Trace/Span/Generation/Tool 上报）
 - [ ] 单元测试覆盖：类型序列化、Client 请求构建、Batcher 批量逻辑

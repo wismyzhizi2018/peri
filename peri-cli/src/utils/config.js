@@ -23,7 +23,7 @@ export function getDownloadUrl(originalUrl) {
 // GitHub API 配置
 export const CONFIG = {
     owner: "konghayao",
-    repo: "perihelion",
+    repo: "peri",
     apiUrl: "https://api.github.com",
 };
 
@@ -75,7 +75,7 @@ export function getPlatformInfo() {
 // 生成安装目录路径
 export function getInstallDir() {
     const homeDir = process.env.HOME || process.env.USERPROFILE;
-    return `${homeDir}/.perihelion`;
+    return `${homeDir}/.peri`;
 }
 
 // 生成可执行文件路径

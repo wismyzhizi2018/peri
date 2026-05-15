@@ -1,6 +1,6 @@
 # TUI Headless 测试模式 执行计划
 
-**目标:** 为 rust-agent-tui 实现无 Terminal 的 headless 测试模式，渲染管道完全统一
+**目标:** 为 peri-tui 实现无 Terminal 的 headless 测试模式，渲染管道完全统一
 
 **技术栈:** Rust, ratatui TestBackend, tokio::test, parking_lot::RwLock, tokio::sync::Notify
 
@@ -11,7 +11,7 @@
 ### Task 1: App 事件处理提取与测试注入方法
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
 - [x] 提取 `handle_agent_event()` 私有方法
@@ -28,10 +28,10 @@
 
 **检查步骤:**
 - [x] 编译通过（release 模式）
-  - `cargo build -p rust-agent-tui --release 2>&1 | tail -5`
+  - `cargo build -p peri-tui --release 2>&1 | tail -5`
   - 预期: 输出包含 "Compiling" 或 "Finished"，无 error
 - [x] poll_agent 行为不变（现有功能回归）
-  - `cargo test -p rust-agent-tui --lib 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib 2>&1 | tail -10`
   - 预期: 输出 "test result: ok" 或 "0 failed"
 
 ---
@@ -39,11 +39,11 @@
 ### Task 2: HeadlessHandle 模块实现
 
 **涉及文件:**
-- 新建: `rust-agent-tui/src/ui/headless.rs`
-- 修改: `rust-agent-tui/src/ui/mod.rs`
+- 新建: `peri-tui/src/ui/headless.rs`
+- 修改: `peri-tui/src/ui/mod.rs`
 
 **执行步骤:**
-- [x] 新建 `rust-agent-tui/src/ui/headless.rs`，内容全部在 `#[cfg(any(test, feature = "headless"))]` 下
+- [x] 新建 `peri-tui/src/ui/headless.rs`，内容全部在 `#[cfg(any(test, feature = "headless"))]` 下
   - 定义 `HeadlessHandle` 结构体，包含 `terminal: Terminal<TestBackend>` 和 `render_notify: Arc<Notify>`
   - 实现 `snapshot(&self) -> Vec<String>`：遍历 `self.terminal.backend().buffer().content`，按宽度分行，每行 `cell.symbol()` 拼接后 `trim_end()` 去尾空格
   - 实现 `contains(&self, text: &str) -> bool`：调用 `self.snapshot().iter().any(|l| l.contains(text))`
@@ -52,12 +52,12 @@
   - 逻辑：创建 `TestBackend::new(width, height)`，`Terminal::new(backend)`，调用 `spawn_render_thread(width)`，构造 `App`（复用 `App::new()` 的字段初始化逻辑，跳过真实终端相关代码）
   - `App` 构造时不启动 SQLite thread store（用 in-memory 或 temp 路径避免副作用），`cwd` 设为 `/tmp`
   - 返回 `(App, HeadlessHandle)`
-- [x] 在 `rust-agent-tui/src/ui/mod.rs` 中添加 `#[cfg(any(test, feature = "headless"))] pub mod headless;`
-- [x] 在 `rust-agent-tui/src/app/mod.rs` 中 pub use `headless::HeadlessHandle`（条件编译）
+- [x] 在 `peri-tui/src/ui/mod.rs` 中添加 `#[cfg(any(test, feature = "headless"))] pub mod headless;`
+- [x] 在 `peri-tui/src/app/mod.rs` 中 pub use `headless::HeadlessHandle`（条件编译）
 
 **检查步骤:**
 - [x] 编译通过（debug 模式，带 test cfg）
-  - `cargo test -p rust-agent-tui --no-run 2>&1 | tail -10`
+  - `cargo test -p peri-tui --no-run 2>&1 | tail -10`
   - 预期: 无编译错误，输出 "Compiling" 或 "Finished"
 - [x] snapshot() 返回正确行数（基于 TestBackend 宽高）
   - 在测试中断言：`let (_, handle) = App::new_headless(80, 24); assert_eq!(handle.snapshot().len(), 24);`
@@ -68,10 +68,10 @@
 ### Task 3: 集成测试文件
 
 **涉及文件:**
-- 新建: `rust-agent-tui/tests/headless_render.rs`
+- 新建: `peri-tui/tests/headless_render.rs`
 
 **执行步骤:**
-- [x] 新建 `rust-agent-tui/tests/headless_render.rs`，添加以下 4 个测试用例（实际写在 src/ui/headless.rs 的 #[cfg(test)] 模块中，因 bin crate 不支持外部集成测试）
+- [x] 新建 `peri-tui/tests/headless_render.rs`，添加以下 4 个测试用例（实际写在 src/ui/headless.rs 的 #[cfg(test)] 模块中，因 bin crate 不支持外部集成测试）
 - [x] 测试 1：AssistantChunk 流式消息渲染
   ```rust
   #[tokio::test]
@@ -135,13 +135,13 @@
 
 **检查步骤:**
 - [x] 全部 4 个测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | tail -20`
+  - `cargo test -p peri-tui 2>&1 | tail -20`
   - 预期: 输出 "test result: ok. 4 passed"（实际 20 passed，含已有测试）
 - [x] 无 sleep 调用
-  - `grep -n "sleep" rust-agent-tui/tests/headless_render.rs`
+  - `grep -n "sleep" peri-tui/tests/headless_render.rs`
   - 预期: 无输出（零 sleep）
 - [x] release 编译不包含 headless 代码
-  - `cargo build -p rust-agent-tui --release 2>&1 | tail -5`
+  - `cargo build -p peri-tui --release 2>&1 | tail -5`
   - 预期: 编译成功，无 error
 
 ---
@@ -151,27 +151,27 @@
 **Prerequisites:**
 - 启动命令: 无（纯测试，不需要运行 TUI）
 - 确认 Cargo.toml 无新增外部依赖（`TestBackend` 来自已有 `ratatui` crate）
-- 确认 `rust-agent-tui/tests/` 目录已创建
+- 确认 `peri-tui/tests/` 目录已创建
 
 **End-to-end verification:**
 
 1. [x] 全量测试通过（含新增 4 个集成测试）
-   - `cargo test -p rust-agent-tui 2>&1 | grep -E "test result|FAILED|error"`
+   - `cargo test -p peri-tui 2>&1 | grep -E "test result|FAILED|error"`
    - Expected: 输出 "test result: ok"，无 FAILED，无 error
    - On failure: 检查 Task 3（测试用例实现）或 Task 1/2（App/HeadlessHandle 实现）
 
 2. [x] Release 编译不引入 headless 代码膨胀
-   - `cargo build -p rust-agent-tui --release 2>&1 | grep -E "error|warning.*headless"`
+   - `cargo build -p peri-tui --release 2>&1 | grep -E "error|warning.*headless"`
    - Expected: 无 error，无 headless 相关 warning
    - On failure: 检查 Task 2（headless.rs 的 cfg 属性是否正确）
 
 3. [x] 渲染管道统一验证：snapshot 返回真实 draw 结果
-   - `cargo test -p rust-agent-tui test_assistant_chunk_renders -- --nocapture 2>&1 | tail -5`
+   - `cargo test -p peri-tui test_assistant_chunk_renders -- --nocapture 2>&1 | tail -5`
    - Expected: 测试通过，无 panic
    - On failure: 检查 Task 2（HeadlessHandle::snapshot 实现）或 Task 1（handle_agent_event 提取是否正确）
 
 4. [x] wait_for_render 无 sleep 同步正确性
-   - `grep -rn "sleep" rust-agent-tui/tests/ rust-agent-tui/src/ui/headless.rs`
+   - `grep -rn "sleep" peri-tui/tests/ peri-tui/src/ui/headless.rs`
    - Expected: 无输出（零 sleep 调用）
    - On failure: 检查 Task 2（wait_for_render 应使用 notify.notified().await）
 

@@ -2,7 +2,7 @@
 
 ## 需求背景
 
-当前 `perihelion-widgets` 的 Markdown 渲染器对多行代码块使用统一的 `theme.text()` 颜色输出，缺乏语法高亮。代码块的语言标签（如 `rust`、`python`）已被 `render_state.rs` 捕获到 `code_block_lang` 字段，但未用于差异化渲染。需要引入 syntect 库实现基于语言的语法着色。
+当前 `peri-widgets` 的 Markdown 渲染器对多行代码块使用统一的 `theme.text()` 颜色输出，缺乏语法高亮。代码块的语言标签（如 `rust`、`python`）已被 `render_state.rs` 捕获到 `code_block_lang` 字段，但未用于差异化渲染。需要引入 syntect 库实现基于语言的语法着色。
 
 ## 目标
 
@@ -60,6 +60,7 @@ mod highlight {
 修改 `render_state.rs` 中 `Event::End(TagEnd::CodeBlock)` 的多行分支（当前代码 557-569 行）：
 
 **现有逻辑（保留为 fallback）：**
+
 ```rust
 } else if end > 1 {
     for line_text in &lines[..end] {
@@ -69,6 +70,7 @@ mod highlight {
 ```
 
 **新增逻辑（`markdown-highlight` feature 启用时）：**
+
 ```rust
 #[cfg(feature = "markdown-highlight")]
 {
@@ -139,7 +141,7 @@ fn highlight_code_block(lang: &str, lines: &[String]) -> Option<Vec<Line<'static
 
 ## 约束一致性
 
-- 符合 workspace 分层约束：改动仅在 `perihelion-widgets`（独立 widget 库），无跨层依赖
+- 符合 workspace 分层约束：改动仅在 `peri-widgets`（独立 widget 库），无跨层依赖
 - 符合 feature flag 模式：新功能通过可选 feature 启用，不影响默认构建
 - 符合异步优先原则：syntect 为纯 CPU 操作，无 IO，不涉及异步
 

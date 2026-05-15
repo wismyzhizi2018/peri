@@ -29,9 +29,9 @@
 - **来源:** spec-plan.md 验收标准 #1 / spec-design.md §数据模型变更
 - **目的:** 确认 ProviderModels 结构定义正确
 - **操作步骤:**
-  1. [A] `grep -n 'pub struct ProviderModels' rust-agent-tui/src/config/types.rs` → 期望包含: `ProviderModels`
-  2. [A] `grep -n 'pub models: ProviderModels' rust-agent-tui/src/config/types.rs` → 期望包含: `pub models: ProviderModels`
-  3. [A] `grep -n 'pub opus' rust-agent-tui/src/config/types.rs` → 期望包含: `pub opus`
+  1. [A] `grep -n 'pub struct ProviderModels' peri-tui/src/config/types.rs` → 期望包含: `ProviderModels`
+  2. [A] `grep -n 'pub models: ProviderModels' peri-tui/src/config/types.rs` → 期望包含: `pub models: ProviderModels`
+  3. [A] `grep -n 'pub opus' peri-tui/src/config/types.rs` → 期望包含: `pub opus`
 
 ---
 
@@ -40,9 +40,9 @@
 - **来源:** spec-plan.md 验收标准 #2 / spec-design.md §数据模型变更
 - **目的:** 确认配置结构完成迁移
 - **操作步骤:**
-  1. [A] `grep -rn 'model_aliases' rust-agent-tui/src/config/` → 期望包含: 无结果（已移除）
-  2. [A] `grep -n 'pub active_provider_id' rust-agent-tui/src/config/types.rs` → 期望包含: `pub active_provider_id`
-  3. [A] `grep -n 'ModelAliasMap\|ModelAliasConfig' rust-agent-tui/src/config/types.rs` → 期望包含: 无结果（已移除）
+  1. [A] `grep -rn 'model_aliases' peri-tui/src/config/` → 期望包含: 无结果（已移除）
+  2. [A] `grep -n 'pub active_provider_id' peri-tui/src/config/types.rs` → 期望包含: `pub active_provider_id`
+  3. [A] `grep -n 'ModelAliasMap\|ModelAliasConfig' peri-tui/src/config/types.rs` → 期望包含: 无结果（已移除）
 
 ---
 
@@ -51,8 +51,8 @@
 - **来源:** spec-plan.md 验收标准 #8 / spec-design.md §实现要点 #4
 - **目的:** 旧 settings.json 中残留 model_aliases 字段不会导致解析失败
 - **操作步骤:**
-  1. [A] `grep -n 'serde.*flatten\|extra' rust-agent-tui/src/config/types.rs` → 期望包含: `flatten`（通过 `#[serde(flatten)] extra` 兼容未知字段）
-  2. [A] `cargo test -p rust-agent-tui -- --nocapture 2>&1 | head -50` → 期望包含: `test result: ok`
+  1. [A] `grep -n 'serde.*flatten\|extra' peri-tui/src/config/types.rs` → 期望包含: `flatten`（通过 `#[serde(flatten)] extra` 兼容未知字段）
+  2. [A] `cargo test -p peri-tui -- --nocapture 2>&1 | head -50` → 期望包含: `test result: ok`
 
 ---
 
@@ -63,9 +63,9 @@
 - **来源:** spec-plan.md 验收标准 #3 / spec-design.md §/login 命令
 - **目的:** 确认命令注册链路完整
 - **操作步骤:**
-  1. [A] `grep -rn 'login' rust-agent-tui/src/command/mod.rs` → 期望包含: `login` 模块注册
-  2. [A] `test -f rust-agent-tui/src/command/login.rs && echo EXISTS` → 期望精确: `EXISTS`
-  3. [A] `grep -n 'login' rust-agent-tui/src/command/login.rs | head -5` → 期望包含: `Command` trait 实现
+  1. [A] `grep -rn 'login' peri-tui/src/command/mod.rs` → 期望包含: `login` 模块注册
+  2. [A] `test -f peri-tui/src/command/login.rs && echo EXISTS` → 期望精确: `EXISTS`
+  3. [A] `grep -n 'login' peri-tui/src/command/login.rs | head -5` → 期望包含: `Command` trait 实现
 
 ---
 
@@ -74,7 +74,7 @@
 - **来源:** spec-plan.md 验收标准 #3 / spec-design.md §/login 命令
 - **目的:** 确认帮助信息中包含 login 说明
 - **操作步骤:**
-  1. [A] `grep -in 'login' rust-agent-tui/src/command/help.rs` → 期望包含: `login`
+  1. [A] `grep -in 'login' peri-tui/src/command/help.rs` → 期望包含: `login`
 
 ---
 
@@ -83,7 +83,7 @@
 - **来源:** spec-plan.md 验收标准 #4 / spec-design.md §/login 交互流程
 - **目的:** 确认 Browse 模式列表正常展示与导航
 - **操作步骤:**
-  1. [H] 运行 `cargo run -p rust-agent-tui`，输入 `/login`，查看 Provider 列表是否显示 → 是/否
+  1. [H] 运行 `cargo run -p peri-tui`，输入 `/login`，查看 Provider 列表是否显示 → 是/否
   2. [H] 使用 ↑↓ 键移动光标，观察 `▶` 是否正确跟随 → 是/否
   3. [H] 当前激活 Provider 是否有 `●` 标记 → 是/否
 
@@ -142,7 +142,7 @@
 - **操作步骤:**
   1. [H] 运行 TUI，输入 `/model`，面板是否只显示 Provider 列表 + 级别按钮 + Thinking 区域 → 是/否
   2. [H] 面板中是否不再有"新建/编辑/删除"操作入口 → 是/否
-  3. [A] `grep -n 'AliasConfig\|Browse\|ConfirmDelete' rust-agent-tui/src/app/model_panel.rs` → 期望包含: 无结果（旧模式已移除）
+  3. [A] `grep -n 'AliasConfig\|Browse\|ConfirmDelete' peri-tui/src/app/model_panel.rs` → 期望包含: 无结果（旧模式已移除）
 
 ---
 
@@ -183,8 +183,8 @@
 - **来源:** spec-plan.md 验收标准 #10 / spec-design.md §/login 命令
 - **目的:** 确认 LoginPanel 有对应单元测试
 - **操作步骤:**
-  1. [A] `grep -rn '#\[test\]\|#\[tokio::test\]' rust-agent-tui/src/app/login_panel.rs` → 期望包含: 至少一个测试函数
-  2. [A] `cargo test -p rust-agent-tui -- login 2>&1` → 期望包含: `test result: ok`
+  1. [A] `grep -rn '#\[test\]\|#\[tokio::test\]' peri-tui/src/app/login_panel.rs` → 期望包含: 至少一个测试函数
+  2. [A] `cargo test -p peri-tui -- login 2>&1` → 期望包含: `test result: ok`
 
 ---
 
@@ -193,8 +193,8 @@
 - **来源:** spec-plan.md 验收标准 #10 / spec-design.md §/model 命令
 - **目的:** 确认简化后的 ModelPanel 有对应测试
 - **操作步骤:**
-  1. [A] `grep -rn '#\[test\]\|#\[tokio::test\]' rust-agent-tui/src/app/model_panel.rs` → 期望包含: 至少一个测试函数
-  2. [A] `cargo test -p rust-agent-tui -- model 2>&1` → 期望包含: `test result: ok`
+  1. [A] `grep -rn '#\[test\]\|#\[tokio::test\]' peri-tui/src/app/model_panel.rs` → 期望包含: 至少一个测试函数
+  2. [A] `cargo test -p peri-tui -- model 2>&1` → 期望包含: `test result: ok`
 
 ---
 

@@ -142,8 +142,8 @@ ExecutorEvent::LlmCallEnd { step, model, output, usage } =>
 
 | 文件 | 改动类型 | 主要内容 |
 |------|---------|---------|
-| `rust-agent-tui/src/langfuse/mod.rs` | 修改 | 新增 `agent_span_id` 字段；`on_trace_start` 创建 Agent Observation；`on_llm_end` 增加 `provider` 参数、改名称、加 parent_id；`on_tool_start/end` 改用 observation-create/span-update via Batcher |
-| `rust-agent-tui/src/app/agent.rs` | 修改 | 提取 `provider_name`，传给 `on_llm_end` |
+| `peri-tui/src/langfuse/mod.rs` | 修改 | 新增 `agent_span_id` 字段；`on_trace_start` 创建 Agent Observation；`on_llm_end` 增加 `provider` 参数、改名称、加 parent_id；`on_tool_start/end` 改用 observation-create/span-update via Batcher |
+| `peri-tui/src/app/agent.rs` | 修改 | 提取 `provider_name`，传给 `on_llm_end` |
 
 **改动量估计：** ~60 行，不引入新依赖，不修改 core crate。
 
@@ -157,7 +157,7 @@ ExecutorEvent::LlmCallEnd { step, model, output, usage } =>
 
 ## 约束一致性
 
-- 仅修改 `rust-agent-tui`（应用层），不涉及 `rust-create-agent` core crate，符合「Workspace 多 crate 分层」约束
+- 仅修改 `peri-tui`（应用层），不涉及 `peri-agent` core crate，符合「Workspace 多 crate 分层」约束
 - 所有 Batcher 操作均为 `tokio::spawn` 异步执行，符合「异步优先」约束
 - 无新增依赖（`langfuse-client-base` 已是现有依赖），无 API 破坏性变更
 
@@ -166,5 +166,5 @@ ExecutorEvent::LlmCallEnd { step, model, output, usage } =>
 - [ ] Langfuse UI 中 LLM 调用记录名称显示为 `ChatOpenAI` 或 `ChatAnthropic`（不再是 `llm-call-step-N`）
 - [ ] 每次 agent 执行在 Trace 下有一个 `type=Agent` 的 Observation，包裹整个循环
 - [ ] 工具调用 Observation 类型为 `Tool`（不再是 `SPAN`），并挂在 Agent Observation 下
-- [ ] `cargo build -p rust-agent-tui` 编译通过
-- [ ] `cargo test -p rust-agent-tui` 测试全部通过
+- [ ] `cargo build -p peri-tui` 编译通过
+- [ ] `cargo test -p peri-tui` 测试全部通过

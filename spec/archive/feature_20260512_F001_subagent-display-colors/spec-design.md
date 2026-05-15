@@ -143,12 +143,14 @@ let agent_color = if is_error {
 #### 4.2 显示格式
 
 当前格式：
+
 ```
 ● code-review              ← BOLD + agent_color
   task preview text...      ← MUTED
 ```
 
 新格式：
+
 ```
 Agent(code-review) #a1b2c3d4    ← "Agent" BOLD + agent_color, "(code-review)" MUTED, "#hash" MUTED
   task preview text...           ← MUTED
@@ -237,7 +239,7 @@ lines.push(Line::from(header_spans));
 
 ## 约束一致性
 
-- **符合 Widget 独立 crate 约束**：渲染变更在 `rust-agent-tui` 内部，不涉及 `perihelion-widgets`
+- **符合 Widget 独立 crate 约束**：渲染变更在 `peri-tui` 内部，不涉及 `peri-widgets`
 - **符合消息管线统一约束**：流式更新仍通过 `PipelineAction::None` + `request_rebuild()` 路径；后台完成直接操作 `view_messages` 是对管道的例外，但在现有架构中已有先例（`AddMessage` 操作）
 - **符合配色系统约束**：使用现有 theme 常量（`WARNING`/`SAGE`/`ERROR`/`MUTED`），不引入新颜色
 - **符合编码规范**：字符串截断使用字符级操作（`.chars().take(8)`）

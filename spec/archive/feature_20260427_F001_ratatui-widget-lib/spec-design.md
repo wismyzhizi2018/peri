@@ -2,7 +2,7 @@
 
 ## 需求背景
 
-当前 `rust-agent-tui` 的 UI 代码中存在大量重复模式：
+当前 `peri-tui` 的 UI 代码中存在大量重复模式：
 
 - **BorderedPanel**（Clear + Block + borders）在 8+ 处重复实现
 - **ScrollableArea**（内容 + 滚动条 + offset 管理）在 6+ 处重复实现
@@ -18,24 +18,25 @@
 - 将 TUI 渲染层重复代码抽取为独立、可复用的 ratatui widget crate
 - 提供 ratatui 原生风格的 StatefulWidget trait API，与 ratatui 生态无缝融合
 - 纯通用库，不依赖项目业务逻辑，可独立发布到 crates.io
-- 全量抽取 11 个组件，一步到位替换 `rust-agent-tui` 中的重复代码
+- 全量抽取 11 个组件，一步到位替换 `peri-tui` 中的重复代码
 
 ## 方案设计
 
 ### Crate 架构
 
-新增 workspace crate `perihelion-widgets`，位于 workspace 根目录，与 `rust-create-agent` 同级。
+新增 workspace crate `peri-widgets`，位于 workspace 根目录，与 `peri-agent` 同级。
 
 **Workspace 依赖关系（变更后）：**
 
 ```
-perihelion-widgets             ← 零内部依赖，仅依赖 ratatui + pulldown-cmark
+peri-widgets             ← 零内部依赖，仅依赖 ratatui + pulldown-cmark
     ↑
-rust-agent-tui                 ← 新增依赖 perihelion-widgets
+peri-tui                 ← 新增依赖 peri-widgets
     （其他 crate 不受影响）
 ```
 
 **外部依赖：**
+
 - `ratatui ≥0.30`（必须，widget trait 定义）
 - `pulldown-cmark 0.12`（Markdown 渲染组件使用）
 - `unicode-width 0.2`（InputField 光标位置计算）
@@ -44,7 +45,7 @@ rust-agent-tui                 ← 新增依赖 perihelion-widgets
 **目录结构：**
 
 ```
-perihelion-widgets/
+peri-widgets/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs                  # 重导出所有公共 API
@@ -88,6 +89,7 @@ impl<'a> BorderedPanel<'a> {
 ```
 
 **使用示例：**
+
 ```rust
 let inner = BorderedPanel::new(" Model Config ")
     .border_style(Style::default().fg(Color::Cyan))
@@ -377,7 +379,7 @@ impl<F: FormField> FormState<F> {
 
 #### 9-10. MarkdownRenderer
 
-从现有 `rust-agent-tui/src/ui/markdown/` 迁移，保持公共 API 不变：
+从现有 `peri-tui/src/ui/markdown/` 迁移，保持公共 API 不变：
 
 ```rust
 pub fn parse_markdown(input: &str) -> Text<'static>;
@@ -423,7 +425,7 @@ pub trait Themed {
 
 ### 迁移计划
 
-从 `rust-agent-tui` 迁移到 `perihelion-widgets` 的代码映射：
+从 `peri-tui` 迁移到 `peri-widgets` 的代码映射：
 
 | 现有代码 | 迁移目标 | 说明 |
 |----------|----------|------|
@@ -446,7 +448,7 @@ pub trait Themed {
 
 3. **MarkdownRenderer 迁移**：现有 `ContentBlockView` 类型与 `MessageViewModel` 耦合。迁移时需将渲染逻辑与视图模型解耦：`MarkdownRenderer` 只负责 `&str → Text<'static>` 转换，`ContentBlockView` 的 dirty/lazy 渲染逻辑保留在 TUI 层。
 
-4. **Theme 集成**：组件不硬编码颜色，通过 `Style` 参数传入。`rust-agent-tui` 在调用点从 `theme::XXX` 常量构建 Style。Theme trait 提供统一的颜色查询接口，组件库提供 `DarkTheme` 默认实现。
+4. **Theme 集成**：组件不硬编码颜色，通过 `Style` 参数传入。`peri-tui` 在调用点从 `theme::XXX` 常量构建 Style。Theme trait 提供统一的颜色查询接口，组件库提供 `DarkTheme` 默认实现。
 
 5. **ScrollState 复用**：`ListState<T>` 内嵌 `ScrollState`，滚动与光标联动通过 `ensure_visible` 自动处理。`ScrollableArea` 也使用同一个 `ScrollState`。
 
@@ -454,18 +456,18 @@ pub trait Themed {
 
 ## 约束一致性
 
-- **Workspace 多 crate 分层**：`perihelion-widgets` 位于 `rust-create-agent` 同级，不违反"禁止下层依赖上层"约束。只有 `rust-agent-tui` 新增依赖 `perihelion-widgets`。
+- **Workspace 多 crate 分层**：`peri-widgets` 位于 `peri-agent` 同级，不违反"禁止下层依赖上层"约束。只有 `peri-tui` 新增依赖 `peri-widgets`。
 - **技术栈一致**：使用 `ratatui ≥0.30` + `pulldown-cmark 0.12`，与现有技术栈完全一致。
 - **编码规范一致**：Rust 标准命名、`thiserror` 定义错误、`#[cfg(test)] mod tests`。
 - **无新增架构偏离**。
 
 ## 验收标准
 
-- [ ] `perihelion-widgets` crate 可独立编译（`cargo build -p perihelion-widgets`）
+- [ ] `peri-widgets` crate 可独立编译（`cargo build -p peri-widgets`）
 - [ ] 11 个组件全部实现并通过单元测试
-- [ ] `rust-agent-tui` 中 BorderedPanel 模式的 8+ 处全部替换为 `BorderedPanel::new().render()`
-- [ ] `rust-agent-tui` 中列表管理的 5+ 处全部替换为 `ListState<T>`
-- [ ] `rust-agent-tui` 中输入字段的 4+ 处全部替换为 `InputState`
+- [ ] `peri-tui` 中 BorderedPanel 模式的 8+ 处全部替换为 `BorderedPanel::new().render()`
+- [ ] `peri-tui` 中列表管理的 5+ 处全部替换为 `ListState<T>`
+- [ ] `peri-tui` 中输入字段的 4+ 处全部替换为 `InputState`
 - [ ] MarkdownRenderer 从 TUI 迁移到 widget crate，公共 API 不变
 - [ ] `cargo test` 全量通过（包括现有 headless 测试）
 - [ ] Theme trait 抽象完成，现有 `theme.rs` 常量迁移为 `DarkTheme` 实现

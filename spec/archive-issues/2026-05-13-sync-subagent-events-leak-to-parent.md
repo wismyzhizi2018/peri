@@ -80,14 +80,14 @@ AgentEvent::StateSnapshot(msgs) => {
 
 ## 相关代码
 
-- `rust-agent-middlewares/src/subagent/tool.rs:319-321` —— Fork 路径：`with_event_handler(Arc::clone(handler))` 透传
-- `rust-agent-middlewares/src/subagent/tool.rs:484-486` —— Background 路径注释：明确不共享 event_handler
-- `rust-agent-middlewares/src/subagent/tool.rs:882-884` —— Normal 路径：`with_event_handler(Arc::clone(handler))` 透传
-- `rust-agent-tui/src/app/agent.rs:480-579` —— `map_executor_event()`：无差别映射所有事件
-- `rust-agent-tui/src/app/agent.rs:155-156` —— `try_send`：channel 满时静默丢弃事件
-- `rust-agent-tui/src/app/agent_ops.rs:793-806` —— `StateSnapshot` 处理：直接 extend 父 agent 状态
-- `rust-agent-tui/src/app/message_pipeline.rs:316-319` —— `StateSnapshot` pipeline 处理：无 `in_subagent()` 守卫
-- `rust-agent-tui/src/app/message_pipeline.rs:199-314` —— TextChunk/ToolStart/ToolEnd/Done/Interrupted：有 `in_subagent()` 守卫
+- `peri-middlewares/src/subagent/tool.rs:319-321` —— Fork 路径：`with_event_handler(Arc::clone(handler))` 透传
+- `peri-middlewares/src/subagent/tool.rs:484-486` —— Background 路径注释：明确不共享 event_handler
+- `peri-middlewares/src/subagent/tool.rs:882-884` —— Normal 路径：`with_event_handler(Arc::clone(handler))` 透传
+- `peri-tui/src/app/agent.rs:480-579` —— `map_executor_event()`：无差别映射所有事件
+- `peri-tui/src/app/agent.rs:155-156` —— `try_send`：channel 满时静默丢弃事件
+- `peri-tui/src/app/agent_ops.rs:793-806` —— `StateSnapshot` 处理：直接 extend 父 agent 状态
+- `peri-tui/src/app/message_pipeline.rs:316-319` —— `StateSnapshot` pipeline 处理：无 `in_subagent()` 守卫
+- `peri-tui/src/app/message_pipeline.rs:199-314` —— TextChunk/ToolStart/ToolEnd/Done/Interrupted：有 `in_subagent()` 守卫
 
 ## 关联 Issue
 

@@ -2,7 +2,7 @@
 
 ## 需求背景
 
-`rust-agent-tui` 的消息渲染模块（`src/ui/markdown.rs`）目前仅有占位实现——`parse_markdown()` 直接返回原始文本，不做任何 Markdown 格式化。这导致 AI 回复中的标题、代码块、粗体等 Markdown 元素全部以源码形式显示，严重影响可读性。
+`peri-tui` 的消息渲染模块（`src/ui/markdown.rs`）目前仅有占位实现——`parse_markdown()` 直接返回原始文本，不做任何 Markdown 格式化。这导致 AI 回复中的标题、代码块、粗体等 Markdown 元素全部以源码形式显示，严重影响可读性。
 
 `constraints.md` 曾登记 `tui-markdown 0.3` 作为备选，但该 crate 从未实际引入，且其灵活性不足以满足当前样式需求。因此决定选用 `pulldown-cmark` 作为解析层，自制 ratatui 渲染器。
 
@@ -23,7 +23,7 @@
 - 容错解析：不完整标记（流式时的 `**未闭合`）自动降级为纯文本
 - 极低运行时开销（1-3 μs/KB），对话消息 < 10 KB 时单次解析 < 30 μs
 
-在 `rust-agent-tui/Cargo.toml` 中添加：
+在 `peri-tui/Cargo.toml` 中添加：
 
 ```toml
 pulldown-cmark = "0.12"
@@ -35,7 +35,7 @@ pulldown-cmark = "0.12"
 
 ![渲染器架构](./images/01-architecture.png)
 
-渲染器完整封装在 `rust-agent-tui/src/ui/markdown.rs` 内，外部只暴露两个函数（接口不变）：
+渲染器完整封装在 `peri-tui/src/ui/markdown.rs` 内，外部只暴露两个函数（接口不变）：
 
 ```rust
 pub fn parse_markdown(input: &str) -> Text<'static>
@@ -116,7 +116,7 @@ parse_markdown(input)
 
 ## 约束一致性
 
-- **架构约束**：改动仅在 `rust-agent-tui/src/ui/markdown.rs` 和 `Cargo.toml`，完全在应用层内，不修改核心 crate（符合禁止下层依赖上层原则）
+- **架构约束**：改动仅在 `peri-tui/src/ui/markdown.rs` 和 `Cargo.toml`，完全在应用层内，不修改核心 crate（符合禁止下层依赖上层原则）
 - **依赖约束变更**：`tui-markdown 0.3` → `pulldown-cmark 0.12`，需同步更新 `spec/global/constraints.md`
 - **接口稳定性**：`parse_markdown` 和 `ensure_rendered` 签名不变，`message_render.rs` / `message_view.rs` 零改动
 

@@ -11,11 +11,11 @@
 ### Task 1: RenderCache 与 RenderEvent 数据结构
 
 **涉及文件:**
-- 新建: `rust-agent-tui/src/ui/render_thread.rs`
-- 修改: `rust-agent-tui/src/ui/mod.rs`
+- 新建: `peri-tui/src/ui/render_thread.rs`
+- 修改: `peri-tui/src/ui/mod.rs`
 
 **执行步骤:**
-- [x] 在 `rust-agent-tui/src/ui/render_thread.rs` 中定义 `RenderCache` 结构体
+- [x] 在 `peri-tui/src/ui/render_thread.rs` 中定义 `RenderCache` 结构体
   - `lines: Vec<Line<'static>>` — 所有消息渲染后的行
   - `message_offsets: Vec<usize>` — 每条消息在 lines 中的起始索引
   - `total_lines: usize` — 总行数
@@ -31,7 +31,7 @@
 
 **检查步骤:**
 - [x] 模块编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 编译成功，无 error
 
 ---
@@ -39,7 +39,7 @@
 ### Task 2: 渲染线程实现
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/render_thread.rs`
+- 修改: `peri-tui/src/ui/render_thread.rs`
 
 **执行步骤:**
 - [x] 实现 `RenderTask` 结构体，持有渲染线程的私有状态
@@ -63,13 +63,13 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 编译成功
 - [x] 单元测试：AddMessage 后 cache 的 version 递增且 lines 非空
-  - `cargo test -p rust-agent-tui --lib -- render_thread 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- render_thread 2>&1 | tail -10`
   - 预期: 测试通过
 - [x] 单元测试：AppendChunk 只更新最后一条消息的 lines 区间
-  - `cargo test -p rust-agent-tui --lib -- render_thread 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- render_thread 2>&1 | tail -10`
   - 预期: 测试通过
 
 ---
@@ -77,7 +77,7 @@
 ### Task 3: App 集成渲染线程
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
 - [x] 在 `App` 结构体中添加渲染线程相关字段
@@ -100,10 +100,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 编译成功，无 error
 - [x] poll_agent 中所有消息事件分支都有对应的 render_tx 发送
-  - `grep -n "render_tx" rust-agent-tui/src/app/mod.rs | wc -l`
+  - `grep -n "render_tx" peri-tui/src/app/mod.rs | wc -l`
   - 预期: 至少 6 处调用（AddMessage×4 + AppendChunk×1 + Clear/LoadHistory）
 
 ---
@@ -111,8 +111,8 @@
 ### Task 4: UI 线程按需绘制
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
-- 修改: `rust-agent-tui/src/main.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/main.rs`
 
 **执行步骤:**
 - [x] 改造 `render_messages()` 从 RenderCache 读取行
@@ -131,13 +131,13 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 编译成功
 - [x] main_ui.rs 的 render_messages 不再遍历 view_messages
-  - `grep -c "app.view_messages" rust-agent-tui/src/ui/main_ui.rs`
+  - `grep -c "app.view_messages" peri-tui/src/ui/main_ui.rs`
   - 预期: 输出 0（render_messages 中不再直接引用 view_messages）
 - [x] main.rs 的主循环包含条件重绘逻辑
-  - `grep -c "needs_redraw\|last_render_version" rust-agent-tui/src/main.rs`
+  - `grep -c "needs_redraw\|last_render_version" peri-tui/src/main.rs`
   - 预期: 至少 2 处
 
 ---
@@ -145,7 +145,7 @@
 ### Task 5: TUI 渲染性能优化 Acceptance
 
 **Prerequisites:**
-- 启动命令: `cargo run -p rust-agent-tui`
+- 启动命令: `cargo run -p peri-tui`
 - 确保已配置至少一个 LLM provider（`ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY`）
 - 可选：启动 Jaeger 观测 `docker compose -f docker-compose.otel.yml up -d`
 
@@ -153,7 +153,7 @@
 
 1. 基本功能：发送消息并接收流式回复
    - 启动 TUI，输入一条消息发送，观察 Agent 流式回复正常显示
-   - `cargo run -p rust-agent-tui 2>&1`
+   - `cargo run -p peri-tui 2>&1`
    - Expected: 消息正常显示，流式输出逐字渲染，无 panic
    - On failure: check Task 2 [渲染线程 AppendChunk 处理]
 

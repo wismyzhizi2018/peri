@@ -15,8 +15,8 @@
 ### Task 0: 环境准备（下）
 
 - [x] 确认 spec-plan-1.md 中 Task 1-3 已全部执行完成
-- [x] 验证当前编译通过：`cargo build -p rust-agent-tui 2>&1 | tail -5`，预期 "Finished"
-- [x] 验证当前测试通过：`cargo test -p rust-agent-tui 2>&1 | tail -10`，预期 "test result: ok"
+- [x] 验证当前编译通过：`cargo build -p peri-tui 2>&1 | tail -5`，预期 "Finished"
+- [x] 验证当前测试通过：`cargo test -p peri-tui 2>&1 | tail -10`，预期 "test result: ok"
 
 ---
 
@@ -29,18 +29,18 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/login_panel.rs`（添加 `impl PanelComponent for LoginPanel`）
-- 修改: `rust-agent-tui/src/app/config_panel.rs`（添加 `impl PanelComponent for ConfigPanel`）
-- 修改: `rust-agent-tui/src/app/mcp_panel.rs`（添加 `impl PanelComponent for McpPanel`）
-- 修改: `rust-agent-tui/src/app/cron_state.rs`（添加 `impl PanelComponent for CronPanel`）
+- 修改: `peri-tui/src/app/login_panel.rs`（添加 `impl PanelComponent for LoginPanel`）
+- 修改: `peri-tui/src/app/config_panel.rs`（添加 `impl PanelComponent for ConfigPanel`）
+- 修改: `peri-tui/src/app/mcp_panel.rs`（添加 `impl PanelComponent for McpPanel`）
+- 修改: `peri-tui/src/app/cron_state.rs`（添加 `impl PanelComponent for CronPanel`）
 - 修改: `ThreadBrowser` 定义所在文件（通过 `grep "pub struct ThreadBrowser"` 确认位置，添加 `impl PanelComponent for ThreadBrowser`）
-- 修改: `rust-agent-tui/src/event.rs`（扩展 PanelManager 分发入口，5 个面板改走新路径）
-- 修改: `rust-agent-tui/src/app/panel_ops.rs`（login/config/mcp/cron 的 open/close 方法中补充 PanelManager 同步）
+- 修改: `peri-tui/src/event.rs`（扩展 PanelManager 分发入口，5 个面板改走新路径）
+- 修改: `peri-tui/src/app/panel_ops.rs`（login/config/mcp/cron 的 open/close 方法中补充 PanelManager 同步）
 
 **执行步骤:**
 
 - [x] 为 LoginPanel 实现 PanelComponent trait
-  - 位置: `rust-agent-tui/src/app/login_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
+  - 位置: `peri-tui/src/app/login_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
   - 在文件顶部添加 use 语句：
 
     ```rust
@@ -121,7 +121,7 @@
   - 原因: 消除 19 处 unwrap()，将面板状态操作集中到 `&mut self`，返回 `EventResult` 让 PanelManager 处理关闭
 
 - [x] 为 ConfigPanel 实现 PanelComponent trait
-  - 位置: `rust-agent-tui/src/app/config_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
+  - 位置: `peri-tui/src/app/config_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
   - 在文件顶部添加 use 语句（同 LoginPanel 模式）
   - 添加 `impl PanelComponent for ConfigPanel` 块：
     - `fn kind(&self) -> PanelKind { PanelKind::Config }`
@@ -162,7 +162,7 @@
   - 原因: ConfigPanel handler 无 unwrap，迁移模式与 Task 3 中简单面板一致，辅助方法模式与 LoginPanel 相同
 
 - [x] 为 McpPanel 实现 PanelComponent trait
-  - 位置: `rust-agent-tui/src/app/mcp_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
+  - 位置: `peri-tui/src/app/mcp_panel.rs` 文件末尾（`#[cfg(test)]` 之前）
   - 在文件顶部添加 use 语句（同 LoginPanel 模式）
   - 添加 `impl PanelComponent for McpPanel` 块：
     - `fn kind(&self) -> PanelKind { PanelKind::Mcp }`
@@ -208,7 +208,7 @@
   - 原因: MCP 面板的 ops 方法全部在 `self.mcp_panel.as_mut()` 上操作，迁移后直接操作 `&mut self`，消除间接访问。内部方法命名加 `do_` 前缀避免与已有的 `pub fn mcp_panel_xxx` 冲突（后者在 Task 7 清理前仍被其他代码引用）
 
 - [x] 为 CronPanel 实现 PanelComponent trait
-  - 位置: `rust-agent-tui/src/app/cron_state.rs` 文件末尾（`#[cfg(test)]` 之前）
+  - 位置: `peri-tui/src/app/cron_state.rs` 文件末尾（`#[cfg(test)]` 之前）
   - 在文件顶部添加 use 语句：
 
     ```rust
@@ -259,7 +259,7 @@
   - 原因: CronPanel 已在 Task 2 迁移到 `global_panels`，`cron_ops.rs` 中的 ops 方法通过 `global_panels.get_mut::<CronPanel>()` 访问，迁移后这些 ops 方法变为面板内部方法
 
 - [x] 为 ThreadBrowser 实现 PanelComponent trait
-  - 位置: `ThreadBrowser` 定义所在的文件。执行 `grep -rn "pub struct ThreadBrowser" rust-agent-tui/src/ rust_agent_middlewares/src/` 确认位置
+  - 位置: `ThreadBrowser` 定义所在的文件。执行 `grep -rn "pub struct ThreadBrowser" peri-tui/src/ peri_middlewares/src/` 确认位置
   - 在该文件末尾添加 `impl PanelComponent for ThreadBrowser` 块：
     - `fn kind(&self) -> PanelKind { PanelKind::ThreadBrowser }`
     - `fn handle_key(&mut self, input: Input, ctx: &mut PanelContext<'_>) -> EventResult`
@@ -308,7 +308,7 @@
   - 原因: ThreadBrowser 搜索框（TextArea）保持内部持有，搜索逻辑通过 `handle_key` 中的 `search_focused` 输入模式处理。`open_thread_with_feedback` 外部操作通过 `PanelContext` 间接调用。列表模式的 `panel_area` 通过 `ctx.sessions[ctx.active].core.panel_area` 获取用于滚动计算
 
 - [x] 修改 `event.rs`，扩展 PanelManager 分发入口覆盖 5 个新面板
-  - 位置: `rust-agent-tui/src/event.rs` L222-278（5 个面板的 if-else 分发区域）
+  - 位置: `peri-tui/src/event.rs` L222-278（5 个面板的 if-else 分发区域）
   - 修改 Task 3 中已创建的 PanelManager 分发代码块，扩展 match 分支覆盖新面板：
     - session_panels 分发中，将已有的 3 个 `PanelKind` 扩展为 `Some(PanelKind::Model) | Some(PanelKind::Agent) | Some(PanelKind::Hooks) | Some(PanelKind::Login) | Some(PanelKind::Config) | Some(PanelKind::ThreadBrowser)`
     - global_panels 分发中，将已有的 2 个 `PanelKind` 扩展为 `Some(PanelKind::Status) | Some(PanelKind::Memory) | Some(PanelKind::Mcp) | Some(PanelKind::Cron)`
@@ -361,34 +361,34 @@
       - `test_thread_browser_handle_key_esc_close_search`: 搜索模式 `handle_key(Esc)`（空搜索框）-> 返回 `EventResult::ClosePanel`
       - `test_thread_browser_handle_key_enter_confirm_delete`: confirm_delete 模式 `handle_key(Enter)` -> 验证任务被删除
   - PanelContext 构造：测试中构造最小 PanelContext（大部分字段可用 default/dummy 值，仅验证 handle_key 返回值和面板自身状态变化）
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- "panel::tests::test_.*_handle_key\|cron_state::tests::test_.*_handle_key\|thread_store::tests::test_.*_handle_key" 2>&1`
+  - 运行命令: `cargo test -p peri-tui --lib -- "panel::tests::test_.*_handle_key\|cron_state::tests::test_.*_handle_key\|thread_store::tests::test_.*_handle_key" 2>&1`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 5 个面板文件都包含 `impl PanelComponent`
-  - `grep -rl "impl PanelComponent for" rust-agent-tui/src/app/login_panel.rs rust-agent-tui/src/app/config_panel.rs rust-agent-tui/src/app/mcp_panel.rs rust-agent-tui/src/app/cron_state.rs $(grep -rl "pub struct ThreadBrowser" rust-agent-tui/src/ rust_agent_middlewares/src/ 2>/dev/null) | wc -l`
+  - `grep -rl "impl PanelComponent for" peri-tui/src/app/login_panel.rs peri-tui/src/app/config_panel.rs peri-tui/src/app/mcp_panel.rs peri-tui/src/app/cron_state.rs $(grep -rl "pub struct ThreadBrowser" peri-tui/src/ peri_middlewares/src/ 2>/dev/null) | wc -l`
   - 预期: 5
 - [x] 验证 LoginPanel 的 PanelComponent 实现中无 unwrap 调用（面板自身状态访问）
-  - `grep -A 500 "impl PanelComponent for LoginPanel" rust-agent-tui/src/app/login_panel.rs | head -300 | grep -c "\.unwrap()"`
+  - `grep -A 500 "impl PanelComponent for LoginPanel" peri-tui/src/app/login_panel.rs | head -300 | grep -c "\.unwrap()"`
   - 预期: 0（辅助方法中 `ctx.peri_config.as_mut().unwrap()` 等必要 unwrap 允许存在，面板自身 `self` 直接访问无 unwrap）
 - [x] 验证 event.rs 中 5 个面板的旧分发代码已被注释
-  - `grep -c "Task 4.*已迁移" rust-agent-tui/src/event.rs`
+  - `grep -c "Task 4.*已迁移" peri-tui/src/event.rs`
   - 预期: 至少 5
 - [x] 验证 PanelManager 分发入口覆盖所有 10 个已迁移面板（5 简单 + 5 中等）
-  - `grep -A 2 "session_panels.dispatch_key\|global_panels.dispatch_key" rust-agent-tui/src/event.rs | grep "PanelKind" | head -5`
+  - `grep -A 2 "session_panels.dispatch_key\|global_panels.dispatch_key" peri-tui/src/event.rs | grep "PanelKind" | head -5`
   - 预期: 匹配中包含 Login/Config/ThreadBrowser/Mcp/Cron
 - [x] 验证 CronPanel 在 cron_state.rs 中实现了 PanelComponent
-  - `grep "impl PanelComponent for CronPanel" rust-agent-tui/src/app/cron_state.rs`
+  - `grep "impl PanelComponent for CronPanel" peri-tui/src/app/cron_state.rs`
   - 预期: 1 行匹配
 - [x] 验证全量编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 输出包含 "Finished" 且无 error
 - [x] 验证 handle_key 单元测试通过
-  - `cargo test -p rust-agent-tui --lib -- "panel::tests::test_.*_handle_key\|cron_state::tests::test_.*_handle_key" 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- "panel::tests::test_.*_handle_key\|cron_state::tests::test_.*_handle_key" 2>&1 | tail -10`
   - 预期: 输出包含 "test result: ok" 且无失败
 - [x] 验证 clippy 无新警告
-  - `cargo clippy -p rust-agent-tui 2>&1 | grep -E "warning|error" | grep -v "generated" | head -10`
+  - `cargo clippy -p peri-tui 2>&1 | grep -E "warning|error" | grep -v "generated" | head -10`
   - 预期: 无新增 warning
 
 ---
@@ -401,14 +401,14 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/plugin_panel.rs` — 添加 `impl PanelComponent for PluginPanel`（handle_key/handle_paste/status_bar_hints/desired_height/render）
-- 修改: `rust-agent-tui/src/event.rs` — 删除 `handle_plugin_panel` 函数、`handle_discover_install_current` 函数、`handle_discover_batch_install` 函数；删除 Key 分发链中 `plugin_panel.is_some()` 分支（L246-L248）；删除 Paste 分发链中 plugin_panel 粘贴处理（L728-L756）；删除 Mouse Scroll 分发链中 plugin_panel 滚动处理（L789-L824）
-- 修改: `rust-agent-tui/src/ui/main_ui/status_bar.rs` — 删除 L307-L334 的 plugin_panel 快捷键 match 分支
+- 修改: `peri-tui/src/app/plugin_panel.rs` — 添加 `impl PanelComponent for PluginPanel`（handle_key/handle_paste/status_bar_hints/desired_height/render）
+- 修改: `peri-tui/src/event.rs` — 删除 `handle_plugin_panel` 函数、`handle_discover_install_current` 函数、`handle_discover_batch_install` 函数；删除 Key 分发链中 `plugin_panel.is_some()` 分支（L246-L248）；删除 Paste 分发链中 plugin_panel 粘贴处理（L728-L756）；删除 Mouse Scroll 分发链中 plugin_panel 滚动处理（L789-L824）
+- 修改: `peri-tui/src/ui/main_ui/status_bar.rs` — 删除 L307-L334 的 plugin_panel 快捷键 match 分支
 
 **执行步骤:**
 
 - [x] 在 `plugin_panel.rs` 中添加 `PanelComponent` trait 导入和 `impl PanelComponent for PluginPanel` 骨架
-  - 位置: `rust-agent-tui/src/app/plugin_panel.rs` 文件末尾（`tests` 模块之前）
+  - 位置: `peri-tui/src/app/plugin_panel.rs` 文件末尾（`tests` 模块之前）
   - 添加导入: `use crate::app::panel_component::PanelComponent;`、`use crate::app::panel_manager::{EventResult, PanelContext, PanelKind};`、`use ratatui::layout::Rect;`、`use ratatui::Frame;`、`use std::any::Any;`
   - 原因: 为后续迁移提供 trait 实现框架
 
@@ -484,7 +484,7 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 方法签名: `fn spawn_install_current(&mut self, ctx: &PanelContext<'_>)`
   - 从 `self.discover_current_plugin()` 获取插件信息，构造安装参数
   - `self.installing.insert(plugin_id.clone())` 直接操作 self
-  - `claude_dir` 通过 `rust_agent_middlewares::plugin::claude_home()` 获取（无 app 依赖）
+  - `claude_dir` 通过 `peri_middlewares::plugin::claude_home()` 获取（无 app 依赖）
   - `project_dir` 从 `ctx.cwd` 获取
   - `tx` 从 `ctx.bg_event_tx` 获取
   - `tokio::spawn` 异步安装，完成后发送 `AgentEvent::PluginActionCompleted`
@@ -514,13 +514,13 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: 面板自描述快捷键，状态栏统一格式化显示
 
 - [x] 将 `persist_plugin_enabled_state` 方法从 `impl App` 迁移到 `impl PluginPanel`
-  - 位置: `rust-agent-tui/src/app/plugin_panel.rs`，从 `impl App` 块中移除，移入 `impl PluginPanel` 块
+  - 位置: `peri-tui/src/app/plugin_panel.rs`，从 `impl App` 块中移除，移入 `impl PluginPanel` 块
   - 方法签名改为: `fn persist_enabled_state(&self, claude_settings_override: Option<&std::path::PathBuf>)`
   - 原因: 该方法仅操作 `self.entries` 和 `claude_settings_override`，不依赖 App 的其他字段，迁移后与面板状态内聚
   - 注意: 原 `impl App` 中调用 `self.claude_settings_override.as_deref()` 的地方需在 `handle_key` 中传入 `ctx.claude_settings_override.as_deref()`（需确认 PanelContext 是否包含此字段，若不包含需新增或通过其他路径访问）
 
 - [x] 确认 `PanelContext` 包含 Plugin 面板所需的所有字段
-  - 位置: `rust-agent-tui/src/app/panel_manager.rs` 中 `PanelContext` 结构体定义
+  - 位置: `peri-tui/src/app/panel_manager.rs` 中 `PanelContext` 结构体定义
   - Plugin 面板 handle_key 需要访问的 app 字段:
     - `ctx.bg_event_tx` — 异步操作事件通道（已有）
     - `ctx.cwd` — 项目目录，用于 install/uninstall（已有）
@@ -531,7 +531,7 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: Plugin 面板的 enabled 持久化需要 `claude_settings_override` 避免测试污染全局配置
 
 - [x] 删除 `event.rs` 中的旧 plugin 面板分发代码
-  - 位置: `rust-agent-tui/src/event.rs`
+  - 位置: `peri-tui/src/event.rs`
   - 删除 `fn handle_plugin_panel(app: &mut App, input: Input)` 函数（L1839-L2321）
   - 删除 `fn handle_discover_install_current(app: &mut App)` 函数（L2392-L2442）
   - 删除 `fn handle_discover_batch_install(app: &mut App)` 函数（L2324-L2389）
@@ -541,13 +541,13 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: 这些代码的功能已迁移到 `impl PanelComponent for PluginPanel`，由 PanelManager 统一分发
 
 - [x] 删除 `status_bar.rs` 中 plugin_panel 快捷键 match 分支
-  - 位置: `rust-agent-tui/src/ui/main_ui/status_bar.rs` L307-L334
+  - 位置: `peri-tui/src/ui/main_ui/status_bar.rs` L307-L334
   - 删除 `} else if app.plugin_panel.is_some() { ... }` 整个分支
   - 快捷键已由 `PluginPanel::status_bar_hints()` 自描述，通过 PanelManager 统一获取
   - 原因: Task 6 中状态栏将统一从 PanelManager 获取快捷键，此处先行清理避免重复
 
 - [x] 为 PluginPanel::handle_key 核心逻辑编写单元测试
-  - 测试文件: `rust-agent-tui/src/app/plugin_panel.rs`（已有 `#[cfg(test)] mod tests`）
+  - 测试文件: `peri-tui/src/app/plugin_panel.rs`（已有 `#[cfg(test)] mod tests`）
   - 测试场景:
     - **confirm_delete Enter 确认**: 构造含一个 entry 的 PluginPanel，设置 `confirm_delete = Some(id)`，发送 Enter，验证 `confirm_delete` 被清空且 entry 从 `entries` 中移除，`uninstalling` 集合包含该 id
     - **confirm_delete 其他键取消**: 设置 `confirm_delete = Some(id)`，发送 `Key::Char('a')`，验证 `confirm_delete` 被清空
@@ -561,37 +561,37 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
     - **Marketplaces 视图 Esc 关闭**: view=Marketplaces，发送 `Key::Esc`，验证返回 `EventResult::ClosePanel`
     - **status_bar_hints 各状态**: 分别设置 confirm_delete/discover_searching/detail_index/add_marketplace_active/不同 view，调用 `status_bar_hints()` 验证返回正确内容
   - 构造 `PanelContext` 时使用 headless 测试模式（`App::new_headless` + 构建 ctx），`bg_event_tx` 使用 `tokio::sync::mpsc::channel(4)` 的 sender
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- plugin_panel::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- plugin_panel::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 编译成功，无错误
 - [x] 验证旧函数已删除
-  - `grep -n "fn handle_plugin_panel\|fn handle_discover_install_current\|fn handle_discover_batch_install" rust-agent-tui/src/event.rs`
+  - `grep -n "fn handle_plugin_panel\|fn handle_discover_install_current\|fn handle_discover_batch_install" peri-tui/src/event.rs`
   - 预期: 无匹配结果
 - [x] 验证 event.rs 中 plugin_panel 分发已删除
-  - `grep -n "plugin_panel.is_some()" rust-agent-tui/src/event.rs`
+  - `grep -n "plugin_panel.is_some()" peri-tui/src/event.rs`
   - 预期: 无匹配结果
 - [x] 验证 PanelComponent impl 存在
-  - `grep -n "impl PanelComponent for PluginPanel" rust-agent-tui/src/app/plugin_panel.rs`
+  - `grep -n "impl PanelComponent for PluginPanel" peri-tui/src/app/plugin_panel.rs`
   - 预期: 有匹配结果
 - [x] 验证 status_bar_hints 方法存在
-  - `grep -n "fn status_bar_hints" rust-agent-tui/src/app/plugin_panel.rs`
+  - `grep -n "fn status_bar_hints" peri-tui/src/app/plugin_panel.rs`
   - 预期: 有匹配结果
 - [x] 验证 status_bar.rs 中 plugin_panel 分支已删除
-  - `grep -n "plugin_panel" rust-agent-tui/src/ui/main_ui/status_bar.rs`
+  - `grep -n "plugin_panel" peri-tui/src/ui/main_ui/status_bar.rs`
   - 预期: 无匹配结果
 - [x] 验证 clippy 无警告
-  - `cargo clippy -p rust-agent-tui 2>&1 | grep -E "warning|error" | head -10`
+  - `cargo clippy -p peri-tui 2>&1 | grep -E "warning|error" | head -10`
   - 预期: 无 plugin_panel 相关警告
 - [x] 运行 Plugin 面板单元测试
-  - `cargo test -p rust-agent-tui --lib -- plugin_panel::tests 2>&1 | tail -20`
+  - `cargo test -p peri-tui --lib -- plugin_panel::tests 2>&1 | tail -20`
   - 预期: 所有测试通过
 - [x] 运行全量测试确保无回归
-  - `cargo test -p rust-agent-tui 2>&1 | tail -20`
+  - `cargo test -p peri-tui 2>&1 | tail -20`
   - 预期: 所有测试通过
 
 ---
@@ -605,15 +605,15 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`（重构 `render_session_column` 渲染分发 + `active_panel_height` 高度计算）
-- 修改: `rust-agent-tui/src/ui/main_ui/status_bar.rs`（重构 `render_second_row` 快捷键显示 + 添加 `format_hints` 辅助函数）
-- 修改: `rust-agent-tui/src/app/panel_component.rs`（`render` 签名从 `&App` 改为 `&mut App`）
-- 修改: `rust-agent-tui/src/app/panel_manager.rs`（添加 `active_state()`/`active_state_mut()` 方法 + 将 `status_bar_hints`/`render`/`desired_height` 委托到 `PanelState`）
+- 修改: `peri-tui/src/ui/main_ui.rs`（重构 `render_session_column` 渲染分发 + `active_panel_height` 高度计算）
+- 修改: `peri-tui/src/ui/main_ui/status_bar.rs`（重构 `render_second_row` 快捷键显示 + 添加 `format_hints` 辅助函数）
+- 修改: `peri-tui/src/app/panel_component.rs`（`render` 签名从 `&App` 改为 `&mut App`）
+- 修改: `peri-tui/src/app/panel_manager.rs`（添加 `active_state()`/`active_state_mut()` 方法 + 将 `status_bar_hints`/`render`/`desired_height` 委托到 `PanelState`）
 
 **执行步骤:**
 
 - [x] 修改 `PanelComponent` trait 的 `render` 签名，从 `&App` 改为 `&mut App`
-  - 位置: `rust-agent-tui/src/app/panel_component.rs`，`PanelComponent` trait 定义
+  - 位置: `peri-tui/src/app/panel_component.rs`，`PanelComponent` trait 定义
   - 将 `fn render(&self, f: &mut Frame, app: &App, area: Rect);` 改为 `fn render(&mut self, f: &mut Frame, app: &mut App, area: Rect);`
   - 同步更新该文件中默认方法（如有）的 `self` 引用
   - 原因: 所有 12 个面板渲染函数均需写回 `app.sessions[active].core.panel_area`/`panel_scroll_offset`/`panel_plain_lines` 三个缓存字段（经验证：agent.rs L126-128、hooks.rs L143-145、cron.rs L91-93、memory.rs L73-75、mcp.rs L111-113、plugin.rs L442-444、thread_browser.rs L254-256），必须接收 `&mut App`
@@ -625,7 +625,7 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: trait 签名变更后所有 impl 必须同步更新
 
 - [x] 为 `PanelManager` 添加 `active_state()` 和 `active_state_mut()` 方法
-  - 位置: `rust-agent-tui/src/app/panel_manager.rs`，`PanelManager` impl 块内（`is_any_open()` 方法之后）
+  - 位置: `peri-tui/src/app/panel_manager.rs`，`PanelManager` impl 块内（`is_any_open()` 方法之后）
   - 添加两个方法:
 
     ```rust
@@ -643,7 +643,7 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: `active_state()` 用于 `desired_height()` 和 `status_bar_hints()`（只读）；`active_state_mut()` 用于 `render()`（需要 `&mut self` 写回缓存）
 
 - [x] 将 `PanelManager::status_bar_hints()` 改为委托到 `PanelState`
-  - 位置: `rust-agent-tui/src/app/panel_manager.rs`
+  - 位置: `peri-tui/src/app/panel_manager.rs`
   - 将 `PanelManager::status_bar_hints()` 方法体替换为委托:
 
     ```rust
@@ -660,7 +660,7 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: 快捷键提示是面板自身的属性，定义在 `PanelState` 上使 `active_state().status_bar_hints()` 可直接调用，无需经过 `PanelManager`
 
 - [x] 在 `PanelState` 上添加 `render()` 和 `desired_height()` 委托方法
-  - 位置: `rust-agent-tui/src/app/panel_manager.rs`，`impl PanelState` 块内
+  - 位置: `peri-tui/src/app/panel_manager.rs`，`impl PanelState` 块内
   - 添加 `render` 方法:
 
     ```rust
@@ -705,7 +705,7 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: `active_state()` 返回 `&PanelState`，高度和渲染方法定义在 `PanelState` 上使调用方无需 match 11 个变体
 
 - [x] 重构 `main_ui.rs` 的 `render_session_column` 渲染分发（L148-196）
-  - 位置: `rust-agent-tui/src/ui/main_ui.rs` L148-196
+  - 位置: `peri-tui/src/ui/main_ui.rs` L148-196
   - 将 12 个 `if app.xxx.is_some() { render_xxx(f, app, panel_area); }` 顺序检查替换为:
 
     ```rust
@@ -741,7 +741,7 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: 12 个 if-is_some 链由 `PanelManager::active_state_mut()` 统一分发
 
 - [x] 重构 `main_ui.rs` 的 `active_panel_height` 函数（L280-402）
-  - 位置: `rust-agent-tui/src/ui/main_ui.rs` L280-402
+  - 位置: `peri-tui/src/ui/main_ui.rs` L280-402
   - 保留 `is_plugin_panel` 的 max_h 计算，改为通过 `PanelManager` 查询:
 
     ```rust
@@ -801,7 +801,7 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: ~120 行 if-else 链由 `PanelState::desired_height()` 统一分发，Interaction Prompts 和 OAuth 的高度计算保留原样
 
 - [x] 为 `status_bar.rs` 添加 `format_hints` 辅助函数
-  - 位置: `rust-agent-tui/src/ui/main_ui/status_bar.rs`，`render_truncated_line` 函数之前（L354 之前）
+  - 位置: `peri-tui/src/ui/main_ui/status_bar.rs`，`render_truncated_line` 函数之前（L354 之前）
   - 添加辅助函数:
 
     ```rust
@@ -829,7 +829,7 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: `render_second_row` 原来使用 `key!` 宏内联构建 Span 列表，迁移后由 `format_hints` 统一格式化，消除 ~100 行重复的 Span 构建代码
 
 - [x] 重构 `status_bar.rs` 的 `render_second_row` 函数（L243-349）
-  - 位置: `rust-agent-tui/src/ui/main_ui/status_bar.rs` L243-349
+  - 位置: `peri-tui/src/ui/main_ui/status_bar.rs` L243-349
   - 保留 L183-233 的 `left_spans` 构建逻辑不变（复制成功提示、后台任务指示器、Agent 面板信息）
   - 保留 L236-241 的 `key_style`/`desc_style`/`key!` 宏定义（仍被 Interaction Prompts 分支使用）
   - 将 L243-349 的 `right_spans` match 链替换为:
@@ -868,7 +868,7 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: ~170 行 match 链由 `PanelState::status_bar_hints()` + `format_hints()` 替代，Interaction Prompts 和 OAuth 的特殊处理保留
 
 - [x] 为渲染分发、高度计算和状态栏解耦编写 headless 测试
-  - 测试文件: `rust-agent-tui/src/ui/headless.rs`
+  - 测试文件: `peri-tui/src/ui/headless.rs`
   - 测试场景:
     - `test_panel_render_via_panel_manager`: 打开 ModelPanel（通过 `app.open_model_panel()`），调用 `app.render_sessions()` 后通过 `handle.terminal.draw()` 验证渲染输出包含 "模型" 或 "model" 关键字
     - `test_panel_height_via_desired_height`: 打开 ModelPanel（desired_height 返回 12），创建 120x30 headless app，验证 `active_panel_height(&app, 30, 120)` 返回 12
@@ -877,40 +877,40 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
     - `test_status_bar_hints_default`: 无面板打开，单 session 模式下渲染后通过 `handle.contains("命令")` 验证状态栏包含默认主界面快捷键
     - `test_status_bar_hints_login_browse`: 打开 LoginPanel（Browse 模式），渲染后通过 `handle.contains("选中")` 和 `handle.contains("编辑")` 验证状态栏包含 Login Browse 模式快捷键
     - `test_interaction_prompt_height_unaffected`: 设置 `interaction_prompt = Some(Approval(...))`，验证 `active_panel_height` 返回正确的高度值（不受 PanelManager 影响）
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- "test_panel_render_via\|test_panel_height_via\|test_panel_height_plugin\|test_status_bar_hints\|test_interaction_prompt_height" 2>&1`
+  - 运行命令: `cargo test -p peri-tui --lib -- "test_panel_render_via\|test_panel_height_via\|test_panel_height_plugin\|test_status_bar_hints\|test_interaction_prompt_height" 2>&1`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 `main_ui.rs` 中不再有面板 `is_some()` 渲染分发
-  - `grep -n "\.is_some()" rust-agent-tui/src/ui/main_ui.rs | grep -v "interaction_prompt\|oauth_prompt\|pending\|attachment\|loading\|setup_wizard\|textarea_area\|last_human\|highlight_until"`
+  - `grep -n "\.is_some()" peri-tui/src/ui/main_ui.rs | grep -v "interaction_prompt\|oauth_prompt\|pending\|attachment\|loading\|setup_wizard\|textarea_area\|last_human\|highlight_until"`
   - 预期: 无匹配（所有面板的 `is_some()` 检查已替换为 `active_state()`/`active_state_mut()`）
 - [x] 验证 `main_ui.rs` 中 `active_panel_height` 不再包含面板 if-else 链
-  - `grep -n "thread_browser\|login_panel\|model_panel\|config_panel\|agent_panel\|hooks_panel\|cron_panel\|mcp_panel\|status_panel\|memory_panel\|plugin_panel" rust-agent-tui/src/ui/main_ui.rs`
+  - `grep -n "thread_browser\|login_panel\|model_panel\|config_panel\|agent_panel\|hooks_panel\|cron_panel\|mcp_panel\|status_panel\|memory_panel\|plugin_panel" peri-tui/src/ui/main_ui.rs`
   - 预期: 仅在 import 和 `is_active(PanelKind::Plugin)` 处有匹配，不在 `active_panel_height` 函数体中
 - [x] 验证 `status_bar.rs` 中 `render_second_row` 不再包含面板 if-else 链
-  - `grep -n "agent_panel\|hooks_panel\|cron_panel\|login_panel\|mcp_panel\|config_panel\|model_panel\|status_panel\|memory_panel\|plugin_panel\|thread_browser" rust-agent-tui/src/ui/main_ui/status_bar.rs`
+  - `grep -n "agent_panel\|hooks_panel\|cron_panel\|login_panel\|mcp_panel\|config_panel\|model_panel\|status_panel\|memory_panel\|plugin_panel\|thread_browser" peri-tui/src/ui/main_ui/status_bar.rs`
   - 预期: 无匹配（所有面板快捷键已迁移到 `PanelState::status_bar_hints()`）
 - [x] 验证 `PanelManager` 包含 `active_state()` 和 `active_state_mut()` 方法
-  - `grep -n "fn active_state" rust-agent-tui/src/app/panel_manager.rs`
+  - `grep -n "fn active_state" peri-tui/src/app/panel_manager.rs`
   - 预期: 2 行匹配
 - [x] 验证 `PanelState` 包含 `render`/`desired_height`/`status_bar_hints` 方法
-  - `grep -n "pub fn render\|pub fn desired_height\|pub fn status_bar_hints" rust-agent-tui/src/app/panel_manager.rs`
+  - `grep -n "pub fn render\|pub fn desired_height\|pub fn status_bar_hints" peri-tui/src/app/panel_manager.rs`
   - 预期: 3 行匹配（在 `impl PanelState` 块中）
 - [x] 验证 `PanelComponent::render` 签名为 `&mut self`
-  - `grep "fn render.*&mut self.*&mut App" rust-agent-tui/src/app/panel_component.rs`
+  - `grep "fn render.*&mut self.*&mut App" peri-tui/src/app/panel_component.rs`
   - 预期: 1 行匹配
 - [x] 验证 `format_hints` 函数存在
-  - `grep -n "fn format_hints" rust-agent-tui/src/ui/main_ui/status_bar.rs`
+  - `grep -n "fn format_hints" peri-tui/src/ui/main_ui/status_bar.rs`
   - 预期: 1 行匹配
 - [x] 验证全量编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 输出包含 "Finished" 且无 error
 - [x] 验证全量测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | tail -30`
+  - `cargo test -p peri-tui 2>&1 | tail -30`
   - 预期: 所有测试通过，无失败
 - [x] 验证 clippy 无警告
-  - `cargo clippy -p rust-agent-tui 2>&1 | tail -10`
+  - `cargo clippy -p peri-tui 2>&1 | tail -10`
   - 预期: 无 warning 或 error
 
 ---
@@ -924,17 +924,17 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/core.rs`（移除 6 个旧 Option 面板字段）
-- 修改: `rust-agent-tui/src/app/mod.rs`（移除旧面板字段；添加 `open_panel`/`close_all_panels` 方法；更新 `new_headless` 构造）
-- 删除: `rust-agent-tui/src/app/panel_ops.rs`（整个文件）
+- 修改: `peri-tui/src/app/core.rs`（移除 6 个旧 Option 面板字段）
+- 修改: `peri-tui/src/app/mod.rs`（移除旧面板字段；添加 `open_panel`/`close_all_panels` 方法；更新 `new_headless` 构造）
+- 删除: `peri-tui/src/app/panel_ops.rs`（整个文件）
 - 修改: `CLAUDE.md`（更新面板系统架构说明）
-- 修改: `rust-agent-tui/src/ui/headless.rs`（添加面板生命周期测试）
-- 修改: `rust-agent-tui/src/event.rs`（移除旧分发代码的注释残留）
+- 修改: `peri-tui/src/ui/headless.rs`（添加面板生命周期测试）
+- 修改: `peri-tui/src/event.rs`（移除旧分发代码的注释残留）
 
 **执行步骤:**
 
 - [x] 从 `AppCore` 中移除 6 个旧 `Option<XxxPanel>` 字段
-  - 位置: `rust-agent-tui/src/app/core.rs` 结构体定义（L46-51）
+  - 位置: `peri-tui/src/app/core.rs` 结构体定义（L46-51）
   - 删除以下字段：
     - `pub model_panel: Option<ModelPanel>`（L46）
     - `pub login_panel: Option<LoginPanel>`（L47）
@@ -964,7 +964,7 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: 6 个旧面板字段已全部由 `AppCore::session_panels: PanelManager` 接管，保留旧字段会导致编译器警告和维护混乱
 
 - [x] 从 `App` 中移除 4 个旧全局面板字段
-  - 位置: `rust-agent-tui/src/app/mod.rs` 结构体定义（L118-131）
+  - 位置: `peri-tui/src/app/mod.rs` 结构体定义（L118-131）
   - 删除以下字段：
     - `pub mcp_panel: Option<McpPanel>`（L118）
     - `pub status_panel: Option<status_panel::StatusPanel>`（L125）
@@ -983,7 +983,7 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: 4 个旧全局面板字段已由 `App::global_panels: PanelManager` 接管
 
 - [x] 在 `App` 中添加 `open_panel` 和 `close_all_panels` 便捷方法
-  - 位置: `rust-agent-tui/src/app/mod.rs`，`impl App` 块中 `refresh_after_setup` 方法之后（~L533 之后）
+  - 位置: `peri-tui/src/app/mod.rs`，`impl App` 块中 `refresh_after_setup` 方法之后（~L533 之后）
   - 添加方法：
 
     ```rust
@@ -1016,11 +1016,11 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: 提供统一的面板操作入口，替代原来分散在 `panel_ops.rs` 中的 11 个 `open_*` / `close_*` 方法。后续代码（如命令处理、快捷键处理）通过 `app.open_panel(PanelKind::Model)` 打开面板
 
 - [x] 删除 `panel_ops.rs` 文件（注：文件保留为业务逻辑层，旧 Option 双写已清理，open/close 方法通过 PanelManager 调用）
-  - 位置: `rust-agent-tui/src/app/panel_ops.rs`（整个文件，916 行）
-  - 操作: `rm rust-agent-tui/src/app/panel_ops.rs`
-  - 在 `rust-agent-tui/src/app/mod.rs` 中删除模块声明 `mod panel_ops;`（L33）
+  - 位置: `peri-tui/src/app/panel_ops.rs`（整个文件，916 行）
+  - 操作: `rm peri-tui/src/app/panel_ops.rs`
+  - 在 `peri-tui/src/app/mod.rs` 中删除模块声明 `mod panel_ops;`（L33）
   - 全局搜索 `panel_ops` 确认无其他引用：
-    - `grep -rn "panel_ops" rust-agent-tui/src/`
+    - `grep -rn "panel_ops" peri-tui/src/`
   - 原因: `panel_ops.rs` 中的所有 `open_*` / `close_*` 方法已由 `PanelManager::open()` / `PanelManager::close()` 和 `App::open_panel()` 替代。该文件是旧架构的核心文件，删除标志着迁移完成
 
 - [x] 更新 `CLAUDE.md` 面板系统架构说明
@@ -1059,14 +1059,14 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
   - 原因: CLAUDE.md 是所有 Claude session 的项目记忆，必须反映新的面板架构，否则后续开发会按旧模式操作
 
 - [x] 移除 `event.rs` 中旧分发代码的注释残留
-  - 位置: `rust-agent-tui/src/event.rs`
+  - 位置: `peri-tui/src/event.rs`
   - 搜索所有包含 "panel_ops" / "旧" / "TODO: migrate" / "legacy" / "旧面板" 的注释行
   - 删除 Task 3-6 迁移过程中添加的过渡注释（如 `// TODO: remove after Task 7` / `// 旧面板分发，待清理`）
   - 保留正常的功能性注释
   - 原因: 清理迁移过程中遗留的技术债务注释，保持代码整洁
 
 - [x] 为面板生命周期编写 headless 测试（注：已有 headless 测试覆盖面板打开/关闭/渲染/互斥）
-  - 测试文件: `rust-agent-tui/src/ui/headless.rs`，`mod tests` 块末尾
+  - 测试文件: `peri-tui/src/ui/headless.rs`，`mod tests` 块末尾
   - 添加新的测试模块：
 
     ```rust
@@ -1137,40 +1137,40 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
     - `test_panel_mutex_across_managers`: 打开 MCP(Global) -> 打开 Model(Session) -> 验证 global_panels 自动清空
     - `test_panel_rendered_after_open`: 打开 ModelPanel -> 渲染 -> 验证输出包含模型关键字
     - `test_no_legacy_panel_fields`: 编译时验证旧字段已移除（访问新字段确保编译通过）
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- "test_open_close_panel\|test_panel_mutex\|test_panel_rendered_after\|test_no_legacy_panel" 2>&1`
+  - 运行命令: `cargo test -p peri-tui --lib -- "test_open_close_panel\|test_panel_mutex\|test_panel_rendered_after\|test_no_legacy_panel" 2>&1`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 `panel_ops.rs` 文件已删除（保留为业务逻辑层，旧 Option 双写已清理）
-  - `ls rust-agent-tui/src/app/panel_ops.rs 2>&1`
+  - `ls peri-tui/src/app/panel_ops.rs 2>&1`
   - 预期: "No such file or directory"
 - [x] 验证 `mod.rs` 中无 `panel_ops` 模块声明（注：模块声明保留，文件作为业务逻辑层继续使用）
-  - `grep -n "panel_ops" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "panel_ops" peri-tui/src/app/mod.rs`
   - 预期: 无匹配
 - [x] 验证 `core.rs` 中无旧面板字段
-  - `grep -n "model_panel\|login_panel\|agent_panel\|hooks_panel\|config_panel\|thread_browser\|panel_selection\|panel_area\|panel_plain_lines\|panel_scroll_offset" rust-agent-tui/src/app/core.rs`
+  - `grep -n "model_panel\|login_panel\|agent_panel\|hooks_panel\|config_panel\|thread_browser\|panel_selection\|panel_area\|panel_plain_lines\|panel_scroll_offset" peri-tui/src/app/core.rs`
   - 预期: 无匹配（所有旧字段已移除）
 - [x] 验证 `App` 中无旧全局面板字段
-  - `grep -n "mcp_panel\|status_panel\|memory_panel\|plugin_panel" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "mcp_panel\|status_panel\|memory_panel\|plugin_panel" peri-tui/src/app/mod.rs`
   - 预期: 仅在 `new_headless` 注释或 re-export 中有匹配，不在 `App` 结构体定义中
 - [x] 验证 `CronState` 中无 `cron_panel` 字段
-  - `grep -n "cron_panel" rust-agent-tui/src/app/cron_state.rs`
+  - `grep -n "cron_panel" peri-tui/src/app/cron_state.rs`
   - 预期: 无匹配
 - [x] 验证 `CLAUDE.md` 包含面板组件化架构说明
   - `grep -n "PanelManager\|PanelComponent\|PanelKind\|PanelState\|open_panel" CLAUDE.md`
   - 预期: 至少 5 行匹配
 - [x] 验证 `event.rs` 中无旧分发注释残留
-  - `grep -n "TODO.*remove\|legacy\|旧面板\|panel_ops" rust-agent-tui/src/event.rs`
+  - `grep -n "TODO.*remove\|legacy\|旧面板\|panel_ops" peri-tui/src/event.rs`
   - 预期: 无匹配
 - [x] 验证全量编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 输出包含 "Finished" 且无 error
 - [x] 验证全量测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | tail -30`
+  - `cargo test -p peri-tui 2>&1 | tail -30`
   - 预期: 所有测试通过，无失败
 - [x] 验证 clippy 无警告
-  - `cargo clippy -p rust-agent-tui 2>&1 | tail -10`
+  - `cargo clippy -p peri-tui 2>&1 | tail -10`
   - 预期: 无 warning 或 error
 
 **认知变更:**
@@ -1185,17 +1185,17 @@ Plugin 面板是全局面板中复杂度最高的面板，包含 4 种视图（I
 
 **验收标准（来自 spec-design.md）:**
 
-- [x] 运行全量测试套件：`cargo test -p rust-agent-tui 2>&1 | tail -20`，预期所有测试通过
-- [x] **event.rs 分发简化**：`grep -c "if app.*\.is_some()" rust-agent-tui/src/event.rs`，预期仅剩 Setup Wizard / OAuth / Interaction Prompt 的检查（约 5 处），不包含 11 个面板的 `is_some()` 检查
-- [x] **互斥逻辑统一**：`grep -c "fn open_.*_panel" rust-agent-tui/src/app/panel_ops.rs`，文件保留为业务逻辑层（open 方法通过 PanelManager 调用），旧 Option 双写已清理
-- [x] **unwrap 消除**：`grep -rn "\.unwrap()" rust-agent-tui/src/app/login_panel.rs | grep -v "#\[cfg(test)\]" | grep -v "test"` 在 PanelComponent impl 块中无匹配
-- [x] **状态栏解耦**：`grep -c "login_panel\|model_panel\|config_panel\|agent_panel\|hooks_panel\|mcp_panel\|status_panel\|memory_panel\|plugin_panel\|thread_browser\|cron_panel" rust-agent-tui/src/ui/main_ui/status_bar.rs`，预期 0
-- [x] **旧字段迁移**：`grep -c "model_panel\|login_panel\|agent_panel\|hooks_panel\|config_panel\|thread_browser" rust-agent-tui/src/app/core.rs`，预期 0（除 `session_panels` 中的引用）
-- [x] **全局面板迁移**：`grep -c "mcp_panel\|plugin_panel\|status_panel\|memory_panel" rust-agent-tui/src/app/mod.rs`，预期仅剩 re-export 和 import 行
-- [x] **CronState 清理**：`grep "cron_panel" rust-agent-tui/src/app/cron_state.rs`，预期无匹配（仅剩 `render_cron_panel` 函数名引用）
-- [x] **PanelComponent 完整实现**：`grep -rl "impl PanelComponent for" rust-agent-tui/src/app/ | wc -l`，预期 11（覆盖所有面板）
-- [x] **编译通过**：`cargo build -p rust-agent-tui 2>&1 | tail -3`
-- [x] **clippy 无警告**：`cargo clippy -p rust-agent-tui 2>&1 | grep -E "warning|error" | grep -v "generated" | head -5`
+- [x] 运行全量测试套件：`cargo test -p peri-tui 2>&1 | tail -20`，预期所有测试通过
+- [x] **event.rs 分发简化**：`grep -c "if app.*\.is_some()" peri-tui/src/event.rs`，预期仅剩 Setup Wizard / OAuth / Interaction Prompt 的检查（约 5 处），不包含 11 个面板的 `is_some()` 检查
+- [x] **互斥逻辑统一**：`grep -c "fn open_.*_panel" peri-tui/src/app/panel_ops.rs`，文件保留为业务逻辑层（open 方法通过 PanelManager 调用），旧 Option 双写已清理
+- [x] **unwrap 消除**：`grep -rn "\.unwrap()" peri-tui/src/app/login_panel.rs | grep -v "#\[cfg(test)\]" | grep -v "test"` 在 PanelComponent impl 块中无匹配
+- [x] **状态栏解耦**：`grep -c "login_panel\|model_panel\|config_panel\|agent_panel\|hooks_panel\|mcp_panel\|status_panel\|memory_panel\|plugin_panel\|thread_browser\|cron_panel" peri-tui/src/ui/main_ui/status_bar.rs`，预期 0
+- [x] **旧字段迁移**：`grep -c "model_panel\|login_panel\|agent_panel\|hooks_panel\|config_panel\|thread_browser" peri-tui/src/app/core.rs`，预期 0（除 `session_panels` 中的引用）
+- [x] **全局面板迁移**：`grep -c "mcp_panel\|plugin_panel\|status_panel\|memory_panel" peri-tui/src/app/mod.rs`，预期仅剩 re-export 和 import 行
+- [x] **CronState 清理**：`grep "cron_panel" peri-tui/src/app/cron_state.rs`，预期无匹配（仅剩 `render_cron_panel` 函数名引用）
+- [x] **PanelComponent 完整实现**：`grep -rl "impl PanelComponent for" peri-tui/src/app/ | wc -l`，预期 11（覆盖所有面板）
+- [x] **编译通过**：`cargo build -p peri-tui 2>&1 | tail -3`
+- [x] **clippy 无警告**：`cargo clippy -p peri-tui 2>&1 | grep -E "warning|error" | grep -v "generated" | head -5`
 
 **失败排查:**
 

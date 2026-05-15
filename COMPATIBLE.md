@@ -7,7 +7,7 @@
 | # | 维度 | 特性 | Claude Code | Peri | 状态 | 已验证 |
 |---|------|------|------------|------------|------|--------|
 | | **基础** | 语言/运行时 | TypeScript / Bun | Rust / Tokio | N/A（重写） | |
-| | **核心架构** | Agent 循环 | ReAct（query.ts / QueryEngine.ts） | ReAct（rust-create-agent） | ✅ | |
+| | **核心架构** | Agent 循环 | ReAct（query.ts / QueryEngine.ts） | ReAct（peri-agent） | ✅ | |
 | | | 最大迭代 | 可配置 | 500（TUI 主 agent）/ 200（子 agent）/ 50（hooks）/ 10（core 默认） | ✅ | |
 | | | 流式输出 | Anthropic SSE / OpenAI stream | SSE streaming | ✅ | |
 | | | Prompt Caching | Anthropic prompt-caching-2024-07-31（首条用户消息 cache_control） | 同左（Anthropic 默认启用） | ✅ | |
@@ -36,7 +36,7 @@
 | | | Shell（Bash） | BashTool + PowerShellTool | Bash（缺 PowerShell） | ⚠️（缺 PowerShell） | |
 | | | Web（WebFetch/WebSearch） | WebFetchTool + WebSearchTool | WebFetch + WebSearch | ✅ | |
 | | | Jupyter | NotebookEditTool | -- | ❌ | |
-| | | LSP 支持 | LSPTool | LspMiddleware + perihelion-lsp crate（after_tool 自动同步文件变更） | ✅ | |
+| | | LSP 支持 | LSPTool | LspMiddleware + peri-lsp crate（after_tool 自动同步文件变更） | ✅ | |
 | | | 辅助（Snip/Sleep/CtxInspect） | SnipTool + SleepTool + CtxInspectTool | -- | ❌ | |
 | | **Agent 工具** | Agent (SubAgent) | AgentTool | Agent | ✅ | |
 | | | AskUserQuestion | AskUserQuestionTool | AskUserQuestion | ✅ | |
@@ -393,7 +393,7 @@
 | | | Terminal Output Streaming | ✅（`_meta.terminal_output`） | -- | ❌ | |
 | | | CLI 入口 | `claude --acp` | `peri acp [--cwd] [--model] [--agent]` | ✅ | |
 | | | Agent 覆盖 | -- | `--agent`（.claude/agents/ 定义） | 🟢 | |
-| | | **Peri 独有** | Widget 库 | -- | perihelion-widgets（14 组件） | 🟢 | |
+| | | **Peri 独有** | Widget 库 | -- | peri-widgets（14 组件） | 🟢 | |
 | | | 5 级权限快捷切换 | -- | Shift+Tab 循环 | 🟢 | |
 | | | Tool Search 延迟加载 | -- | SearchExtraTools / ExecuteExtraTool 元工具 | 🟢 | |
 

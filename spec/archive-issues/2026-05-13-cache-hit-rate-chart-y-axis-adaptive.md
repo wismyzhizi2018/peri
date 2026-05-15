@@ -25,10 +25,10 @@
 
 ## 相关代码
 
-- `rust-agent-tui/src/ui/main_ui/panels/status.rs:269-321` —— `build_cache_rate_lines`，y 轴固定 0-100%
-- `rust-agent-tui/src/ui/main_ui/panels/status.rs:284-285` —— `y_max: u64 = 100` 硬编码
-- `rust-agent-tui/src/ui/main_ui/panels/status.rs:435` —— `rate_h = 4` 图表高度
-- `rust-agent-tui/src/ui/main_ui/panels/status.rs:160-200` —— `build_bar_chart_lines`，token 柱状图的 `nice_ceil` 自适应刻度可参考
+- `peri-tui/src/ui/main_ui/panels/status.rs:269-321` —— `build_cache_rate_lines`，y 轴固定 0-100%
+- `peri-tui/src/ui/main_ui/panels/status.rs:284-285` —— `y_max: u64 = 100` 硬编码
+- `peri-tui/src/ui/main_ui/panels/status.rs:435` —— `rate_h = 4` 图表高度
+- `peri-tui/src/ui/main_ui/panels/status.rs:160-200` —— `build_bar_chart_lines`，token 柱状图的 `nice_ceil` 自适应刻度可参考
 
 ## 关联 Issue
 

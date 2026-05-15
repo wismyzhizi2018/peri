@@ -60,7 +60,7 @@ build_system_prompt(overrides, cwd, features)
 **问题本质:** prepend_message 使用 insert(0) 将所有已有元素右移，导致 state.messages()[last_message_count..] 的快照范围包含被右移到该范围内的 System 消息。这些泄露的 System 消息通过 agent_state_messages 进入下一轮 history，与新的 prepend 消息合并产生重复。
 **通用模式:** prepend_message 的 insert(0) 有隐式的范围扩大副作用——快照计算时必须考虑右移效应。StateSnapshot 应始终过滤 System 消息（.filter(|m| !m.is_system())），因为 System 消息由 middleware 每轮重新注入，不应持久化到历史中。
 **架构影响:** 确认了 agent_state_messages 不应包含 BaseMessage::System 变体的设计原则。compact 路径也有独立的 System 消息泄露问题（直接将 compact 结果写入 agent_state_messages）。
-**涉及文件:** rust-create-agent/src/agent/executor/final_answer.rs, rust-create-agent/src/agent/executor/mod.rs, rust-create-agent/src/agent/state.rs, rust-create-agent/src/llm/openai.rs, rust-agent-tui/src/app/agent_ops.rs, rust-agent-tui/src/app/agent_submit.rs, rust-agent-tui/src/app/agent_compact.rs
+**涉及文件:** peri-agent/src/agent/executor/final_answer.rs, peri-agent/src/agent/executor/mod.rs, peri-agent/src/agent/state.rs, peri-agent/src/llm/openai.rs, peri-tui/src/app/agent_ops.rs, peri-tui/src/app/agent_submit.rs, peri-tui/src/app/agent_compact.rs
 **CLAUDE.md 链接:** true
 
 ### issue_2026-05-13-system-prompt-dynamic-cache-invalidation
@@ -72,7 +72,7 @@ build_system_prompt(overrides, cwd, features)
 **问题本质:** 整个 system prompt 作为单一缓存段，动态占位符（{{date}} 每日变化、{{cwd}} 跨项目变化）导致缓存前缀完全失效。边界标记方案将静态核心（01-06，~80% token）与动态内容（07_env + feature-gated + middleware，~20%）分离为独立缓存块。
 **通用模式:** 缓存前缀稳定性原则——所有参与缓存前缀的数据必须保证跨请求稳定。动态内容应通过边界标记或独立块隔离到缓存段之外。此方案仿照 Claude Code 的 splitSysPromptPrefix() 模式。
 **架构影响:** 引入 __SYSTEM_PROMPT_DYNAMIC_BOUNDARY__ 标记和 split_system_blocks() 方法，但不改变 ReactLLM trait 签名。后续可进一步拆分 feature-gated 静态段落为独立缓存块（需变更 trait 签名）。
-**涉及文件:** rust-agent-tui/src/prompt.rs, rust-create-agent/src/llm/anthropic.rs
+**涉及文件:** peri-tui/src/prompt.rs, peri-agent/src/llm/anthropic.rs
 **CLAUDE.md 链接:** true
 
 ### issue_2026-05-13-missing-skillpreload-in-main-agent
@@ -83,7 +83,7 @@ build_system_prompt(overrides, cwd, features)
 **关键词:** SkillPreloadMiddleware, 中间件链缺失, /skill-name, 预加载
 **问题本质:** agent.rs 和 agent_assembler.rs 两个构建路径均未注册 SkillPreloadMiddleware，导致系统提示声称支持 skill 预加载但实际不生效。子 Agent 路径通过 tool.rs 正确注册。
 **通用模式:** 中间件链的完整性需要同时检查所有构建路径。功能声明（系统提示）与实际实现（中间件注册）必须保持一致。空参数的 SkillPreloadMiddleware（无 skill 列表）会 early return 无性能损耗，可安全始终注册。
-**涉及文件:** rust-agent-tui/src/app/agent.rs, rust-agent-tui/src/app/agent_assembler.rs, rust-agent-middlewares/src/subagent/skill_preload.rs, rust-agent-middlewares/src/subagent/tool.rs
+**涉及文件:** peri-tui/src/app/agent.rs, peri-tui/src/app/agent_assembler.rs, peri-middlewares/src/subagent/skill_preload.rs, peri-middlewares/src/subagent/tool.rs
 **CLAUDE.md 链接:** false
 
 ### issue_2026-05-13-askuserquestion-cache-hit-rate-drop
@@ -94,7 +94,7 @@ build_system_prompt(overrides, cwd, features)
 **关键词:** AskUserQuestion, 缓存下降, system prompt 动态占位符
 **问题本质:** 此 issue 是 system-prompt-dynamic-cache-invalidation 的子集表现。AskUserQuestion 调用时缓存下降的根因是 system prompt 动态占位符导致整段缓存失效，而非 AskUserQuestion 本身的问题。
 **通用模式:** 表面症状（特定工具调用导致缓存下降）的根因可能在更底层（system prompt 架构）。修复底层问题后上层症状自动消除。
-**涉及文件:** rust-agent-middlewares/src/tool_search/middleware.rs, rust-create-agent/src/llm/anthropic.rs
+**涉及文件:** peri-middlewares/src/tool_search/middleware.rs, peri-agent/src/llm/anthropic.rs
 **CLAUDE.md 链接:** false
 
 ---

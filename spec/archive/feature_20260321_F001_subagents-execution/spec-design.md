@@ -21,10 +21,10 @@
 - **`SubAgentTool`**：实现 `BaseTool` trait，工具名为 `launch_agent`，LLM 通过调用此工具并传入 `agent_id` 来启动子 agent
 - **`SubAgentMiddleware`**：实现 `Middleware` trait（以及可选的 `ToolProvider`），负责构建并持有 `SubAgentTool`，向父 agent 注入该工具
 
-新增文件位于 `rust-agent-middlewares/src/subagent/`：
+新增文件位于 `peri-middlewares/src/subagent/`：
 
 ```
-rust-agent-middlewares/src/
+peri-middlewares/src/
   subagent/
     mod.rs          # SubAgentMiddleware + pub 导出
     tool.rs         # SubAgentTool (BaseTool 实现)
@@ -147,7 +147,7 @@ SubAgentTool::invoke({agent_id, task, cwd?})
 
 子 agent 与父 agent 共享 `event_handler`（`Arc<dyn AgentEventHandler>`），因此子 agent 的 `ToolStart`/`ToolEnd`/`TextChunk` 事件会直接触发父 event_handler，TUI 的 `poll_agent()` 逻辑无需修改即可展示子 agent 的执行过程。
 
-**TUI 实际接入**（`rust-agent-tui/src/app/agent.rs`）：
+**TUI 实际接入**（`peri-tui/src/app/agent.rs`）：
 
 ```rust
 // 1. 从 FilesystemMiddleware + TerminalMiddleware 收集父工具集
@@ -175,7 +175,7 @@ ReActAgent::new(model)
     .with_event_handler(Arc::clone(&handler))
 ```
 
-**辅助类型 `BoxToolWrapper`**（`rust-agent-middlewares/src/tools/mod.rs`）：将 `Box<dyn BaseTool>` 包装为可共享的 `Arc<dyn BaseTool>`，是连接中间件工具收集与父工具集构建的桥梁。
+**辅助类型 `BoxToolWrapper`**（`peri-middlewares/src/tools/mod.rs`）：将 `Box<dyn BaseTool>` 包装为可共享的 `Arc<dyn BaseTool>`，是连接中间件工具收集与父工具集构建的桥梁。
 
 ## 实现要点
 
@@ -193,7 +193,7 @@ ReActAgent::new(model)
 
 - 无 `spec/global/constraints.md`，跳过约束检查
 - 方案完全遵循现有 `BaseTool`/`Middleware`/`ReActAgent` 模式，无破坏性变更
-- 新增代码仅在 `rust-agent-middlewares` crate，不修改 `rust-create-agent` 核心 trait
+- 新增代码仅在 `peri-middlewares` crate，不修改 `peri-agent` 核心 trait
 
 ## 验收标准
 
@@ -204,5 +204,5 @@ ReActAgent::new(model)
 - [x] 子 agent 无法再次调用 `launch_agent`（无递归风险）
 - [x] agent 定义文件不存在时，工具返回清晰的错误信息
 - [x] 单元测试：工具过滤逻辑、agent 文件查找、错误路径覆盖
-- [x] TUI 接入：SubAgentMiddleware 已挂载到 rust-agent-tui
+- [x] TUI 接入：SubAgentMiddleware 已挂载到 peri-tui
 - [x] 执行结果摘要：工具调用列表 + 最终回答，中间结果舍弃

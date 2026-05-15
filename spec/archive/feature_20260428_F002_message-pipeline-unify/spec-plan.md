@@ -8,7 +8,7 @@
 
 ## 改动总览
 
-- 本次改动集中在 `rust-agent-tui/src/app/` 内的 6 个文件，涉及事件定义、管线核心、事件处理和线程操作四个层次
+- 本次改动集中在 `peri-tui/src/app/` 内的 6 个文件，涉及事件定义、管线核心、事件处理和线程操作四个层次
 - Task 1 拆分 AgentEvent（事件层）→ Task 2 接入 Pipeline 到 AppCore（结构层）→ Task 3 扩展 Pipeline handle_event（管线层）→ Task 4 重构 agent_ops（处理层）→ Task 5 适配恢复路径（恢复层），严格顺序依赖
 - 关键决策：保留 AppendChunk 流式优化，Done 时 reconcile 确保最终一致；ToolStart/ToolEnd 拆分仅在 TUI 内部，不影响核心层 ExecutorEvent
 
@@ -24,7 +24,7 @@
 #### 执行步骤
 
 - [ ] **步骤 1: 在 events.rs 中新增 ToolStart 和 ToolEnd 变体**
-  - **目标文件**: `rust-agent-tui/src/app/events.rs`
+  - **目标文件**: `peri-tui/src/app/events.rs`
   - **位置**: 在 `AgentEvent` 枚举定义中（line 7-13），删除 `ToolCall` 变体，在其原位置插入两个新变体
   - **内容**: 
     ```rust
@@ -47,7 +47,7 @@
   - **原因**: 拆分混合语义为两个独立事件，ToolStart 携带原始 input 供 Pipeline 做路径缩短，ToolEnd 携带输出结果
 
 - [ ] **步骤 2: 在 events.rs 顶部添加 serde_json 导入**
-  - **目标文件**: `rust-agent-tui/src/app/events.rs`
+  - **目标文件**: `peri-tui/src/app/events.rs`
   - **位置**: 在文件开头（line 1-4），添加 `use serde_json::Value;` 导入
   - **内容**: 
     ```rust
@@ -56,7 +56,7 @@
   - **原因**: ToolStart 变体需要使用 `serde_json::Value` 类型存储原始 input
 
 - [ ] **步骤 3: 在 agent.rs 中调整 map_executor_event 的 ToolStart 分支**
-  - **目标文件**: `rust-agent-tui/src/app/agent.rs`
+  - **目标文件**: `peri-tui/src/app/agent.rs`
   - **位置**: 在 `map_executor_event` 函数的 `ExecutorEvent::ToolStart` 匹配分支（line 244-250），将 `AgentEvent::ToolCall` 改为 `AgentEvent::ToolStart`
   - **内容**: 
     ```rust
@@ -71,7 +71,7 @@
   - **原因**: 将核心层的 ToolStart 事件映射到新的 AgentEvent::ToolStart，携带格式化后的 args 和原始 input
 
 - [ ] **步骤 4: 在 agent.rs 中调整 map_executor_event 的 ask_user ToolEnd 分支**
-  - **目标文件**: `rust-agent-tui/src/app/agent.rs`
+  - **目标文件**: `peri-tui/src/app/agent.rs`
   - **位置**: 在 `map_executor_event` 函数的 `ExecutorEvent::ToolEnd { name, is_error: false, .. } if name == "ask_user"` 匹配分支（line 256-264），将 `AgentEvent::ToolCall` 改为 `AgentEvent::ToolEnd`
   - **内容**: 
     ```rust
@@ -87,7 +87,7 @@
   - **原因**: ask_user 成功时映射为 ToolEnd 事件，携带用户回答作为 output
 
 - [ ] **步骤 5: 在 agent.rs 中调整 map_executor_event 的错误 ToolEnd 分支**
-  - **目标文件**: `rust-agent-tui/src/app/agent.rs`
+  - **目标文件**: `peri-tui/src/app/agent.rs`
   - **位置**: 在 `map_executor_event` 函数的 `ExecutorEvent::ToolEnd { is_error: true, .. }` 匹配分支（line 266-272），将 `AgentEvent::ToolCall` 改为 `AgentEvent::ToolEnd`
   - **内容**: 
     ```rust
@@ -101,7 +101,7 @@
   - **原因**: 工具执行错误时映射为 ToolEnd 事件，is_error=true，携带错误信息
 
 - [ ] **步骤 6: 在 headless.rs test_tool_call_renders 中改用 ToolStart**
-  - **目标文件**: `rust-agent-tui/src/ui/headless.rs`
+  - **目标文件**: `peri-tui/src/ui/headless.rs`
   - **位置**: 在 `test_tool_call_renders` 测试函数（line 96-102），将 `AgentEvent::ToolCall` 改为 `AgentEvent::ToolStart`
   - **内容**: 
     ```rust
@@ -116,7 +116,7 @@
   - **原因**: 测试中 `is_error: false` 表示工具调用开始，应使用 ToolStart 事件
 
 - [ ] **步骤 7: 在 headless.rs test_subagent_group_tools 中改用 ToolStart**
-  - **目标文件**: `rust-agent-tui/src/ui/headless.rs`
+  - **目标文件**: `peri-tui/src/ui/headless.rs`
   - **位置**: 在 `test_subagent_group_tools` 测试函数（line 395-408），将两处 `AgentEvent::ToolCall` 改为 `AgentEvent::ToolStart`
   - **内容**: 
     ```rust
@@ -138,7 +138,7 @@
   - **原因**: 测试中 SubAgent 内部的工具调用（is_error: false）表示工具开始，应使用 ToolStart 事件
 
 - [ ] **步骤 8: 在 headless.rs test_subagent_group_sliding_window 中改用 ToolStart**
-  - **目标文件**: `rust-agent-tui/src/ui/headless.rs`
+  - **目标文件**: `peri-tui/src/ui/headless.rs`
   - **位置**: 在 `test_subagent_group_sliding_window` 测试函数的循环（line 447-453），将 `AgentEvent::ToolCall` 改为 `AgentEvent::ToolStart`
   - **内容**: 
     ```rust
@@ -155,7 +155,7 @@
   - **原因**: 测试中循环创建的工具调用（is_error: false）表示工具开始，应使用 ToolStart 事件
 
 - [ ] **步骤 9: 在 headless.rs test_tool_call_message_visible_when_toggled 中改用 ToolStart**
-  - **目标文件**: `rust-agent-tui/src/ui/headless.rs`
+  - **目标文件**: `peri-tui/src/ui/headless.rs`
   - **位置**: 在 `test_tool_call_message_visible_when_toggled` 测试函数（line 522-528），将 `AgentEvent::ToolCall` 改为 `AgentEvent::ToolStart`
   - **内容**: 
     ```rust
@@ -170,7 +170,7 @@
   - **原因**: 测试中 `is_error: false` 表示工具调用开始，应使用 ToolStart 事件
 
 - [ ] **步骤 10: 在 headless.rs test_tool_call_without_assistant_chunk_no_bubble 中改用 ToolStart**
-  - **目标文件**: `rust-agent-tui/src/ui/headless.rs`
+  - **目标文件**: `peri-tui/src/ui/headless.rs`
   - **位置**: 在 `test_tool_call_without_assistant_chunk_no_bubble` 测试函数（line 605-611），将 `AgentEvent::ToolCall` 改为 `AgentEvent::ToolStart`
   - **内容**: 
     ```rust
@@ -185,7 +185,7 @@
   - **原因**: 测试中 `is_error: false` 表示工具调用开始，应使用 ToolStart 事件
 
 - [ ] **步骤 11: 在 agent_ops.rs 中临时兼容 ToolStart 事件**
-  - **目标文件**: `rust-agent-tui/src/app/agent_ops.rs`
+  - **目标文件**: `peri-tui/src/app/agent_ops.rs`
   - **位置**: 在 `handle_agent_event` 函数的 `match event` 分支中，查找 `AgentEvent::ToolCall` 的处理逻辑，在其后添加 `AgentEvent::ToolStart` 和 `AgentEvent::ToolEnd` 的临时兼容分支
   - **内容**: 
     ```rust
@@ -203,11 +203,11 @@
   - **原因**: 在 Task 4 重构前，确保新事件类型能被正确处理，保持现有行为
 
 - [x] **步骤 12: 运行所有 headless 测试验证事件拆分**
-  - **目标文件**: `rust-agent-tui/src/ui/headless.rs`
+  - **目标文件**: `peri-tui/src/ui/headless.rs`
   - **位置**: 终端执行测试命令
   - **内容**: 
     ```bash
-    cargo test -p rust-agent-tui --lib -- headless
+    cargo test -p peri-tui --lib -- headless
     ```
   - **预期输出**: 所有测试通过，无编译错误，输出包含 `test result: ok. X passed`（X 为测试数量）
   - **原因**: 验证事件拆分后测试代码正确适配，现有功能未受影响
@@ -224,7 +224,7 @@
 #### 执行步骤
 
 - [x] **步骤 1: 在 core.rs 顶部添加 MessagePipeline 导入**
-  - **目标文件**: `rust-agent-tui/src/app/core.rs`
+  - **目标文件**: `peri-tui/src/app/core.rs`
   - **位置**: 在文件开头（line 1-16），找到 `use super::agent_panel::AgentPanel;` 等导入语句，在其后添加新的导入
   - **内容**: 
     ```rust
@@ -233,7 +233,7 @@
   - **原因**: AppCore 结构体需要使用 MessagePipeline 类型，必须先导入该模块
 
 - [x] **步骤 2: 在 AppCore 结构体中添加 pipeline 字段**
-  - **目标文件**: `rust-agent-tui/src/app/core.rs`
+  - **目标文件**: `peri-tui/src/app/core.rs`
   - **位置**: 在 `pub struct AppCore` 结构体定义中（line 19-48），在 `pub view_messages: Vec<MessageViewModel>,` 之后（line 20 之后）插入新字段
   - **内容**: 
     ```rust
@@ -242,7 +242,7 @@
   - **原因**: 添加 MessagePipeline 实例到 AppCore，使其成为消息状态管理的核心组件
 
 - [x] **步骤 3: 调整 AppCore::new 方法签名，添加 cwd 参数**
-  - **目标文件**: `rust-agent-tui/src/app/core.rs`
+  - **目标文件**: `peri-tui/src/app/core.rs`
   - **位置**: 在 `impl AppCore` 块的 `pub fn new` 方法签名（line 52），在 `command_registry: CommandRegistry,` 参数之后、`skills: Vec<SkillMetadata>)` 参数之前插入新参数
   - **内容**: 
     ```rust
@@ -256,7 +256,7 @@
   - **原因**: MessagePipeline::new() 需要 cwd 参数，必须在 AppCore::new() 中接收并传递
 
 - [x] **步骤 4: 在 AppCore::new 方法体中初始化 pipeline 字段**
-  - **目标文件**: `rust-agent-tui/src/app/core.rs`
+  - **目标文件**: `peri-tui/src/app/core.rs`
   - **位置**: 在 `AppCore::new` 方法体的结构体初始化代码中（line 62-88），在 `view_messages: Vec::new(),` 之后（line 63 之后）插入新字段初始化
   - **内容**: 
     ```rust
@@ -265,7 +265,7 @@
   - **原因**: 使用传入的 cwd 参数初始化 MessagePipeline 实例，存储在 AppCore 中
 
 - [x] **步骤 5: 调整 app/mod.rs 的 App::new 方法，传递 cwd 参数给 AppCore::new**
-  - **目标文件**: `rust-agent-tui/src/app/mod.rs`
+  - **目标文件**: `peri-tui/src/app/mod.rs`
   - **位置**: 在 `impl App` 块的 `App::new` 方法中（line 150），找到 `core: AppCore::new(render_tx, render_cache, render_notify, command_registry, skills),` 调用，在第一个参数位置插入 cwd 参数
   - **内容**: 
     ```rust
@@ -274,7 +274,7 @@
   - **原因**: App::new() 方法已有 cwd 参数（line 153），需要将其传递给 AppCore::new() 以初始化 Pipeline
 
 - [x] **步骤 6: 调整 panel_ops.rs 的 new_headless 方法，传递 cwd 参数给 AppCore::new**
-  - **目标文件**: `rust-agent-tui/src/app/panel_ops.rs`
+  - **目标文件**: `peri-tui/src/app/panel_ops.rs`
   - **位置**: 在 `pub fn new_headless` 方法中（line 207-213），找到 `let core = super::AppCore::new(...)` 调用，在第一个参数位置插入 cwd 参数
   - **内容**: 
     ```rust
@@ -290,7 +290,7 @@
   - **原因**: new_headless 用于测试，使用固定测试目录 "/tmp" 作为 cwd，确保 AppCore::new() 接收到有效的 cwd 参数
 
 - [x] **步骤 7: 在 core.rs 中添加单元测试验证 pipeline 字段初始化**
-  - **目标文件**: `rust-agent-tui/src/app/core.rs`
+  - **目标文件**: `peri-tui/src/app/core.rs`
   - **位置**: 在文件末尾（impl AppCore 块之后），添加新的测试模块
   - **内容**: 
     ```rust
@@ -327,21 +327,21 @@
   - **原因**: 验证 AppCore 正确初始化 MessagePipeline 实例，cwd 参数正确传递，确保后续 Task 可以依赖 core.pipeline 访问 Pipeline 功能
 
 - [x] **步骤 8: 运行 core.rs 单元测试验证 pipeline 初始化**
-  - **目标文件**: `rust-agent-tui/src/app/core.rs`
+  - **目标文件**: `peri-tui/src/app/core.rs`
   - **位置**: 终端执行测试命令
   - **内容**: 
     ```bash
-    cargo test -p rust-agent-tui --lib -- test_appcore_pipeline_initialized
+    cargo test -p peri-tui --lib -- test_appcore_pipeline_initialized
     ```
   - **预期输出**: 测试通过，输出包含 `test test_appcore_pipeline_initialized ... ok` 和 `test result: ok. 1 passed`
   - **原因**: 验证 pipeline 字段正确初始化，确保 AppCore 持有有效的 MessagePipeline 实例，为后续 Task 奠定基础
 
 - [x] **步骤 9: 运行所有单元测试确保无回归**
-  - **目标文件**: `rust-agent-tui/src/app/`
+  - **目标文件**: `peri-tui/src/app/`
   - **位置**: 终端执行测试命令
   - **内容**: 
     ```bash
-    cargo test -p rust-agent-tui --lib
+    cargo test -p peri-tui --lib
     ```
   - **预期输出**: 所有测试通过，无编译错误，输出包含 `test result: ok. X passed`（X 为测试数量）
   - **原因**: 确保 AppCore::new() 签名变更后，所有现有调用点（app/mod.rs 和 panel_ops.rs）正确适配，无功能回归
@@ -355,13 +355,13 @@
 #### 执行步骤
 
 - [x] **步骤 1: 在 message_pipeline.rs 顶部添加 AgentEvent 导入**
-  - 目标文件: `rust-agent-tui/src/app/message_pipeline.rs`
+  - 目标文件: `peri-tui/src/app/message_pipeline.rs`
   - 位置: 在现有 `use` 语句之后（~L30），添加 `use crate::app::events::AgentEvent;`
   - 内容: `use crate::app::events::AgentEvent;`
   - 原因: handle_event 方法需要匹配 AgentEvent 枚举变体
 
 - [x] **步骤 2: 在 MessagePipeline impl 块中新增 handle_event 方法**
-  - 目标文件: `rust-agent-tui/src/app/message_pipeline.rs`
+  - 目标文件: `peri-tui/src/app/message_pipeline.rs`
   - 位置: 在 `pub fn cwd(&self)` 方法之后（~L116），插入新的 `handle_event` 方法
   - 内容:
     ```rust
@@ -444,7 +444,7 @@
   - 原因: 提供统一入口，让 agent_ops 可以一行代码委托所有消息状态管理。每个分支内部调用已有的 Pipeline 方法（push_chunk / tool_start / tool_end / done / reconcile），不重复实现逻辑
 
 - [x] **步骤 3: 新增 handle_event 的单元测试——流式文本路径**
-  - 目标文件: `rust-agent-tui/src/app/message_pipeline.rs`
+  - 目标文件: `peri-tui/src/app/message_pipeline.rs`
   - 位置: 在现有 `mod tests` 块末尾（~L640），追加测试函数
   - 内容:
     ```rust
@@ -513,10 +513,10 @@
 #### 检查步骤
 
 - [x] 验证 handle_event 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 编译成功，无错误
 - [x] 运行 message_pipeline 测试
-  - `cargo test -p rust-agent-tui --lib -- message_pipeline`
+  - `cargo test -p peri-tui --lib -- message_pipeline`
   - 预期: 所有测试通过（原有 5 个 + 新增 4 个 = 9 个）
 
 ---

@@ -529,16 +529,18 @@ submit_message(text)
 ## Issue 经验附录
 
 ### issue_2026-05-12-textarea-mouse-click-cursor-misposition-cjk
+
 **摘要:** 输入框鼠标点击光标定位不准
 **状态:** Fixed
 **归档日期:** 2026-05-13
 **关键词:** CJK 宽度, unicode-width, 鼠标定位, display_col_to_char_idx
 **问题本质:** 三个偏移叠加：(1) CJK 字符占 2 列宽但 Jump 期望字符索引；(2) Block padding 偏移 2 列未计算 inner area；(3) 水平滚动偏移未考虑
 **通用模式:** 终端 UI 中鼠标坐标是显示列（display column），而光标位置是字符索引（char index）。包含 CJK 字符时两者非线性关系，需要逐字符累加 unicode_width 转换。Block 的 padding/border 和水平滚动也需要纳入偏移计算
-**涉及文件:** rust-agent-tui/src/event.rs, rust-agent-tui/src/app/mod.rs, rust-agent-tui/src/ui/main_ui.rs
+**涉及文件:** peri-tui/src/event.rs, peri-tui/src/app/mod.rs, peri-tui/src/ui/main_ui.rs
 **CLAUDE.md 链接:** false
 
 ### issue_2026-05-14-streaming-resize-cpu-spike
+
 **摘要:** 流式加载期间拖动窗口宽度，Resize 事件无节流导致 CPU 暴涨
 **状态:** Fixed
 **归档日期:** 2026-05-15
@@ -546,7 +548,7 @@ submit_message(text)
 **问题本质:** 拖动 resize 时 crossterm 每帧发送 Resize 事件（60fps = 60次/秒），每个事件触发渲染线程全量重建（message_hashes.clear() + rebuild + build_wrap_map 换行计算）。流式期间叠加 100ms Rebuild 事件，渲染线程饱和。
 **通用模式:** 渲染事件的发送端和接收端都需要节流/合并：发送端用 last_resize_width 去抖（仅在宽度实际变化时发送），接收端用 drain coalescing（合并积压事件）。单端优化不足以解决问题。
 **技术决策:** last_resize_width 字段记录已发送宽度，Resize handler 中 try_recv() drain 合并所有积压事件
-**涉及文件:** rust-agent-tui/src/app/message_state.rs, rust-agent-tui/src/ui/main_ui.rs, rust-agent-tui/src/ui/render_thread.rs
+**涉及文件:** peri-tui/src/app/message_state.rs, peri-tui/src/ui/main_ui.rs, peri-tui/src/ui/render_thread.rs
 **CLAUDE.md 链接:** false
 
 ---
@@ -556,7 +558,7 @@ submit_message(text)
 - → [agent.md#20260322_F001_agent-storage-refactor](./agent.md#20260322_F001_agent-storage-refactor) — SQLite 持久化，TUI 消息渲染依赖此存储
 - → [langfuse.md#feature_20260324_F001_langfuse-tui-monitoring](./langfuse.md#feature_20260324_F001_langfuse-tui-monitoring) — Langfuse 追踪集成在 TUI 的 app/agent.rs
 - → [agent.md#feature_20260328_F001_ask-user-question-align](./agent.md#feature_20260328_F001_ask-user-question-align) — AskUser 弹窗展示更新（header + description），TUI 弹窗同步更新
-- → [tui-widgets.md](./tui-widgets.md) — perihelion-widgets 独立 widget crate 和 Spinner/ToolCall/MessageBlock 组件
+- → [tui-widgets.md](./tui-widgets.md) — peri-widgets 独立 widget crate 和 Spinner/ToolCall/MessageBlock 组件
 - → [code-highlight.md](./code-highlight.md) — syntect 代码高亮集成到 Markdown 渲染
 - → [mouse-selection.md](./mouse-selection.md) — 鼠标拖拽文字选区和剪贴板复制
 - → [skill-trigger.md](./skill-trigger.md) — Skills 触发键从 # 统一到 / 前缀

@@ -9,7 +9,7 @@
 ## 验收前准备
 
 ### 环境要求
-- [x] [AUTO] 编译项目: `cargo build -p rust-agent-tui 2>&1 | tail -3`
+- [x] [AUTO] 编译项目: `cargo build -p peri-tui 2>&1 | tail -3`
 
 ---
 
@@ -21,15 +21,15 @@
 - **来源:** spec-plan.md Task 2 验收步骤 1
 - **目的:** 确认所有测试（含新增的过滤逻辑单元测试）均通过
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui 2>&1 | tail -5` → 期望包含: all passed
+  1. [A] `cargo test -p peri-tui 2>&1 | tail -5` → 期望包含: all passed
 
 #### - [x] 1.2 过滤逻辑单元测试
 - **来源:** spec-plan.md Task 1 单元测试
 - **目的:** 确认 3 个过滤场景（匹配、无匹配、全匹配）正确
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui -- filter_keeps_matching_cwd 2>&1 | tail -1` → 期望包含: ok
-  2. [A] `cargo test -p rust-agent-tui -- filter_returns_empty_when_no_match 2>&1 | tail -1` → 期望包含: ok
-  3. [A] `cargo test -p rust-agent-tui -- filter_keeps_all_when_all_match 2>&1 | tail -1` → 期望包含: ok
+  1. [A] `cargo test -p peri-tui -- filter_keeps_matching_cwd 2>&1 | tail -1` → 期望包含: ok
+  2. [A] `cargo test -p peri-tui -- filter_returns_empty_when_no_match 2>&1 | tail -1` → 期望包含: ok
+  3. [A] `cargo test -p peri-tui -- filter_keeps_all_when_all_match 2>&1 | tail -1` → 期望包含: ok
 
 ---
 
@@ -39,7 +39,7 @@
 - **来源:** spec-plan.md Task 2 验收步骤 2 / spec-design.md 验收标准
 - **目的:** 确认 `/history` 面板按 cwd 过滤，标题包含当前路径
 - **操作步骤:**
-  1. [H] 启动 `cargo run -p rust-agent-tui`，输入 `/history`，观察面板标题和列表内容 → 是/否
+  1. [H] 启动 `cargo run -p peri-tui`，输入 `/history`，观察面板标题和列表内容 → 是/否
 
 ---
 

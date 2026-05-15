@@ -19,9 +19,9 @@ TUI 的工具调用显示目前存在以下问题：
 ### 1. 工具调用颜色分层
 
 **涉及文件：**
-- `rust-agent-tui/src/ui/message_render.rs`（渲染层）
-- `rust-agent-tui/src/ui/message_view.rs`（ViewModel）
-- `rust-agent-tui/src/app/tool_display.rs`（格式化工具）
+- `peri-tui/src/ui/message_render.rs`（渲染层）
+- `peri-tui/src/ui/message_view.rs`（ViewModel）
+- `peri-tui/src/app/tool_display.rs`（格式化工具）
 
 **ViewModel 变更：**
 
@@ -166,7 +166,7 @@ TODO 面板属于主 UI 线程（`render` 函数）直接渲染，从 `App.todo_
 
 ## 约束一致性
 
-- 本方案仅修改 `rust-agent-tui` 的 UI 层（`src/ui/`, `src/app/`），不涉及 `rust-create-agent` 和 `rust-agent-middlewares` 核心 crate，符合模块边界约定。
+- 本方案仅修改 `peri-tui` 的 UI 层（`src/ui/`, `src/app/`），不涉及 `peri-agent` 和 `peri-middlewares` 核心 crate，符合模块边界约定。
 - TUI 渲染双线程架构（主 UI 线程 + 渲染线程）不变，TODO 面板直接由主 UI 线程渲染，消息流仍走渲染线程，职责分离保持清晰。
 - 不引入新依赖，不改变现有持久化或事件通信机制。
 

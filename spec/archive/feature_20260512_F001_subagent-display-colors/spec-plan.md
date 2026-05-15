@@ -15,7 +15,7 @@ Task 6 (测试) ← 依赖 Task 1-5 全部完成
 
 ## Task 1: 扩展 SubAgentGroup 数据模型
 
-**文件**: `rust-agent-tui/src/ui/message_view.rs`
+**文件**: `peri-tui/src/ui/message_view.rs`
 
 **改动**:
 
@@ -32,14 +32,14 @@ Task 6 (测试) ← 依赖 Task 1-5 全部完成
    - `drain_subagent_stack` 中异常残留路径
    - `message_pipeline.rs` 中所有 `SubAgentGroup` 构造点
 
-**验证**: `cargo build -p rust-agent-tui` 编译通过
+**验证**: `cargo build -p peri-tui` 编译通过
 - [x] 扩展 SubAgentGroup 数据模型 (编译通过)
 
 ---
 
 ## Task 2: Pipeline SubAgentState + 事件处理
 
-**文件**: `rust-agent-tui/src/app/message_pipeline.rs`
+**文件**: `peri-tui/src/app/message_pipeline.rs`
 
 **改动**:
 
@@ -60,14 +60,14 @@ Task 6 (测试) ← 依赖 Task 1-5 全部完成
    - `build_tail_vms` 中从 `subagent_stack` 构建的路径
    - `drain_subagent_stack` 中异常残留路径
 
-**验证**: `cargo build -p rust-agent-tui` 编译通过
+**验证**: `cargo build -p peri-tui` 编译通过
 - [x] Pipeline SubAgentState + 事件处理 (编译通过)
 
 ---
 
 ## Task 3: 渲染格式变更
 
-**文件**: `rust-agent-tui/src/ui/message_render.rs`
+**文件**: `peri-tui/src/ui/message_render.rs`
 
 **改动**:
 
@@ -94,14 +94,14 @@ Task 6 (测试) ← 依赖 Task 1-5 全部完成
 
 4. 函数签名需匹配 SubAgentGroup 的新字段（`is_background`, `bg_hash`）
 
-**验证**: `cargo build -p rust-agent-tui` 编译通过
+**验证**: `cargo build -p peri-tui` 编译通过
 - [x] 渲染格式变更 (编译通过)
 
 ---
 
 ## Task 4: 后台完成处理变更
 
-**文件**: `rust-agent-tui/src/app/agent_events_bg.rs`
+**文件**: `peri-tui/src/app/agent_events_bg.rs`
 
 **改动**:
 
@@ -116,14 +116,14 @@ Task 6 (测试) ← 依赖 Task 1-5 全部完成
 
 4. 保留 continuation 流程（`agent_done_pending_bg` + `pending_bg_continuation`，不变）
 
-**验证**: `cargo build -p rust-agent-tui` 编译通过
+**验证**: `cargo build -p peri-tui` 编译通过
 - [x] 后台完成处理变更 (编译通过)
 
 ---
 
 ## Task 5: 持久化恢复路径
 
-**文件**: `rust-agent-tui/src/ui/message_view.rs`
+**文件**: `peri-tui/src/ui/message_view.rs`
 
 **改动**:
 
@@ -134,7 +134,7 @@ Task 6 (测试) ← 依赖 Task 1-5 全部完成
 
 2. 考虑将 `parse_bg_hash` 放到 `tool_display.rs` 作为公共函数（两个文件都可引用）
 
-**验证**: `cargo build -p rust-agent-tui` 编译通过
+**验证**: `cargo build -p peri-tui` 编译通过
 - [x] 持久化恢复路径 (编译通过)
 
 ---
@@ -142,8 +142,8 @@ Task 6 (测试) ← 依赖 Task 1-5 全部完成
 ## Task 6: 测试更新与验证
 
 **文件**:
-- `rust-agent-tui/src/app/message_pipeline_test.rs`
-- `rust-agent-tui/src/ui/headless.rs`
+- `peri-tui/src/app/message_pipeline_test.rs`
+- `peri-tui/src/ui/headless.rs`
 
 **改动**:
 
@@ -160,12 +160,12 @@ Task 6 (测试) ← 依赖 Task 1-5 全部完成
 
 4. Headless 测试确认渲染不变（如果有的话）
 
-**验证**: `cargo test -p rust-agent-tui` 全部通过
+**验证**: `cargo test -p peri-tui` 全部通过
 - [x] 测试更新与验证 (全部 393 个测试通过)
 
 **额外修复**: 修改 `in_subagent()` 方法，只检查前台 agent（后台 agent 不阻塞 Done 事件）
 
-**文件**: `rust-agent-tui/src/ui/message_render.rs`
+**文件**: `peri-tui/src/ui/message_render.rs`
 
 **改动**:
 
@@ -192,13 +192,13 @@ Task 6 (测试) ← 依赖 Task 1-5 全部完成
 
 4. 函数签名需匹配 SubAgentGroup 的新字段（`is_background`, `bg_hash`）
 
-**验证**: `cargo build -p rust-agent-tui` 编译通过
+**验证**: `cargo build -p peri-tui` 编译通过
 
 ---
 
 ## Task 4: 后台完成处理变更
 
-**文件**: `rust-agent-tui/src/app/agent_events_bg.rs`
+**文件**: `peri-tui/src/app/agent_events_bg.rs`
 
 **改动**:
 
@@ -213,13 +213,13 @@ Task 6 (测试) ← 依赖 Task 1-5 全部完成
 
 4. 保留 continuation 流程（`agent_done_pending_bg` + `pending_bg_continuation`，不变）
 
-**验证**: `cargo build -p rust-agent-tui` 编译通过
+**验证**: `cargo build -p peri-tui` 编译通过
 
 ---
 
 ## Task 5: 持久化恢复路径
 
-**文件**: `rust-agent-tui/src/ui/message_view.rs`
+**文件**: `peri-tui/src/ui/message_view.rs`
 
 **改动**:
 
@@ -230,15 +230,15 @@ Task 6 (测试) ← 依赖 Task 1-5 全部完成
 
 2. 考虑将 `parse_bg_hash` 放到 `tool_display.rs` 作为公共函数（两个文件都可引用）
 
-**验证**: `cargo build -p rust-agent-tui` 编译通过
+**验证**: `cargo build -p peri-tui` 编译通过
 
 ---
 
 ## Task 6: 测试更新与验证
 
 **文件**:
-- `rust-agent-tui/src/app/message_pipeline_test.rs`
-- `rust-agent-tui/src/ui/headless.rs`
+- `peri-tui/src/app/message_pipeline_test.rs`
+- `peri-tui/src/ui/headless.rs`
 
 **改动**:
 
@@ -255,4 +255,4 @@ Task 6 (测试) ← 依赖 Task 1-5 全部完成
 
 4. Headless 测试确认渲染不变（如果有的话）
 
-**验证**: `cargo test -p rust-agent-tui` 全部通过
+**验证**: `cargo test -p peri-tui` 全部通过

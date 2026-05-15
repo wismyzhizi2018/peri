@@ -4,7 +4,7 @@
 
 ## 领域综述
 
-Langfuse 领域负责 Agent 执行的全链路可观测性，将每次 LLM 调用、工具调用、对话 Session 结构化上报到 Langfuse 监控平台。所有 Langfuse 依赖和上报逻辑封装在 `rust-agent-tui` 层，不侵入 `rust-create-agent` 核心框架。
+Langfuse 领域负责 Agent 执行的全链路可观测性，将每次 LLM 调用、工具调用、对话 Session 结构化上报到 Langfuse 监控平台。所有 Langfuse 依赖和上报逻辑封装在 `peri-tui` 层，不侵入 `peri-agent` 核心框架。
 
 核心职责：
 - Trace 管理：每次用户发送消息对应一个 Trace，多轮消息共享同一 Session
@@ -78,10 +78,10 @@ new_thread() / open_thread():
 ### feature_20260324_F001_langfuse-tui-monitoring
 **摘要:** TUI 层接入 Langfuse 全链路追踪
 **关键决策:**
-- 侵入最小化：rust-create-agent 仅新增 LlmCallStart/LlmCallEnd 两个 AgentEvent 变体
+- 侵入最小化：peri-agent 仅新增 LlmCallStart/LlmCallEnd 两个 AgentEvent 变体
 - Batcher 生命周期：每次 submit_message 创建新 Batcher（Done 后 Drop 触发 flush）
 - 工具调用 pending_span FIFO 匹配（工具串行执行，按顺序关联 ToolStart/End）
-- 依赖隔离：langfuse-ergonomic 只在 rust-agent-tui 的 Cargo.toml 引入
+- 依赖隔离：langfuse-ergonomic 只在 peri-tui 的 Cargo.toml 引入
 **归档:** [链接](../../archive/feature_20260324_F001_langfuse-tui-monitoring/)
 **归档日期:** 2026-03-27
 

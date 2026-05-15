@@ -8,7 +8,7 @@
 
 ## 改动总览
 
-- 涉及 rust-agent-tui/src/app/core.rs 删除，18 个文件的 `session.core.*` 路径替换，event.rs 重构为主控分发
+- 涉及 peri-tui/src/app/core.rs 删除，18 个文件的 `session.core.*` 路径替换，event.rs 重构为主控分发
 - Task 5 提取最后 2 个小组件（CommandSystem + SessionMetadata），Task 6 消除 AppCore，Task 7 消除 God Object
 - 依赖链：Task 5（依赖 spec-plan-1 全部完成）→ Task 6 → Task 7
 - 关键决策：AppCore 消除后 `session.core.xxx` 路径全部替换为 `session.ui.xxx` / `session.messages.xxx` 等
@@ -23,10 +23,10 @@
 **执行步骤:**
 
 - [x] 验证第一阶段产出
-  - `ls rust-agent-tui/src/app/service_registry.rs rust-agent-tui/src/app/session_manager.rs rust-agent-tui/src/app/ui_state.rs rust-agent-tui/src/app/message_state.rs`
+  - `ls peri-tui/src/app/service_registry.rs peri-tui/src/app/session_manager.rs peri-tui/src/app/ui_state.rs peri-tui/src/app/message_state.rs`
   - 预期: 4 个文件均存在
 - [x] 验证构建和测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo test -p peri-tui 2>&1 | tail -5`
   - 预期: 全部测试通过
 
 **检查步骤:**
@@ -34,7 +34,7 @@
 - [x] 第一阶段文件完整
   - 上面的 ls 命令返回 0
 - [x] 测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | grep -c "test result: ok"`
+  - `cargo test -p peri-tui 2>&1 | grep -c "test result: ok"`
   - 预期: ≥ 1
 
 ---
@@ -48,17 +48,17 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/app/command_system.rs`, `rust-agent-tui/src/app/session_metadata.rs`
-- 修改: `rust-agent-tui/src/app/core.rs`, `rust-agent-tui/src/app/chat_session.rs`, `rust-agent-tui/src/app/mod.rs`, `rust-agent-tui/src/event.rs`, `rust-agent-tui/src/app/agent_ops.rs`, `rust-agent-tui/src/app/hint_ops.rs`, `rust-agent-tui/src/app/thread_ops.rs`, `rust-agent-tui/src/app/panel_ops.rs`, `rust-agent-tui/src/command/help.rs`, `rust-agent-tui/src/command/agents.rs`, `rust-agent-tui/src/ui/main_ui.rs`, `rust-agent-tui/src/ui/main_ui/popups/hints.rs`, `rust-agent-tui/src/ui/main_ui/sticky_header.rs`, `rust-agent-tui/src/ui/main_ui/status_bar.rs`, `rust-agent-tui/src/ui/headless.rs`
+- 新建: `peri-tui/src/app/command_system.rs`, `peri-tui/src/app/session_metadata.rs`
+- 修改: `peri-tui/src/app/core.rs`, `peri-tui/src/app/chat_session.rs`, `peri-tui/src/app/mod.rs`, `peri-tui/src/event.rs`, `peri-tui/src/app/agent_ops.rs`, `peri-tui/src/app/hint_ops.rs`, `peri-tui/src/app/thread_ops.rs`, `peri-tui/src/app/panel_ops.rs`, `peri-tui/src/command/help.rs`, `peri-tui/src/command/agents.rs`, `peri-tui/src/ui/main_ui.rs`, `peri-tui/src/ui/main_ui/popups/hints.rs`, `peri-tui/src/ui/main_ui/sticky_header.rs`, `peri-tui/src/ui/main_ui/status_bar.rs`, `peri-tui/src/ui/headless.rs`
 
 **执行步骤:**
 
-- [x] 创建 `rust-agent-tui/src/app/command_system.rs`，定义 CommandSystem 结构体
-  - 位置: 新建 `rust-agent-tui/src/app/command_system.rs`
+- [x] 创建 `peri-tui/src/app/command_system.rs`，定义 CommandSystem 结构体
+  - 位置: 新建 `peri-tui/src/app/command_system.rs`
   - 定义 3 个 pub 字段:
 
     ```rust
-    use rust_agent_middlewares::prelude::SkillMetadata;
+    use peri_middlewares::prelude::SkillMetadata;
     use crate::command::CommandRegistry;
 
     pub struct CommandSystem {
@@ -81,8 +81,8 @@
 
   - 原因: 将命令注册表、帮助列表、Skills 元数据聚合为独立结构体，消除 event.rs 中的 `std::mem::take` workaround
 
-- [x] 创建 `rust-agent-tui/src/app/session_metadata.rs`，定义 SessionMetadata 结构体
-  - 位置: 新建 `rust-agent-tui/src/app/session_metadata.rs`
+- [x] 创建 `peri-tui/src/app/session_metadata.rs`，定义 SessionMetadata 结构体
+  - 位置: 新建 `peri-tui/src/app/session_metadata.rs`
   - 定义 3 个 pub 字段:
 
     ```rust
@@ -108,7 +108,7 @@
   - 原因: 将低频访问的会话元数据聚合为独立结构体
 
 - [x] 在 `app/mod.rs` 中注册两个新模块
-  - 位置: `rust-agent-tui/src/app/mod.rs` 模块声明区（~L18-36），追加:
+  - 位置: `peri-tui/src/app/mod.rs` 模块声明区（~L18-36），追加:
 
     ```rust
     mod command_system;
@@ -120,7 +120,7 @@
   - 原因: 新模块需作为 app 子模块可见
 
 - [x] 在 ChatSession 中新增 `commands: CommandSystem` 和 `metadata: SessionMetadata` 字段（双写阶段）
-  - 位置: `rust-agent-tui/src/app/chat_session.rs` ChatSession 结构体（~L11-19）
+  - 位置: `peri-tui/src/app/chat_session.rs` ChatSession 结构体（~L11-19）
   - 在 `pub core: AppCore,` 之前添加:
 
     ```rust
@@ -144,7 +144,7 @@
   - 原因: 双写过渡——新旧路径共存，确保编译不中断
 
 - [x] 在 `panel_ops.rs` 的 `new_headless()` 中初始化 `commands` 和 `metadata` 字段
-  - 位置: `rust-agent-tui/src/app/panel_ops.rs` ChatSession 构造处（~L1076）
+  - 位置: `peri-tui/src/app/panel_ops.rs` ChatSession 构造处（~L1076）
   - 在 `core,` 之前添加:
 
     ```rust
@@ -155,7 +155,7 @@
   - 原因: headless 测试工厂必须同步创建新字段
 
 - [x] 迁移 `event.rs` 中 CommandSystem 字段访问并消除 `std::mem::take` workaround
-  - 位置: `rust-agent-tui/src/event.rs` ~L594-621
+  - 位置: `peri-tui/src/event.rs` ~L594-621
   - 将:
 
     ```rust
@@ -226,57 +226,57 @@
   - 原因: headless.rs 中 4 处 `std::mem::take` 是生产代码 workaround 的测试镜像，必须同步消除
 
 - [x] 删除 AppCore 中的 6 个已迁移字段
-  - 位置: `rust-agent-tui/src/app/core.rs` AppCore 结构体定义（~L16-64）
+  - 位置: `peri-tui/src/app/core.rs` AppCore 结构体定义（~L16-64）
   - 删除字段: `command_registry`, `command_help_list`, `skills`, `pending_attachments`, `last_human_message`, `pre_submit_state_len`
   - 位置: `AppCore::new()` — 从参数列表中删除 `command_registry: CommandRegistry, skills: Vec<SkillMetadata>`，从 `Self { ... }` 中删除对应 6 行，删除 `command_help_list` 的构建逻辑（~L76-86）
   - 位置: `AppCore::new()` — 从参数列表中保留 `cwd: String`（pipeline 仍需使用）
   - 原因: 双写阶段结束后清理旧字段
 
 - [x] 为 CommandSystem 编写单元测试
-  - 测试文件: `rust-agent-tui/src/app/command_system.rs`（模块内 `#[cfg(test)] mod tests`）
+  - 测试文件: `peri-tui/src/app/command_system.rs`（模块内 `#[cfg(test)] mod tests`）
   - 测试场景:
     - `test_command_system_new`: 使用 `default_registry()` + 空 skills 构建 CommandSystem → 验证 `command_help_list` 非空（至少包含 /help, /model 等内置命令）、`skills` 为空
     - `test_command_system_with_skills`: 传入 skills 列表 → 验证 `skills.len()` 与传入一致
     - `test_std_mem_take_eliminated`: 编译期验证——尝试 `std::mem::take(&mut commands.command_registry)` 后 `commands.command_registry.dispatch()` 无需 put_back 也可工作（通过字段投影拆分）
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- command_system`
+  - 运行命令: `cargo test -p peri-tui --lib -- command_system`
   - 预期: 所有测试通过
 
 - [x] 为 SessionMetadata 编写单元测试
-  - 测试文件: `rust-agent-tui/src/app/session_metadata.rs`（模块内 `#[cfg(test)] mod tests`）
+  - 测试文件: `peri-tui/src/app/session_metadata.rs`（模块内 `#[cfg(test)] mod tests`）
   - 测试场景:
     - `test_session_metadata_defaults`: `SessionMetadata::new()` → `pending_attachments` 为空、`last_human_message` 为 None、`pre_submit_state_len` 为 0
     - `test_session_metadata_mutate`: 设置 `last_human_message = Some("hello")`、`pre_submit_state_len = 5` → 验证可读取修改后的值
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- session_metadata`
+  - 运行命令: `cargo test -p peri-tui --lib -- session_metadata`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 AppCore 不再包含 CommandSystem 字段
-  - `grep -E "pub (command_registry|command_help_list|skills)" rust-agent-tui/src/app/core.rs`
+  - `grep -E "pub (command_registry|command_help_list|skills)" peri-tui/src/app/core.rs`
   - 预期: 0 行输出
 - [x] 验证 AppCore 不再包含 SessionMetadata 字段
-  - `grep -E "pub (pending_attachments|last_human_message|pre_submit_state_len)" rust-agent-tui/src/app/core.rs`
+  - `grep -E "pub (pending_attachments|last_human_message|pre_submit_state_len)" peri-tui/src/app/core.rs`
   - 预期: 0 行输出
 - [x] 验证 event.rs 中 `std::mem::take` 消除（command_registry 相关）
-  - `grep -n "std::mem::take.*command_registry" rust-agent-tui/src/event.rs`
+  - `grep -n "std::mem::take.*command_registry" peri-tui/src/event.rs`
   - 预期: 0 行输出
 - [x] 验证 headless.rs 中 `std::mem::take` 消除（command_registry 相关）
-  - `grep -n "std::mem::take.*command_registry" rust-agent-tui/src/ui/headless.rs`
+  - `grep -n "std::mem::take.*command_registry" peri-tui/src/ui/headless.rs`
   - 预期: 0 行输出
 - [x] 验证全项目无残留 `.core.` 前缀的 CommandSystem 字段
-  - `grep -rn "core\.\(command_registry\|command_help_list\|skills\)" rust-agent-tui/src/ | grep -v "spec-plan"`
+  - `grep -rn "core\.\(command_registry\|command_help_list\|skills\)" peri-tui/src/ | grep -v "spec-plan"`
   - 预期: 0 行输出
 - [x] 验证全项目无残留 `.core.` 前缀的 SessionMetadata 字段
-  - `grep -rn "core\.\(pending_attachments\|last_human_message\|pre_submit_state_len\)" rust-agent-tui/src/ | grep -v "spec-plan"`
+  - `grep -rn "core\.\(pending_attachments\|last_human_message\|pre_submit_state_len\)" peri-tui/src/ | grep -v "spec-plan"`
   - 预期: 0 行输出
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 构建成功，无错误
 - [x] 验证 headless 测试通过
-  - `cargo test -p rust-agent-tui --lib -- ui::headless::tests 2>&1 | tail -20`
+  - `cargo test -p peri-tui --lib -- ui::headless::tests 2>&1 | tail -20`
   - 预期: 所有测试通过
 - [x] 验证 CommandSystem + SessionMetadata 单元测试通过
-  - `cargo test -p rust-agent-tui --lib -- "command_system\|session_metadata" 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- "command_system\|session_metadata" 2>&1 | tail -10`
   - 预期: 所有测试通过
 
 ---
@@ -290,25 +290,25 @@
 
 **涉及文件:**
 
-- 删除: `rust-agent-tui/src/app/core.rs`
-- 修改: `rust-agent-tui/src/app/chat_session.rs`, `rust-agent-tui/src/app/mod.rs`, `rust-agent-tui/src/event.rs`, `rust-agent-tui/src/app/agent_ops.rs`, `rust-agent-tui/src/app/panel_ops.rs`, `rust-agent-tui/src/app/thread_ops.rs`, `rust-agent-tui/src/app/hint_ops.rs`, `rust-agent-tui/src/ui/main_ui.rs`, `rust-agent-tui/src/ui/main_ui/status_bar.rs`, `rust-agent-tui/src/ui/main_ui/panels/hooks.rs`, `rust-agent-tui/src/ui/main_ui/panels/model.rs`, `rust-agent-tui/src/ui/main_ui/panels/agent.rs`, `rust-agent-tui/src/ui/main_ui/panels/login.rs`, `rust-agent-tui/src/ui/main_ui/panels/mcp.rs`, `rust-agent-tui/src/ui/main_ui/panels/cron.rs`, `rust-agent-tui/src/ui/main_ui/panels/plugin.rs`, `rust-agent-tui/src/ui/main_ui/panels/thread_browser.rs`, `rust-agent-tui/src/ui/main_ui/panels/memory.rs`, `rust-agent-tui/src/ui/headless.rs`
+- 删除: `peri-tui/src/app/core.rs`
+- 修改: `peri-tui/src/app/chat_session.rs`, `peri-tui/src/app/mod.rs`, `peri-tui/src/event.rs`, `peri-tui/src/app/agent_ops.rs`, `peri-tui/src/app/panel_ops.rs`, `peri-tui/src/app/thread_ops.rs`, `peri-tui/src/app/hint_ops.rs`, `peri-tui/src/ui/main_ui.rs`, `peri-tui/src/ui/main_ui/status_bar.rs`, `peri-tui/src/ui/main_ui/panels/hooks.rs`, `peri-tui/src/ui/main_ui/panels/model.rs`, `peri-tui/src/ui/main_ui/panels/agent.rs`, `peri-tui/src/ui/main_ui/panels/login.rs`, `peri-tui/src/ui/main_ui/panels/mcp.rs`, `peri-tui/src/ui/main_ui/panels/cron.rs`, `peri-tui/src/ui/main_ui/panels/plugin.rs`, `peri-tui/src/ui/main_ui/panels/thread_browser.rs`, `peri-tui/src/ui/main_ui/panels/memory.rs`, `peri-tui/src/ui/headless.rs`
 
 **执行步骤:**
 
 - [x] 确认 AppCore 仅剩 `session_panels` 字段
-  - 位置: `rust-agent-tui/src/app/core.rs` AppCore 结构体
+  - 位置: `peri-tui/src/app/core.rs` AppCore 结构体
   - 验证 AppCore 中仅包含 `session_panels` 和 MessageState 字段（`view_messages`, `round_start_vm_idx`, `pipeline`, `render_tx`, `render_cache`, `render_notify`, `last_render_version`, `pending_messages`, `last_submitted_text`）。若 MessageState 字段仍在 AppCore 中（说明 Task 4 未迁移完成），先完成 MessageState 迁移再继续
   - 若 MessageState 字段已迁移到 ChatSession.messages，则 AppCore 仅剩 `session_panels`
   - 原因: 确认前置条件满足，避免部分迁移状态
 
 - [x] 将 `session_panels` 从 AppCore 移到 ChatSession 直接字段
-  - 位置: `rust-agent-tui/src/app/chat_session.rs` ChatSession 结构体（~L11-19）
+  - 位置: `peri-tui/src/app/chat_session.rs` ChatSession 结构体（~L11-19）
   - 添加 `pub session_panels: panel_manager::PanelManager,` 字段
   - 位置: `ChatSession::new()` 方法，在 `Self { ... }` 中添加 `session_panels: panel_manager::PanelManager::new(),`
   - 原因: `session_panels` 提升为 ChatSession 一级字段，不再经过 AppCore 中转
 
 - [x] 在 `panel_ops.rs` 的 `new_headless()` 中初始化 `session_panels`
-  - 位置: `rust-agent-tui/src/app/panel_ops.rs` ChatSession 构造处
+  - 位置: `peri-tui/src/app/panel_ops.rs` ChatSession 构造处
   - 添加 `session_panels: super::panel_manager::PanelManager::new(),`
   - 原因: headless 测试工厂同步创建
 
@@ -333,18 +333,18 @@
   - 若 MessageState 字段（`view_messages`, `round_start_vm_idx`, `pipeline`, `render_tx`, `render_cache`, `render_notify`, `last_render_version`, `pending_messages`, `last_submitted_text`）仍在 AppCore 中（Task 4 未完成），先执行 MessageState 迁移
   - 若已迁移到 `ChatSession.messages`，则替换 `.core.xxx` → `.messages.xxx`
   - 若已迁移到 `ChatSession.ui`（Task 3 已完成），则替换 `.core.xxx` → `.ui.xxx`
-  - 执行后确认: `grep -rn '\.core\.' rust-agent-tui/src/ | grep -v 'spec-plan' | grep -v 'app_core\|AppCore\|core.rs'` 返回 0 结果
+  - 执行后确认: `grep -rn '\.core\.' peri-tui/src/ | grep -v 'spec-plan' | grep -v 'app_core\|AppCore\|core.rs'` 返回 0 结果
   - 原因: 彻底清除所有 `.core.` 路径
 
 - [x] 删除 AppCore 结构体定义和 `app/core.rs` 文件
-  - 位置: `rust-agent-tui/src/app/core.rs` — 整个文件删除
-  - 位置: `rust-agent-tui/src/app/mod.rs` — 删除 `mod core;` 和 `pub use core::AppCore;`
-  - 位置: `rust-agent-tui/src/app/chat_session.rs` — 删除 `use super::AppCore;` 和 `pub core: AppCore,`
+  - 位置: `peri-tui/src/app/core.rs` — 整个文件删除
+  - 位置: `peri-tui/src/app/mod.rs` — 删除 `mod core;` 和 `pub use core::AppCore;`
+  - 位置: `peri-tui/src/app/chat_session.rs` — 删除 `use super::AppCore;` 和 `pub core: AppCore,`
   - 位置: 全项目搜索 `AppCore` 引用，确认无残留
   - 原因: AppCore 完全消除，不再需要
 
 - [x] 重新组织 ChatSession 结构体，确认 6 个一级字段
-  - 位置: `rust-agent-tui/src/app/chat_session.rs`
+  - 位置: `peri-tui/src/app/chat_session.rs`
   - 确认 ChatSession 最终结构:
 
     ```rust
@@ -359,42 +359,42 @@
         pub langfuse: LangfuseState,
         pub todo_items: Vec<TodoItem>,
         pub background_task_count: usize,
-        pub spinner_state: perihelion_widgets::SpinnerState,
+        pub spinner_state: peri_widgets::SpinnerState,
     }
     ```
 
   - 原因: ChatSession 成为清晰的多模块容器
 
 - [x] 为 AppCore 消除编写回归测试
-  - 测试文件: `rust-agent-tui/src/ui/headless.rs`（追加到现有测试模块）
+  - 测试文件: `peri-tui/src/ui/headless.rs`（追加到现有测试模块）
   - 测试场景:
     - `test_no_appcore_path`: 创建 headless app，验证 `app.session_mgr.current().session_panels.is_any_open() == false`（通过新路径访问 session_panels）
     - `test_session_fields_independent`: 验证 `session.ui.textarea`、`session.commands.command_registry`、`session.metadata.pending_attachments` 均可独立访问
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- "no_appcore\|session_fields_independent"`
+  - 运行命令: `cargo test -p peri-tui --lib -- "no_appcore\|session_fields_independent"`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 AppCore 结构体已删除
-  - `grep -rn "pub struct AppCore" rust-agent-tui/src/`
+  - `grep -rn "pub struct AppCore" peri-tui/src/`
   - 预期: 0 行输出
 - [x] 验证 core.rs 文件已删除
-  - `ls rust-agent-tui/src/app/core.rs 2>&1`
+  - `ls peri-tui/src/app/core.rs 2>&1`
   - 预期: "No such file or directory"
 - [x] 验证无残留 `.core.` 路径（不含注释和 spec-plan）
-  - `grep -rn '\.core\.' rust-agent-tui/src/ | grep -v 'spec-plan' | grep -v '//.*\.core\.' | grep -v 'AppCore' | wc -l`
+  - `grep -rn '\.core\.' peri-tui/src/ | grep -v 'spec-plan' | grep -v '//.*\.core\.' | grep -v 'AppCore' | wc -l`
   - 预期: 输出 0
 - [x] 验证 ChatSession 包含 session_panels 直接字段
-  - `grep "pub session_panels:" rust-agent-tui/src/app/chat_session.rs`
+  - `grep "pub session_panels:" peri-tui/src/app/chat_session.rs`
   - 预期: 1 行匹配
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 构建成功，无错误
 - [x] 验证 headless 测试通过
-  - `cargo test -p rust-agent-tui --lib -- ui::headless::tests 2>&1 | tail -20`
+  - `cargo test -p peri-tui --lib -- ui::headless::tests 2>&1 | tail -20`
   - 预期: 所有测试通过
 - [x] 验证 clippy 无警告
-  - `cargo clippy -p rust-agent-tui 2>&1 | grep -E 'warning|error' | head -10`
+  - `cargo clippy -p peri-tui 2>&1 | grep -E 'warning|error' | head -10`
   - 预期: 无新增 warning
 
 ---
@@ -408,18 +408,18 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/mod.rs`, `rust-agent-tui/src/event.rs`, `rust-agent-tui/src/ui/main_ui.rs`, `rust-agent-tui/src/app/panel_manager.rs`, `rust-agent-tui/src/app/panel_ops.rs`
+- 修改: `peri-tui/src/app/mod.rs`, `peri-tui/src/event.rs`, `peri-tui/src/ui/main_ui.rs`, `peri-tui/src/app/panel_manager.rs`, `peri-tui/src/app/panel_ops.rs`
 
 **执行步骤:**
 
 - [ ] 确认 App 仅含 3 个字段（services + session_mgr + global_panels）
-  - 位置: `rust-agent-tui/src/app/mod.rs` App 结构体（~L93-134）
+  - 位置: `peri-tui/src/app/mod.rs` App 结构体（~L93-134）
   - 验证 Task 1（ServiceRegistry）和 Task 2（SessionManager）已完成迁移，App 中无残留旧字段
   - 若有残留字段（如 `setup_wizard`, `oauth_prompt`, `mode_highlight_until` 等未被 Task 1 迁移的字段），将其移入 ServiceRegistry
   - 原因: 确认前置条件
 
 - [ ] 精简 PanelContext 结构体
-  - 位置: `rust-agent-tui/src/app/panel_manager.rs` PanelContext 定义（~L265-279）
+  - 位置: `peri-tui/src/app/panel_manager.rs` PanelContext 定义（~L265-279）
   - 当前 PanelContext 有 11 个字段，每个都是 App 字段的解构投影。Task 1-2 完成后可简化为:
 
     ```rust
@@ -434,7 +434,7 @@
   - 原因: PanelContext 从 11 字段简化为 2 字段引用，面板代码通过 `ctx.services.xxx` 访问
 
 - [ ] 重构 event.rs 为字段投影分发模式
-  - 位置: `rust-agent-tui/src/event.rs` — `handle_event()` 函数（全文件 2486 行）
+  - 位置: `peri-tui/src/event.rs` — `handle_event()` 函数（全文件 2486 行）
   - 在函数入口处（关键分支之前）添加统一解构:
 
     ```rust
@@ -458,7 +458,7 @@
   - 原因: DRY 原则——PanelContext 构造从每处 15 行降为 2 行
 
 - [ ] 重构 main_ui.rs 渲染函数签名
-  - 位置: `rust-agent-tui/src/ui/main_ui.rs` — `render()` 函数（~L19）
+  - 位置: `peri-tui/src/ui/main_ui.rs` — `render()` 函数（~L19）
   - 将 `render(f: &mut Frame, app: &mut App)` 签名改为接收子结构体引用:
 
     ```rust
@@ -477,41 +477,41 @@
   - 原因: 验收标准要求 0 处 workaround
 
 - [ ] 最终清理 mod.rs 中 App 的 re-export
-  - 位置: `rust-agent-tui/src/app/mod.rs` re-export 区域（~L79-89）
+  - 位置: `peri-tui/src/app/mod.rs` re-export 区域（~L79-89）
   - 删除 `pub use core::AppCore;`（已在 Task 6 删除 core.rs 时处理）
   - 确认 re-export 列表仅包含必要的公共类型
   - 原因: 清理过期 re-export
 
 - [ ] 为 God Object 消除编写最终验证测试
-  - 测试文件: `rust-agent-tui/src/app/mod.rs` 或 `rust-agent-tui/src/ui/headless.rs`
+  - 测试文件: `peri-tui/src/app/mod.rs` 或 `peri-tui/src/ui/headless.rs`
   - 测试场景:
     - `test_app_three_fields`: 编译期验证——`std::mem::size_of::<App>()` 的相对大小或通过 `#[cfg(test)]` 代码确认 App 仅 3 字段（services, session_mgr, global_panels）
     - `test_no_mem_take_workaround_in_event`: 搜索 event.rs 中 `std::mem::take` 出现次数（排除注释），预期为 0
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- "three_fields\|no_mem_take"`
+  - 运行命令: `cargo test -p peri-tui --lib -- "three_fields\|no_mem_take"`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [ ] 验证 App 结构体仅 3 字段
-  - `grep -E "^\s+pub [a-z_]+:" rust-agent-tui/src/app/mod.rs | grep -A 20 "pub struct App" | head -5`
+  - `grep -E "^\s+pub [a-z_]+:" peri-tui/src/app/mod.rs | grep -A 20 "pub struct App" | head -5`
   - 预期: 仅 services, session_mgr, global_panels 3 个字段
 - [ ] 验证 event.rs 中无 `std::mem::take` workaround（排除注释和 UI 数据转移）
-  - `grep -n "std::mem::take" rust-agent-tui/src/event.rs | grep -v "//"`
+  - `grep -n "std::mem::take" peri-tui/src/event.rs | grep -v "//"`
   - 预期: 0 行输出
 - [ ] 验证 PanelContext 仅 2 字段
-  - `grep -A 5 "pub struct PanelContext" rust-agent-tui/src/app/panel_manager.rs`
+  - `grep -A 5 "pub struct PanelContext" peri-tui/src/app/panel_manager.rs`
   - 预期: 仅 services 和 session_mgr 2 个字段
 - [ ] 验证无残留 `app.sessions` / `app.active` 直接访问
-  - `grep -rn 'app\.sessions\b\|app\.active\b' rust-agent-tui/src/ | grep -v 'session_mgr\|spec-plan\|//.*app\.' | wc -l`
+  - `grep -rn 'app\.sessions\b\|app\.active\b' peri-tui/src/ | grep -v 'session_mgr\|spec-plan\|//.*app\.' | wc -l`
   - 预期: 输出 0
 - [ ] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 构建成功，无错误
 - [ ] 验证 clippy 无警告
-  - `cargo clippy -p rust-agent-tui 2>&1 | grep -E 'warning|error' | head -10`
+  - `cargo clippy -p peri-tui 2>&1 | grep -E 'warning|error' | head -10`
   - 预期: 无新增 warning
 - [ ] 验证全部 headless 测试通过
-  - `cargo test -p rust-agent-tui --lib -- ui::headless::tests 2>&1 | tail -20`
+  - `cargo test -p peri-tui --lib -- ui::headless::tests 2>&1 | tail -20`
   - 预期: 所有测试通过
 
 ---
@@ -526,26 +526,26 @@
 **端到端验证:**
 
 1. 运行完整测试套件确保无回归
-   - `cargo test -p rust-agent-tui 2>&1 | tail -30`
+   - `cargo test -p peri-tui 2>&1 | tail -30`
    - 预期: 全部测试通过
    - 失败排查: 检查各 Task 的测试步骤
 
 2. 验证 App 结构体仅 3 字段
-   - `grep -A 10 "pub struct App" rust-agent-tui/src/app/mod.rs | grep "pub " | wc -l`
+   - `grep -A 10 "pub struct App" peri-tui/src/app/mod.rs | grep "pub " | wc -l`
    - 预期: 输出 3
 
 3. 验证 AppCore 完全消除
-   - `grep -rn "AppCore\|app\.core\b\|session\.core\b\|\.core\." rust-agent-tui/src/ | grep -v 'spec-plan' | wc -l`
+   - `grep -rn "AppCore\|app\.core\b\|session\.core\b\|\.core\." peri-tui/src/ | grep -v 'spec-plan' | wc -l`
    - 预期: 输出 0
 
 4. 验证无 `std::mem::take` workaround
-   - `grep -rn "std::mem::take" rust-agent-tui/src/event.rs | grep -v "//" | wc -l`
+   - `grep -rn "std::mem::take" peri-tui/src/event.rs | grep -v "//" | wc -l`
    - 预期: 输出 0
 
 5. 验证 ChatSession 包含 6 个子模块字段
-   - `grep "pub " rust-agent-tui/src/app/chat_session.rs | grep -E "(ui|messages|session_panels|commands|metadata|agent):" | wc -l`
+   - `grep "pub " peri-tui/src/app/chat_session.rs | grep -E "(ui|messages|session_panels|commands|metadata|agent):" | wc -l`
    - 预期: 输出 6
 
 6. 验证 clippy 无新增警告
-   - `cargo clippy -p rust-agent-tui 2>&1 | grep -E "warning\[|error\[" | head -10`
+   - `cargo clippy -p peri-tui 2>&1 | grep -E "warning\[|error\[" | head -10`
    - 预期: 无新增 warning 或 error

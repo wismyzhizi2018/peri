@@ -12,8 +12,8 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-middlewares/src/subagent/tool.rs`
-- 修改: `rust-agent-middlewares/src/subagent/mod.rs`
+- 修改: `peri-middlewares/src/subagent/tool.rs`
+- 修改: `peri-middlewares/src/subagent/mod.rs`
 
 **执行步骤:**
 
@@ -33,10 +33,10 @@
 **检查步骤:**
 
 - [x] 中间件层编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 编译成功无 error
 - [x] 中间件层现有测试全部通过
-  - `cargo test -p rust-agent-middlewares 2>&1 | tail -20`
+  - `cargo test -p peri-middlewares 2>&1 | tail -20`
   - 预期: 所有 test 结果为 ok
 
 ---
@@ -45,8 +45,8 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/provider.rs`
-- 修改: `rust-agent-tui/src/config/types.rs`
+- 修改: `peri-tui/src/app/provider.rs`
+- 修改: `peri-tui/src/config/types.rs`
 
 **执行步骤:**
 
@@ -64,10 +64,10 @@
 **检查步骤:**
 
 - [x] provider 单元测试通过
-  - `cargo test -p rust-agent-tui --lib -- provider 2>&1 | tail -15`
+  - `cargo test -p peri-tui --lib -- provider 2>&1 | tail -15`
   - 预期: 所有 test 结果为 ok，新增测试出现
 - [x] types 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 编译成功无 error
 
 ---
@@ -76,8 +76,8 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/agent.rs`
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`
+- 修改: `peri-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/agent_ops.rs`
 
 **执行步骤:**
 
@@ -94,7 +94,7 @@
 **检查步骤:**
 
 - [x] TUI 层编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 编译成功无 error
 - [x] 全量编译通过（无 warning breakage）
   - `cargo build 2>&1 | tail -5`
@@ -106,8 +106,8 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-middlewares/src/skills/loader.rs`
-- 修改: `rust-agent-middlewares/src/skills/mod.rs`
+- 修改: `peri-middlewares/src/skills/loader.rs`
+- 修改: `peri-middlewares/src/skills/mod.rs`
 
 **执行步骤:**
 
@@ -125,10 +125,10 @@
 **检查步骤:**
 
 - [ ] skills loader 单元测试通过
-  - `cargo test -p rust-agent-middlewares --lib -- skills::loader 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib -- skills::loader 2>&1 | tail -10`
   - 预期: 所有 test ok，新增 test_load_skill_with_model 通过
 - [ ] SkillsMiddleware 测试通过
-  - `cargo test -p rust-agent-middlewares --lib -- skills::tests 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib -- skills::tests 2>&1 | tail -10`
   - 预期: 所有 test ok
 
 ---
@@ -143,22 +143,22 @@
 **端到端验证:**
 
 1. agent.md 设置 model: haiku 时子 Agent 使用正确模型
-   - `cargo test -p rust-agent-middlewares --lib -- subagent::tool::tests 2>&1 | tail -15`
+   - `cargo test -p peri-middlewares --lib -- subagent::tool::tests 2>&1 | tail -15`
    - 预期: 所有现有测试 + 新增 model alias 测试通过
    - ✅ 通过
 
 2. agent.md 设置 model: inherit 或省略 model 时子 Agent 继承父模型
-   - `cargo test -p rust-agent-middlewares --lib -- subagent 2>&1 | tail -10`
+   - `cargo test -p peri-middlewares --lib -- subagent 2>&1 | tail -10`
    - 预期: 所有 test ok，model_alias 为 None 时 factory 被正确调用
    - ✅ 通过
 
 3. 未知 alias fallback 到父模型不 panic
-   - `cargo test -p rust-agent-tui --lib -- provider 2>&1 | tail -10`
+   - `cargo test -p peri-tui --lib -- provider 2>&1 | tail -10`
    - 预期: 未知 alias 返回 None 的测试通过
    - ✅ 通过
 
 4. SKILL.md model 字段正确解析并展示在摘要中
-   - `cargo test -p rust-agent-middlewares --lib -- skills 2>&1 | tail -10`
+   - `cargo test -p peri-middlewares --lib -- skills 2>&1 | tail -10`
    - 预期: 新增 test_load_skill_with_model 通过
    - ✅ 通过（Task 4 已移除，原有测试通过）
 

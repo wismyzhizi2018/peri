@@ -17,19 +17,19 @@
 
 | 文件 | 总行数 | 业务代码 | 测试代码 | 测试占比 |
 |------|--------|---------|---------|---------|
-| `rust-agent-tui/src/ui/headless.rs` | 3416 | 57 | 3359 | 98% |
-| `rust-create-agent/src/agent/executor/mod.rs` | 1283 | 299 | 984 | 77% |
-| `rust-agent-middlewares/src/plugin/loader.rs` | 1418 | 572 | 846 | 60% |
-| `rust-agent-middlewares/src/plugin/installer.rs` | 1622 | 753 | 869 | 54% |
-| `rust-agent-middlewares/src/subagent/tool.rs` | 1847 | 868 | 979 | 53% |
-| `rust-agent-tui/src/app/message_pipeline.rs` | 1506 | 757 | 749 | 50% |
-| `rust-create-agent/src/llm/openai.rs` | 1256 | 663 | 593 | 47% |
-| `rust-agent-middlewares/src/hooks/middleware.rs` | 1250 | 682 | 568 | 45% |
-| `rust-agent-middlewares/src/mcp/config.rs` | 1164 | 638 | 526 | 45% |
+| `peri-tui/src/ui/headless.rs` | 3416 | 57 | 3359 | 98% |
+| `peri-agent/src/agent/executor/mod.rs` | 1283 | 299 | 984 | 77% |
+| `peri-middlewares/src/plugin/loader.rs` | 1418 | 572 | 846 | 60% |
+| `peri-middlewares/src/plugin/installer.rs` | 1622 | 753 | 869 | 54% |
+| `peri-middlewares/src/subagent/tool.rs` | 1847 | 868 | 979 | 53% |
+| `peri-tui/src/app/message_pipeline.rs` | 1506 | 757 | 749 | 50% |
+| `peri-agent/src/llm/openai.rs` | 1256 | 663 | 593 | 47% |
+| `peri-middlewares/src/hooks/middleware.rs` | 1250 | 682 | 568 | 45% |
+| `peri-middlewares/src/mcp/config.rs` | 1164 | 638 | 526 | 45% |
 | `acpx-g/src/schema.rs` | 1167 | 526 | 641 | 55% |
 | `langfuse-client/src/types.rs` | 1464 | 1005 | 459 | 31% |
-| `rust-agent-tui/src/app/setup_wizard.rs` | 1178 | 801 | 377 | 32% |
-| `rust-agent-middlewares/src/plugin/marketplace.rs` | 1164 | 725 | 439 | 38% |
+| `peri-tui/src/app/setup_wizard.rs` | 1178 | 801 | 377 | 32% |
+| `peri-middlewares/src/plugin/marketplace.rs` | 1164 | 725 | 439 | 38% |
 
 ## 修复方案
 

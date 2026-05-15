@@ -2,13 +2,13 @@
 
 **目标:** 将 MCP 连接池从同步阻塞初始化改为后台异步初始化，新增 /mcp 命令面板支持服务器状态查看、重连和删除。
 
-**技术栈:** Rust, tokio async/await, tokio::sync::watch, parking_lot::RwLock, ratatui (BorderedPanel + ScrollableArea), perihelion-widgets
+**技术栈:** Rust, tokio async/await, tokio::sync::watch, parking_lot::RwLock, ratatui (BorderedPanel + ScrollableArea), peri-widgets
 
 **设计文档:** spec/feature_20260502_F002_mcp-management/spec-design.md
 
 ## 改动总览
 
-本次改动横跨 `rust-agent-middlewares/src/mcp/`（数据层）和 `rust-agent-tui/src/`（TUI 层）两个 crate，共 11 个文件（3 新建 + 8 修改）。Task 1-2 在 middlewares 层扩展 McpClientPool 和配置持久化能力，Task 3-5 在 TUI 层实现后台初始化、命令注册、面板交互和渲染。依赖关系：Task 1 → Task 3（后台初始化需要 new_pending/run_initialize），Task 1+2 → Task 4（面板操作需要 server_infos/remove_server_from_config），Task 4 → Task 5（渲染需要面板数据结构）。关键设计决策：`McpClientPool.clients` 改为 `parking_lot::RwLock<HashMap>` 支持并发读写（经确认 parking_lot 已是项目依赖）；配置删除使用 `serde_json::Value` 操作全局 settings.json 以保留其他字段。
+本次改动横跨 `peri-middlewares/src/mcp/`（数据层）和 `peri-tui/src/`（TUI 层）两个 crate，共 11 个文件（3 新建 + 8 修改）。Task 1-2 在 middlewares 层扩展 McpClientPool 和配置持久化能力，Task 3-5 在 TUI 层实现后台初始化、命令注册、面板交互和渲染。依赖关系：Task 1 → Task 3（后台初始化需要 new_pending/run_initialize），Task 1+2 → Task 4（面板操作需要 server_infos/remove_server_from_config），Task 4 → Task 5（渲染需要面板数据结构）。关键设计决策：`McpClientPool.clients` 改为 `parking_lot::RwLock<HashMap>` 支持并发读写（经确认 parking_lot 已是项目依赖）；配置删除使用 `serde_json::Value` 操作全局 settings.json 以保留其他字段。
 
 ---
 
@@ -22,8 +22,8 @@
 - [x] 验证 workspace 构建可用
   - 运行 `cargo build` 确认所有 crate 编译成功
 - [x] 验证测试框架可用
-  - 运行 `cargo test -p rust-agent-middlewares --lib -- mcp::client::tests` 确认 MCP 模块现有测试通过
-  - 运行 `cargo test -p rust-agent-tui --lib` 确认 TUI 模块现有测试通过
+  - 运行 `cargo test -p peri-middlewares --lib -- mcp::client::tests` 确认 MCP 模块现有测试通过
+  - 运行 `cargo test -p peri-tui --lib` 确认 TUI 模块现有测试通过
 
 **检查步骤:**
 
@@ -31,10 +31,10 @@
   - `cargo build 2>&1 | tail -5`
   - 预期: 输出包含 `Finished` 且无 error
 - [x] MCP 模块测试通过
-  - `cargo test -p rust-agent-middlewares --lib -- mcp:: 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib -- mcp:: 2>&1 | tail -10`
   - 预期: 所有 MCP 相关测试通过
 - [x] TUI 模块测试通过
-  - `cargo test -p rust-agent-tui --lib 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib 2>&1 | tail -10`
   - 预期: 所有测试通过
 
 ---
@@ -46,8 +46,8 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
 
 **涉及文件:**
 
-- 修改: `rust-agent-middlewares/src/mcp/client.rs`
-- 修改: `rust-agent-middlewares/src/mcp/mod.rs`
+- 修改: `peri-middlewares/src/mcp/client.rs`
+- 修改: `peri-middlewares/src/mcp/mod.rs`
 
 **执行步骤:**
 
@@ -168,12 +168,12 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: clients 和 services 字段类型变更，所有访问点需同步更新
 
 - [x] 在 mod.rs 中重导出 McpInitStatus 和 ServerInfo
-  - 位置: `rust-agent-middlewares/src/mcp/mod.rs`（L12）
+  - 位置: `peri-middlewares/src/mcp/mod.rs`（L12）
   - 在 `pub use client::{...}` 行中追加 `McpInitStatus` 和 `ServerInfo`
   - 原因: Task 3/4/5 需要从 mcp 模块顶层引用这些类型
 
 - [x] 为 McpInitStatus 和 McpClientPool 新增方法编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/client.rs`（文件底部 `#[cfg(test)] mod tests`）
+  - 测试文件: `peri-middlewares/src/mcp/client.rs`（文件底部 `#[cfg(test)] mod tests`）
   - 测试场景:
     - `test_mcp_init_status_equality`: 验证 `McpInitStatus::Pending == Pending`、`Initializing{1,2} != Initializing{2,2}`、`Ready{3} == Ready{3}`、`Failed("a") != Failed("b")`
     - `test_new_pending_creates_empty_pool`: `new_pending()` 创建的 pool，`clients.read().is_empty()` 为 true，`configs.is_empty()` 为 true
@@ -181,29 +181,29 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
     - `test_insert_failed_creates_failed_handle`: 构造 `new_pending()` pool，调用 `Self::insert_failed(&pool, "test-server", "timeout".into())`，验证 `server_infos()` 返回包含 name="test-server" 且 status 为 `Failed("timeout")` 的条目
     - `test_remove_server`: 构造 pool 并通过 `clients.write()` 插入两个 handle（一个 Connected 一个 Failed），调用 `remove_server(&pool, "server-a").await`，验证 `server_infos()` 仅包含 "server-b"
     - `test_get_tools_resources`: 构造 pool 并通过 `clients.write()` 插入带 tools 和 resources 的 handle，验证 `get_tools("s")` 和 `get_resources("s")` 返回非空列表，`get_tools("nonexistent")` 返回空列表
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- mcp::client::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- mcp::client::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 McpInitStatus 和 ServerInfo 已在 mod.rs 中重导出
-  - `grep -n "McpInitStatus\|ServerInfo" rust-agent-middlewares/src/mcp/mod.rs`
+  - `grep -n "McpInitStatus\|ServerInfo" peri-middlewares/src/mcp/mod.rs`
   - 预期: L12 的 pub use 行中包含 `McpInitStatus` 和 `ServerInfo`
 
 - [x] 验证 McpClientPool 结构体包含 RwLock clients、Mutex services、configs 字段
-  - `grep -A 6 "pub struct McpClientPool" rust-agent-middlewares/src/mcp/client.rs`
+  - `grep -A 6 "pub struct McpClientPool" peri-middlewares/src/mcp/client.rs`
   - 预期: 输出包含 `RwLock`、`Mutex`、`configs`
 
 - [x] 验证新增方法存在
-  - `grep -n "pub async fn run_initialize\|pub async fn reconnect\|pub async fn remove_server\|pub fn server_infos\|pub fn get_tools\|pub fn get_resources\|pub fn new_pending" rust-agent-middlewares/src/mcp/client.rs`
+  - `grep -n "pub async fn run_initialize\|pub async fn reconnect\|pub async fn remove_server\|pub fn server_infos\|pub fn get_tools\|pub fn get_resources\|pub fn new_pending" peri-middlewares/src/mcp/client.rs`
   - 预期: 每个方法名各出现一次
 
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 输出 "Finished" 且无 error
 
 - [x] 验证所有测试通过
-  - `cargo test -p rust-agent-middlewares --lib 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib 2>&1 | tail -10`
   - 预期: 所有 test 结果为 "ok"，无 FAILED
 
 ---
@@ -217,12 +217,12 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
 
 **涉及文件:**
 
-- 修改: `rust-agent-middlewares/src/mcp/config.rs`
+- 修改: `peri-middlewares/src/mcp/config.rs`
 
 **执行步骤:**
 
 - [x] 在 McpConfigError 枚举中新增 WriteError 变体
-  - 位置: `rust-agent-middlewares/src/mcp/config.rs:McpConfigError` (~L34, 在 ReadError 之后)
+  - 位置: `peri-middlewares/src/mcp/config.rs:McpConfigError` (~L34, 在 ReadError 之后)
   - 新增变体:
 
     ```rust
@@ -235,7 +235,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
     ```
 
 - [x] 实现 remove_server_from_config 公共函数
-  - 位置: `rust-agent-middlewares/src/mcp/config.rs` (~L188, 在 load_merged_config 函数之后)
+  - 位置: `peri-middlewares/src/mcp/config.rs` (~L188, 在 load_merged_config 函数之后)
   - 函数签名: `pub fn remove_server_from_config(cwd: &Path, server_name: &str) -> Result<(), McpConfigError>`
   - 逻辑分为三步:
     1. **尝试项目级删除**: 读取 `{cwd}/.mcp.json`，反序列化为 `McpConfigFile`，检查 `mcp_servers` 是否包含 `server_name`。包含则移除该条目，使用 `atomic_write_json` 写回。返回 `Ok(())`。
@@ -243,7 +243,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
     3. **路径计算**: 全局路径复用 `dirs_next::home_dir().unwrap_or_else(|| PathBuf::from(".")).join(".peri").join("settings.json")`，与 `load_merged_config` L147-150 一致。
 
 - [x] 实现原子写入辅助函数 atomic_write_json
-  - 位置: `rust-agent-middlewares/src/mcp/config.rs` (~L188, 在 remove_server_from_config 之前)
+  - 位置: `peri-middlewares/src/mcp/config.rs` (~L188, 在 remove_server_from_config 之前)
   - 函数签名: `fn atomic_write_json(path: &Path, value: &serde_json::Value) -> Result<(), McpConfigError>`
   - 逻辑:
     1. 在目标文件同目录创建 `tempfile::Builder::new().suffix(".tmp").tempfile_in(path.parent().unwrap_or(Path::new(".")))`
@@ -252,28 +252,28 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
     4. `tempfile::NamedTempFile` 的 Drop 会自动清理残留临时文件
 
 - [x] 为 remove_server_from_config 编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/config.rs` (现有 `#[cfg(test)] mod tests` 块，~L190)
+  - 测试文件: `peri-middlewares/src/mcp/config.rs` (现有 `#[cfg(test)] mod tests` 块，~L190)
   - 测试场景:
     - 从项目级 .mcp.json 删除存在的 server: 创建含两个 server 的 .mcp.json 临时文件，调用 `remove_server_from_config(临时目录, "server-a")`，验证文件中仅剩 "server-b"
     - 从全局 settings.json (config.mcpServers 路径) 删除: 创建含 `{"config":{"mcpServers":{"gh":{...}}}}` 的临时 settings.json，调用函数删除 "gh"，验证 settings.json 中 mcpServers 为空对象，其他顶层字段保留
     - 从全局 settings.json (顶层 mcpServers 路径) 删除: 创建含 `{"mcpServers":{"fs":{...}},"otherSetting":42}` 的临时 settings.json，调用函数删除 "fs"，验证 mcpServers 为空，"otherSetting" 保留
     - 删除不存在的 server: 对空 .mcp.json 和空 settings.json 调用删除，返回 Ok(()) 且文件不变
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests::test_remove_server`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- mcp::config::tests::test_remove_server`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 remove_server_from_config 函数存在且签名正确
-  - `grep -n "pub fn remove_server_from_config" rust-agent-middlewares/src/mcp/config.rs`
+  - `grep -n "pub fn remove_server_from_config" peri-middlewares/src/mcp/config.rs`
   - 预期: 输出包含函数签名行
 - [x] 验证 McpConfigError 包含 WriteError 变体
-  - `grep -n "WriteError" rust-agent-middlewares/src/mcp/config.rs`
+  - `grep -n "WriteError" peri-middlewares/src/mcp/config.rs`
   - 预期: 输出包含 WriteError 变体定义
 - [x] 验证 atomic_write_json 使用 tempfile + rename 模式
-  - `grep -n "atomic_write_json\|tempfile\|rename" rust-agent-middlewares/src/mcp/config.rs`
+  - `grep -n "atomic_write_json\|tempfile\|rename" peri-middlewares/src/mcp/config.rs`
   - 预期: 输出包含 tempfile 创建和 rename 调用
 - [x] 运行 crate 全量测试确保无回归
-  - `cargo test -p rust-agent-middlewares --lib`
+  - `cargo test -p peri-middlewares --lib`
   - 预期: 全部测试通过，无编译错误
 
 ---
@@ -287,34 +287,34 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`
-- 修改: `rust-agent-tui/src/main.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/agent_ops.rs`
+- 修改: `peri-tui/src/main.rs`
 
 **执行步骤:**
 
 - [x] 在 App 结构体中新增 `mcp_init_rx` 字段 — 用于 agent task 内异步等待 MCP 就绪状态
-  - 位置: `rust-agent-tui/src/app/mod.rs:App` (~L94, 在 `mcp_pool` 字段之后)
+  - 位置: `peri-tui/src/app/mod.rs:App` (~L94, 在 `mcp_pool` 字段之后)
   - 新增字段:
 
     ```rust
     /// MCP 后台初始化状态接收端（spawn_mcp_init 创建，submit_message agent task 内等待）
-    pub mcp_init_rx: Option<tokio::sync::watch::Receiver<rust_agent_middlewares::mcp::McpInitStatus>>,
+    pub mcp_init_rx: Option<tokio::sync::watch::Receiver<peri_middlewares::mcp::McpInitStatus>>,
     ```
 
 - [x] 在 App::new() 的 Self 初始化中新增 `mcp_init_rx: None` — 保持 Headless 测试现有行为
-  - 位置: `rust-agent-tui/src/app/mod.rs:App::new()` (~L184, 在 `mcp_pool: None` 之后)
+  - 位置: `peri-tui/src/app/mod.rs:App::new()` (~L184, 在 `mcp_pool: None` 之后)
   - 新增初始化行: `mcp_init_rx: None,`
   - 原因: Headless 测试不调用 `spawn_mcp_init()`，`mcp_init_rx` 保持 None，submit_message 中跳过等待
 
 - [x] 在 App 中实现 `spawn_mcp_init()` 方法 — 在 run_app 中调用，后台启动 MCP 连接池初始化
-  - 位置: `rust-agent-tui/src/app/mod.rs` (~L186, 在 `App::new()` 方法之后)
+  - 位置: `peri-tui/src/app/mod.rs` (~L186, 在 `App::new()` 方法之后)
   - 新增方法:
 
     ```rust
     /// 后台初始化 MCP 连接池（不阻塞 UI），在 run_app 中 App::new() 之后调用
     pub fn spawn_mcp_init(&mut self) {
-        use rust_agent_middlewares::mcp::{McpClientPool, McpInitStatus};
+        use peri_middlewares::mcp::{McpClientPool, McpInitStatus};
         use std::path::Path;
 
         let pool = Arc::new(McpClientPool::new_pending());
@@ -331,12 +331,12 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
     ```
 
 - [x] 在 `run_app()` 中调用 `app.spawn_mcp_init()` — 在 setup wizard 检测之后、事件循环之前
-  - 位置: `rust-agent-tui/src/main.rs:run_app()` (~L189, 在 setup wizard 检测块结束 `}` 之后、L191 `// Spinner tick` 注释之前)
+  - 位置: `peri-tui/src/main.rs:run_app()` (~L189, 在 setup wizard 检测块结束 `}` 之后、L191 `// Spinner tick` 注释之前)
   - 插入: `app.spawn_mcp_init();`
   - 原因: MCP 初始化需在 setup wizard 判断之后执行（setup wizard 期间不需要 MCP），但需在事件循环之前（确保用户首次发消息时后台初始化已开始）
 
 - [x] 移除 `submit_message()` 中的 `block_in_place` 同步初始化代码 — 替换为引用 clone
-  - 位置: `rust-agent-tui/src/app/agent_ops.rs:submit_message()` (~L142-154, 整个 `if self.mcp_pool.is_none() { ... }` 块)
+  - 位置: `peri-tui/src/app/agent_ops.rs:submit_message()` (~L142-154, 整个 `if self.mcp_pool.is_none() { ... }` 块)
   - 删除 L142-154 全部代码（12 行惰性初始化块），替换为:
 
     ```rust
@@ -347,20 +347,20 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: MCP 连接池已由 `spawn_mcp_init()` 在后台创建并赋值到 `self.mcp_pool`，此处仅需 clone 引用
 
 - [x] 在 agent task 内部添加异步等待 MCP 就绪逻辑 — 在 `tokio::spawn` 的 async block 中、`run_universal_agent` 调用之前
-  - 位置: `rust-agent-tui/src/app/agent_ops.rs:submit_message()` (~L157, 在 `tokio::spawn(async move {` 之后、`agent::run_universal_agent(` 之前)
+  - 位置: `peri-tui/src/app/agent_ops.rs:submit_message()` (~L157, 在 `tokio::spawn(async move {` 之后、`agent::run_universal_agent(` 之前)
   - 插入:
 
     ```rust
     // 异步等待 MCP 后台初始化完成（最多 30 秒）
     if let Some(ref rx) = mcp_init_rx {
         let mut rx = rx.clone();
-        if !matches!(*rx.borrow(), rust_agent_middlewares::mcp::McpInitStatus::Ready { .. }) {
+        if !matches!(*rx.borrow(), peri_middlewares::mcp::McpInitStatus::Ready { .. }) {
             let _ = tokio::time::timeout(
                 std::time::Duration::from_secs(30),
                 async {
                     while !matches!(
                         *rx.borrow(),
-                        rust_agent_middlewares::mcp::McpInitStatus::Ready { .. }
+                        peri_middlewares::mcp::McpInitStatus::Ready { .. }
                     ) {
                         rx.changed().await.ok();
                     }
@@ -374,35 +374,35 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: 当 `mcp_init_rx` 为 `None`（Headless 测试未调用 `spawn_mcp_init`）时跳过等待，保持现有行为
 
 - [x] 为 spawn_mcp_init 和异步等待逻辑编写集成测试
-  - 测试文件: `rust-agent-tui/src/app/agent_ops.rs` (现有 `#[cfg(test)] mod tests` 块)
+  - 测试文件: `peri-tui/src/app/agent_ops.rs` (现有 `#[cfg(test)] mod tests` 块)
   - 测试场景:
     - `test_mcp_init_rx_defaults_to_none`: 调用 `App::new()` 后验证 `app.mcp_init_rx` 为 `None`，`app.mcp_pool` 为 `None`
     - `test_submit_message_without_spawn_mcp_init`: 构造 App（不调用 spawn_mcp_init），验证 submit_message 路径中 mcp_init_rx 为 None 时等待逻辑被跳过（通过验证 mcp_pool 保持 None 不变）
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- app::agent_ops::tests::test_mcp_init`
+  - 运行命令: `cargo test -p peri-tui --lib -- app::agent_ops::tests::test_mcp_init`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 App 结构体包含 mcp_init_rx 字段
-  - `grep -n "mcp_init_rx" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "mcp_init_rx" peri-tui/src/app/mod.rs`
   - 预期: 输出包含字段定义和 `mcp_init_rx: None` 初始化
 - [x] 验证 spawn_mcp_init 方法存在
-  - `grep -n "pub fn spawn_mcp_init" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "pub fn spawn_mcp_init" peri-tui/src/app/mod.rs`
   - 预期: 输出包含方法签名
 - [x] 验证 block_in_place 初始化代码已移除
-  - `grep -n "block_in_place\|McpClientPool::initialize" rust-agent-tui/src/app/agent_ops.rs`
+  - `grep -n "block_in_place\|McpClientPool::initialize" peri-tui/src/app/agent_ops.rs`
   - 预期: 无匹配结果（该同步初始化代码已被移除）
 - [x] 验证 agent task 内包含异步等待逻辑
-  - `grep -n "mcp_init_rx\|McpInitStatus::Ready" rust-agent-tui/src/app/agent_ops.rs`
+  - `grep -n "mcp_init_rx\|McpInitStatus::Ready" peri-tui/src/app/agent_ops.rs`
   - 预期: 输出包含 clone 和等待逻辑
 - [x] 验证 main.rs 中调用 spawn_mcp_init
-  - `grep -n "spawn_mcp_init" rust-agent-tui/src/main.rs`
+  - `grep -n "spawn_mcp_init" peri-tui/src/main.rs`
   - 预期: 输出包含调用行
 - [x] 运行 TUI crate 编译检查
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 编译成功，无错误
 - [x] 运行 TUI crate 全量测试确保无回归
-  - `cargo test -p rust-agent-tui --lib`
+  - `cargo test -p peri-tui --lib`
   - 预期: 全部测试通过
 
 ---
@@ -416,15 +416,15 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/command/mcp.rs`
-- 修改: `rust-agent-tui/src/command/mod.rs`
-- 新建: `rust-agent-tui/src/app/mcp_panel.rs`
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 新建: `peri-tui/src/command/mcp.rs`
+- 修改: `peri-tui/src/command/mod.rs`
+- 新建: `peri-tui/src/app/mcp_panel.rs`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
 
 - [x] 新建 `command/mcp.rs`，实现 McpCommand — 注册 `/mcp` 命令入口
-  - 位置: `rust-agent-tui/src/command/mcp.rs`（新建文件）
+  - 位置: `peri-tui/src/command/mcp.rs`（新建文件）
   - 参考 `command/cron.rs` 的结构模式（struct + Command impl + execute 从 App 获取数据并创建面板）
   - 代码:
 
@@ -462,17 +462,17 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: 与 CronCommand 保持一致的模式——空数据时显示系统消息，有数据时创建面板
 
 - [x] 在 `command/mod.rs` 中注册 McpCommand — 将模块声明和注册加入默认注册表
-  - 位置: `rust-agent-tui/src/command/mod.rs`（L1 模块声明区域和 L12-24 `default_registry()` 函数内）
+  - 位置: `peri-tui/src/command/mod.rs`（L1 模块声明区域和 L12-24 `default_registry()` 函数内）
   - 在 L1 模块声明区域添加: `pub mod mcp;`
   - 在 `default_registry()` 函数中 `r.register(Box::new(cron::CronCommand));` 之后添加: `r.register(Box::new(mcp::McpCommand));`
   - 原因: 遵循现有命令注册模式，所有命令必须在 `default_registry()` 中注册才能被 dispatch
 
 - [x] 新建 `app/mcp_panel.rs`，定义 McpPanel、McpPanelView 数据结构 — 面板状态管理
-  - 位置: `rust-agent-tui/src/app/mcp_panel.rs`（新建文件）
+  - 位置: `peri-tui/src/app/mcp_panel.rs`（新建文件）
   - 定义数据结构:
 
     ```rust
-    use rust_agent_middlewares::mcp::{ClientStatus, ServerInfo};
+    use peri_middlewares::mcp::{ClientStatus, ServerInfo};
     use rmcp::model::{Resource, Tool};
 
     /// MCP 管理面板
@@ -524,7 +524,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: `ServerInfo` 直接复用 Task 1 在 middlewares 层定义的类型，TUI 层不重复定义；`McpPanelView` 枚举区分三个视图层级；`confirm_delete` 使用 `Option<String>` 存储 server name（与 cron 面板的 `confirm_delete: bool` 不同，因为需要知道删除目标）
 
 - [x] 在 `app/mcp_panel.rs` 中实现面板操作方法 — 全部放在 `impl crate::app::App` 块中（与 cron_ops.rs 模式一致）
-  - 位置: `rust-agent-tui/src/app/mcp_panel.rs`（文件底部，数据结构定义之后）
+  - 位置: `peri-tui/src/app/mcp_panel.rs`（文件底部，数据结构定义之后）
   - **mcp_panel_move_up**: `cursor = cursor.saturating_sub(1)`
   - **mcp_panel_move_down**: `cursor = min(cursor + 1, servers.len().saturating_sub(1))`
   - **mcp_panel_enter**: 仅在 `view == ServerList` 时生效，获取 `servers[cursor]` 的 name，从 `app.mcp_pool` 调用 `get_tools()`，设置 `view = ToolList { server_name, tools }`，重置 `cursor = 0`
@@ -534,7 +534,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - **mcp_panel_confirm_delete**: 仅在 `confirm_delete.is_some()` 时生效，执行三步删除:
     1. 从 `confirm_delete` 取出 server name
     2. 调用 `app.mcp_pool.as_ref()` 获取 pool clone，在 `tokio::spawn` 中调用 `pool.remove_server(&name).await`（因为 remove_server 是 async）
-    3. 调用 `rust_agent_middlewares::mcp::remove_server_from_config(std::path::Path::new(&app.cwd), &name)` 持久化删除
+    3. 调用 `peri_middlewares::mcp::remove_server_from_config(std::path::Path::new(&app.cwd), &name)` 持久化删除
     4. 刷新 `servers` 列表: `servers = app.mcp_pool.as_ref().map(|p| p.server_infos()).unwrap_or_default()`
     5. 修正 `cursor` 使其不越界（参考 `CronPanel::refresh` 逻辑）
     6. 设置 `confirm_delete = None`
@@ -631,7 +631,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
                     });
                 }
                 // 持久化删除配置
-                let _ = rust_agent_middlewares::mcp::remove_server_from_config(
+                let _ = peri_middlewares::mcp::remove_server_from_config(
                     std::path::Path::new(&self.cwd), &name
                 );
                 // 刷新列表
@@ -683,7 +683,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: 所有操作方法放在 `impl crate::app::App` 块中，与 `cron_ops.rs` 的 `impl crate::app::App` 模式一致；async 操作（remove_server、reconnect）通过 `tokio::spawn` 在后台执行，不阻塞 UI
 
 - [x] 在 `app/mod.rs` 中添加模块声明和 McpPanel 字段
-  - 位置: `rust-agent-tui/src/app/mod.rs`（L18 `mod cron_ops;` 之后添加模块声明，L68 `pub use cron_state::{CronPanel, CronState};` 之后添加 re-export，L94 App 结构体 `mcp_pool` 字段之后添加 `mcp_panel` 字段，L184 `mcp_pool: None` 之后添加 `mcp_panel: None` 初始化）
+  - 位置: `peri-tui/src/app/mod.rs`（L18 `mod cron_ops;` 之后添加模块声明，L68 `pub use cron_state::{CronPanel, CronState};` 之后添加 re-export，L94 App 结构体 `mcp_pool` 字段之后添加 `mcp_panel` 字段，L184 `mcp_pool: None` 之后添加 `mcp_panel: None` 初始化）
   - 模块声明: `mod mcp_panel;`
   - re-export: `pub use mcp_panel::{McpPanel, McpPanelView};`
   - App 结构体新增字段:
@@ -697,39 +697,39 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: 与 cron 面板模式完全一致（模块声明 + re-export + Option 字段 + None 初始化）
 
 - [x] 为 McpPanel 数据结构和面板操作方法编写单元测试
-  - 测试文件: `rust-agent-tui/src/app/mcp_panel.rs`（文件底部 `#[cfg(test)] mod tests` 块）
+  - 测试文件: `peri-tui/src/app/mcp_panel.rs`（文件底部 `#[cfg(test)] mod tests` 块）
   - 测试场景:
     - `test_mcp_panel_new`: 构造 `McpPanel::new(vec![])` 验证初始状态（cursor=0, view=ServerList, confirm_delete=None）；构造含 3 个 ServerInfo 的面板验证 servers 长度
     - `test_mcp_panel_move_cursor`: 构造含 3 个 server 的面板，连续调用 move_up 5 次验证 cursor 停留在 0；连续调用 move_down 5 次验证 cursor 停留在 2
     - `test_mcp_panel_close`: 构造面板，验证 `app.mcp_panel.is_some()`，调用 `mcp_panel_close()`，验证 `app.mcp_panel.is_none()`
     - `test_mcp_panel_request_cancel_delete`: 构造面板，调用 request_delete，验证 confirm_delete 为 Some(name)；调用 cancel_delete，验证 confirm_delete 为 None
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- app::mcp_panel::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- app::mcp_panel::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] 验证 command/mcp.rs 文件存在且 McpCommand 实现了 Command trait
-  - `grep -n "struct McpCommand\|fn name\|fn description\|fn execute" rust-agent-tui/src/command/mcp.rs`
+  - `grep -n "struct McpCommand\|fn name\|fn description\|fn execute" peri-tui/src/command/mcp.rs`
   - 预期: 四个匹配行，包含 "mcp" 名称和 "管理 MCP 服务器连接" 描述
 
 - [x] 验证 McpCommand 已在 default_registry 中注册
-  - `grep -n "mcp::McpCommand\|pub mod mcp" rust-agent-tui/src/command/mod.rs`
+  - `grep -n "mcp::McpCommand\|pub mod mcp" peri-tui/src/command/mod.rs`
   - 预期: 两行匹配，一行模块声明、一行注册调用
 
 - [x] 验证 app/mcp_panel.rs 包含 McpPanel、McpPanelView 定义和全部操作方法
-  - `grep -n "pub struct McpPanel\|pub enum McpPanelView\|pub fn mcp_panel_" rust-agent-tui/src/app/mcp_panel.rs`
+  - `grep -n "pub struct McpPanel\|pub enum McpPanelView\|pub fn mcp_panel_" peri-tui/src/app/mcp_panel.rs`
   - 预期: McpPanel 结构体、McpPanelView 枚举、10 个操作方法（move_up/down/enter/back/tab/request_delete/confirm_delete/cancel_delete/reconnect/close）
 
 - [x] 验证 App 结构体包含 mcp_panel 字段且初始化为 None
-  - `grep -n "mcp_panel" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "mcp_panel" peri-tui/src/app/mod.rs`
   - 预期: 包含模块声明、re-export、字段定义和 None 初始化
 
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 输出 "Finished" 且无 error
 
 - [x] 验证所有测试通过
-  - `cargo test -p rust-agent-tui --lib -- app::mcp_panel::tests 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- app::mcp_panel::tests 2>&1 | tail -10`
   - 预期: 所有 test 结果为 "ok"，无 FAILED
 
 ---
@@ -743,16 +743,16 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/ui/main_ui/panels/mcp.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/mod.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/status_bar.rs`
-- 修改: `rust-agent-tui/src/event.rs`
+- 新建: `peri-tui/src/ui/main_ui/panels/mcp.rs`
+- 修改: `peri-tui/src/ui/main_ui/panels/mod.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/ui/main_ui/status_bar.rs`
+- 修改: `peri-tui/src/event.rs`
 
 **执行步骤:**
 
 - [ ] 新建 `panels/mcp.rs`，实现 `render_mcp_panel` 函数 — MCP 面板三个视图的完整渲染逻辑
-  - 位置: `rust-agent-tui/src/ui/main_ui/panels/mcp.rs`（新建文件）
+  - 位置: `peri-tui/src/ui/main_ui/panels/mcp.rs`（新建文件）
   - 参考 `panels/cron.rs` 的完整渲染模式（BorderedPanel + ScrollableArea + panel_area/panel_plain_lines/panel_scroll_offset 元数据存储 + highlight_line_spans 选区高亮）
   - 函数签名: `pub(crate) fn render_mcp_panel(f: &mut Frame, app: &mut App, area: Rect)`
   - 函数入口检查 `app.mcp_panel.is_some()`，不存在时直接 return
@@ -820,12 +820,12 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: 与 cron 面板保持完全一致的渲染模式（BorderedPanel + ScrollableArea + 元数据存储 + 选区高亮），确保面板间行为统一
 
 - [ ] 在 `panels/mod.rs` 中注册 mcp 模块 — 使面板渲染函数可被 main_ui 调用
-  - 位置: `rust-agent-tui/src/ui/main_ui/panels/mod.rs`（L4 `pub mod thread_browser;` 之后）
+  - 位置: `peri-tui/src/ui/main_ui/panels/mod.rs`（L4 `pub mod thread_browser;` 之后）
   - 添加: `pub mod mcp;`
   - 原因: 遵循现有面板模块注册模式
 
 - [ ] 在 `main_ui.rs` 中添加 MCP 面板渲染分发 — 在 cron 面板之后
-  - 位置: `rust-agent-tui/src/ui/main_ui.rs`（L96 `panels::cron::render_cron_panel(f, app, panel_area);` 之后）
+  - 位置: `peri-tui/src/ui/main_ui.rs`（L96 `panels::cron::render_cron_panel(f, app, panel_area);` 之后）
   - 插入:
 
     ```rust
@@ -837,7 +837,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: 面板按优先级互斥渲染（同一时间只打开一个），MCP 面板与 cron 面板同级
 
 - [ ] 在 `main_ui.rs` 的 `active_panel_height()` 中添加 MCP 面板高度计算 — 在 cron 面板分支之后
-  - 位置: `rust-agent-tui/src/ui/main_ui.rs:active_panel_height()`（L153 cron 面板分支 `} else if app.cron.cron_panel.is_some() { ... }` 的 `}` 之后）
+  - 位置: `peri-tui/src/ui/main_ui.rs:active_panel_height()`（L153 cron 面板分支 `} else if app.cron.cron_panel.is_some() { ... }` 的 `}` 之后）
   - 插入新分支:
 
     ```rust
@@ -854,7 +854,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: MCP 面板高度取决于当前视图的列表项数，与其他面板的高度计算模式一致
 
 - [ ] 在 `status_bar.rs` 的 `render_first_row()` 中添加 MCP 初始化进度显示 — 在任务运行时长之前
-  - 位置: `rust-agent-tui/src/ui/main_ui/status_bar.rs:render_first_row()`（L112 重试状态块结束 `}` 之后、L113 任务运行时长 `if app.core.loading {` 之前）
+  - 位置: `peri-tui/src/ui/main_ui/status_bar.rs:render_first_row()`（L112 重试状态块结束 `}` 之后、L113 任务运行时长 `if app.core.loading {` 之前）
   - 插入:
 
     ```rust
@@ -862,7 +862,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
     {
         if let Some(ref rx) = app.mcp_init_rx {
             let status = rx.borrow().clone();
-            use rust_agent_middlewares::mcp::McpInitStatus;
+            use peri_middlewares::mcp::McpInitStatus;
             match status {
                 McpInitStatus::Initializing { connected, total } => {
                     spans.push(Span::styled(" │ ", Style::default().fg(theme::MUTED)));
@@ -901,7 +901,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: MCP 初始化进度让用户了解后台连接池状态，Failed 状态持续显示引导用户排查问题
 
 - [ ] 在 App 结构体中新增 `mcp_ready_shown_until` 字段 — 控制就绪提示的 3 秒显示窗口
-  - 位置: `rust-agent-tui/src/app/mod.rs:App`（`mcp_init_rx` 字段之后）
+  - 位置: `peri-tui/src/app/mod.rs:App`（`mcp_init_rx` 字段之后）
   - 新增字段:
 
     ```rust
@@ -913,7 +913,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: `McpInitStatus::Ready` 是持久状态，需要额外字段控制就绪提示的 3 秒自动消失
 
 - [ ] 在 `status_bar.rs` 的 `render_second_row()` 中添加 MCP 面板快捷键提示 — 在 cron 面板分支之后
-  - 位置: `rust-agent-tui/src/ui/main_ui/status_bar.rs:render_second_row()`（L286 cron 面板分支 `} else if app.cron.cron_panel.is_some() { ... }` 的 `}` 之后、L287 `} else if app.core.login_panel.is_some() {` 之前）
+  - 位置: `peri-tui/src/ui/main_ui/status_bar.rs:render_second_row()`（L286 cron 面板分支 `} else if app.cron.cron_panel.is_some() { ... }` 的 `}` 之后、L287 `} else if app.core.login_panel.is_some() {` 之前）
   - 插入新分支:
 
     ```rust
@@ -962,7 +962,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: 与 cron 面板快捷键提示模式一致，根据视图状态和确认删除状态动态切换提示内容
 
 - [ ] 在 `event.rs` 中添加 MCP 面板键盘分发 — 在 cron 面板之后
-  - 位置: `rust-agent-tui/src/event.rs:next_event()`（L182 `handle_cron_panel` 块之后、L184 `// /agents 面板优先处理` 之前）
+  - 位置: `peri-tui/src/event.rs:next_event()`（L182 `handle_cron_panel` 块之后、L184 `// /agents 面板优先处理` 之前）
   - 插入:
 
     ```rust
@@ -976,7 +976,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: MCP 面板与 cron 面板同级，打开时拦截所有按键事件
 
 - [ ] 在 `event.rs` 中实现 `handle_mcp_panel` 函数 — 处理 MCP 面板全部按键
-  - 位置: `rust-agent-tui/src/event.rs`（`handle_cron_panel` 函数 L1183 之后）
+  - 位置: `peri-tui/src/event.rs`（`handle_cron_panel` 函数 L1183 之后）
   - 函数签名: `fn handle_mcp_panel(app: &mut App, input: Input)`
   - 逻辑:
     1. **确认删除模式拦截**（`confirm_delete.is_some()`）: 只响应 `Enter`（调用 `app.mcp_panel_confirm_delete()`）和其他任意键（调用 `app.mcp_panel_cancel_delete()`），与 cron 面板一致
@@ -1038,7 +1038,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: ServerList 和 Detail 视图的按键集不同，需按视图分发
 
 - [ ] 在 `event.rs` 的 Paste 处理中添加 MCP 面板拦截 — 防止粘贴文本进入 textarea
-  - 位置: `rust-agent-tui/src/event.rs`（L548-553 paste 拦截块，在 `|| app.cron.cron_panel.is_some()` 之后）
+  - 位置: `peri-tui/src/event.rs`（L548-553 paste 拦截块，在 `|| app.cron.cron_panel.is_some()` 之后）
   - 在条件链中追加: `|| app.mcp_panel.is_some()`
   - 修改后的完整条件:
 
@@ -1055,53 +1055,53 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 原因: MCP 面板无文本输入字段，粘贴文本应被拦截
 
 - [ ] 为 MCP 面板渲染编写 headless 测试
-  - 测试文件: `rust-agent-tui/src/ui/main_ui/panels/mcp.rs`（文件底部 `#[cfg(test)] mod tests` 块）
+  - 测试文件: `peri-tui/src/ui/main_ui/panels/mcp.rs`（文件底部 `#[cfg(test)] mod tests` 块）
   - 测试场景:
     - `test_mcp_panel_empty_server_list`: 创建含空 servers 列表的 McpPanel，设置到 `app.mcp_panel = Some(...)`，通过 `handle.terminal.draw()` 渲染，验证快照包含 `.mcp.json` 引导文字
     - `test_mcp_panel_server_list_with_items`: 创建含 2 个 ServerInfo（1 个 Connected + 1 个 Failed）的 McpPanel，渲染后验证快照包含 `●`（Connected 图标）和 `○`（Failed 图标）
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- ui::main_ui::panels::mcp::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- ui::main_ui::panels::mcp::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [ ] 验证 panels/mcp.rs 文件存在且包含 render_mcp_panel 函数
-  - `grep -n "pub(crate) fn render_mcp_panel" rust-agent-tui/src/ui/main_ui/panels/mcp.rs`
+  - `grep -n "pub(crate) fn render_mcp_panel" peri-tui/src/ui/main_ui/panels/mcp.rs`
   - 预期: 匹配到函数签名
 
 - [ ] 验证 panels/mod.rs 包含 mcp 模块声明
-  - `grep -n "pub mod mcp" rust-agent-tui/src/ui/main_ui/panels/mod.rs`
+  - `grep -n "pub mod mcp" peri-tui/src/ui/main_ui/panels/mod.rs`
   - 预期: 匹配到模块声明
 
 - [ ] 验证 main_ui.rs 包含 MCP 面板渲染分发
-  - `grep -n "mcp_panel\|panels::mcp" rust-agent-tui/src/ui/main_ui.rs`
+  - `grep -n "mcp_panel\|panels::mcp" peri-tui/src/ui/main_ui.rs`
   - 预期: 匹配到渲染调用和高度计算分支
 
 - [ ] 验证 status_bar.rs 包含 MCP 初始化进度显示
-  - `grep -n "McpInitStatus\|mcp_init_rx\|MCP 连接中\|MCP 就绪\|MCP 初始化失败" rust-agent-tui/src/ui/main_ui/status_bar.rs`
+  - `grep -n "McpInitStatus\|mcp_init_rx\|MCP 连接中\|MCP 就绪\|MCP 初始化失败" peri-tui/src/ui/main_ui/status_bar.rs`
   - 预期: 匹配到 MCP 进度显示相关代码
 
 - [ ] 验证 status_bar.rs 包含 MCP 面板快捷键提示
-  - `grep -n "mcp_panel\|McpPanelView" rust-agent-tui/src/ui/main_ui/status_bar.rs`
+  - `grep -n "mcp_panel\|McpPanelView" peri-tui/src/ui/main_ui/status_bar.rs`
   - 预期: 匹配到 MCP 面板快捷键分支
 
 - [ ] 验证 event.rs 包含 handle_mcp_panel 函数和分发调用
-  - `grep -n "handle_mcp_panel\|mcp_panel.is_some()" rust-agent-tui/src/event.rs`
+  - `grep -n "handle_mcp_panel\|mcp_panel.is_some()" peri-tui/src/event.rs`
   - 预期: 匹配到函数定义、分发调用和 paste 拦截
 
 - [ ] 验证 App 结构体包含 mcp_ready_shown_until 字段
-  - `grep -n "mcp_ready_shown_until" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "mcp_ready_shown_until" peri-tui/src/app/mod.rs`
   - 预期: 包含字段定义和 None 初始化
 
 - [ ] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 输出 "Finished" 且无 error
 
 - [ ] 验证所有测试通过
-  - `cargo test -p rust-agent-tui --lib -- ui::main_ui::panels::mcp::tests 2>&1 | tail -10`
+  - `cargo test -p peri-tui --lib -- ui::main_ui::panels::mcp::tests 2>&1 | tail -10`
   - 预期: 所有 test 结果为 "ok"，无 FAILED
 
 - [ ] 运行 TUI crate 全量测试确保无回归
-  - `cargo test -p rust-agent-tui --lib 2>&1 | tail -15`
+  - `cargo test -p peri-tui --lib 2>&1 | tail -15`
   - 预期: 全部测试通过，无 FAILED
 
 ---
@@ -1110,7 +1110,7 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
 
 **前置条件:**
 
-- 启动命令: `cargo run -p rust-agent-tui`
+- 启动命令: `cargo run -p peri-tui`
 - 配置文件: 在 `{cwd}/.mcp.json` 中配置至少一个 MCP 服务器（如 `{"mcpServers":{"test":{"command":"echo"}}}` ），用于测试初始化流程
 - Headless 测试无需真实 MCP 服务器
 
@@ -1122,43 +1122,43 @@ MCP 连接池当前通过 `McpClientPool::initialize()` 同步阻塞初始化，
   - 失败排查: 根据失败测试名称定位到对应 Task，检查该 Task 的单元测试步骤
 
 - [x] 2. 验证 MCP 后台初始化不阻塞 UI（编译检查）
-  - `grep -n "block_in_place" rust-agent-tui/src/app/agent_ops.rs`
+  - `grep -n "block_in_place" peri-tui/src/app/agent_ops.rs`
   - 预期: 不再包含 MCP 初始化相关的 `block_in_place` 调用（仅 langfuse 可能保留）
-  - `grep -n "spawn_mcp_init" rust-agent-tui/src/main.rs`
+  - `grep -n "spawn_mcp_init" peri-tui/src/main.rs`
   - 预期: 在 `run_app()` 中有调用
   - 失败排查: 检查 Task 3 的 agent_ops.rs 修改步骤
 
 - [x] 3. 验证 McpInitStatus 状态机和 Pool 扩展方法
-  - `grep -n "McpInitStatus" rust-agent-middlewares/src/mcp/client.rs`
+  - `grep -n "McpInitStatus" peri-middlewares/src/mcp/client.rs`
   - 预期: 枚举定义包含 Pending/Initializing/Ready/Failed 四个变体
-  - `grep -n "pub async fn run_initialize\|pub async fn reconnect\|pub async fn remove_server\|pub fn server_infos\|pub fn get_tools\|pub fn get_resources" rust-agent-middlewares/src/mcp/client.rs`
+  - `grep -n "pub async fn run_initialize\|pub async fn reconnect\|pub async fn remove_server\|pub fn server_infos\|pub fn get_tools\|pub fn get_resources" peri-middlewares/src/mcp/client.rs`
   - 预期: 6 个新方法签名均存在
   - 失败排查: 检查 Task 1 的执行步骤
 
 - [x] 4. 验证配置删除持久化功能
-  - `grep -n "pub fn remove_server_from_config" rust-agent-middlewares/src/mcp/config.rs`
+  - `grep -n "pub fn remove_server_from_config" peri-middlewares/src/mcp/config.rs`
   - 预期: 函数签名存在，接受 `(cwd: &Path, server_name: &str)` 参数
-  - `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests::test_remove_server 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib -- mcp::config::tests::test_remove_server 2>&1 | tail -10`
   - 预期: 删除相关测试全部通过
   - 失败排查: 检查 Task 2 的执行步骤
 
 - [x] 5. 验证 /mcp 命令注册和面板数据结构
-  - `grep -n "mcp" rust-agent-tui/src/command/mod.rs`
+  - `grep -n "mcp" peri-tui/src/command/mod.rs`
   - 预期: 包含 `pub mod mcp;` 和 `r.register(Box::new(mcp::McpCommand));`
-  - `grep -n "mcp_panel" rust-agent-tui/src/app/mod.rs`
+  - `grep -n "mcp_panel" peri-tui/src/app/mod.rs`
   - 预期: 包含字段定义和 `None` 初始化
   - 失败排查: 检查 Task 4 的命令注册和面板字段步骤
 
 - [x] 6. 验证面板渲染和键盘处理集成
-  - `grep -n "handle_mcp_panel\|mcp_panel" rust-agent-tui/src/event.rs`
+  - `grep -n "handle_mcp_panel\|mcp_panel" peri-tui/src/event.rs`
   - 预期: 包含面板键盘处理分发和 handle_mcp_panel 函数
-  - `grep -n "render_mcp_panel\|panels::mcp" rust-agent-tui/src/ui/main_ui.rs`
+  - `grep -n "render_mcp_panel\|panels::mcp" peri-tui/src/ui/main_ui.rs`
   - 预期: 包含渲染分发调用
-  - `grep -n "mcp_init_rx\|MCP" rust-agent-tui/src/ui/main_ui/status_bar.rs`
+  - `grep -n "mcp_init_rx\|MCP" peri-tui/src/ui/main_ui/status_bar.rs`
   - 预期: 包含状态栏 MCP 初始化进度显示逻辑
   - 失败排查: 检查 Task 5 的各集成步骤
 
 - [x] 7. Headless 测试保持现有行为不变
-  - `cargo test -p rust-agent-tui --lib 2>&1 | tail -15`
+  - `cargo test -p peri-tui --lib 2>&1 | tail -15`
   - 预期: 所有现有测试通过，无回归
   - 失败排查: 检查 Task 3 的 Headless 兼容性设计（mcp_init_rx 默认 None，不调用 spawn_mcp_init）

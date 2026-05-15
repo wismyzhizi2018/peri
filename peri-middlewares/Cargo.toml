@@ -1,0 +1,55 @@
+[package]
+name = "peri-middlewares"
+version = "0.1.0"
+edition = "2021"
+description = "Rust Agent middleware implementations, aligned with @langgraph-js/agent-middlewares"
+license = "MIT"
+
+[dependencies]
+peri-agent = { path = "../peri-agent" }
+anyhow.workspace = true
+async-trait.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["process"] }
+glob = "0.3"
+walkdir = "2.5"
+ignore = "0.4"
+gray_matter = "0.3"
+dirs-next.workspace = true
+serde_yaml.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+croner = "3"
+tracing.workspace = true
+parking_lot.workspace = true
+grep = "0.4"
+num_cpus = "1"
+rmcp = { version = "1.7", features = [
+    "client",
+    "transport-child-process",
+    "transport-streamable-http-client-reqwest",
+    "auth",
+] }
+reqwest = { workspace = true, features = ["gzip", "brotli", "deflate"] }
+url.workspace = true
+html2text = "0.17"
+regex = "1"
+flate2 = "1"
+tar = "0.4"
+base64 = "0.22"
+urlencoding = "2"
+shellexpand = "3"
+ipnet = "2.10"
+peri-lsp = { path = "../peri-lsp" }
+lsp-types.workspace = true
+
+
+[dev-dependencies]
+tokio-test.workspace = true
+tempfile.workspace = true
+filetime = "0.2"
+
+[features]
+integration = []

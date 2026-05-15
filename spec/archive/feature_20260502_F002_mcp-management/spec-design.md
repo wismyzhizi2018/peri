@@ -274,7 +274,7 @@ pub struct McpServerInfo {
 
 ### McpConfig 持久化扩展
 
-新增 `rust-agent-middlewares/src/mcp/config.rs` 方法：
+新增 `peri-middlewares/src/mcp/config.rs` 方法：
 
 ```rust
 /// 从配置文件中删除指定 server 条目
@@ -308,17 +308,17 @@ pub fn remove_server_from_config(cwd: &Path, server_name: &str) -> Result<(), Mc
 
 | 文件 | 变更类型 | 说明 |
 |------|---------|------|
-| `rust-agent-middlewares/src/mcp/client.rs` | 修改 | 新增 `new_pending`、`run_initialize`、`reconnect`、`remove_server`、`server_infos`、`get_tools`、`get_resources`；`clients` 改为 `RwLock<HashMap>`；新增 `configs` 字段 |
-| `rust-agent-middlewares/src/mcp/config.rs` | 修改 | 新增 `remove_server_from_config` |
-| `rust-agent-middlewares/src/mcp/mod.rs` | 修改 | 重导出 `McpInitStatus` |
-| `rust-agent-tui/src/command/mcp.rs` | 新增 | `McpCommand` 实现 |
-| `rust-agent-tui/src/command/mod.rs` | 修改 | 注册 `McpCommand` |
-| `rust-agent-tui/src/app/mcp_panel.rs` | 新增 | `McpPanel`、`McpPanelView`、`McpServerInfo` |
-| `rust-agent-tui/src/app/mod.rs` | 修改 | 新增 `mcp_init_rx`、`mcp_panel` 字段；`spawn_mcp_init` 方法 |
-| `rust-agent-tui/src/app/agent_ops.rs` | 修改 | 移除 block_in_place 初始化，改为 agent task 内异步等待 |
-| `rust-agent-tui/src/main.rs` | 修改 | `run_app()` 中调用 `app.spawn_mcp_init()` |
-| `rust-agent-tui/src/event.rs` | 修改 | 新增 `handle_mcp_panel` 键盘处理 |
-| `rust-agent-tui/src/ui/status_bar.rs` | 修改 | 状态栏显示 MCP 初始化进度 |
+| `peri-middlewares/src/mcp/client.rs` | 修改 | 新增 `new_pending`、`run_initialize`、`reconnect`、`remove_server`、`server_infos`、`get_tools`、`get_resources`；`clients` 改为 `RwLock<HashMap>`；新增 `configs` 字段 |
+| `peri-middlewares/src/mcp/config.rs` | 修改 | 新增 `remove_server_from_config` |
+| `peri-middlewares/src/mcp/mod.rs` | 修改 | 重导出 `McpInitStatus` |
+| `peri-tui/src/command/mcp.rs` | 新增 | `McpCommand` 实现 |
+| `peri-tui/src/command/mod.rs` | 修改 | 注册 `McpCommand` |
+| `peri-tui/src/app/mcp_panel.rs` | 新增 | `McpPanel`、`McpPanelView`、`McpServerInfo` |
+| `peri-tui/src/app/mod.rs` | 修改 | 新增 `mcp_init_rx`、`mcp_panel` 字段；`spawn_mcp_init` 方法 |
+| `peri-tui/src/app/agent_ops.rs` | 修改 | 移除 block_in_place 初始化，改为 agent task 内异步等待 |
+| `peri-tui/src/main.rs` | 修改 | `run_app()` 中调用 `app.spawn_mcp_init()` |
+| `peri-tui/src/event.rs` | 修改 | 新增 `handle_mcp_panel` 键盘处理 |
+| `peri-tui/src/ui/status_bar.rs` | 修改 | 状态栏显示 MCP 初始化进度 |
 
 ## 约束一致性
 

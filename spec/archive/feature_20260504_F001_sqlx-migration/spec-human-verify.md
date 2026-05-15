@@ -7,18 +7,18 @@
 
 ## 场景 1: 依赖清理
 
-#### - [x] 1.1 [A] rust-create-agent 不再依赖 rusqlite
+#### - [x] 1.1 [A] peri-agent 不再依赖 rusqlite
 ```bash
-cargo tree -p rust-create-agent | grep -E "rusqlite|parking_lot"
+cargo tree -p peri-agent | grep -E "rusqlite|parking_lot"
 ```
 → 期望精确: (空输出，无匹配)
 
 **来源:** Task 1 + Task 4
 **目的:** 确认旧依赖完全移除
 
-#### - [x] 1.2 [A] rust-create-agent 正确引入 sqlx
+#### - [x] 1.2 [A] peri-agent 正确引入 sqlx
 ```bash
-cargo tree -p rust-create-agent | grep sqlx
+cargo tree -p peri-agent | grep sqlx
 ```
 → 期望包含: sqlx
 
@@ -34,9 +34,9 @@ grep -n "sqlx" Cargo.toml
 **来源:** Task 1 步骤 1
 **目的:** 确认 workspace 依赖声明
 
-#### - [x] 1.4 [A] rust-create-agent/Cargo.toml 无 rusqlite 和 parking_lot
+#### - [x] 1.4 [A] peri-agent/Cargo.toml 无 rusqlite 和 parking_lot
 ```bash
-grep -E "rusqlite|parking_lot" rust-create-agent/Cargo.toml
+grep -E "rusqlite|parking_lot" peri-agent/Cargo.toml
 ```
 → 期望精确: (空输出)
 
@@ -58,7 +58,7 @@ grep "parking_lot" Cargo.toml
 
 #### - [x] 2.1 [A] 文件中无 rusqlite/parking_lot/spawn_blocking 残留
 ```bash
-grep -n -E "rusqlite|parking_lot|spawn_blocking|Arc<Mutex" rust-create-agent/src/thread/sqlite_store.rs
+grep -n -E "rusqlite|parking_lot|spawn_blocking|Arc<Mutex" peri-agent/src/thread/sqlite_store.rs
 ```
 → 期望精确: (空输出)
 
@@ -67,7 +67,7 @@ grep -n -E "rusqlite|parking_lot|spawn_blocking|Arc<Mutex" rust-create-agent/src
 
 #### - [x] 2.2 [A] 结构体使用 SqlitePool
 ```bash
-grep -A2 "pub struct SqliteThreadStore" rust-create-agent/src/thread/sqlite_store.rs
+grep -A2 "pub struct SqliteThreadStore" peri-agent/src/thread/sqlite_store.rs
 ```
 → 期望包含: pool: SqlitePool
 
@@ -76,7 +76,7 @@ grep -A2 "pub struct SqliteThreadStore" rust-create-agent/src/thread/sqlite_stor
 
 #### - [x] 2.3 [A] new() 和 default_path() 签名为 async
 ```bash
-grep -n "pub async fn new\|pub async fn default_path" rust-create-agent/src/thread/sqlite_store.rs
+grep -n "pub async fn new\|pub async fn default_path" peri-agent/src/thread/sqlite_store.rs
 ```
 → 期望包含: pub async fn new
 → 期望包含: pub async fn default_path
@@ -86,7 +86,7 @@ grep -n "pub async fn new\|pub async fn default_path" rust-create-agent/src/thre
 
 #### - [x] 2.4 [A] init_schema 拆分为多次 execute 调用
 ```bash
-grep -c "sqlx::query" rust-create-agent/src/thread/sqlite_store.rs
+grep -c "sqlx::query" peri-agent/src/thread/sqlite_store.rs
 ```
 → 期望包含: CREATE TABLE IF NOT EXISTS threads
 → 期望包含: CREATE TABLE IF NOT EXISTS messages
@@ -97,7 +97,7 @@ grep -c "sqlx::query" rust-create-agent/src/thread/sqlite_store.rs
 
 #### - [x] 2.5 [A] 所有 7 个 trait 方法直接使用 sqlx::query
 ```bash
-grep -c "sqlx::query" rust-create-agent/src/thread/sqlite_store.rs
+grep -c "sqlx::query" peri-agent/src/thread/sqlite_store.rs
 ```
 → 期望包含: sqlx::query (至少 7 次出现，覆盖 create/append/load_meta/load_messages/list/delete/update)
 
@@ -106,7 +106,7 @@ grep -c "sqlx::query" rust-create-agent/src/thread/sqlite_store.rs
 
 #### - [x] 2.6 [A] 文档注释已更新
 ```bash
-grep "sqlx SqlitePool" rust-create-agent/src/thread/sqlite_store.rs
+grep "sqlx SqlitePool" peri-agent/src/thread/sqlite_store.rs
 ```
 → 期望包含: sqlx SqlitePool 连接池管理并发
 
@@ -119,7 +119,7 @@ grep "sqlx SqlitePool" rust-create-agent/src/thread/sqlite_store.rs
 
 #### - [x] 3.1 [A] sqlite_store 5 个测试全部通过
 ```bash
-cargo test -p rust-create-agent --lib -- thread::sqlite_store::tests
+cargo test -p peri-agent --lib -- thread::sqlite_store::tests
 ```
 → 期望包含: test result: ok
 
@@ -128,7 +128,7 @@ cargo test -p rust-create-agent --lib -- thread::sqlite_store::tests
 
 #### - [x] 3.2 [A] make_store() 已改为 async
 ```bash
-grep -A2 "fn make_store" rust-create-agent/src/thread/sqlite_store.rs
+grep -A2 "fn make_store" peri-agent/src/thread/sqlite_store.rs
 ```
 → 期望包含: async fn make_store
 
@@ -137,7 +137,7 @@ grep -A2 "fn make_store" rust-create-agent/src/thread/sqlite_store.rs
 
 #### - [x] 3.3 [A] 所有测试中 make_store() 调用有 .await
 ```bash
-grep "make_store()" rust-create-agent/src/thread/sqlite_store.rs | grep -v "\.await"
+grep "make_store()" peri-agent/src/thread/sqlite_store.rs | grep -v "\.await"
 ```
 → 期望精确: (空输出，所有调用均带 .await)
 
@@ -150,7 +150,7 @@ grep "make_store()" rust-create-agent/src/thread/sqlite_store.rs | grep -v "\.aw
 
 #### - [x] 4.1 [A] App 不再实现 Default trait
 ```bash
-grep -n "impl Default for App" rust-agent-tui/src/app/mod.rs
+grep -n "impl Default for App" peri-tui/src/app/mod.rs
 ```
 → 期望精确: (空输出)
 
@@ -159,7 +159,7 @@ grep -n "impl Default for App" rust-agent-tui/src/app/mod.rs
 
 #### - [x] 4.2 [A] App::new() 签名为 async
 ```bash
-grep "pub async fn new" rust-agent-tui/src/app/mod.rs
+grep "pub async fn new" peri-tui/src/app/mod.rs
 ```
 → 期望包含: pub async fn new
 
@@ -168,7 +168,7 @@ grep "pub async fn new" rust-agent-tui/src/app/mod.rs
 
 #### - [x] 4.3 [A] main.rs 中 App::new() 调用有 .await
 ```bash
-grep "App::new()" rust-agent-tui/src/main.rs
+grep "App::new()" peri-tui/src/main.rs
 ```
 → 期望包含: App::new().await
 
@@ -177,7 +177,7 @@ grep "App::new()" rust-agent-tui/src/main.rs
 
 #### - [x] 4.4 [A] new_headless() 签名为 async
 ```bash
-grep "pub async fn new_headless" rust-agent-tui/src/app/panel_ops.rs
+grep "pub async fn new_headless" peri-tui/src/app/panel_ops.rs
 ```
 → 期望包含: pub async fn new_headless
 
@@ -186,7 +186,7 @@ grep "pub async fn new_headless" rust-agent-tui/src/app/panel_ops.rs
 
 #### - [x] 4.5 [A] main_acp.rs 中 SqliteThreadStore 调用有 .await
 ```bash
-grep -A5 "SqliteThreadStore::default_path" rust-agent-tui/src/acp/main_acp.rs
+grep -A5 "SqliteThreadStore::default_path" peri-tui/src/acp/main_acp.rs
 ```
 → 期望包含: .await
 
@@ -195,7 +195,7 @@ grep -A5 "SqliteThreadStore::default_path" rust-agent-tui/src/acp/main_acp.rs
 
 #### - [x] 4.6 [A] 所有 App::new_headless 调用有 .await
 ```bash
-grep -rn "new_headless(" rust-agent-tui/src/ | grep -v "\.await" | grep -v "pub async fn new_headless"
+grep -rn "new_headless(" peri-tui/src/ | grep -v "\.await" | grep -v "pub async fn new_headless"
 ```
 → 期望精确: (空输出)
 
@@ -204,7 +204,7 @@ grep -rn "new_headless(" rust-agent-tui/src/ | grep -v "\.await" | grep -v "pub 
 
 #### - [x] 4.7 [A] headless_app() 辅助函数已改 async
 ```bash
-grep -rn "fn headless_app" rust-agent-tui/src/
+grep -rn "fn headless_app" peri-tui/src/
 ```
 → 期望包含: async fn headless_app
 
@@ -235,7 +235,7 @@ cargo test 2>&1
 
 #### - [x] 5.3 [A] TUI 二进制可正常启动
 ```bash
-cargo run -p rust-agent-tui -- --help 2>&1
+cargo run -p peri-tui -- --help 2>&1
 ```
 → 期望包含: USAGE 或 --help
 
@@ -258,7 +258,7 @@ grep "sqlx" Cargo.toml
 
 #### - [x] 6.2 [A] ThreadStore trait 接口未变更
 ```bash
-grep -A20 "pub trait ThreadStore" rust-create-agent/src/thread/mod.rs
+grep -A20 "pub trait ThreadStore" peri-agent/src/thread/mod.rs
 ```
 → 期望包含: async fn create_thread
 → 期望包含: async fn append_messages
@@ -273,7 +273,7 @@ grep -A20 "pub trait ThreadStore" rust-create-agent/src/thread/mod.rs
 
 #### - [x] 6.3 [A] Schema 结构未变更（threads + messages 两张表）
 ```bash
-grep -A8 "CREATE TABLE IF NOT EXISTS threads" rust-create-agent/src/thread/sqlite_store.rs
+grep -A8 "CREATE TABLE IF NOT EXISTS threads" peri-agent/src/thread/sqlite_store.rs
 ```
 → 期望包含: id TEXT PRIMARY KEY
 → 期望包含: title TEXT
@@ -287,7 +287,7 @@ grep -A8 "CREATE TABLE IF NOT EXISTS threads" rust-create-agent/src/thread/sqlit
 
 #### - [x] 6.4 [A] SQLite 连接池配置正确
 ```bash
-grep -A3 "SqlitePoolOptions" rust-create-agent/src/thread/sqlite_store.rs
+grep -A3 "SqlitePoolOptions" peri-agent/src/thread/sqlite_store.rs
 ```
 → 期望包含: max_connections(5)
 → 期望包含: journal_mode
@@ -300,7 +300,7 @@ grep -A3 "SqlitePoolOptions" rust-create-agent/src/thread/sqlite_store.rs
 
 #### - [x] 6.5 [A] append_messages 使用事务
 ```bash
-grep -n "pool.begin\|tx.commit" rust-create-agent/src/thread/sqlite_store.rs
+grep -n "pool.begin\|tx.commit" peri-agent/src/thread/sqlite_store.rs
 ```
 → 期望包含: pool.begin
 → 期望包含: tx.commit

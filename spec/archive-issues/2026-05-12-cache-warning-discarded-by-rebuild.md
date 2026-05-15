@@ -44,7 +44,7 @@ let saved_notes: Vec<MessageViewModel> = session
 
 ## 相关代码
 
-- `rust-agent-tui/src/app/agent_ops.rs:170` —— 创建 `CacheWarning` VM 并通过 `AddMessage` 添加
-- `rust-agent-tui/src/app/agent_render.rs:71-76` —— `saved_notes` 过滤器仅保留 `SystemNote`，丢弃 `CacheWarning`
-- `rust-agent-tui/src/ui/message_view.rs:214` —— `CacheWarning` 变体定义
-- `rust-agent-tui/src/ui/message_render.rs:441` —— `CacheWarning` 的渲染逻辑
+- `peri-tui/src/app/agent_ops.rs:170` —— 创建 `CacheWarning` VM 并通过 `AddMessage` 添加
+- `peri-tui/src/app/agent_render.rs:71-76` —— `saved_notes` 过滤器仅保留 `SystemNote`，丢弃 `CacheWarning`
+- `peri-tui/src/ui/message_view.rs:214` —— `CacheWarning` 变体定义
+- `peri-tui/src/ui/message_render.rs:441` —— `CacheWarning` 的渲染逻辑

@@ -53,7 +53,7 @@
 
 #### 1. ExecutorEvent 扩展
 
-**文件**：`rust-create-agent/src/agent/events.rs`
+**文件**：`peri-agent/src/agent/events.rs`
 
 ```rust
 pub enum ExecutorEvent {
@@ -72,7 +72,7 @@ pub enum ExecutorEvent {
 
 #### 2. AgentEvent 扩展
 
-**文件**：`rust-agent-tui/src/app/mod.rs`
+**文件**：`peri-tui/src/app/mod.rs`
 
 ```rust
 pub enum AgentEvent {
@@ -88,7 +88,7 @@ pub enum AgentEvent {
 
 #### 3. ReActAgent 发出 ToolStart 时携带 tool_call_id
 
-**文件**：`rust-create-agent/src/agent/react.rs`
+**文件**：`peri-agent/src/agent/react.rs`
 
 在 `invoke_tool_call` 函数中，`ToolStart` 事件需要携带 `tool_call.id`：
 
@@ -109,7 +109,7 @@ event_handler.handle(ExecutorEvent::ToolStart {
 
 #### 4. TUI 事件转换
 
-**文件**：`rust-agent-tui/src/app/agent.rs`
+**文件**：`peri-tui/src/app/agent.rs`
 
 ```rust
 // 变更前
@@ -130,7 +130,7 @@ ExecutorEvent::ToolStart { tool_call_id, name, input } => AgentEvent::ToolCall {
 
 #### 5. 历史恢复统一渲染
 
-**文件**：`rust-agent-tui/src/app/mod.rs` → `open_thread()`
+**文件**：`peri-tui/src/app/mod.rs` → `open_thread()`
 
 变更 `prev_ai_tool_calls` 存储 `(id, name, input)` 而非 `(id, name)`：
 
@@ -165,12 +165,12 @@ pub fn from_base_message(
 
 #### 6. 统一格式化函数
 
-**文件**：`rust-agent-tui/src/app/agent.rs`
+**文件**：`peri-tui/src/app/agent.rs`
 
 将 `format_tool_call_display` 和 `extract_display_arg` 提取为公共模块：
 
 ```rust
-// rust-agent-tui/src/app/tool_display.rs (新文件)
+// peri-tui/src/app/tool_display.rs (新文件)
 
 pub fn format_tool_call_display(tool: &str, input: &serde_json::Value) -> String {
     let name = to_pascal(tool);

@@ -39,7 +39,7 @@ LSP 服务器被外部因素杀死 → `on_error` 回调未触发 → `ServerSta
 
 ### Bug 1：`on_error` 回调从未被调用
 
-**位置**：`perihelion-lsp/src/jsonrpc/transport.rs:296-311`
+**位置**：`peri-lsp/src/jsonrpc/transport.rs:296-311`
 
 ```rust
 // 修复前
@@ -60,7 +60,7 @@ pub async fn run_dispatch_loop(state, rx) {
 
 ### Bug 2：`LspTool` 无崩溃重连
 
-**位置**：`rust-agent-middlewares/src/lsp/tool.rs:104-134`
+**位置**：`peri-middlewares/src/lsp/tool.rs:104-134`
 
 ```rust
 // 修复前
@@ -80,7 +80,7 @@ async fn get_initialized_server(&self, file_path) {
 
 ### Bug 3：`try_restart` 的 `!Send` 问题
 
-**位置**：`perihelion-lsp/src/client.rs:405-438`
+**位置**：`peri-lsp/src/client.rs:405-438`
 
 `try_restart()` 内部持有 `parking_lot::MutexGuard`（`!Send`）在 async 函数中，导致整个调用链的 future 不满足 `Send` 约束，编译失败。
 
@@ -99,7 +99,7 @@ pub async fn try_restart(&self, root_uri) {
 
 ### 修复 1：transport 层调用 `on_error` 回调
 
-**文件**：`perihelion-lsp/src/jsonrpc/transport.rs`
+**文件**：`peri-lsp/src/jsonrpc/transport.rs`
 
 | 改动 | 说明 |
 |------|------|
@@ -109,7 +109,7 @@ pub async fn try_restart(&self, root_uri) {
 
 ### 修复 2：`LspTool` 自动重连
 
-**文件**：`rust-agent-middlewares/src/lsp/tool.rs`
+**文件**：`peri-middlewares/src/lsp/tool.rs`
 
 | 改动 | 说明 |
 |------|------|
@@ -120,7 +120,7 @@ pub async fn try_restart(&self, root_uri) {
 
 ### 修复 3：`try_restart` 消除 `!Send`
 
-**文件**：`perihelion-lsp/src/client.rs`
+**文件**：`peri-lsp/src/client.rs`
 
 | 改动 | 说明 |
 |------|------|
@@ -140,18 +140,18 @@ pub async fn try_restart(&self, root_uri) {
 
 | 文件 | 修改类型 |
 |------|---------|
-| `perihelion-lsp/src/error.rs` | 新增 `TransportClosed` 变体 |
-| `perihelion-lsp/src/jsonrpc/transport.rs` | 新增 `invoke_on_error()`、dispatch loop 退出调用、日志 |
-| `perihelion-lsp/src/client.rs` | `check_and_increment_restart()` 提取、`request()` 发送失败日志 |
-| `perihelion-lsp/src/pool.rs` | 新增 `root_uri()`、`all_servers()` |
-| `rust-agent-middlewares/src/lsp/tool.rs` | 自动重连逻辑、详细日志 |
+| `peri-lsp/src/error.rs` | 新增 `TransportClosed` 变体 |
+| `peri-lsp/src/jsonrpc/transport.rs` | 新增 `invoke_on_error()`、dispatch loop 退出调用、日志 |
+| `peri-lsp/src/client.rs` | `check_and_increment_restart()` 提取、`request()` 发送失败日志 |
+| `peri-lsp/src/pool.rs` | 新增 `root_uri()`、`all_servers()` |
+| `peri-middlewares/src/lsp/tool.rs` | 自动重连逻辑、详细日志 |
 
 ## 相关代码
 
-- `perihelion-lsp/src/jsonrpc/transport.rs` —— 传输层，进程 spawn + 消息分发 + on_error 回调
-- `perihelion-lsp/src/client.rs` —— LspClient，状态管理 + try_restart + request 发送
-- `perihelion-lsp/src/pool.rs` —— LspServerPool，扩展名路由 + 服务器生命周期
-- `rust-agent-middlewares/src/lsp/tool.rs` —— LspTool，工具入口 + 自动重连逻辑
+- `peri-lsp/src/jsonrpc/transport.rs` —— 传输层，进程 spawn + 消息分发 + on_error 回调
+- `peri-lsp/src/client.rs` —— LspClient，状态管理 + try_restart + request 发送
+- `peri-lsp/src/pool.rs` —— LspServerPool，扩展名路由 + 服务器生命周期
+- `peri-middlewares/src/lsp/tool.rs` —— LspTool，工具入口 + 自动重连逻辑
 
 ## 后续建议
 

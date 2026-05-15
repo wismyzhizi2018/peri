@@ -76,7 +76,7 @@
 
 ## 修改文件
 
-- `rust-agent-middlewares/src/subagent/skill_preload.rs` — `prepend_message` 改为 `add_message`
-- `rust-create-agent/src/agent/compact/re_inject.rs` — `extract_skills_paths()` 新增 System/Human 消息 `[Skill: path]` 扫描
-- `rust-agent-middlewares/src/subagent/tool_test.rs` — 测试适配新格式
-- `rust-create-agent/src/llm/anthropic.rs` — 移除错误的占位 thinking block 注入逻辑
+- `peri-middlewares/src/subagent/skill_preload.rs` — `prepend_message` 改为 `add_message`
+- `peri-agent/src/agent/compact/re_inject.rs` — `extract_skills_paths()` 新增 System/Human 消息 `[Skill: path]` 扫描
+- `peri-middlewares/src/subagent/tool_test.rs` — 测试适配新格式
+- `peri-agent/src/llm/anthropic.rs` — 移除错误的占位 thinking block 注入逻辑

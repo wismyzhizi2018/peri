@@ -55,7 +55,7 @@
 
 ### 断言：核心框架将工具前文本作为 `AiReasoning` 发射，TUI 将其显示为推理提示而非实际文本
 
-**核心框架事件类型**（`rust-create-agent/src/agent/events.rs`）：
+**核心框架事件类型**（`peri-agent/src/agent/events.rs`）：
 
 | 事件 | 用途 | 发射位置 |
 |------|------|---------|
@@ -64,14 +64,14 @@
 
 注意：核心框架**没有** `AssistantChunk` 事件。
 
-**TUI 事件映射**（`rust-agent-tui/src/app/agent.rs:471-474`）：
+**TUI 事件映射**（`peri-tui/src/app/agent.rs:471-474`）：
 
 | 核心事件 | TUI 事件 | Pipeline 处理 | 显示效果 |
 |---------|---------|-------------|---------|
 | `AiReasoning(text)` | `AiReasoning(text)` | `push_reasoning()` → `current_ai_reasoning` | `ContentBlockView::Reasoning { char_count }` → "Thought for N chars" |
 | `TextChunk { chunk }` | `AssistantChunk(text)` | `push_chunk()` → `current_ai_text` | `ContentBlockView::Text { raw, rendered }` → 实际文本 |
 
-**Bug 所在**（`rust-create-agent/src/agent/executor/tool_dispatch.rs:40`）：
+**Bug 所在**（`peri-agent/src/agent/executor/tool_dispatch.rs:40`）：
 
 ```rust
 agent.emit(AgentEvent::AiReasoning(reasoning.thought.clone()));
@@ -176,27 +176,27 @@ AgentEvent::ToolStart { ... } => {
 
 ## 相关代码
 
-- `rust-create-agent/src/agent/executor/tool_dispatch.rs:40`：**Bug 所在** — `AiReasoning` 发射工具前文本
-- `rust-create-agent/src/agent/executor/final_answer.rs:86`：**对照** — `TextChunk` 发射最终回答
-- `rust-agent-tui/src/app/agent.rs:471-474`：事件映射层（`AiReasoning`/`TextChunk` → TUI 事件）
-- `rust-agent-tui/src/app/message_pipeline.rs:493-534`：`has_streaming_content()` + `build_streaming_bubble()`
-- `rust-agent-tui/src/ui/message_view.rs`：`ContentBlockView::Reasoning` vs `ContentBlockView::Text` 渲染差异
+- `peri-agent/src/agent/executor/tool_dispatch.rs:40`：**Bug 所在** — `AiReasoning` 发射工具前文本
+- `peri-agent/src/agent/executor/final_answer.rs:86`：**对照** — `TextChunk` 发射最终回答
+- `peri-tui/src/app/agent.rs:471-474`：事件映射层（`AiReasoning`/`TextChunk` → TUI 事件）
+- `peri-tui/src/app/message_pipeline.rs:493-534`：`has_streaming_content()` + `build_streaming_bubble()`
+- `peri-tui/src/ui/message_view.rs`：`ContentBlockView::Reasoning` vs `ContentBlockView::Text` 渲染差异
 
 ## 修复记录
 
-**改动文件**：`rust-create-agent/src/agent/executor/tool_dispatch.rs`
+**改动文件**：`peri-agent/src/agent/executor/tool_dispatch.rs`
 
 **改动内容**：将 `AiReasoning(reasoning.thought.clone())` 替换为 `TextChunk { message_id: ai_msg_id, chunk: reasoning.thought.clone() }`，并增加空文本检查。
 
 **测试结果**：
-- `rust-create-agent`：313 passed, 0 failed
-- `rust-agent-tui`：391 passed, 0 failed
+- `peri-agent`：313 passed, 0 failed
+- `peri-tui`：391 passed, 0 failed
 
-**待提交的 TUI 层补充修复**：`rust-agent-tui/src/app/message_pipeline.rs` 的未提交修改
+**待提交的 TUI 层补充修复**：`peri-tui/src/app/message_pipeline.rs` 的未提交修改
 
 ## 待验证
 
-需要用户实际运行 TUI（`cargo run -p rust-agent-tui`）验证以下场景：
+需要用户实际运行 TUI（`cargo run -p peri-tui`）验证以下场景：
 
 1. **工具调用场景**：发送一个会触发工具调用的问题（如 "读取一下当前目录的文件"），确认 AI 的工具前文本在流式过程中可见（不再只显示 "Thought for N chars"）
 2. **纯文本场景**：发送一个不需要工具的纯文本问题，确认纯文本回复仍然正常流式显示
@@ -205,5 +205,5 @@ AgentEvent::ToolStart { ... } => {
 
 ## 用户报告问题仍存在的可能原因
 
-1. **未重新编译代码**：如果用户直接运行了旧的二进制文件，修复不会生效。需要使用 `cargo run -p rust-agent-tui` 重新编译
+1. **未重新编译代码**：如果用户直接运行了旧的二进制文件，修复不会生效。需要使用 `cargo run -p peri-tui` 重新编译
 2. **TUI 层补充修复未生效**：`message_pipeline.rs` 的未提交修改可能需要与核心修复一起生效

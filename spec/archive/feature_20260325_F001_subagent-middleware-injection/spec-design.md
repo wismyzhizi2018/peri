@@ -20,7 +20,7 @@
 
 ### 修改位置
 
-唯一修改文件：`rust-agent-middlewares/src/subagent/tool.rs`，在 `SubAgentTool::invoke` 方法的 `agent_builder` 组装段（当前第 190 行附近）。
+唯一修改文件：`peri-middlewares/src/subagent/tool.rs`，在 `SubAgentTool::invoke` 方法的 `agent_builder` 组装段（当前第 190 行附近）。
 
 ### 中间件注册顺序
 
@@ -89,8 +89,8 @@ if let Some(ref builder) = self.system_builder {
 
 ## 约束一致性
 
-- **下层禁止依赖上层**（`rust-agent-middlewares` → `rust-create-agent`）：本改动仅在 `rust-agent-middlewares` 内部使用自身的中间件，无约束违反
-- **`AgentsMdMiddleware`、`SkillsMiddleware`、`TodoMiddleware`** 均已在 `rust-agent-middlewares` 中实现，无需新增依赖
+- **下层禁止依赖上层**（`peri-middlewares` → `peri-agent`）：本改动仅在 `peri-middlewares` 内部使用自身的中间件，无约束违反
+- **`AgentsMdMiddleware`、`SkillsMiddleware`、`TodoMiddleware`** 均已在 `peri-middlewares` 中实现，无需新增依赖
 - `tokio::sync::mpsc` 已在工作空间中使用，无新增依赖
 
 ## 验收标准
@@ -99,4 +99,4 @@ if let Some(ref builder) = self.system_builder {
 - [ ] 子 agent 执行时，若存在 skills，skills 摘要作为 System 消息注入子 agent 上下文
 - [ ] 子 agent 可使用 `todo_write` 工具，写入成功，TUI 不崩溃（通知静默丢弃）
 - [ ] 父 agent 的 HITL 审批、`ask_user`、`launch_agent` 工具不被注入子 agent（防递归 + 防阻塞）
-- [ ] 现有子 agent 相关测试全部通过（`cargo test -p rust-agent-middlewares`）
+- [ ] 现有子 agent 相关测试全部通过（`cargo test -p peri-middlewares`）

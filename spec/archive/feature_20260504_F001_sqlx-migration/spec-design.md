@@ -2,7 +2,7 @@
 
 ## 概述
 
-将 `rust-create-agent` 的线程持久化层从 `rusqlite`（同步 + `spawn_blocking`）迁移到 `sqlx`（原生 async），简化异步代码并去掉手动 `Mutex` + `spawn_blocking` 模式。
+将 `peri-agent` 的线程持久化层从 `rusqlite`（同步 + `spawn_blocking`）迁移到 `sqlx`（原生 async），简化异步代码并去掉手动 `Mutex` + `spawn_blocking` 模式。
 
 ## 动机
 
@@ -12,13 +12,13 @@
 
 ## 范围
 
-- **仅迁移** `rust-create-agent/src/thread/sqlite_store.rs`
-- `ThreadStore` trait 接口不变，调用方（`rust-agent-tui`）仅需调整初始化处加 `.await`
+- **仅迁移** `peri-agent/src/thread/sqlite_store.rs`
+- `ThreadStore` trait 接口不变，调用方（`peri-tui`）仅需调整初始化处加 `.await`
 - 不引入 sqlx macros/migrate，仅用 runtime API
 
 ## 依赖变更
 
-### `rust-create-agent/Cargo.toml`
+### `peri-agent/Cargo.toml`
 
 ```diff
 - rusqlite = { version = "0.31", features = ["bundled"] }
@@ -42,7 +42,7 @@ sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
 
 ### parking_lot 检查
 
-需确认 `rust-create-agent` 内是否有其他模块使用 `parking_lot`。若无，可安全移除。
+需确认 `peri-agent` 内是否有其他模块使用 `parking_lot`。若无，可安全移除。
 
 ## 实现方案
 
@@ -193,7 +193,7 @@ async fn load_messages(&self, id: &ThreadId) -> Result<Vec<BaseMessage>> {
 
 `new()` 和 `default_path()` 从 sync 变为 async，需调整 3 处调用：
 
-### 1. `rust-agent-tui/src/app/mod.rs`
+### 1. `peri-tui/src/app/mod.rs`
 
 ```rust
 // 旧
@@ -214,11 +214,11 @@ let thread_store: Arc<dyn ThreadStore> = Arc::new(
 );
 ```
 
-### 2. `rust-agent-tui/src/acp/main_acp.rs`
+### 2. `peri-tui/src/acp/main_acp.rs`
 
 同上模式，加 `.await`。
 
-### 3. `rust-agent-tui/src/app/panel_ops.rs`（测试辅助）
+### 3. `peri-tui/src/app/panel_ops.rs`（测试辅助）
 
 同上模式，加 `.await`。
 

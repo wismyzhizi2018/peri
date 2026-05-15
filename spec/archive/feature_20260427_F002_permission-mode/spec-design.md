@@ -17,7 +17,7 @@
 
 ### 权限模式定义
 
-新增 `PermissionMode` 枚举，位于 `rust-agent-middlewares/src/hitl/shared_mode.rs`：
+新增 `PermissionMode` 枚举，位于 `peri-middlewares/src/hitl/shared_mode.rs`：
 
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,7 +55,7 @@ pub enum PermissionMode {
 使用 `Arc<AtomicU8>` 在 TUI 线程和 Agent task 之间共享当前权限模式：
 
 ```rust
-// rust-agent-middlewares/src/hitl/shared_mode.rs
+// peri-middlewares/src/hitl/shared_mode.rs
 pub struct SharedPermissionMode {
     inner: AtomicU8,
 }
@@ -134,7 +134,7 @@ fn is_edit_tool(tool_name: &str) -> bool {
 
 ### Auto 分类器接口
 
-新增 trait，位于 `rust-agent-middlewares/src/hitl/auto_classifier.rs`：
+新增 trait，位于 `peri-middlewares/src/hitl/auto_classifier.rs`：
 
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -172,7 +172,7 @@ pub struct LlmAutoClassifier {
 #### 1. App struct 新增字段
 
 ```rust
-// rust-agent-tui/src/app/mod.rs
+// peri-tui/src/app/mod.rs
 pub struct App {
     // ... 已有字段
     pub permission_mode: Arc<SharedPermissionMode>,
@@ -213,7 +213,7 @@ KeyEvent { code: Tab, modifiers: SHIFT, .. } => {
 `run_universal_agent` 中创建 HITL middleware 时注入 `SharedPermissionMode`：
 
 ```rust
-// rust-agent-tui/src/app/agent.rs
+// peri-tui/src/app/agent.rs
 let hitl = HumanInTheLoopMiddleware::with_shared_mode(
     broker.clone(),
     default_requires_approval,
@@ -254,20 +254,20 @@ pub struct AgentRunConfig {
 5. **Relay 暂不感知：** 本期设计中 `SharedPermissionMode` 不传递到 Relay client。Relay Web 前端的审批弹窗行为不受影响（仍通过 `InteractionRequest` 事件触发）。后续可扩展通过 Relay 消息同步模式状态。
 
 6. **新增文件清单：**
-   - `rust-agent-middlewares/src/hitl/auto_classifier.rs` — AutoClassifier trait + LlmAutoClassifier
-   - `rust-agent-middlewares/src/hitl/shared_mode.rs` — SharedPermissionMode
-   - 修改 `rust-agent-middlewares/src/hitl/mod.rs` — 重构 HumanInTheLoopMiddleware
-   - 修改 `rust-agent-tui/src/app/mod.rs` — App 新增 permission_mode 字段
-   - 修改 `rust-agent-tui/src/app/agent.rs` — AgentRunConfig 新增字段，传入共享状态
-   - 修改 `rust-agent-tui/src/event.rs` — Shift+Tab 键绑定
-   - 修改 `rust-agent-tui/src/ui/` — 状态栏渲染当前模式
-   - 修改 `rust-agent-tui/src/main.rs` — 初始模式从环境变量解析
+   - `peri-middlewares/src/hitl/auto_classifier.rs` — AutoClassifier trait + LlmAutoClassifier
+   - `peri-middlewares/src/hitl/shared_mode.rs` — SharedPermissionMode
+   - 修改 `peri-middlewares/src/hitl/mod.rs` — 重构 HumanInTheLoopMiddleware
+   - 修改 `peri-tui/src/app/mod.rs` — App 新增 permission_mode 字段
+   - 修改 `peri-tui/src/app/agent.rs` — AgentRunConfig 新增字段，传入共享状态
+   - 修改 `peri-tui/src/event.rs` — Shift+Tab 键绑定
+   - 修改 `peri-tui/src/ui/` — 状态栏渲染当前模式
+   - 修改 `peri-tui/src/main.rs` — 初始模式从环境变量解析
 
 ## 约束一致性
 
 - **Middleware Chain 模式：** 权限决策逻辑封装在 `HumanInTheLoopMiddleware` 内部，不侵入 ReAct 执行器，与现有架构一致。
 - **事件驱动 TUI 通信：** 模式切换通过 `SharedPermissionMode::cycle()` 原子更新共享状态，状态栏在下一帧渲染时自动读取最新模式值。模式切换后的闪烁高亮通过 `App::mode_highlight_until: Option<Instant>` 控制（1.5 秒后自动失效），无需额外事件或定时器。唯一的共享可变状态 `Arc<AtomicU8>` 是无锁原子操作，不违反"禁止共享可变状态"约束的精神。
-- **Workspace 分层：** `PermissionMode` 和 `SharedPermissionMode` 定义在 `rust-agent-middlewares`（中间件层），不放在 `rust-create-agent`（核心层），避免核心层感知权限模式。`AutoClassifier` trait 也在中间件层。
+- **Workspace 分层：** `PermissionMode` 和 `SharedPermissionMode` 定义在 `peri-middlewares`（中间件层），不放在 `peri-agent`（核心层），避免核心层感知权限模式。`AutoClassifier` trait 也在中间件层。
 - **异步优先：** `AutoClassifier::classify` 使用 `async-trait`，与现有 trait 风格一致。
 - **错误处理：** 分类器调用失败时降级为 `Unsure`，走弹窗审批路径，遵循 fail-safe 原则。
 

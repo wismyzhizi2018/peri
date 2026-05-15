@@ -10,7 +10,7 @@
 
 ## 范围
 
-- 仅替换 `rust-agent-middlewares/src/tools/filesystem/grep.rs` 的内部实现
+- 仅替换 `peri-middlewares/src/tools/filesystem/grep.rs` 的内部实现
 - 工具名称 (`search_files_rg`)、参数 schema、description、输出格式保持不变（LLM 侧无感知）
 - 保持等价功能：正则搜索、glob 过滤、type 过滤、上下文行、`-l`/`-c` 输出模式、15 秒超时、500 行上限
 - 保持 `.gitignore` 尊重、hidden 文件跳过、二进制文件跳过的默认行为（对齐 rg 默认行为）
@@ -85,8 +85,8 @@
 
 | 文件 | 变更类型 | 说明 |
 |------|----------|------|
-| `rust-agent-middlewares/Cargo.toml` | 修改 | 新增 `grep`、`grep-regex` 依赖 |
-| `rust-agent-middlewares/src/tools/filesystem/grep.rs` | 重写 | 替换实现：移除 `which_rg()` 和 `Command` 调用，改用 crate API |
+| `peri-middlewares/Cargo.toml` | 修改 | 新增 `grep`、`grep-regex` 依赖 |
+| `peri-middlewares/src/tools/filesystem/grep.rs` | 重写 | 替换实现：移除 `which_rg()` 和 `Command` 调用，改用 crate API |
 
 **不变更**：
 - 工具名、参数 schema、description

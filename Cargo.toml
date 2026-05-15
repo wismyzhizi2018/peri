@@ -1,11 +1,11 @@
 [workspace]
 members = [
-    "rust-create-agent",
-    "rust-agent-middlewares",
-    "rust-agent-tui",
+    "peri-agent",
+    "peri-middlewares",
+    "peri-tui",
     "langfuse-client",
-    "perihelion-widgets",
-    "perihelion-lsp",
+    "peri-widgets",
+    "peri-lsp",
 ]
 resolver = "2"
 
@@ -68,5 +68,3 @@ lru = "0.18"
 
 # --- Build ---
 tempfile = "3"
-
-

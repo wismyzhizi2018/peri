@@ -2,7 +2,7 @@
 
 **目标:** 实现 `/compact [instructions]` TUI 指令，通过单次 LLM 调用将对话历史压缩为结构化摘要，替换 `agent_state_messages` 并更新 TUI 显示
 
-**技术栈:** Rust, Tokio, ratatui, rust-create-agent (BaseModel/LlmRequest), rust-agent-tui (App/Command)
+**技术栈:** Rust, Tokio, ratatui, peri-agent (BaseModel/LlmRequest), peri-tui (App/Command)
 
 **设计文档:** ./spec-design.md
 
@@ -12,7 +12,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
 
@@ -40,10 +40,10 @@
 **检查步骤:**
 
 - [x] 编译通过，无新增警告
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无输出（无编译错误）
 - [x] AgentEvent match 覆盖完整（无 non-exhaustive 警告）
-  - `cargo build -p rust-agent-tui 2>&1 | grep "non-exhaustive"`
+  - `cargo build -p peri-tui 2>&1 | grep "non-exhaustive"`
   - 预期: 无输出
 
 ---
@@ -52,7 +52,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/agent.rs`
 
 **执行步骤:**
 
@@ -60,8 +60,8 @@
 
   ```rust
   pub async fn compact_task(
-      messages: Vec<rust_create_agent::messages::BaseMessage>,
-      model: Box<dyn rust_create_agent::llm::BaseModel>,
+      messages: Vec<peri_agent::messages::BaseMessage>,
+      model: Box<dyn peri_agent::llm::BaseModel>,
       instructions: String,
       tx: tokio::sync::mpsc::Sender<super::AgentEvent>,
   )
@@ -83,10 +83,10 @@
 **检查步骤:**
 
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无输出
 - [x] compact_task 函数存在且签名正确
-  - `grep -n "pub async fn compact_task" rust-agent-tui/src/app/agent.rs`
+  - `grep -n "pub async fn compact_task" peri-tui/src/app/agent.rs`
   - 预期: 输出包含行号和函数签名
 
 ---
@@ -95,12 +95,12 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/command/compact.rs`
-- 修改: `rust-agent-tui/src/command/mod.rs`
+- 新建: `peri-tui/src/command/compact.rs`
+- 修改: `peri-tui/src/command/mod.rs`
 
 **执行步骤:**
 
-- [x] 新建 `rust-agent-tui/src/command/compact.rs`，实现 `CompactCommand` struct：
+- [x] 新建 `peri-tui/src/command/compact.rs`，实现 `CompactCommand` struct：
 
   ```rust
   use crate::app::App;
@@ -123,16 +123,16 @@
 **检查步骤:**
 
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无输出
 - [x] `/compact` 命令已注册（文件中存在）
-  - `grep -n "compact" rust-agent-tui/src/command/mod.rs`
+  - `grep -n "compact" peri-tui/src/command/mod.rs`
   - 预期: 输出包含 `pub mod compact` 和 `CompactCommand`
 - [x] 前缀匹配逻辑验证：`/co` 唯一匹配 compact（无其他 `co` 前缀命令）
-  - `grep -rn "fn name.*co" rust-agent-tui/src/command/`
+  - `grep -rn "fn name.*co" peri-tui/src/command/`
   - 预期: 仅 compact.rs 中 name 返回 "compact"
 - [x] `/help` 能列出 compact 命令
-  - `cargo test -p rust-agent-tui -- help 2>&1 | grep -i compact`
+  - `cargo test -p peri-tui -- help 2>&1 | grep -i compact`
   - 预期: 能找到相关测试或编译结果包含 compact
 
 ---
@@ -141,50 +141,50 @@
 
 **Prerequisites:**
 
-- 启动命令: `cargo run -p rust-agent-tui -- -y`（YOLO 模式，跳过 HITL 审批）
+- 启动命令: `cargo run -p peri-tui -- -y`（YOLO 模式，跳过 HITL 审批）
 - 需要配置 `ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY`
 - 确保 Task 1~3 全部完成且编译通过
 
 **端到端验证:**
 
 1. **全量编译测试通过**
-   - `cargo test -p rust-agent-tui 2>&1 | tail -10`
+   - `cargo test -p peri-tui 2>&1 | tail -10`
    - 预期: 输出包含 "test result: ok" 或所有 test 通过，无 FAILED
    - 失败时: 检查 Task 1（AgentEvent match 覆盖）和 Task 3（注册）
    - [x] ✅ 43 passed; 0 failed
 
 2. **命令注册验证（前缀匹配）**
-   - `grep -c "CompactCommand" rust-agent-tui/src/command/mod.rs`
+   - `grep -c "CompactCommand" peri-tui/src/command/mod.rs`
    - 预期: 输出 `1`（恰好注册一次）
    - 失败时: 检查 Task 3
    - [x] ✅ 输出 1
 
 3. **命令文件存在且结构完整**
-   - `grep -n "fn name\|fn description\|fn execute" rust-agent-tui/src/command/compact.rs`
+   - `grep -n "fn name\|fn description\|fn execute" peri-tui/src/command/compact.rs`
    - 预期: 输出包含 3 行，分别对应三个方法实现
    - 失败时: 检查 Task 3
    - [x] ✅ 3 行均存在
 
 4. **start_compact 空历史分支**
-   - `grep -n "无可压缩的上下文" rust-agent-tui/src/app/mod.rs`
+   - `grep -n "无可压缩的上下文" peri-tui/src/app/mod.rs`
    - 预期: 找到对应字符串（空历史保护逻辑存在）
    - 失败时: 检查 Task 1 中 start_compact 的空历史判断
    - [x] ✅ 第 1278 行找到
 
 5. **CompactDone 处理：agent_state_messages 替换逻辑**
-   - `grep -n "CompactDone\|agent_state_messages.*system\|system.*summary" rust-agent-tui/src/app/mod.rs`
+   - `grep -n "CompactDone\|agent_state_messages.*system\|system.*summary" peri-tui/src/app/mod.rs`
    - 预期: 输出至少 2 行（CompactDone 分支 + 替换逻辑）
    - 失败时: 检查 Task 1 中 handle_agent_event 的 CompactDone 处理
    - [x] ✅ 3 行输出
 
 6. **compact_task 消息格式化函数存在**
-   - `grep -n "compact_task\|\[用户\]\|\[助手\]\|\[工具结果" rust-agent-tui/src/app/agent.rs`
+   - `grep -n "compact_task\|\[用户\]\|\[助手\]\|\[工具结果" peri-tui/src/app/agent.rs`
    - 预期: 输出包含函数定义和中文角色标签
    - 失败时: 检查 Task 2
    - [x] ✅ 5 行输出，函数和标签均存在
 
 7. **全量 Cargo 测试（含现有测试不回归）**
-   - `cargo test -p rust-create-agent --lib 2>&1 | tail -5`
+   - `cargo test -p peri-agent --lib 2>&1 | tail -5`
    - 预期: 输出包含 "test result: ok"，无 FAILED
    - 失败时: 检查 Task 1~2 中是否破坏了现有消息处理逻辑
    - [x] ✅ 32 passed; 0 failed

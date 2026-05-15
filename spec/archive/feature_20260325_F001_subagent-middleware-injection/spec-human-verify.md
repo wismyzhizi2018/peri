@@ -11,7 +11,7 @@
 ### 环境要求
 
 - [ ] [AUTO] 确认 Rust 工具链可用: `cargo --version`
-- [ ] [AUTO] 编译 rust-agent-middlewares 无错误: `cargo build -p rust-agent-middlewares 2>&1 | grep -c "^error" || true`
+- [ ] [AUTO] 编译 peri-middlewares 无错误: `cargo build -p peri-middlewares 2>&1 | grep -c "^error" || true`
 
 ### 测试数据准备
 
@@ -27,18 +27,18 @@
 
 - **来源:** Task 1 检查步骤 / spec-design.md 验收标准
 - **操作步骤:**
-  1. [A] `grep -n "AgentsMdMiddleware::new" rust-agent-middlewares/src/subagent/tool.rs` → 期望: 输出包含 `AgentsMdMiddleware::new()` 的行（invoke 方法内）
-  2. [A] `cargo test -p rust-agent-middlewares --lib -- agents_md 2>&1 | grep "test result"` → 期望: `test result: ok.` 且 `0 failed`
+  1. [A] `grep -n "AgentsMdMiddleware::new" peri-middlewares/src/subagent/tool.rs` → 期望: 输出包含 `AgentsMdMiddleware::new()` 的行（invoke 方法内）
+  2. [A] `cargo test -p peri-middlewares --lib -- agents_md 2>&1 | grep "test result"` → 期望: `test result: ok.` 且 `0 failed`
 - **异常排查:**
-  - 如果 grep 无输出：检查 `rust-agent-middlewares/src/subagent/tool.rs` 第 196-205 行是否存在三个中间件注册块
-  - 如果测试失败：运行 `cargo test -p rust-agent-middlewares --lib -- agents_md --nocapture 2>&1` 查看详细错误
+  - 如果 grep 无输出：检查 `peri-middlewares/src/subagent/tool.rs` 第 196-205 行是否存在三个中间件注册块
+  - 如果测试失败：运行 `cargo test -p peri-middlewares --lib -- agents_md --nocapture 2>&1` 查看详细错误
 
 #### - [x] 1.2 SkillsMiddleware 已注入（含 with_global_config 调用）
 
 - **来源:** Task 1 检查步骤 / spec-design.md 验收标准
 - **操作步骤:**
-  1. [A] `grep -n "SkillsMiddleware::new.*with_global_config" rust-agent-middlewares/src/subagent/tool.rs` → 期望: 输出包含 `.with_global_config()` 的行
-  2. [A] `cargo test -p rust-agent-middlewares --lib -- skills 2>&1 | grep "test result"` → 期望: `test result: ok.` 且 `0 failed`
+  1. [A] `grep -n "SkillsMiddleware::new.*with_global_config" peri-middlewares/src/subagent/tool.rs` → 期望: 输出包含 `.with_global_config()` 的行
+  2. [A] `cargo test -p peri-middlewares --lib -- skills 2>&1 | grep "test result"` → 期望: `test result: ok.` 且 `0 failed`
 - **异常排查:**
   - 如果 grep 无 with_global_config：检查是否遗漏了 `.with_global_config()` 调用，此调用确保从 `~/.peri/settings.json` 加载全局 skills 目录
 
@@ -50,8 +50,8 @@
 
 - **来源:** Task 1 检查步骤 / spec-design.md 验收标准
 - **操作步骤:**
-  1. [A] `grep -n "TodoMiddleware::new" rust-agent-middlewares/src/subagent/tool.rs` → 期望: 输出包含 `TodoMiddleware::new` 的行（invoke 方法内）
-  2. [A] `cargo test -p rust-agent-middlewares --lib -- todo 2>&1 | grep "test result"` → 期望: `test result: ok.` 且 `0 failed`
+  1. [A] `grep -n "TodoMiddleware::new" peri-middlewares/src/subagent/tool.rs` → 期望: 输出包含 `TodoMiddleware::new` 的行（invoke 方法内）
+  2. [A] `cargo test -p peri-middlewares --lib -- todo 2>&1 | grep "test result"` → 期望: `test result: ok.` 且 `0 failed`
 - **异常排查:**
   - 如果 grep 无输出：检查 `tool.rs` 中 `agent_builder = agent_builder` 代码块是否包含 TodoMiddleware
 
@@ -59,8 +59,8 @@
 
 - **来源:** spec-design.md 实现要点
 - **操作步骤:**
-  1. [A] `grep -n "_rx" rust-agent-middlewares/src/subagent/tool.rs` → 期望: 输出包含 `let (tx, _rx) = mpsc::channel(8)` 的行，确认 `_rx` 前缀表示忽略
-  2. [A] `cargo test -p rust-agent-middlewares --lib -- test_tool_executes_with_valid_agent_file 2>&1 | grep "test result"` → 期望: `test result: ok. 1 passed`
+  1. [A] `grep -n "_rx" peri-middlewares/src/subagent/tool.rs` → 期望: 输出包含 `let (tx, _rx) = mpsc::channel(8)` 的行，确认 `_rx` 前缀表示忽略
+  2. [A] `cargo test -p peri-middlewares --lib -- test_tool_executes_with_valid_agent_file 2>&1 | grep "test result"` → 期望: `test result: ok. 1 passed`
 - **异常排查:**
   - 如果测试失败并提示 channel 相关错误：检查 `_rx` 是否在正确作用域内被丢弃（应在 `mpsc::channel(8)` 后立即绑定到 `_rx` 变量）
 
@@ -72,8 +72,8 @@
 
 - **来源:** spec-design.md 验收标准（父 agent 的 HITL 审批、ask_user、launch_agent 工具不被注入子 agent）
 - **操作步骤:**
-  1. [A] `grep -n "HumanInTheLoop\|AskUserTool\|SubAgentMiddleware" rust-agent-middlewares/src/subagent/tool.rs | grep "add_middleware\|register_tool"` → 期望: 无输出（这三项不应出现在 add_middleware 或 register_tool 调用中）
-  2. [A] `cargo test -p rust-agent-middlewares --lib -- test_launch_agent_excluded 2>&1 | grep "test result"` → 期望: `test result: ok.` 且 `0 failed`（验证 launch_agent 防递归排除逻辑）
+  1. [A] `grep -n "HumanInTheLoop\|AskUserTool\|SubAgentMiddleware" peri-middlewares/src/subagent/tool.rs | grep "add_middleware\|register_tool"` → 期望: 无输出（这三项不应出现在 add_middleware 或 register_tool 调用中）
+  2. [A] `cargo test -p peri-middlewares --lib -- test_launch_agent_excluded 2>&1 | grep "test result"` → 期望: `test result: ok.` 且 `0 failed`（验证 launch_agent 防递归排除逻辑）
 - **异常排查:**
   - 如果 grep 有意外输出：检查是否误将 HITL 等中间件加入了子 agent 的 `add_middleware` 调用
   - launch_agent 防递归通过 `filter_tools` 方法实现（始终从工具集排除 `launch_agent` 名称的工具）
@@ -82,8 +82,8 @@
 
 - **来源:** spec-design.md 实现要点
 - **操作步骤:**
-  1. [A] `grep -n "add_middleware\|PrependSystemMiddleware" rust-agent-middlewares/src/subagent/tool.rs | grep -v "^.*//\|test"` → 期望: 输出中 `AgentsMdMiddleware` 行号 < `SkillsMiddleware` 行号 < `TodoMiddleware` 行号 < `PrependSystemMiddleware` 行号
-  2. [A] `cargo test -p rust-agent-middlewares --lib -- test_system_builder_injects_system_message 2>&1 | grep "test result"` → 期望: `test result: ok. 1 passed`（验证 PrependSystemMiddleware 仍位于消息列表最前）
+  1. [A] `grep -n "add_middleware\|PrependSystemMiddleware" peri-middlewares/src/subagent/tool.rs | grep -v "^.*//\|test"` → 期望: 输出中 `AgentsMdMiddleware` 行号 < `SkillsMiddleware` 行号 < `TodoMiddleware` 行号 < `PrependSystemMiddleware` 行号
+  2. [A] `cargo test -p peri-middlewares --lib -- test_system_builder_injects_system_message 2>&1 | grep "test result"` → 期望: `test result: ok. 1 passed`（验证 PrependSystemMiddleware 仍位于消息列表最前）
 - **异常排查:**
   - 如果顺序错误会导致系统消息 prepend 顺序颠倒，PrependSystemMiddleware 必须最后注册才能保证系统提示位于消息列表最前
 
@@ -95,7 +95,7 @@
 
 - **来源:** Task 1 检查步骤
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-middlewares 2>&1 | grep -E "^error"` → 期望: 无输出（无编译错误）
+  1. [A] `cargo build -p peri-middlewares 2>&1 | grep -E "^error"` → 期望: 无输出（无编译错误）
 - **异常排查:**
   - 如果出现 `cannot find type` 或 `unresolved import`：检查 4 个新增 import 是否完整（`AgentsMdMiddleware`、`TodoMiddleware`、`SkillsMiddleware`、`mpsc`）
 
@@ -103,12 +103,12 @@
 
 - **来源:** Task 1 + Task 2 检查步骤
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- test_tool_filter 2>&1 | grep -E "ok|FAILED"` → 期望: 所有 `test_tool_filter_*` 均显示 `ok`
-  2. [A] `cargo test -p rust-agent-middlewares 2>&1 | grep "test result"` → 期望: 输出包含 `52 passed; 0 failed`（lib 测试）和 `4 passed; 0 failed`（integration 测试）
-  3. [A] `cargo test -p rust-agent-middlewares 2>&1 | grep "FAILED"` → 期望: 无输出（无失败用例）
+  1. [A] `cargo test -p peri-middlewares --lib -- test_tool_filter 2>&1 | grep -E "ok|FAILED"` → 期望: 所有 `test_tool_filter_*` 均显示 `ok`
+  2. [A] `cargo test -p peri-middlewares 2>&1 | grep "test result"` → 期望: 输出包含 `52 passed; 0 failed`（lib 测试）和 `4 passed; 0 failed`（integration 测试）
+  3. [A] `cargo test -p peri-middlewares 2>&1 | grep "FAILED"` → 期望: 无输出（无失败用例）
 - **异常排查:**
   - 如果 filter 测试失败：检查新增中间件是否在 `filter_tools` 调用之前注册（应在其之后，不影响工具过滤逻辑）
-  - 如果 skills/agents_md 测试失败：运行 `cargo test -p rust-agent-middlewares --nocapture 2>&1 | grep -A5 "FAILED"` 查看详细错误
+  - 如果 skills/agents_md 测试失败：运行 `cargo test -p peri-middlewares --nocapture 2>&1 | grep -A5 "FAILED"` 查看详细错误
 
 ---
 

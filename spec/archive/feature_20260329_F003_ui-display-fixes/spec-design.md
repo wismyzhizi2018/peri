@@ -18,7 +18,7 @@ TUI 存在 3 个 UI 显示问题：
 
 ### 修改 1：SubAgentGroup 内部消息去序号
 
-**文件：** `rust-agent-tui/src/ui/message_render.rs`
+**文件：** `peri-tui/src/ui/message_render.rs`
 
 **当前行为：** SubAgentGroup 嵌套消息调用 `render_view_model(inner_vm, 0, _width)`，`index=0` 导致各分支渲染时带有 `0` 前缀。
 
@@ -37,7 +37,7 @@ SubAgentGroup 内部调用改为 `render_view_model(inner_vm, None, _width)`。
 
 ### 修改 2：AI 消息去除 ToolUse 渲染
 
-**文件：** `rust-agent-tui/src/ui/message_render.rs`
+**文件：** `peri-tui/src/ui/message_render.rs`
 
 **当前行为：** `AssistantBubble` 渲染时，`ContentBlockView::ToolUse` 显示为 `🔧 name` 行（带 `tool_idx` 编号）。
 
@@ -54,7 +54,7 @@ ContentBlockView::ToolUse { .. } => {
 
 ### 修改 3：弹窗高度上限提升
 
-**文件：** `rust-agent-tui/src/ui/main_ui.rs` 的 `active_panel_height` 函数
+**文件：** `peri-tui/src/ui/main_ui.rs` 的 `active_panel_height` 函数
 
 **当前值：**
 ```rust

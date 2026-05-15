@@ -8,7 +8,7 @@
 
 ## 改动总览
 
-本计划实现 MCP Client 核心组件层，新增 `rust-agent-middlewares/src/mcp/` 模块（6 个子文件）+ 修改 `Cargo.toml` 和 `lib.rs`。Task 1 创建数据结构和配置加载，Task 2 和 Task 3 依赖 Task 1 的配置类型构建传输和连接池，Task 4 依赖 Task 3 的 `McpClientHandle` 实现工具桥接。关键决策：rmcp 0.14 统一在 Task 1 引入（避免多 Task 修改 Cargo.toml），`McpClientPool` 使用 `RunningService` 持有连接生命周期。
+本计划实现 MCP Client 核心组件层，新增 `peri-middlewares/src/mcp/` 模块（6 个子文件）+ 修改 `Cargo.toml` 和 `lib.rs`。Task 1 创建数据结构和配置加载，Task 2 和 Task 3 依赖 Task 1 的配置类型构建传输和连接池，Task 4 依赖 Task 3 的 `McpClientHandle` 实现工具桥接。关键决策：rmcp 0.14 统一在 Task 1 引入（避免多 Task 修改 Cargo.toml），`McpClientPool` 使用 `RunningService` 持有连接生命周期。
 
 ---
 
@@ -49,15 +49,15 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-middlewares/src/mcp/mod.rs`
-- 新建: `rust-agent-middlewares/src/mcp/config.rs`
-- 修改: `rust-agent-middlewares/Cargo.toml`
-- 修改: `rust-agent-middlewares/src/lib.rs`
+- 新建: `peri-middlewares/src/mcp/mod.rs`
+- 新建: `peri-middlewares/src/mcp/config.rs`
+- 修改: `peri-middlewares/Cargo.toml`
+- 修改: `peri-middlewares/src/lib.rs`
 
 **执行步骤:**
 
 - [ ] 在 `Cargo.toml` 添加 rmcp 依赖声明
-  - 位置: `rust-agent-middlewares/Cargo.toml` 末尾 `[dependencies]` 块追加
+  - 位置: `peri-middlewares/Cargo.toml` 末尾 `[dependencies]` 块追加
   - 追加内容:
 
     ```toml
@@ -71,7 +71,7 @@
   - 原因: Task 1 仅需 serde 反序列化，但 rmcp 依赖在此统一声明，避免后续 Task 重复修改 Cargo.toml
 
 - [ ] 创建 `mcp` 模块入口文件
-  - 位置: 新建 `rust-agent-middlewares/src/mcp/mod.rs`
+  - 位置: 新建 `peri-middlewares/src/mcp/mod.rs`
   - 内容:
 
     ```rust
@@ -85,7 +85,7 @@
   - 原因: 模块骨架，后续 Task 2-6 在此目录追加子模块
 
 - [ ] 在 `lib.rs` 注册 `mcp` 模块并重导出关键类型
-  - 位置: `rust-agent-middlewares/src/lib.rs`，在 `pub mod skills;` 行之后追加
+  - 位置: `peri-middlewares/src/lib.rs`，在 `pub mod skills;` 行之后追加
   - 追加内容:
 
     ```rust
@@ -96,7 +96,7 @@
   - 原因: 与现有模块注册模式一致（声明 + pub use 重导出）
 
 - [ ] 在 `config.rs` 中定义 `McpServerConfig` 数据结构
-  - 位置: 新建 `rust-agent-middlewares/src/mcp/config.rs`，文件顶部
+  - 位置: 新建 `peri-middlewares/src/mcp/config.rs`，文件顶部
   - 关键逻辑:
 
     ```rust
@@ -317,7 +317,7 @@
   - 原因: spec-design.md §McpConfig 要求先全局后项目级、同名覆盖、加载时展开 `${VAR}`；加载失败 warn 日志不中断
 
 - [ ] 为 McpConfig 配置加载与合并编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/config.rs`（文件底部 `#[cfg(test)] mod tests` 块）
+  - 测试文件: `peri-middlewares/src/mcp/config.rs`（文件底部 `#[cfg(test)] mod tests` 块）
   - 测试场景:
     - `test_load_from_nonexistent_path`: 传入不存在的路径 → 返回空 `McpConfigFile::default()`
     - `test_load_from_valid_json`: 用 `tempfile::NamedTempFile` 创建包含 `{"mcpServers":{"fs":{"command":"npx"}}}` 的临时 JSON 文件 → 解析成功，`mcp_servers` 含 1 个条目
@@ -329,25 +329,25 @@
     - `test_expand_env_vars_no_braces`: 调用 `expand_env_vars("$NO_BRACE")` → 返回 `"$NO_BRACE"`（不展开无花括号格式）
     - `test_merge_project_overrides_global`: 构造两个 `McpConfigFile`，全局含 `fs: {command: "npx"}`，项目级含 `fs: {command: "uvx"}` → 合并后 `fs.command` 为 `"uvx"`
     - `test_merge_project_adds_new_server`: 全局含 `fs`，项目级含 `gh` → 合并后两者均存在
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- mcp::config::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [ ] 验证 mcp 模块编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 输出 `Finished` 且无编译错误
 
 - [ ] 验证 config.rs 单元测试全部通过
-  - `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests 2>&1 | tail -15`
+  - `cargo test -p peri-middlewares --lib -- mcp::config::tests 2>&1 | tail -15`
   - 预期: 所有 `test_*` 测试通过，输出 `test result: ok`
 
 - [ ] 验证 lib.rs 正确重导出 mcp 类型
-  - `grep -n "pub use mcp" rust-agent-middlewares/src/lib.rs`
+  - `grep -n "pub use mcp" peri-middlewares/src/lib.rs`
   - 预期: 输出包含 `pub use mcp::{McpConfigError, McpConfigFile, McpServerConfig, load_merged_config};`
 
 - [ ] 验证 McpServerConfig 字段与 spec-design.md 一致
-  - `grep -E "pub (command|args|env|url|headers)" rust-agent-middlewares/src/mcp/config.rs`
+  - `grep -E "pub (command|args|env|url|headers)" peri-middlewares/src/mcp/config.rs`
   - 预期: 5 个字段均存在，类型匹配（command/url 为 `Option<String>`，args 为 `Option<Vec<String>>`，env/headers 为 `Option<HashMap<String, String>>`）
 
 ---
@@ -361,13 +361,13 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-middlewares/src/mcp/transport.rs`
-- 修改: `rust-agent-middlewares/src/mcp/mod.rs`（添加 `pub mod transport`）
+- 新建: `peri-middlewares/src/mcp/transport.rs`
+- 修改: `peri-middlewares/src/mcp/mod.rs`（添加 `pub mod transport`）
 
 **执行步骤:**
 
 - [ ] 在 `transport.rs` 顶部定义 `TransportError` 错误类型和 `TransportConfig` 枚举
-  - 位置: 新建 `rust-agent-middlewares/src/mcp/transport.rs`，文件顶部
+  - 位置: 新建 `peri-middlewares/src/mcp/transport.rs`，文件顶部
   - 关键逻辑:
 
     ```rust
@@ -473,7 +473,7 @@
   - **注意**: rmcp 0.14 的 `TokioChildProcess::new()` 签名为 `fn new(cmd: Command) -> Result<TokioChildProcess, io::Error>`；`StreamableHttpClientTransport::from_uri()` 签名需确认是否直接返回实例或 builder。实现时根据 rmcp 0.14 实际 API 调整，核心逻辑不变
 
 - [ ] 修改 `mcp/mod.rs` 添加 `pub mod transport` 声明和重导出
-  - 位置: `rust-agent-middlewares/src/mcp/mod.rs`，在 `pub mod config;` 行之后追加
+  - 位置: `peri-middlewares/src/mcp/mod.rs`，在 `pub mod config;` 行之后追加
   - 追加内容:
 
     ```rust
@@ -485,7 +485,7 @@
   - 原因: 与 Task 1 建立的模块注册模式一致（声明 + pub use 重导出）；`build_transport` 是 Task 3（McpClientPool）直接依赖的核心函数
 
 - [ ] 为传输层构建工厂编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/transport.rs`（文件底部 `#[cfg(test)] mod tests` 块）
+  - 测试文件: `peri-middlewares/src/mcp/transport.rs`（文件底部 `#[cfg(test)] mod tests` 块）
   - 测试场景:
     - `test_try_from_stdio_config`: 构造 `McpServerConfig { command: Some("npx".into()), args: Some(vec!["-y".into()]), env: Some(HashMap::from([("KEY".into(), "val".into())])), url: None, headers: None }` → `TransportConfig::try_from()` 返回 `Ok(TransportConfig::Stdio { command: "npx", args: ["-y"], env: {"KEY": "val"} })`
     - `test_try_from_http_config`: 构造 `McpServerConfig { command: None, args: None, env: None, url: Some("https://example.com/mcp".into()), headers: Some(HashMap::from([("Auth".into(), "Bearer token".into())])) }` → 返回 `Ok(TransportConfig::StreamableHttp { url: "https://example.com/mcp", headers: {"Auth": "Bearer token"} })`
@@ -494,33 +494,33 @@
     - `test_try_from_defaults`: 构造 `McpServerConfig { command: Some("cat".into()), args: None, env: None, url: None, headers: None }` → 返回 `Ok(TransportConfig::Stdio { args: [], env: {} })`（缺失字段使用默认空值）
     - `test_build_transport_stdio_echo`: 构造 `McpServerConfig { command: Some("echo".into()), args: Some(vec!["hello".into()]), env: None, url: None, headers: None }` → `build_transport()` 返回 `Ok(_)` 不 panic（echo 命令始终可用）
     - `test_build_transport_invalid_command`: 构造 `McpServerConfig { command: Some("nonexistent_binary_xyz_12345".into()), args: None, env: None, url: None, headers: None }` → `build_transport()` 返回 `Err(TransportError::StdioLaunchFailed(_))`
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- mcp::transport::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- mcp::transport::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [ ] 验证 transport.rs 编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 输出 `Finished` 且无编译错误
 
 - [ ] 验证 transport.rs 单元测试全部通过
-  - `cargo test -p rust-agent-middlewares --lib -- mcp::transport::tests 2>&1 | tail -15`
+  - `cargo test -p peri-middlewares --lib -- mcp::transport::tests 2>&1 | tail -15`
   - 预期: 所有 `test_*` 测试通过，输出 `test result: ok`
 
 - [ ] 验证 mod.rs 正确声明 transport 子模块
-  - `grep -n "pub mod transport" rust-agent-middlewares/src/mcp/mod.rs`
+  - `grep -n "pub mod transport" peri-middlewares/src/mcp/mod.rs`
   - 预期: 输出包含 `pub mod transport;`
 
 - [ ] 验证 mod.rs 正确重导出 transport 类型
-  - `grep -n "pub use transport" rust-agent-middlewares/src/mcp/mod.rs`
+  - `grep -n "pub use transport" peri-middlewares/src/mcp/mod.rs`
   - 预期: 输出包含 `pub use transport::{TransportConfig, TransportError, build_transport};`
 
 - [ ] 验证 build_transport 函数签名接受 McpServerConfig 引用
-  - `grep -n "pub fn build_transport" rust-agent-middlewares/src/mcp/transport.rs`
+  - `grep -n "pub fn build_transport" peri-middlewares/src/mcp/transport.rs`
   - 预期: 输出包含 `pub fn build_transport(config: &McpServerConfig)`
 
 - [ ] 验证 TransportConfig 枚举包含 Stdio 和 StreamableHttp 两个变体
-  - `grep -E "Stdio|StreamableHttp" rust-agent-middlewares/src/mcp/transport.rs`
+  - `grep -E "Stdio|StreamableHttp" peri-middlewares/src/mcp/transport.rs`
   - 预期: 输出包含两个变体的定义
 
 ---
@@ -534,13 +534,13 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-middlewares/src/mcp/client.rs`
-- 修改: `rust-agent-middlewares/src/mcp/mod.rs`（添加 `pub mod client` + 重导出）
+- 新建: `peri-middlewares/src/mcp/client.rs`
+- 修改: `peri-middlewares/src/mcp/mod.rs`（添加 `pub mod client` + 重导出）
 
 **执行步骤:**
 
 - [ ] 在 `client.rs` 顶部定义 `ClientStatus` 枚举和 `McpPoolError` 错误类型
-  - 位置: 新建 `rust-agent-middlewares/src/mcp/client.rs`，文件顶部
+  - 位置: 新建 `peri-middlewares/src/mcp/client.rs`，文件顶部
   - 关键逻辑:
 
     ```rust
@@ -790,7 +790,7 @@
   - 原因: spec-design.md 要求 App 退出时统一 `pool.shutdown()`；`close_with_timeout` 确保不会无限阻塞；stdio transport 的 `RunningService` 内部会触发子进程 graceful shutdown
 
 - [ ] 修改 `mcp/mod.rs` 添加 `pub mod client` 声明和重导出
-  - 位置: `rust-agent-middlewares/src/mcp/mod.rs`，在 `pub mod config;` 之后追加
+  - 位置: `peri-middlewares/src/mcp/mod.rs`，在 `pub mod config;` 之后追加
   - 追加内容:
 
     ```rust
@@ -802,7 +802,7 @@
   - 原因: 与 Task 1 建立的模块注册模式一致（声明 + pub use 重导出）
 
 - [ ] 为 McpClientPool 连接池管理编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/client.rs`（文件底部 `#[cfg(test)] mod tests` 块）
+  - 测试文件: `peri-middlewares/src/mcp/client.rs`（文件底部 `#[cfg(test)] mod tests` 块）
   - 测试场景:
     - `test_empty_config_creates_empty_pool`: 传入空目录（无 `.mcp.json` 且全局配置无 mcpServers）→ `initialize()` 返回空 pool，`clients` 为空
     - `test_pool_get_all_clients_filters_disconnected`: 手动构造 pool，插入 1 个 Connected + 1 个 Failed handle → `get_all_clients()` 仅返回 1 个
@@ -810,29 +810,29 @@
     - `test_pool_has_no_resources`: 手动构造 pool，所有 handle 的 resources 为空 → `has_resources()` 返回 `false`
     - `test_resource_summary_format`: 手动构造 pool，插入已知 name/resources 的 handle → `resource_summary()` 包含 server 名称和资源 URI
     - `test_client_status_enum`: 验证 `ClientStatus::Connected != ClientStatus::Failed("...")` 且 `ClientStatus::Failed("a") != ClientStatus::Failed("b")`（携带原因的变体）
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- mcp::client::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- mcp::client::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [ ] 验证 mcp 模块整体编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 输出 `Finished` 且无编译错误
 
 - [ ] 验证 client.rs 单元测试全部通过
-  - `cargo test -p rust-agent-middlewares --lib -- mcp::client::tests 2>&1 | tail -15`
+  - `cargo test -p peri-middlewares --lib -- mcp::client::tests 2>&1 | tail -15`
   - 预期: 所有 `test_*` 测试通过，输出 `test result: ok`
 
 - [ ] 验证 mod.rs 正确声明 client 子模块
-  - `grep -n "pub mod client" rust-agent-middlewares/src/mcp/mod.rs`
+  - `grep -n "pub mod client" peri-middlewares/src/mcp/mod.rs`
   - 预期: 输出包含 `pub mod client;`
 
 - [ ] 验证 mod.rs 正确重导出 client 类型
-  - `grep -n "pub use client" rust-agent-middlewares/src/mcp/mod.rs`
+  - `grep -n "pub use client" peri-middlewares/src/mcp/mod.rs`
   - 预期: 输出包含 `pub use client::{ClientStatus, McpClientHandle, McpClientPool, McpPoolError};`
 
 - [ ] 验证 McpClientHandle 包含 spec-design.md 要求的所有字段
-  - `grep -E "pub (name|peer|tools|resources|status)" rust-agent-middlewares/src/mcp/client.rs`
+  - `grep -E "pub (name|peer|tools|resources|status)" peri-middlewares/src/mcp/client.rs`
   - 预期: 5 个 pub 字段均存在，类型为 `String` / `Peer<RoleClient>` / `Vec<Tool>` / `Vec<Resource>` / `ClientStatus`
 
 ---
@@ -846,19 +846,19 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-middlewares/src/mcp/tool_bridge.rs`
-- 修改: `rust-agent-middlewares/src/mcp/mod.rs`（添加 `pub mod tool_bridge` + 重导出）
+- 新建: `peri-middlewares/src/mcp/tool_bridge.rs`
+- 修改: `peri-middlewares/src/mcp/mod.rs`（添加 `pub mod tool_bridge` + 重导出）
 
 **执行步骤:**
 
 - [ ] 在 `tool_bridge.rs` 顶部定义 `ToolCallError` 错误类型和 `McpToolBridge` 结构体
-  - 位置: 新建 `rust-agent-middlewares/src/mcp/tool_bridge.rs`，文件顶部
+  - 位置: 新建 `peri-middlewares/src/mcp/tool_bridge.rs`，文件顶部
   - 关键逻辑:
 
     ```rust
     use std::sync::Arc;
     use async_trait::async_trait;
-    use rust_create_agent::tools::BaseTool;
+    use peri_agent::tools::BaseTool;
     use thiserror::Error;
 
     /// MCP 工具调用错误
@@ -1062,7 +1062,7 @@
   - 原因: `get_all_clients()` 已过滤 `Failed` / `Disconnected` 状态，仅遍历已连接的客户端；每个 `Tool` 元数据创建独立的 `McpToolBridge` 实例，共享同一个 `Arc<McpClientHandle>`；返回 `Vec<Box<dyn BaseTool>>` 与 `Middleware::collect_tools()` 返回类型一致
 
 - [ ] 修改 `mcp/mod.rs` 添加 `pub mod tool_bridge` 声明和重导出
-  - 位置: `rust-agent-middlewares/src/mcp/mod.rs`，在 `pub mod client;` 行之后追加
+  - 位置: `peri-middlewares/src/mcp/mod.rs`，在 `pub mod client;` 行之后追加
   - 追加内容:
 
     ```rust
@@ -1074,7 +1074,7 @@
   - 原因: 与 Task 1 建立的模块注册模式一致（声明 + pub use 重导出）；`build_tool_bridges` 是 Task 6（McpMiddleware）直接依赖的核心工厂函数
 
 - [ ] 为 McpToolBridge 工具桥接编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/tool_bridge.rs`（文件底部 `#[cfg(test)] mod tests` 块）
+  - 测试文件: `peri-middlewares/src/mcp/tool_bridge.rs`（文件底部 `#[cfg(test)] mod tests` 块）
   - 测试场景:
     - `test_new_creates_correct_full_name`: 构造 `Tool { name: "read_file".into(), description: Some("Read a file".into()), input_schema: Some(json!({"type":"object","properties":{"path":{"type":"string"}}})) }` + `McpClientHandle { name: "fs", status: Connected, .. }` → `McpToolBridge::new("fs", &tool, handle)` 的 `name()` 返回 `"mcp__fs__read_file"`
     - `test_new_creates_correct_description`: 同上输入 → `description()` 返回 `"[MCP:fs] Read a file"`
@@ -1087,37 +1087,37 @@
     - `test_format_content_image`: 调用 `format_content(&[Content::Image(ImageContent { mime_type: Some("image/png".into()), .. })])` → 返回 `"[image: image/png]"`
     - `test_build_tool_bridges_empty_pool`: 构造空 `McpClientPool` → `build_tool_bridges(&pool)` 返回空 `Vec`
     - `test_build_tool_bridges_filters_disconnected`: 构造 pool 含 1 个 Connected（2 个 tools）+ 1 个 Failed → `build_tool_bridges()` 返回 2 个 bridge
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- mcp::tool_bridge::tests`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- mcp::tool_bridge::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [ ] 验证 tool_bridge.rs 编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 输出 `Finished` 且无编译错误
 
 - [ ] 验证 tool_bridge.rs 单元测试全部通过
-  - `cargo test -p rust-agent-middlewares --lib -- mcp::tool_bridge::tests 2>&1 | tail -15`
+  - `cargo test -p peri-middlewares --lib -- mcp::tool_bridge::tests 2>&1 | tail -15`
   - 预期: 所有 `test_*` 测试通过，输出 `test result: ok`
 
 - [ ] 验证 mod.rs 正确声明 tool_bridge 子模块
-  - `grep -n "pub mod tool_bridge" rust-agent-middlewares/src/mcp/mod.rs`
+  - `grep -n "pub mod tool_bridge" peri-middlewares/src/mcp/mod.rs`
   - 预期: 输出包含 `pub mod tool_bridge;`
 
 - [ ] 验证 mod.rs 正确重导出 tool_bridge 类型
-  - `grep -n "pub use tool_bridge" rust-agent-middlewares/src/mcp/mod.rs`
+  - `grep -n "pub use tool_bridge" peri-middlewares/src/mcp/mod.rs`
   - 预期: 输出包含 `pub use tool_bridge::{McpToolBridge, ToolCallError, build_tool_bridges};`
 
 - [ ] 验证 McpToolBridge 实现了 BaseTool trait
-  - `grep -n "impl BaseTool for McpToolBridge" rust-agent-middlewares/src/mcp/tool_bridge.rs`
+  - `grep -n "impl BaseTool for McpToolBridge" peri-middlewares/src/mcp/tool_bridge.rs`
   - 预期: 输出包含 `impl BaseTool for McpToolBridge`
 
 - [ ] 验证工具调用超时常量与 Bash 工具一致（120s）
-  - `grep -n "TOOL_CALL_TIMEOUT" rust-agent-middlewares/src/mcp/tool_bridge.rs`
+  - `grep -n "TOOL_CALL_TIMEOUT" peri-middlewares/src/mcp/tool_bridge.rs`
   - 预期: 输出包含 `Duration::from_secs(120)`
 
 - [ ] 验证 invoke 方法包含连接状态检查
-  - `grep -A5 "NotConnected" rust-agent-middlewares/src/mcp/tool_bridge.rs | grep -c "ClientStatus::Connected"`
+  - `grep -A5 "NotConnected" peri-middlewares/src/mcp/tool_bridge.rs | grep -c "ClientStatus::Connected"`
   - 预期: 输出大于 0，确认 invoke 在调用前检查连接状态
 
 ---
@@ -1126,27 +1126,27 @@
 
 **前置条件:**
 
-- 启动命令: `cargo build -p rust-agent-middlewares`
+- 启动命令: `cargo build -p peri-middlewares`
 - 所有前置 Task（Task 1-4）的单元测试已通过
 
 **端到端验证:**
 
-1. 运行 rust-agent-middlewares 完整测试套件确保无回归
-   - `cargo test -p rust-agent-middlewares 2>&1 | tail -15`
+1. 运行 peri-middlewares 完整测试套件确保无回归
+   - `cargo test -p peri-middlewares 2>&1 | tail -15`
    - 预期: 所有测试通过，`test result: ok`
    - 失败排查: 检查 Task 1（config）、Task 2（transport）、Task 3（client）、Task 4（tool_bridge）的测试步骤
 
 2. 验证 mcp 模块完整结构
-   - `ls -la rust-agent-middlewares/src/mcp/`
+   - `ls -la peri-middlewares/src/mcp/`
    - 预期: 包含 `mod.rs`, `config.rs`, `transport.rs`, `client.rs`, `tool_bridge.rs` 5 个文件
    - 失败排查: 检查对应 Task 是否遗漏文件创建步骤
 
 3. 验证 lib.rs 正确导出所有 mcp 类型
-   - `grep "pub use mcp::" rust-agent-middlewares/src/lib.rs`
+   - `grep "pub use mcp::" peri-middlewares/src/lib.rs`
    - 预期: 包含 McpConfigError, McpConfigFile, McpServerConfig, load_merged_config, McpMiddleware 等导出
    - 失败排查: 检查 Task 1 和 Task 6 的 lib.rs 修改步骤
 
 4. 验证整体编译无错误无警告
-   - `cargo build -p rust-agent-middlewares 2>&1 | grep -E "error|warning" | head -20`
+   - `cargo build -p peri-middlewares 2>&1 | grep -E "error|warning" | head -20`
    - 预期: 无编译错误，允许少量无关警告
    - 失败排查: 检查各 Task 中类型引用是否正确（特别是 rmcp 的 Peer/Tool/Resource 类型路径）

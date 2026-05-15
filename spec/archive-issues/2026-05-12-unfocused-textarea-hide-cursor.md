@@ -45,10 +45,10 @@
 
 ## 相关代码
 
-- `rust-agent-tui/src/main.rs:130-135` — 终端初始化（需要添加 `EnableFocusChange`）
-- `rust-agent-tui/src/event.rs:215-225` — 焦点事件处理（新增 `FocusGained` / `FocusLost` 分支）
-- `rust-agent-tui/src/app/mod.rs:114-120` — App 结构体（新增 `focused: bool` 字段）
-- `rust-agent-tui/src/ui/main_ui.rs:260-273` — 输入框渲染（根据 `is_active` 和 `app.focused` 决定光标样式）
+- `peri-tui/src/main.rs:130-135` — 终端初始化（需要添加 `EnableFocusChange`）
+- `peri-tui/src/event.rs:215-225` — 焦点事件处理（新增 `FocusGained` / `FocusLost` 分支）
+- `peri-tui/src/app/mod.rs:114-120` — App 结构体（新增 `focused: bool` 字段）
+- `peri-tui/src/ui/main_ui.rs:260-273` — 输入框渲染（根据 `is_active` 和 `app.focused` 决定光标样式）
 
 ## 技术背景
 

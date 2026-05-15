@@ -70,12 +70,12 @@
 
 ### 当前 SubAgentGroup 数据结构
 
-- `rust-agent-tui/src/ui/message_view.rs:249-268` — `SubAgentGroup` 变体定义
-- `rust-agent-tui/src/ui/message_view.rs:844-862` — `subagent_group()` 构造函数
+- `peri-tui/src/ui/message_view.rs:249-268` — `SubAgentGroup` 变体定义
+- `peri-tui/src/ui/message_view.rs:844-862` — `subagent_group()` 构造函数
 
 ### 当前渲染逻辑
 
-- `rust-agent-tui/src/ui/message_render.rs:295-441` — `SubAgentGroup` 渲染（展开/折叠两种状态）
+- `peri-tui/src/ui/message_render.rs:295-441` — `SubAgentGroup` 渲染（展开/折叠两种状态）
 - 展开时渲染 header + task_preview + 内部消息（滑动窗口最多 4 条）+ final_result
 - 折叠时渲染 header + task_preview（2 行）
 
@@ -87,11 +87,11 @@
 
 ## 涉及文件
 
-- `rust-agent-tui/src/ui/message_view.rs`（249-268 行）— `SubAgentGroup` 数据结构，需新增 token 统计字段
-- `rust-agent-tui/src/ui/message_render.rs`（295-441 行）— SubAgent 渲染逻辑，需新增树形汇总渲染
-- `rust-agent-tui/src/app/message_pipeline.rs` — Pipeline 层需识别同批次 agent 并聚合为 `AgentSummaryGroup`
-- `rust-create-agent/src/agent/executor/` 或中间件层 — `SubAgentEnd` 事件需携带 token 统计
-- `rust-agent-tui/src/app/events.rs` — 可能需要新增批次标记字段
+- `peri-tui/src/ui/message_view.rs`（249-268 行）— `SubAgentGroup` 数据结构，需新增 token 统计字段
+- `peri-tui/src/ui/message_render.rs`（295-441 行）— SubAgent 渲染逻辑，需新增树形汇总渲染
+- `peri-tui/src/app/message_pipeline.rs` — Pipeline 层需识别同批次 agent 并聚合为 `AgentSummaryGroup`
+- `peri-agent/src/agent/executor/` 或中间件层 — `SubAgentEnd` 事件需携带 token 统计
+- `peri-tui/src/app/events.rs` — 可能需要新增批次标记字段
 
 ## 期望改进方向
 

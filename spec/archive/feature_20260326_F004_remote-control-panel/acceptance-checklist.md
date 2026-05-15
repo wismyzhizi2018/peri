@@ -1,6 +1,6 @@
 # Remote Control Panel Acceptance Checklist
 
-**Feature:** Remote Control Panel for rust-agent-tui  
+**Feature:** Remote Control Panel for peri-tui  
 **Spec Plan:** spec-plan.md  
 **Created:** 2026-03-26
 
@@ -13,7 +13,7 @@
 - [A] Verify `RemoteControlConfig` compiles without errors
 
   ```bash
-  cargo check -p rust-agent-tui 2>&1 | head -20
+  cargo check -p peri-tui 2>&1 | head -20
   ```
 
   Expected: No compilation errors
@@ -21,7 +21,7 @@
 - [A] Run unit tests for config types
 
   ```bash
-  cargo test -p rust-agent-tui --lib -- config::types::tests 2>&1 | tail -10
+  cargo test -p peri-tui --lib -- config::types::tests 2>&1 | tail -10
   ```
 
   Expected: All tests pass (31 passed)
@@ -31,7 +31,7 @@
 - [A] Verify RelayPanel compiles
 
   ```bash
-  cargo check -p rust-agent-tui 2>&1 | head -20
+  cargo check -p peri-tui 2>&1 | head -20
   ```
 
   Expected: No compilation errors
@@ -39,7 +39,7 @@
 - [A] Run RelayPanel tests
 
   ```bash
-  cargo test -p rust-agent-tui --lib -- relay_panel 2>&1 | tail -10
+  cargo test -p peri-tui --lib -- relay_panel 2>&1 | tail -10
   ```
 
   Expected: Tests pass (10 passed)
@@ -49,7 +49,7 @@
 - [A] Verify command compiles
 
   ```bash
-  cargo check -p rust-agent-tui 2>&1 | head -20
+  cargo check -p peri-tui 2>&1 | head -20
   ```
 
   Expected: No compilation errors
@@ -59,7 +59,7 @@
 - [A] Run argument parsing tests
 
   ```bash
-  cargo test -p rust-agent-tui --lib -- parse_relay_args 2>&1 | tail -10
+  cargo test -p peri-tui --lib -- parse_relay_args 2>&1 | tail -10
   ```
 
   Expected: Tests pass (5 passed)
@@ -69,7 +69,7 @@
 - [A] Verify compilation
 
   ```bash
-  cargo check -p rust-agent-tui 2>&1 | head -20
+  cargo check -p peri-tui 2>&1 | head -20
   ```
 
   Expected: No compilation errors
@@ -77,7 +77,7 @@
 - [A] Run connection logic tests
 
   ```bash
-  cargo test -p rust-agent-tui --lib -- try_connect_relay 2>&1 | tail -10
+  cargo test -p peri-tui --lib -- try_connect_relay 2>&1 | tail -10
   ```
 
   Expected: Tests pass
@@ -87,7 +87,7 @@
 - [A] Verify UI compilation
 
   ```bash
-  cargo check -p rust-agent-tui 2>&1 | head -20
+  cargo check -p peri-tui 2>&1 | head -20
   ```
 
   Expected: No compilation errors
@@ -97,7 +97,7 @@
 - [A] Verify event handling compilation
 
   ```bash
-  cargo check -p rust-agent-tui 2>&1 | head -20
+  cargo check -p peri-tui 2>&1 | head -20
   ```
 
   Expected: No compilation errors
@@ -119,14 +119,14 @@
 ### Task 3: /relay 命令注册
 
 - [H] Verify `/help` command includes `/relay`
-  - Start TUI: `cargo run -p rust-agent-tui`
+  - Start TUI: `cargo run -p peri-tui`
   - Type `/help`
   - Expected: List includes `/relay - 打开远程控制配置面板`
 
 ### Task 6: RelayPanel UI 渲染
 
 - [H] Verify panel renders correctly
-  - Start TUI: `cargo run -p rust-agent-tui`
+  - Start TUI: `cargo run -p peri-tui`
   - Type `/relay`
   - Expected: Panel displays without panic, shows current config or "无配置"
 
@@ -145,7 +145,7 @@
 
 ### Scenario 1: 首次配置流程
 
-1. Start TUI: `cargo run -p rust-agent-tui &`
+1. Start TUI: `cargo run -p peri-tui &`
 2. Type `/relay` → Panel should show "无配置" or empty state
 3. Press `e` → Enter edit mode
 4. Press `Tab` to switch between URL/Token/Name fields
@@ -170,7 +170,7 @@
 2. Start with flag only:
 
    ```bash
-   cargo run -p rust-agent-tui -- --remote-control 2>&1 | head -5
+   cargo run -p peri-tui -- --remote-control 2>&1 | head -5
    ```
 
 3. Expected: TUI message area shows "Relay connected (session: xxx)" or similar success message
@@ -182,7 +182,7 @@
 1. Start with CLI parameters:
 
    ```bash
-   cargo run -p rust-agent-tui -- --remote-control ws://temp:8080 --relay-token temp123 2>&1 | head -5
+   cargo run -p peri-tui -- --remote-control ws://temp:8080 --relay-token temp123 2>&1 | head -5
    ```
 
 2. Expected: Connects to temporary server `ws://temp:8080`
@@ -207,7 +207,7 @@
 2. Start with flag:
 
    ```bash
-   cargo run -p rust-agent-tui -- --remote-control 2>&1 | head -5
+   cargo run -p peri-tui -- --remote-control 2>&1 | head -5
    ```
 
 3. Expected: TUI shows error message "未配置远程控制，请使用 /relay 命令配置" or similar
@@ -233,7 +233,7 @@
 2. Start with flag:
 
    ```bash
-   cargo run -p rust-agent-tui -- --remote-control 2>&1 | head -5
+   cargo run -p peri-tui -- --remote-control 2>&1 | head -5
    ```
 
 3. Expected: Successfully connects using `extra.relay_*` fields
@@ -242,7 +242,7 @@
 
 ### Scenario 6: /help 命令包含 /relay
 
-1. Start TUI: `cargo run -p rust-agent-tui`
+1. Start TUI: `cargo run -p peri-tui`
 2. Type `/help`
 3. Expected: Command list includes `/relay - 打开远程控制配置面板`
 

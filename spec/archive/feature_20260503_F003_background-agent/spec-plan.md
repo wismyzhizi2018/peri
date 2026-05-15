@@ -11,9 +11,9 @@
 ### Task 1: 核心层 — BackgroundTaskResult 类型与 AgentEvent 扩展
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/agent/events.rs`
-- 修改: `rust-create-agent/src/agent/executor.rs`
-- 修改: `rust-create-agent/src/agent/mod.rs`
+- 修改: `peri-agent/src/agent/events.rs`
+- 修改: `peri-agent/src/agent/executor.rs`
+- 修改: `peri-agent/src/agent/mod.rs`
 
 **执行步骤:**
 - [x] 在 `events.rs` 中新增 `BackgroundTaskResult` 结构体（定义在核心层，保持依赖方向正确）
@@ -55,10 +55,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-create-agent 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-agent 2>&1 | grep -E "^error"`
   - 预期: 无 error
-- [x] `BackgroundTaskResult` 可从 `rust_create_agent::agent` 导入
-  - `grep -n "BackgroundTaskResult" rust-create-agent/src/agent/mod.rs`
+- [x] `BackgroundTaskResult` 可从 `peri_agent::agent` 导入
+  - `grep -n "BackgroundTaskResult" peri-agent/src/agent/mod.rs`
   - 预期: 出现 pub use 行
 
 ---
@@ -66,7 +66,7 @@
 ### Task 2: 核心层 — ReAct 循环消费点
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/agent/executor.rs`
+- 修改: `peri-agent/src/agent/executor.rs`
 
 **执行步骤:**
 - [x] 在 ReAct 循环的工具调用分支末尾（line 493 `last_message_count = ...` 之前）插入后台通知消费逻辑
@@ -103,10 +103,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-create-agent 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-agent 2>&1 | grep -E "^error"`
   - 预期: 无 error
 - [x] 消费逻辑出现在两个分支中
-  - `grep -n "notification_rx" rust-create-agent/src/agent/executor.rs`
+  - `grep -n "notification_rx" peri-agent/src/agent/executor.rs`
   - 预期: 至少出现 3 次（字段声明、工具分支消费、最终回答分支消费）
 
 ---
@@ -114,15 +114,15 @@
 ### Task 3: Middlewares 层 — BackgroundTaskRegistry 实现
 
 **涉及文件:**
-- 新建: `rust-agent-middlewares/src/subagent/background.rs`
-- 修改: `rust-agent-middlewares/src/subagent/mod.rs`
-- 修改: `rust-agent-middlewares/src/lib.rs`
+- 新建: `peri-middlewares/src/subagent/background.rs`
+- 修改: `peri-middlewares/src/subagent/mod.rs`
+- 修改: `peri-middlewares/src/lib.rs`
 
 **执行步骤:**
 - [x] 新建 `background.rs`，包含以下类型：
 
   ```rust
-  use rust_create_agent::agent::BackgroundTaskResult;
+  use peri_agent::agent::BackgroundTaskResult;
   use std::collections::HashMap;
   use std::sync::Arc;
 
@@ -240,13 +240,13 @@
 
 **检查步骤:**
 - [x] 单元测试全部通过
-  - `cargo test -p rust-agent-middlewares background -- --nocapture`
+  - `cargo test -p peri-middlewares background -- --nocapture`
   - 预期: 所有 `background` 相关测试 PASSED
 - [x] 无编译警告
-  - `cargo build -p rust-agent-middlewares 2>&1 | grep -E "^warning|^error"`
+  - `cargo build -p peri-middlewares 2>&1 | grep -E "^warning|^error"`
   - 预期: 无 `error`
 - [x] 公开类型可导入
-  - `grep -n "BackgroundTaskRegistry\|BackgroundTask\b\|BackgroundTaskStatus" rust-agent-middlewares/src/lib.rs`
+  - `grep -n "BackgroundTaskRegistry\|BackgroundTask\b\|BackgroundTaskStatus" peri-middlewares/src/lib.rs`
   - 预期: 三者均出现
 
 ---
@@ -254,7 +254,7 @@
 ### Task 4: SubAgentTool — background_registry 字段与 invoke_background 方法
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/subagent/tool.rs`
+- 修改: `peri-middlewares/src/subagent/tool.rs`
 
 **执行步骤:**
 - [x] 在 `SubAgentTool` 结构体新增字段（line 71 之后）
@@ -453,10 +453,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-middlewares 2>&1 | grep -E "^error"`
   - 预期: 无 error
 - [x] `run_in_background` 分支存在
-  - `grep -n "invoke_background" rust-agent-middlewares/src/subagent/tool.rs`
+  - `grep -n "invoke_background" peri-middlewares/src/subagent/tool.rs`
   - 预期: 至少出现 2 次（调用 + 定义）
 
 ---
@@ -464,7 +464,7 @@
 ### Task 5: SubAgentMiddleware — 通道创建与 registry 传递
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/subagent/mod.rs`
+- 修改: `peri-middlewares/src/subagent/mod.rs`
 
 **执行步骤:**
 - [x] 在 `SubAgentMiddleware` 结构体新增字段
@@ -492,10 +492,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-middlewares 2>&1 | grep -E "^error"`
   - 预期: 无 error
 - [x] `build_tool` 传递 registry
-  - `grep -n "background_registry" rust-agent-middlewares/src/subagent/mod.rs`
+  - `grep -n "background_registry" peri-middlewares/src/subagent/mod.rs`
   - 预期: 字段声明、builder、build_tool 传递各出现一次
 
 ---
@@ -503,7 +503,7 @@
 ### Task 6: 工具描述更新
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/subagent/tool.rs`
+- 修改: `peri-middlewares/src/subagent/tool.rs`
 
 **执行步骤:**
 - [x] 在 `AGENT_DESCRIPTION` 常量（line 27-51）的 Fork mode 段落之后，添加 Background execution 段落：
@@ -525,10 +525,10 @@
 
 **检查步骤:**
 - [x] `AGENT_DESCRIPTION` 包含 `run_in_background`
-  - `grep -n "run_in_background" rust-agent-middlewares/src/subagent/tool.rs`
+  - `grep -n "run_in_background" peri-middlewares/src/subagent/tool.rs`
   - 预期: 至少出现 3 次（描述常量、参数定义、invoke 解析）
 - [x] 编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-middlewares 2>&1 | grep -E "^error"`
   - 预期: 无 error
 
 ---
@@ -536,10 +536,10 @@
 ### Task 7: TUI — 后台任务事件处理与状态栏显示
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/events.rs`
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/status_bar.rs`
-- 修改: `rust-agent-tui/src/app/agent.rs`（事件映射）
+- 修改: `peri-tui/src/app/events.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/ui/main_ui/status_bar.rs`
+- 修改: `peri-tui/src/app/agent.rs`（事件映射）
 
 **执行步骤:**
 - [x] 在 `events.rs` 的 `AgentEvent` 枚举末尾新增变体
@@ -583,10 +583,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无 error
 - [x] `BackgroundTaskCompleted` 出现在 TUI 事件枚举和映射中
-  - `grep -rn "BackgroundTaskCompleted" rust-agent-tui/src/`
+  - `grep -rn "BackgroundTaskCompleted" peri-tui/src/`
   - 预期: 至少出现 3 次（events.rs 枚举、agent.rs 映射、mod.rs 处理）
 
 ---
@@ -594,7 +594,7 @@
 ### Task 8: TUI — agent 组装：创建通道与 registry
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/agent.rs`
 
 **执行步骤:**
 - [x] 在 `run_universal_agent` 函数中，SubAgentMiddleware 创建之前（约 line 220 之前）创建通道和 registry
@@ -618,10 +618,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无 error
 - [x] 通道创建和 registry 传递存在
-  - `grep -n "bg_notification\|background_registry\|with_notification_rx" rust-agent-tui/src/app/agent.rs`
+  - `grep -n "bg_notification\|background_registry\|with_notification_rx" peri-tui/src/app/agent.rs`
   - 预期: 三者各出现至少一次
 
 ---
@@ -629,7 +629,7 @@
 ### Task 9: Headless 测试
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/headless.rs`
+- 修改: `peri-tui/src/ui/headless.rs`
 
 **执行步骤:**
 - [x] 新增测试 `test_background_task_notification`：
@@ -643,10 +643,10 @@
 
 **检查步骤:**
 - [x] 新增测试全部通过
-  - `cargo test -p rust-agent-tui test_background -- --nocapture 2>&1 | tail -10`
+  - `cargo test -p peri-tui test_background -- --nocapture 2>&1 | tail -10`
   - 预期: 输出包含 `ok` 且无 `FAILED`
 - [x] 全量测试无回归
-  - `cargo test -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo test -p peri-tui 2>&1 | tail -5`
   - 预期: `test result: ok`
 
 ---
@@ -660,25 +660,25 @@
 **端到端验证:**
 
 1. **BackgroundTaskRegistry 单元测试**
-   - `cargo test -p rust-agent-middlewares background -- --nocapture 2>&1 | grep -E "ok|FAILED"`
+   - `cargo test -p peri-middlewares background -- --nocapture 2>&1 | grep -E "ok|FAILED"`
    - 预期: 所有测试 PASSED
    - 失败时: 检查 Task 3 的注册/完成/并发上限逻辑
    - [x] ✅ PASSED
 
 2. **全 workspace 编译**
    - `cargo build 2>&1 | grep -E "^error"`
-   - 预期: 无 error（rust-agent-tui 有一个 pre-existing mcp.rs 错误，与本次变更无关）
-   - 失败时: 按依赖顺序检查：rust-create-agent → rust-agent-middlewares → rust-agent-tui
+   - 预期: 无 error（peri-tui 有一个 pre-existing mcp.rs 错误，与本次变更无关）
+   - 失败时: 按依赖顺序检查：peri-agent → peri-middlewares → peri-tui
    - [x] ✅ PASSED（核心 crate 全部通过，TUI 有 pre-existing 错误）
 
 3. **Normal 路径回归**
-   - `cargo test -p rust-agent-middlewares subagent -- --nocapture 2>&1 | tail -5`
+   - `cargo test -p peri-middlewares subagent -- --nocapture 2>&1 | tail -5`
    - 预期: 所有现有 subagent 测试 PASSED（`run_in_background` 缺省/`false` 不影响行为）
    - 失败时: 检查 Task 4 的 invoke 分支是否在 fork 检测之前正确插入
    - [x] ✅ PASSED
 
 4. **TUI headless 后台任务测试**
-   - `cargo test -p rust-agent-tui test_background -- --nocapture 2>&1 | tail -10`
+   - `cargo test -p peri-tui test_background -- --nocapture 2>&1 | tail -10`
    - 预期: 所有新增测试 PASSED
    - 失败时: 检查 Task 7（事件处理）和 Task 9（测试逻辑）
    - [x] ✅ PASSED
@@ -707,8 +707,8 @@
 3. `ReActAgent` 内部的 `notification_rx` 也随 agent 一起被丢弃 → 通知通道也断开
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent_comm.rs`
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`
+- 修改: `peri-tui/src/app/agent_comm.rs`
+- 修改: `peri-tui/src/app/agent_ops.rs`
 
 **执行步骤:**
 - [x] 在 `AgentComm` 结构体新增两个字段：
@@ -732,12 +732,12 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无 error
 - [x] 全量测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo test -p peri-tui 2>&1 | tail -5`
   - 预期: `test result: ok`
-- [x] `cargo test -p rust-agent-middlewares 2>&1 | tail -5`
+- [x] `cargo test -p peri-middlewares 2>&1 | tail -5`
   - 预期: `test result: ok`
 
 ---
@@ -751,11 +751,11 @@
 2. 后台任务自身通过 event handler 发射 `BackgroundTaskCompleted`
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/agent/executor.rs`
-- 修改: `rust-agent-tui/src/app/events.rs`
-- 修改: `rust-agent-tui/src/app/agent.rs`
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`
-- 修改: `rust-agent-tui/src/ui/headless.rs`
+- 修改: `peri-agent/src/agent/executor.rs`
+- 修改: `peri-tui/src/app/events.rs`
+- 修改: `peri-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/agent_ops.rs`
+- 修改: `peri-tui/src/ui/headless.rs`
 
 **执行步骤:**
 - [x] executor.rs：移除 `notification_rx` 消费中的 `MessageAdded` 和 `BackgroundTaskCompleted` 发射
@@ -775,8 +775,8 @@
   - `cargo build 2>&1 | grep -E "^error"`
   - 预期: 无 error
 - [x] 核心层测试通过
-  - `cargo test -p rust-create-agent 2>&1 | tail -5`
+  - `cargo test -p peri-agent 2>&1 | tail -5`
   - 预期: `test result: ok`
 - [x] 中间件测试通过
-  - `cargo test -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo test -p peri-middlewares 2>&1 | tail -5`
   - 预期: `test result: ok`

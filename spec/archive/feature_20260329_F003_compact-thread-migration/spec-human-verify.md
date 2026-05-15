@@ -26,7 +26,7 @@
 - **操作步骤:**
   1. [A] `cargo build 2>&1 | tail -10` → 期望: 输出 `Finished` 且无 error
 - **异常排查:**
-  - 如果编译失败: 逐个 crate 编译 `cargo build -p rust-agent-tui` 和 `cargo build -p rust-relay-server`，定位具体错误文件
+  - 如果编译失败: 逐个 crate 编译 `cargo build -p peri-tui` 和 `cargo build -p rust-relay-server`，定位具体错误文件
 
 #### - [x] 1.2 Rust 全量测试通过
 - **来源:** Task 5 End-to-end verification / spec-design.md 验收标准（headless 测试通过）
@@ -42,16 +42,16 @@
 #### - [x] 2.1 AgentEvent CompactDone 结构体变体
 - **来源:** Task 1 检查步骤 / spec-design.md AgentEvent 变更
 - **操作步骤:**
-  1. [A] `grep -A5 "CompactDone {" rust-agent-tui/src/app/events.rs` → 期望: 输出包含 `summary: String` 和 `new_thread_id: String` 字段定义
+  1. [A] `grep -A5 "CompactDone {" peri-tui/src/app/events.rs` → 期望: 输出包含 `summary: String` 和 `new_thread_id: String` 字段定义
 - **异常排查:**
-  - 如果字段不匹配: 检查 `rust-agent-tui/src/app/events.rs` 中 `CompactDone` 变体定义
+  - 如果字段不匹配: 检查 `peri-tui/src/app/events.rs` 中 `CompactDone` 变体定义
 
 #### - [x] 2.2 CompactDone 分支使用 block_in_place 创建新 Thread
 - **来源:** Task 2 检查步骤 / spec-design.md 关键实现步骤
 - **操作步骤:**
-  1. [A] `grep -c "block_in_place" rust-agent-tui/src/app/agent_ops.rs` → 期望: 至少 3 处（ensure_thread_id 1 处 + CompactDone 分支 2 处）
-  2. [A] `grep -A2 "create_thread" rust-agent-tui/src/app/agent_ops.rs` → 期望: 包含 `store.create_thread(meta)` 调用
-  3. [A] `grep -A2 "append_messages" rust-agent-tui/src/app/agent_ops.rs` → 期望: 包含 `store.append_messages(&new_tid, &new_messages)` 调用
+  1. [A] `grep -c "block_in_place" peri-tui/src/app/agent_ops.rs` → 期望: 至少 3 处（ensure_thread_id 1 处 + CompactDone 分支 2 处）
+  2. [A] `grep -A2 "create_thread" peri-tui/src/app/agent_ops.rs` → 期望: 包含 `store.create_thread(meta)` 调用
+  3. [A] `grep -A2 "append_messages" peri-tui/src/app/agent_ops.rs` → 期望: 包含 `store.append_messages(&new_tid, &new_messages)` 调用
 - **异常排查:**
   - 如果 block_in_place 数量不足: 检查 `agent_ops.rs` 中 `CompactDone` 分支是否完整实现了 Thread 创建和消息持久化
 
@@ -72,7 +72,7 @@
 #### - [x] 2.5 无旧模式 CompactDone(String) 残留
 - **来源:** Task 1 检查步骤 / spec-design.md 数据模型变更
 - **操作步骤:**
-  1. [A] `grep -rn "CompactDone(" rust-agent-tui/src/ rust-relay-server/src/ 2>/dev/null` → 期望: 无输出（无旧的 tuple variant 模式）
+  1. [A] `grep -rn "CompactDone(" peri-tui/src/ rust-relay-server/src/ 2>/dev/null` → 期望: 无输出（无旧的 tuple variant 模式）
 - **异常排查:**
   - 如果有残留匹配: 逐一检查并更新为结构体变体 `CompactDone { summary, new_thread_id }`
 
@@ -102,7 +102,7 @@
 #### - [x] 4.1 compact_task 发送 CompactDone 含 summary 字段
 - **来源:** Task 1 执行步骤 / spec-design.md 整体流程
 - **操作步骤:**
-  1. [A] `grep "AgentEvent::CompactDone" rust-agent-tui/src/app/agent.rs` → 期望: 所有构造处使用 `CompactDone { summary: ..., new_thread_id: ... }` 结构体语法
+  1. [A] `grep "AgentEvent::CompactDone" peri-tui/src/app/agent.rs` → 期望: 所有构造处使用 `CompactDone { summary: ..., new_thread_id: ... }` 结构体语法
 - **异常排查:**
   - 如果使用旧语法: 更新为 `AgentEvent::CompactDone { summary, new_thread_id: String::new() }`
 

@@ -3,7 +3,7 @@
 > 用 Rust 打造的高性能 AI Agent 框架。把 AI 编程助手的工作流搬进你自己的应用——Agent 定义、Skills、HITL 审批，全部开箱即用。
 
 ```bash
-cargo run -p rust-agent-tui
+cargo run -p peri-tui
 ```
 
 ## 你已有的配置，这里直接能跑
@@ -32,8 +32,8 @@ cargo run -p rust-agent-tui
 ## 快速上手
 
 ```bash
-cargo run -p rust-agent-tui        # 启动（默认 YOLO，跳过审批）
-cargo run -p rust-agent-tui -- -a  # 启用 HITL 审批模式
+cargo run -p peri-tui        # 启动（默认 YOLO，跳过审批）
+cargo run -p peri-tui -- -a  # 启用 HITL 审批模式
 ```
 
 ### 环境变量
@@ -51,16 +51,16 @@ cargo run -p rust-agent-tui -- -a  # 启用 HITL 审批模式
 ## Workspace 架构
 
 ```
-rust-create-agent/       核心：ReAct 执行器、LLM 适配、工具系统、线程持久化、OTel 遥测
+peri-agent/       核心：ReAct 执行器、LLM 适配、工具系统、线程持久化、OTel 遥测
     ↑
-rust-agent-middlewares/  中间件：文件系统、终端、HITL、子 Agent、MCP、Cron、Todo、Skills
+peri-middlewares/  中间件：文件系统、终端、HITL、子 Agent、MCP、Cron、Todo、Skills
     ↑
-perihelion-widgets/      独立 Widget 库（11 组件）：BorderedPanel、ScrollableArea、SelectableList 等
+peri-widgets/      独立 Widget 库（11 组件）：BorderedPanel、ScrollableArea、SelectableList 等
     ↑
-rust-agent-tui/         交互式 TUI 应用，多会话分屏、Slash 命令、上下文压缩
+peri-tui/         交互式 TUI 应用，多会话分屏、Slash 命令、上下文压缩
 
 langfuse-client/        Langfuse 遥测客户端（独立）
-perihelion-lsp/         LSP 客户端库（独立，被 middlewares 使用）
+peri-lsp/         LSP 客户端库（独立，被 middlewares 使用）
 ```
 
 ## TUI 命令

@@ -22,19 +22,19 @@
 **执行步骤:**
 - [x] 验证构建工具可用
   - 位置: 项目根目录
-  - 运行 `cargo check -p rust-agent-middlewares`
+  - 运行 `cargo check -p peri-middlewares`
   - 预期: 编译检查通过，无错误
 - [x] 验证测试工具可用
   - 位置: 项目根目录
-  - 运行 `cargo test -p rust-agent-middlewares --lib -- mcp::config::tests 2>&1 | tail -3`
+  - 运行 `cargo test -p peri-middlewares --lib -- mcp::config::tests 2>&1 | tail -3`
   - 预期: 测试框架可用，现有测试通过
 
 **检查步骤:**
 - [x] 构建命令执行成功
-  - `cargo check -p rust-agent-middlewares 2>&1 | tail -1`
+  - `cargo check -p peri-middlewares 2>&1 | tail -1`
   - 预期: 输出包含 "Finished" 且无 "error"
 - [x] 现有 MCP 测试通过
-  - `cargo test -p rust-agent-middlewares --lib -- mcp::config 2>&1 | grep "test result"`
+  - `cargo test -p peri-middlewares --lib -- mcp::config 2>&1 | grep "test result"`
   - 预期: "test result: ok" 且 0 failed
 
 ---
@@ -47,8 +47,8 @@
 [上下游影响] Task 2（client.rs）需要从 load_merged_config 获取 plugin_sources 旁路表，本 Task 的输出签名变更（新增 `load_merged_config_full` 返回 `(McpConfigFile, HashMap<String, String>)`）即为 Task 2 的输入依赖。无其他前置依赖。
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/mcp/config.rs`
-- 后续 Task 修改: `rust-agent-middlewares/src/mcp/mod.rs`（新增 `pub(crate) use` 导出）
+- 修改: `peri-middlewares/src/mcp/config.rs`
+- 后续 Task 修改: `peri-middlewares/src/mcp/mod.rs`（新增 `pub(crate) use` 导出）
 
 **执行步骤:**
 
@@ -109,40 +109,40 @@
   - 返回: `(merged, plugin_sources)`
 
 - [x] 更新 `mod.rs` 导出，使 `load_merged_config_full` 对同 crate 可见
-  - 位置: `rust-agent-middlewares/src/mcp/mod.rs`，~L17-L19 的 `pub use config::` 块
+  - 位置: `peri-middlewares/src/mcp/mod.rs`，~L17-L19 的 `pub use config::` 块
   - 新增：`pub(crate) use config::load_merged_config_full;`
   - `pub fn load_merged_config` 已存在于 pub use 中，不需改动
 
 - [x] 为 `load_merged_config_full` 的 plugin_sources 构建逻辑编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/config.rs`（追加到 `#[cfg(test)] mod tests`）
+  - 测试文件: `peri-middlewares/src/mcp/config.rs`（追加到 `#[cfg(test)] mod tests`）
   - 测试场景:
     - 无插件时返回空 plugin_sources: 构造一个没有插件目录的 claude_home，调用 `load_merged_config_full`，断言 plugin_sources 为 `{}`
     - 单插件单 MCP 来源正确: 在临时目录创建模拟 installed_plugins.json（含 `{"version":1,"plugins":[{"id":"p1@mkt","name":"p1","marketplace":"mkt","version":"1.0","install_path":"..."}]}`），设置环境变量让插件 loader 能解析（或 mock 方式），断言 plugin_sources 包含 `"p1__srv1" → "p1@mkt"`
     - 多插件多 marketplace: 验证不同 marketplace 的插件正确映射
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- "mcp::config::tests::test_load_merged_config_full" 2>&1 | grep "test result"`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- "mcp::config::tests::test_load_merged_config_full" 2>&1 | grep "test result"`
   - 预期: 所有测试通过
 
 **检查步骤:**
 - [x] 签名验证 — load_merged_config_full 存在于模块内
-  - `grep -n "pub(crate) fn load_merged_config_full" rust-agent-middlewares/src/mcp/config.rs`
+  - `grep -n "pub(crate) fn load_merged_config_full" peri-middlewares/src/mcp/config.rs`
   - 预期: 输出一行，包含行号
 - [x] 签名验证 — load_merged_config 保持 pub 不变
-  - `grep -n "pub fn load_merged_config" rust-agent-middlewares/src/mcp/config.rs`
+  - `grep -n "pub fn load_merged_config" peri-middlewares/src/mcp/config.rs`
   - 预期: 输出一行，包含行号，调用 `load_merged_config_full`
 - [x] 插件 env 立即展开验证 — plugin_servers 不再包含三元组
-  - `grep -c "PathBuf, PathBuf" rust-agent-middlewares/src/mcp/config.rs`
+  - `grep -c "PathBuf, PathBuf" peri-middlewares/src/mcp/config.rs`
   - 预期: 输出 0（函数体内不再有此模式）
 - [x] Step 6 不再对 Plugin 来源重复展开
-  - `grep -A5 "matches.*server_config.source.*Plugin" rust-agent-middlewares/src/mcp/config.rs`
+  - `grep -A5 "matches.*server_config.source.*Plugin" peri-middlewares/src/mcp/config.rs`
   - 预期: 展示的分支内容为 `server_config.clone()` 而非 `expand_server_config_with_context`
 - [x] 构建无错误
-  - `cargo check -p rust-agent-middlewares 2>&1 | tail -1`
+  - `cargo check -p peri-middlewares 2>&1 | tail -1`
   - 预期: 输出包含 "Finished" 且无 "error"
 - [x] 单元测试全部通过
-  - `cargo test -p rust-agent-middlewares --lib -- "mcp::config::tests::test_load_merged_config_full" 2>&1 | grep "test result"`
+  - `cargo test -p peri-middlewares --lib -- "mcp::config::tests::test_load_merged_config_full" 2>&1 | grep "test result"`
   - 预期: "test result: ok" 且 0 failed
 - [x] 现有 MCP config 测试无回归
-  - `cargo test -p rust-agent-middlewares --lib -- mcp::config 2>&1 | grep "test result"`
+  - `cargo test -p peri-middlewares --lib -- mcp::config 2>&1 | grep "test result"`
   - 预期: "test result: ok" 且 0 failed
 
 **认知变更:**
@@ -156,15 +156,15 @@
 McpClientPool 需要感知插件 MCP server 的来源标识（`plugin@marketplace`），以便 TUI 面板显示和诊断信息中区分普通 server 与插件 server。Task 1 已产出 `(McpConfigFile, HashMap<String, String>)` 元组，本 Task 在池中新增旁路表存储该映射。
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/mcp/client.rs`
+- 修改: `peri-middlewares/src/mcp/client.rs`
 
 **执行步骤:**
 - [x] 在 `McpClientPool` 结构体新增 `plugin_sources` 字段
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs:93-97`，`configs` 字段下方
+  - 位置: `peri-middlewares/src/mcp/client.rs:93-97`，`configs` 字段下方
   - 新增: `plugin_sources: parking_lot::RwLock<HashMap<String, String>>,`
   - 类型选择原因: 与现有 `configs` 字段一致，使用 `parking_lot::RwLock` 保证并发安全
 - [x] 在 `McpClientPool` impl 块中新增 `plugin_source_of` 查询方法
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs`，在 `new_pending()` 方法之后（~L111）
+  - 位置: `peri-middlewares/src/mcp/client.rs`，在 `new_pending()` 方法之后（~L111）
   - 实现:
     ```rust
     pub fn plugin_source_of(&self, name: &str) -> Option<String> {
@@ -172,38 +172,38 @@ McpClientPool 需要感知插件 MCP server 的来源标识（`plugin@marketplac
     }
     ```
 - [x] 修改 `new_pending()` 方法，初始化 `plugin_sources` 为空 HashMap
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs:104-110`
+  - 位置: `peri-middlewares/src/mcp/client.rs:104-110`
   - 在结构体字面量中插入: `plugin_sources: parking_lot::RwLock::new(HashMap::new()),`
 - [x] 修改 `run_initialize()` 方法，从 `load_merged_config_full` 获取 `plugin_sources` 并写入池
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs:124`
+  - 位置: `peri-middlewares/src/mcp/client.rs:124`
   - 将 `let config = super::load_merged_config(cwd, claude_home);` 替换为 `let (config, plugin_sources) = super::load_merged_config_full(cwd, claude_home);`
   - 在解析完 config 后（~L131，`config.mcp_servers.is_empty()` 检查之前），插入: `*pool.plugin_sources.write() = plugin_sources;`
 - [x] 修改 `initialize()` 方法，同样从 `load_merged_config_full` 获取 `plugin_sources`
-  - 位置: `rust-agent-middlewares/src/mcp/client.rs:848`
+  - 位置: `peri-middlewares/src/mcp/client.rs:848`
   - 将 `let config = super::load_merged_config(cwd, claude_home);` 替换为 `let (config, plugin_sources) = super::load_merged_config_full(cwd, claude_home);`
   - 在创建 pool 后（~L849），插入: `pool.plugin_sources.write().extend(plugin_sources);`
   - 在 `Arc::try_unwrap` 的 fallback 重建路径中（~L1012-1016），添加: `plugin_sources: parking_lot::RwLock::new(p.plugin_sources.read().clone()),`
 - [x] 为本 Task 核心逻辑编写单元测试
-  - 测试文件: `rust-agent-middlewares/src/mcp/client.rs` 的 `#[cfg(test)] mod tests` 模块内（~L1120 之后）
+  - 测试文件: `peri-middlewares/src/mcp/client.rs` 的 `#[cfg(test)] mod tests` 模块内（~L1120 之后）
   - 测试场景:
     - `new_pending()` 创建的池 `plugin_sources` 为空: 调用 `plugin_source_of("any")` 返回 `None`
     - 写入 `plugin_sources` 后可查询: 模拟写入映射 `("p1" → "marketplace_a")`，验证 `plugin_source_of("p1")` 返回 `Some("marketplace_a".into())`
     - 不存在的 server 名返回 `None`: 验证 `plugin_source_of("nonexistent")` 返回 `None`
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib mcp::client::tests -- --nocapture`
+  - 运行命令: `cargo test -p peri-middlewares --lib mcp::client::tests -- --nocapture`
   - 预期: 所有测试通过
 
 **检查步骤:**
 - [x] 验证 `McpClientPool` 新增字段编译通过
-  - `cargo check -p rust-agent-middlewares 2>&1 | grep -c "error"`
+  - `cargo check -p peri-middlewares 2>&1 | grep -c "error"`
   - 预期: 输出 0
 - [x] 验证 `plugin_source_of` 方法存在且签名正确
-  - `cargo doc -p rust-agent-middlewares --no-deps 2>&1 | grep "error" | wc -l`
+  - `cargo doc -p peri-middlewares --no-deps 2>&1 | grep "error" | wc -l`
   - 预期: 0（无文档生成错误）
 - [x] 验证新增单元测试全部通过
-  - `cargo test -p rust-agent-middlewares --lib mcp::client::tests -- --nocapture 2>&1 | grep "test result"`
+  - `cargo test -p peri-middlewares --lib mcp::client::tests -- --nocapture 2>&1 | grep "test result"`
   - 预期: "test result: ok" 且 0 failed
 - [x] 验证全量 MCP 测试无回归
-  - `cargo test -p rust-agent-middlewares --lib -- mcp:: 2>&1 | grep "test result"`
+  - `cargo test -p peri-middlewares --lib -- mcp:: 2>&1 | grep "test result"`
   - 预期: "test result: ok" 且 0 failed
 
 ---
@@ -218,21 +218,21 @@ McpClientPool 需要感知插件 MCP server 的来源标识（`plugin@marketplac
 **端到端验证:**
 
 1. [x] 运行完整测试套件确保无回归
-   - `cargo test -p rust-agent-middlewares --lib 2>&1 | grep "test result"`
+   - `cargo test -p peri-middlewares --lib 2>&1 | grep "test result"`
    - 预期: "test result: ok" 且 0 failed
 
 2. [x] 验证 plugin env 展开在合并前生效（两插件同名 env 不冲突）
-   - 运行新增的 `test_load_merged_config_full` 测试：`cargo test -p rust-agent-middlewares --lib -- "test_load_merged_config_full" 2>&1 | grep "test result"`
+   - 运行新增的 `test_load_merged_config_full` 测试：`cargo test -p peri-middlewares --lib -- "test_load_merged_config_full" 2>&1 | grep "test result"`
    - 预期: 测试通过，各插件 MCP server 保留独立展开后的值
 
 3. [x] 验证 plugin_sources 旁路表可查询
-   - 运行 `plugin_source_of` 相关测试：`cargo test -p rust-agent-middlewares --lib -- mcp::client 2>&1 | grep "test result"`
+   - 运行 `plugin_source_of` 相关测试：`cargo test -p peri-middlewares --lib -- mcp::client 2>&1 | grep "test result"`
    - 预期: 测试通过，`plugin_source_of` 对插件 server 返回 `"name@marketplace"`，对非插件返回 `None`
 
 4. [x] 验证 plugin_servers 数据结构已简化（不再携带 PathBuf 三元组）
-   - `grep -c "PathBuf, PathBuf" rust-agent-middlewares/src/mcp/config.rs`
+   - `grep -c "PathBuf, PathBuf" peri-middlewares/src/mcp/config.rs`
    - 预期: 输出 0（原 `(McpServerConfig, PathBuf, PathBuf)` 三元组已移除）
 
 5. [x] 验证构建无编译警告
-   - `cargo check -p rust-agent-middlewares 2>&1 | grep -E "warning\|error" | grep -v "generated" | wc -l`
+   - `cargo check -p peri-middlewares 2>&1 | grep -E "warning\|error" | grep -v "generated" | wc -l`
    - 预期: 0（无新增 warning 或 error）

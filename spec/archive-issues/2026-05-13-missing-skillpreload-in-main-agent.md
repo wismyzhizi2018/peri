@@ -87,13 +87,13 @@ if !agent_def.frontmatter.skills.is_empty() {
 
 ## 相关代码
 
-- `rust-agent-tui/src/app/agent.rs:308-335` —— 主 Agent 中间件链（缺少 SkillPreloadMiddleware）
-- `rust-agent-tui/src/app/agent_assembler.rs:140-161` —— 另一个构建路径（缺少 SkillPreloadMiddleware）
-- `rust-agent-tui/src/app/agent_submit.rs` —— `submit_message()` 无 skill 名提取/解析逻辑
-- `rust-agent-middlewares/src/subagent/skill_preload.rs` —— SkillPreloadMiddleware 实现（可用，测试覆盖完整）
-- `rust-agent-middlewares/src/subagent/tool.rs:458-462` —— 子 Agent 正确注册的参考实现
-- `rust-agent-tui/prompts/sections/13_skills.md` —— 系统提示中的 skills 使用说明
-- `rust-agent-middlewares/src/skills/mod.rs:131-150` —— SkillsMiddleware 注入的摘要内容
+- `peri-tui/src/app/agent.rs:308-335` —— 主 Agent 中间件链（缺少 SkillPreloadMiddleware）
+- `peri-tui/src/app/agent_assembler.rs:140-161` —— 另一个构建路径（缺少 SkillPreloadMiddleware）
+- `peri-tui/src/app/agent_submit.rs` —— `submit_message()` 无 skill 名提取/解析逻辑
+- `peri-middlewares/src/subagent/skill_preload.rs` —— SkillPreloadMiddleware 实现（可用，测试覆盖完整）
+- `peri-middlewares/src/subagent/tool.rs:458-462` —— 子 Agent 正确注册的参考实现
+- `peri-tui/prompts/sections/13_skills.md` —— 系统提示中的 skills 使用说明
+- `peri-middlewares/src/skills/mod.rs:131-150` —— SkillsMiddleware 注入的摘要内容
 
 ## 修复方向
 

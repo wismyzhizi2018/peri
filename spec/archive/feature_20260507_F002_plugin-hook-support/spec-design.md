@@ -1189,7 +1189,7 @@ pub struct PluginLoadResult {
 ### 文件布局
 
 ```
-rust-agent-middlewares/src/
+peri-middlewares/src/
 ├── hooks/
 │   ├── mod.rs              # 模块入口，公共 API 导出
 │   ├── types.rs            # HookType, HookEvent, HookInput, SyncHookResponse, HookAction, HookSpecificOutput, HookMatchRule, HooksConfig, RegisteredHook
@@ -1221,8 +1221,8 @@ rust-agent-middlewares/src/
 | `plugin/loader.rs` | 修改 | 新增 `extract_hooks()`，`LoadedPlugin` 加 `hooks_config` |
 | `plugin/types.rs` | 修改 | `PluginManifest.hooks` 改为 `Option<HooksConfig>` |
 | `plugin/mod.rs` | 修改 | 导出 hooks 相关类型 |
-| `rust-agent-tui/src/app/agent_ops.rs` | 修改 | 构建 HookMiddleware 并注入中间件链 |
-| `rust-create-agent/src/agent/react.rs` | 修改 | AgentEvent 新增 Subagent/Session/Compact/UserPrompt 事件变体 |
+| `peri-tui/src/app/agent_ops.rs` | 修改 | 构建 HookMiddleware 并注入中间件链 |
+| `peri-agent/src/agent/react.rs` | 修改 | AgentEvent 新增 Subagent/Session/Compact/UserPrompt 事件变体 |
 
 ### 测试策略
 

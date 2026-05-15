@@ -13,7 +13,7 @@
 - [ ] [AUTO] 检查 Rust 工具链可用: `cargo --version`
 - [ ] [AUTO] 确认 `.claude/agents/` 目录存在: `ls .claude/agents/`
 - [ ] [AUTO] 确认两个 agent 文件均已创建: `ls .claude/agents/explorer.md .claude/agents/web-researcher.md`
-- [ ] [AUTO] 编译 rust-agent-middlewares: `cargo build -p rust-agent-middlewares 2>&1 | tail -3`
+- [ ] [AUTO] 编译 peri-middlewares: `cargo build -p peri-middlewares 2>&1 | tail -3`
 
 ---
 
@@ -101,11 +101,11 @@
 
 ### 场景 3：YAML 解析兼容性与编译验证
 
-#### - [x] 3.1 rust-agent-middlewares 编译通过
+#### - [x] 3.1 peri-middlewares 编译通过
 
 - **来源:** Task 3 前置条件
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-middlewares 2>&1 | grep -E "^error|Finished"` → 期望: 输出包含 `Finished`，不含 `error[`
+  1. [A] `cargo build -p peri-middlewares 2>&1 | grep -E "^error|Finished"` → 期望: 输出包含 `Finished`，不含 `error[`
 - **异常排查:**
   - 如果出现编译错误：本 feature 仅新增 `.md` 配置文件，不修改 Rust 代码，编译错误与本 feature 无关，排查其他改动
 
@@ -113,8 +113,8 @@
 
 - **来源:** Task 3 端到端验证
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares -- subagent 2>&1 | tail -5` → 期望: 输出包含 `test result: ok`，不含 `FAILED`
-  2. [A] `cargo test -p rust-agent-middlewares 2>&1 | grep -E "test result"` → 期望: 所有测试套件均为 `ok`
+  1. [A] `cargo test -p peri-middlewares -- subagent 2>&1 | tail -5` → 期望: 输出包含 `test result: ok`，不含 `FAILED`
+  2. [A] `cargo test -p peri-middlewares 2>&1 | grep -E "test result"` → 期望: 所有测试套件均为 `ok`
 - **异常排查:**
   - 如果有测试失败：查看失败的具体测试名称，大概率与 YAML 格式不兼容相关；检查 frontmatter 字段名是否与 `AgentDefinition` struct 字段一致
 
@@ -127,7 +127,7 @@
 
 - **来源:** spec-design.md 验收标准
 - **操作步骤:**
-  1. [H] 以非 YOLO 模式启动 TUI（`cargo run -p rust-agent-tui`，不加 `-y` 参数），输入消息要求父 Agent 委派 web-research agent 执行一次搜索任务（如："请用 web-research agent 搜索 Rust 异步编程"）。观察是否在 bash 工具被调用前弹出 HITL 审批弹窗 → 是/否
+  1. [H] 以非 YOLO 模式启动 TUI（`cargo run -p peri-tui`，不加 `-y` 参数），输入消息要求父 Agent 委派 web-research agent 执行一次搜索任务（如："请用 web-research agent 搜索 Rust 异步编程"）。观察是否在 bash 工具被调用前弹出 HITL 审批弹窗 → 是/否
 - **异常排查:**
   - 如果未弹出：确认 `YOLO_MODE` 环境变量未设置；确认 HitlMiddleware 已在父 Agent 中注册
 

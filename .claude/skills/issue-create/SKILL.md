@@ -236,7 +236,7 @@ description: >
 用户输入：`插件加载器的 load_enabled_plugins 函数太长了，1400 多行，改一个地方要读半天`
 
 **Agent 内部处理**：
-1. 读 `rust-agent-middlewares/src/plugin/loader.rs`
+1. 读 `peri-middlewares/src/plugin/loader.rs`
 2. 确认确实 1418 行，函数职责混杂
 3. 问用户：主要问题是什么？（职责混乱 / 文件过长 / 修改时影响面大）
 

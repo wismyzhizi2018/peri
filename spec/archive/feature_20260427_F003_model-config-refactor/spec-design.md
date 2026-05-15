@@ -125,7 +125,7 @@ active_provider_id → providers.find(|p| p.id == active_provider_id)
 
 **命令注册：**
 
-- 新建 `rust-agent-tui/src/command/login.rs`
+- 新建 `peri-tui/src/command/login.rs`
 - 注册到 `CommandRegistry`（`/login`、前缀匹配 `/l`）
 - `/help` 输出中增加 login 命令
 
@@ -160,9 +160,9 @@ active_provider_id → providers.find(|p| p.id == active_provider_id)
 
 | 文件 | 职责 |
 |------|------|
-| `rust-agent-tui/src/app/login_panel.rs` | LoginPanel 状态机（Browse/Edit/New/ConfirmDelete） |
-| `rust-agent-tui/src/command/login.rs` | LoginCommand 注册 |
-| `rust-agent-tui/src/ui/main_ui/panels/login.rs` | Login 面板渲染 |
+| `peri-tui/src/app/login_panel.rs` | LoginPanel 状态机（Browse/Edit/New/ConfirmDelete） |
+| `peri-tui/src/command/login.rs` | LoginCommand 注册 |
+| `peri-tui/src/ui/main_ui/panels/login.rs` | Login 面板渲染 |
 
 **LoginPanel 结构：**
 
@@ -253,33 +253,33 @@ pub enum ModelFocusArea { ProviderList, AliasTabs, Thinking }
 
 | 文件 | 变更类型 | 说明 |
 |------|---------|------|
-| `rust-agent-tui/src/config/types.rs` | 修改 | 新增 ProviderModels，AppConfig 移除 model_aliases，新增 active_provider_id |
-| `rust-agent-tui/src/config/mod.rs` | 修改 | 适配新的 config 结构 |
-| `rust-agent-tui/src/app/model_panel.rs` | 重写 | 简化为 Provider 选择 + Thinking |
-| `rust-agent-tui/src/app/panel_ops.rs` | 修改 | 适配 model_panel 新接口 |
-| `rust-agent-tui/src/app/mod.rs` | 修改 | 新增 login_panel 字段 |
-| `rust-agent-tui/src/app/core.rs` | 修改 | 适配新的 provider 解析逻辑 |
-| `rust-agent-tui/src/command/model.rs` | 修改 | 简化 execute 逻辑 |
-| `rust-agent-tui/src/command/mod.rs` | 修改 | 注册 login 命令 |
-| `rust-agent-tui/src/ui/main_ui/panels/model.rs` | 重写 | 简化渲染 |
-| `rust-agent-tui/src/ui/main_ui.rs` | 修改 | 增加 login panel 渲染分支 |
-| `rust-agent-tui/src/ui/main_ui/panels/mod.rs` | 修改 | 新增 login 模块 |
-| `rust-agent-tui/src/event.rs` | 修改 | 新增 login panel 键盘事件处理 |
+| `peri-tui/src/config/types.rs` | 修改 | 新增 ProviderModels，AppConfig 移除 model_aliases，新增 active_provider_id |
+| `peri-tui/src/config/mod.rs` | 修改 | 适配新的 config 结构 |
+| `peri-tui/src/app/model_panel.rs` | 重写 | 简化为 Provider 选择 + Thinking |
+| `peri-tui/src/app/panel_ops.rs` | 修改 | 适配 model_panel 新接口 |
+| `peri-tui/src/app/mod.rs` | 修改 | 新增 login_panel 字段 |
+| `peri-tui/src/app/core.rs` | 修改 | 适配新的 provider 解析逻辑 |
+| `peri-tui/src/command/model.rs` | 修改 | 简化 execute 逻辑 |
+| `peri-tui/src/command/mod.rs` | 修改 | 注册 login 命令 |
+| `peri-tui/src/ui/main_ui/panels/model.rs` | 重写 | 简化渲染 |
+| `peri-tui/src/ui/main_ui.rs` | 修改 | 增加 login panel 渲染分支 |
+| `peri-tui/src/ui/main_ui/panels/mod.rs` | 修改 | 新增 login 模块 |
+| `peri-tui/src/event.rs` | 修改 | 新增 login panel 键盘事件处理 |
 
 **需要新建的文件：**
 
 | 文件 | 说明 |
 |------|------|
-| `rust-agent-tui/src/app/login_panel.rs` | LoginPanel 状态机 |
-| `rust-agent-tui/src/command/login.rs` | LoginCommand |
-| `rust-agent-tui/src/ui/main_ui/panels/login.rs` | Login 面板渲染 |
+| `peri-tui/src/app/login_panel.rs` | LoginPanel 状态机 |
+| `peri-tui/src/command/login.rs` | LoginCommand |
+| `peri-tui/src/ui/main_ui/panels/login.rs` | Login 面板渲染 |
 
 **外部引用点（需要适配）：**
 
 | 引用点 | 文件 | 说明 |
 |--------|------|------|
-| `LlmProvider::from_config` | `rust-agent-tui/src/app/agent.rs` | 适配新的 provider 解析（active_provider_id + models） |
-| `/help` 命令输出 | `rust-agent-tui/src/command/help.rs` | 增加 `/login` 描述 |
+| `LlmProvider::from_config` | `peri-tui/src/app/agent.rs` | 适配新的 provider 解析（active_provider_id + models） |
+| `/help` 命令输出 | `peri-tui/src/command/help.rs` | 增加 `/login` 描述 |
 | `CLAUDE.md` | 项目根目录 | 更新 TUI 命令列表 |
 
 ## 实现要点
@@ -293,7 +293,7 @@ pub enum ModelFocusArea { ProviderList, AliasTabs, Thinking }
 
 ## 约束一致性
 
-- **与 architecture.md 一致**：修改范围限定在 `rust-agent-tui` crate（应用层），不涉及核心框架和中间件层
+- **与 architecture.md 一致**：修改范围限定在 `peri-tui` crate（应用层），不涉及核心框架和中间件层
 - **与 constraints.md 一致**：
   - 使用 ratatui 渲染面板（TUI 框架不变）
   - 配置持久化走 `serde_json` 序列化到 `~/.peri/settings.json`（不变）

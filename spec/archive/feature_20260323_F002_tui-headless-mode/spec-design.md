@@ -2,7 +2,7 @@
 
 ## 需求背景
 
-目前 `rust-agent-tui` 没有任何集成测试覆盖。主要渲染逻辑（`render_view_model`、`RenderCache`、`main_ui`）仅在真实 TUI 终端环境下可观察，无法通过自动化 CI 验证。
+目前 `peri-tui` 没有任何集成测试覆盖。主要渲染逻辑（`render_view_model`、`RenderCache`、`main_ui`）仅在真实 TUI 终端环境下可观察，无法通过自动化 CI 验证。
 
 特别是 F001（20260323_F001_tui-render-perf）引入双线程渲染架构后，渲染线程已有独立子列，但 `main_ui.rs` 的 `draw()` 调用路径仍未被任何测试覆盖。同时，`App` 的事件处理逻辑（`poll_agent()`、HITL 弹窗状态等）也无法在不启动真实终端的情况下验证。
 
@@ -49,10 +49,10 @@ handle.snapshot()                 （无对应，测试专用）
 
 | 文件 | 类型 | 说明 |
 |------|------|------|
-| `rust-agent-tui/src/ui/headless.rs` | 新增 | `HeadlessHandle` 定义，`App::new_headless()` |
-| `rust-agent-tui/src/app/mod.rs` | 改动 | 添加 `push_agent_event()`、`process_pending_events()` |
-| `rust-agent-tui/src/ui/mod.rs` | 改动 | 新增 `pub mod headless` |
-| `rust-agent-tui/tests/headless_render.rs` | 新增 | 平层集成测试 |
+| `peri-tui/src/ui/headless.rs` | 新增 | `HeadlessHandle` 定义，`App::new_headless()` |
+| `peri-tui/src/app/mod.rs` | 改动 | 添加 `push_agent_event()`、`process_pending_events()` |
+| `peri-tui/src/ui/mod.rs` | 改动 | 新增 `pub mod headless` |
+| `peri-tui/tests/headless_render.rs` | 新增 | 平层集成测试 |
 
 **不改动任何生产路径代码**（`main_ui.rs`、`render_thread.rs`、`app/agent.rs` 等）。
 
@@ -195,4 +195,4 @@ async fn test_tool_call_renders() {
   - [ ] 用户消息渲染
   - [ ] Clear 后屏幕为空
 - [ ] `#[cfg(test)]` 隔离生效：`cargo build --release` 不包含 headless 代码
-- [ ] `cargo test -p rust-agent-tui` 全量通过
+- [ ] `cargo test -p peri-tui` 全量通过

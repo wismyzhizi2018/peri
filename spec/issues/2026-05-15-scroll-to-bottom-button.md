@@ -35,9 +35,9 @@
 
 | 文件 | 改动 |
 |------|------|
-| `rust-agent-tui/src/app/thread_ops.rs` | 新增 `scroll_to_bottom()`（+8 行）和 `scroll_to_top()`（+10 行） |
-| `rust-agent-tui/src/ui/main_ui.rs` | 在 `render_messages()` 中渲染 ▲/▼ 按钮（+19 行），灰色 `theme::MUTED` |
-| `rust-agent-tui/src/event.rs` | 在 `MouseEventKind::Down(Left)` 中拦截按钮区域点击（+22/-5 行） |
+| `peri-tui/src/app/thread_ops.rs` | 新增 `scroll_to_bottom()`（+8 行）和 `scroll_to_top()`（+10 行） |
+| `peri-tui/src/ui/main_ui.rs` | 在 `render_messages()` 中渲染 ▲/▼ 按钮（+19 行），灰色 `theme::MUTED` |
+| `peri-tui/src/event.rs` | 在 `MouseEventKind::Down(Left)` 中拦截按钮区域点击（+22/-5 行） |
 
 ### 按钮显示逻辑
 
@@ -52,7 +52,7 @@
 
 ## 相关代码
 
-- `rust-agent-tui/src/ui/main_ui.rs:476-533` —— 消息列表滚动状态计算（`scroll_offset`、`scroll_follow`、`max_scroll`）
-- `rust-agent-tui/src/ui/main_ui.rs:655-678` —— 消息列表渲染（sticky header、Paragraph scroll、Scrollbar）
-- `rust-agent-tui/src/app/ui_state.rs:9-10` —— `scroll_offset` 和 `scroll_follow` 字段定义
-- `rust-agent-tui/src/event.rs:1048-1078` —— 鼠标滚轮事件处理
+- `peri-tui/src/ui/main_ui.rs:476-533` —— 消息列表滚动状态计算（`scroll_offset`、`scroll_follow`、`max_scroll`）
+- `peri-tui/src/ui/main_ui.rs:655-678` —— 消息列表渲染（sticky header、Paragraph scroll、Scrollbar）
+- `peri-tui/src/app/ui_state.rs:9-10` —— `scroll_offset` 和 `scroll_follow` 字段定义
+- `peri-tui/src/event.rs:1048-1078` —— 鼠标滚轮事件处理

@@ -17,7 +17,7 @@
 
 ### 数据结构
 
-新增 `TextSelection` 模块（`rust-agent-tui/src/app/text_selection.rs`）：
+新增 `TextSelection` 模块（`peri-tui/src/app/text_selection.rs`）：
 
 ```rust
 /// 文本选区状态

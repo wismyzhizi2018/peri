@@ -163,7 +163,7 @@ Message::Text(text) => {
 
 ### TUI 侧：`poll_relay` 处理 SyncRequest
 
-`rust-agent-tui/src/app/mod.rs` 中 `poll_relay` 新增对 `WebMessage::SyncRequest` 的处理：
+`peri-tui/src/app/mod.rs` 中 `poll_relay` 新增对 `WebMessage::SyncRequest` 的处理：
 
 ```rust
 WebMessage::SyncRequest { since_seq } => {
@@ -303,7 +303,7 @@ Phase 2 需求：**relay 传输的最小数据单元应该是 `BaseMessage`（Hu
 #### 新增 `AgentEvent::MessageAdded`
 
 ```rust
-// rust-create-agent/src/agent/events.rs
+// peri-agent/src/agent/events.rs
 pub enum AgentEvent {
     // ... 现有变体保留 ...
     /// 增量消息（BaseMessage），relay 传输的最小数据单元
@@ -333,7 +333,7 @@ self.emit(AgentEvent::MessageAdded(human_msg));
 // rust-relay-server/src/client/mod.rs
 impl RelayClient {
     /// 发送 BaseMessage 到 relay（序列化为 JSON + seq）
-    pub fn send_message(&self, msg: &rust_create_agent::messages::BaseMessage) {
+    pub fn send_message(&self, msg: &peri_agent::messages::BaseMessage) {
         if !self.connected.load(Ordering::Relaxed) {
             return;
         }
@@ -347,7 +347,7 @@ impl RelayClient {
 #### agent.rs 事件回调处理
 
 ```rust
-// rust-agent-tui/src/app/agent.rs
+// peri-tui/src/app/agent.rs
 let handler: Arc<dyn AgentEventHandler> = Arc::new(FnEventHandler(move |event: ExecutorEvent| {
     // 转发到 Relay
     if let Some(ref relay) = relay_for_handler {

@@ -2,10 +2,10 @@
 
 ## 需求背景
 
-当前 `rust-agent-tui` 的远程控制功能仅支持通过 CLI 参数传递：
+当前 `peri-tui` 的远程控制功能仅支持通过 CLI 参数传递：
 
 ```bash
-cargo run -p rust-agent-tui -- --remote-control <url> --relay-token <token> --relay-name <name>
+cargo run -p peri-tui -- --remote-control <url> --relay-token <token> --relay-name <name>
 ```
 
 这种方式存在以下问题：
@@ -30,27 +30,27 @@ cargo run -p rust-agent-tui -- --remote-control <url> --relay-token <token> --re
 参考现有的 `ModelPanel` 设计模式，新增 `RelayPanel` 组件，实现独立的远程控制配置面板。
 
 ```
-rust-agent-tui/src/app/
+peri-tui/src/app/
 ├── relay_panel.rs         — 新增：远程控制面板状态管理
 ├── relay_ops.rs           — 修改：现有 relay 操作逻辑扩展
 └── mod.rs                 — 修改：集成 RelayPanel，新增 relay_panel 字段
 
-rust-agent-tui/src/config/
+peri-tui/src/config/
 └── types.rs               — 修改：新增 RemoteControlConfig 结构体
 
-rust-agent-tui/src/command/
+peri-tui/src/command/
 ├── mod.rs                 — 修改：新增 /relay 命令注册
 └── relay.rs               — 新增：/relay 命令实现
 
-rust-agent-tui/src/main.rs — 修改：CLI 参数解析支持 --remote-control 无参数
+peri-tui/src/main.rs — 修改：CLI 参数解析支持 --remote-control 无参数
 
-rust-agent-tui/src/ui/
+peri-tui/src/ui/
 └── main_ui.rs             — 修改：新增 render_relay_panel 函数
 ```
 
 ### 数据模型设计
 
-在 `rust-agent-tui/src/config/types.rs` 中新增结构化的远程控制配置：
+在 `peri-tui/src/config/types.rs` 中新增结构化的远程控制配置：
 
 ```rust
 /// 远程控制配置
@@ -85,7 +85,7 @@ pub remote_control: Option<RemoteControlConfig>,
 
 ### RemotePanel 状态管理
 
-新增 `rust-agent-tui/src/app/relay_panel.rs`，参考 `ModelPanel` 的设计：
+新增 `peri-tui/src/app/relay_panel.rs`，参考 `ModelPanel` 的设计：
 
 ```rust
 pub struct RelayPanel {
@@ -143,7 +143,7 @@ impl RelayPanel {
 
 #### 场景 1：首次配置
 
-1. 用户启动 TUI：`cargo run -p rust-agent-tui`
+1. 用户启动 TUI：`cargo run -p peri-tui`
 2. 输入 `/relay` 命令
 3. 显示远程控制面板（View 模式），显示 "无配置"
 4. 用户按 `e` 进入 Edit 模式
@@ -154,20 +154,20 @@ impl RelayPanel {
 
 #### 场景 2：使用已保存的配置启动
 
-1. 用户启动 TUI：`cargo run -p rust-agent-tui -- --remote-control`
+1. 用户启动 TUI：`cargo run -p peri-tui -- --remote-control`
 2. 应用从 `settings.json` 读取 `remote_control` 配置
 3. 自动连接到保存的 Relay Server
 4. 显示连接状态消息
 
 #### 场景 3：临时覆盖配置
 
-1. 用户启动 TUI：`cargo run -p rust-agent-tui -- --remote-control <temp-url> --relay-token <temp-token>`
+1. 用户启动 TUI：`cargo run -p peri-tui -- --remote-control <temp-url> --relay-token <temp-token>`
 2. CLI 参数优先级高于 settings.json
 3. 使用临时参数连接，不修改配置文件
 
 ### CLI 参数增强
 
-修改 `rust-agent-tui/src/main.rs` 的 `parse_relay_args` 函数，支持 `--remote-control` 无参数模式：
+修改 `peri-tui/src/main.rs` 的 `parse_relay_args` 函数，支持 `--remote-control` 无参数模式：
 
 ```rust
 fn parse_relay_args(args: &[String]) -> Option<RelayCli> {
@@ -322,7 +322,7 @@ pub async fn try_connect_relay(&mut self, cli: Option<&crate::RelayCli>) {
 
 ### TUI 命令集成
 
-在 `rust-agent-tui/src/command/mod.rs` 中新增 `/relay` 命令（避免与 `/history` 的 `/r` 前缀冲突）：
+在 `peri-tui/src/command/mod.rs` 中新增 `/relay` 命令（避免与 `/history` 的 `/r` 前缀冲突）：
 
 ```rust
 pub fn default_registry() -> CommandRegistry {
@@ -338,7 +338,7 @@ pub fn default_registry() -> CommandRegistry {
 }
 ```
 
-新增 `rust-agent-tui/src/command/relay.rs`：
+新增 `peri-tui/src/command/relay.rs`：
 
 ```rust
 use super::{Command, CommandRegistry};
@@ -365,7 +365,7 @@ impl Command for RelayCommand {
 
 ### UI 渲染逻辑
 
-在 `rust-agent-tui/src/main_ui.rs` 中新增 `RemotePanel` 的渲染：
+在 `peri-tui/src/main_ui.rs` 中新增 `RemotePanel` 的渲染：
 
 ```rust
 pub fn render<B: Backend>(f: &mut Frame<B>, app: &mut App) {
@@ -422,7 +422,7 @@ pub fn render<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
 ### 配置读写集成
 
-在 `rust-agent-tui/src/config/store.rs` 中确保 `RemoteControlConfig` 的正确读写：
+在 `peri-tui/src/config/store.rs` 中确保 `RemoteControlConfig` 的正确读写：
 
 ```rust
 // 配置读取时自动解析 remote_control 字段
@@ -454,7 +454,7 @@ pub fn save(config: &PeriConfig) -> Result<()> {
 ### 依赖模块
 
 - **复用现有功能**：
-  - `AppConfig` 配置读写（`rust-agent-tui/src/config/store.rs`）
+  - `AppConfig` 配置读写（`peri-tui/src/config/store.rs`）
   - `RelayClient` 连接逻辑（`rust-relay-server` client feature）
   - TUI 渲染框架（`ratatui`）
   
@@ -489,7 +489,7 @@ pub fn save(config: &PeriConfig) -> Result<()> {
 
 - ✅ **技术栈**：纯 Rust 实现，使用现有的 ratatui/serde/tokio
 - ✅ **架构决策**：
-  - 遵循 Workspace 分层（新增文件仅在 `rust-agent-tui` crate）
+  - 遵循 Workspace 分层（新增文件仅在 `peri-tui` crate）
   - 异步优先（`try_connect_relay` 保持 async）
   - 事件驱动 TUI 通信（通过 `render_tx` 发送消息）
 - ✅ **编码规范**：

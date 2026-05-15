@@ -12,8 +12,8 @@
 
 **涉及文件:**
 
-- 新建: `rust-agent-tui/src/ui/welcome.rs`
-- 修改: `rust-agent-tui/src/ui/mod.rs`
+- 新建: `peri-tui/src/ui/welcome.rs`
+- 修改: `peri-tui/src/ui/mod.rs`
 
 **执行步骤:**
 
@@ -33,8 +33,8 @@
 **检查步骤:**
 
 - [x] 验证 welcome.rs 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
-  - 预期: 输出包含 "Compiling rust-agent-tui" 且无 error
+  - `cargo build -p peri-tui 2>&1 | tail -5`
+  - 预期: 输出包含 "Compiling peri-tui" 且无 error
 
 ---
 
@@ -42,7 +42,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
 
 **执行步骤:**
 
@@ -54,10 +54,10 @@
 **检查步骤:**
 
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 无 error
 - [x] 验证已有测试不受影响
-  - `cargo test -p rust-agent-tui 2>&1 | tail -10`
+  - `cargo test -p peri-tui 2>&1 | tail -10`
   - 预期: 所有测试通过
 
 ---
@@ -66,7 +66,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-tui/src/ui/headless.rs`
+- 修改: `peri-tui/src/ui/headless.rs`
 
 **执行步骤:**
 
@@ -88,10 +88,10 @@
 **检查步骤:**
 
 - [x] 验证新增测试全部通过
-  - `cargo test -p rust-agent-tui -- test_welcome 2>&1 | tail -10`
+  - `cargo test -p peri-tui -- test_welcome 2>&1 | tail -10`
   - 预期: 3 个测试全部 pass
 - [x] 验证全量测试不受影响
-  - `cargo test -p rust-agent-tui 2>&1 | tail -10`
+  - `cargo test -p peri-tui 2>&1 | tail -10`
   - 预期: 所有测试通过
 
 ---
@@ -100,28 +100,28 @@
 
 **Prerequisites:**
 
-- Start command: `cargo run -p rust-agent-tui`
+- Start command: `cargo run -p peri-tui`
 - Test data setup: 无需额外数据
 - Other environment preparation: 终端窗口宽度 ≥80 列
 
 **End-to-end verification:**
 
 1. 宽屏空消息显示 Welcome Card
-   - `cargo test -p rust-agent-tui -- test_welcome_card_renders_when_empty 2>&1`
+   - `cargo test -p peri-tui -- test_welcome_card_renders_when_empty 2>&1`
    - Expected: 测试通过，snapshot 包含 "Peri"、"/help"、"/model" 等关键文本
    - On failure: check Task 1 [welcome.rs 渲染逻辑] 或 Task 2 [main_ui.rs 集成]
 
 2. 发送消息后 Welcome Card 消失
-   - `cargo test -p rust-agent-tui -- test_welcome_card_hidden_after_message 2>&1`
+   - `cargo test -p peri-tui -- test_welcome_card_hidden_after_message 2>&1`
    - Expected: 测试通过，snapshot 不包含 "Peri" welcome 文本，包含消息内容
    - On failure: check Task 2 [render_messages 分支逻辑]
 
 3. 窄屏降级显示
-   - `cargo test -p rust-agent-tui -- test_welcome_card_narrow_screen 2>&1`
+   - `cargo test -p peri-tui -- test_welcome_card_narrow_screen 2>&1`
    - Expected: 测试通过，不包含 ASCII Art 字符，包含文字标题
    - On failure: check Task 1 [窄屏降级逻辑]
 
 4. 全量测试回归
-   - `cargo test -p rust-agent-tui 2>&1`
+   - `cargo test -p peri-tui 2>&1`
    - Expected: 所有测试通过，无 regression
    - On failure: check 对应失败测试关联的 Task

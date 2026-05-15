@@ -9,8 +9,8 @@
 ## 验收前准备
 
 ### 环境要求
-- [ ] [AUTO] 编译项目: `cargo build -p rust-agent-tui 2>&1 | tail -5`
-- [ ] [MANUAL] 启动 TUI 应用: `cargo run -p rust-agent-tui`
+- [ ] [AUTO] 编译项目: `cargo build -p peri-tui 2>&1 | tail -5`
+- [ ] [MANUAL] 启动 TUI 应用: `cargo run -p peri-tui`
 - [ ] [MANUAL] 在 TUI 中发送至少一条消息，使消息区域有可选中内容
 
 ---
@@ -23,7 +23,7 @@
 - **来源:** spec-plan.md Task 0 / Task 1~4 检查步骤
 - **目的:** 确认所有改动编译无错误
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | tail -5` → 期望包含: Finished
+  1. [A] `cargo build -p peri-tui 2>&1 | tail -5` → 期望包含: Finished
 
 ---
 
@@ -33,13 +33,13 @@
 - **来源:** spec-plan.md Task 1 检查步骤 / spec-design.md §数据结构
 - **目的:** 确认选区状态转换逻辑正确
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- app::text_selection::tests 2>&1 | tail -10` → 期望包含: 5 passed
+  1. [A] `cargo test -p peri-tui --lib -- app::text_selection::tests 2>&1 | tail -10` → 期望包含: 5 passed
 
 #### - [x] 2.2 AppCore 构造函数不破坏现有测试
 - **来源:** spec-plan.md Task 1 检查步骤
 - **目的:** 确认新增字段初始化无回归
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- app::core::tests 2>&1 | tail -5` → 期望包含: test result: ok
+  1. [A] `cargo test -p peri-tui --lib -- app::core::tests 2>&1 | tail -5` → 期望包含: test result: ok
 
 ---
 
@@ -49,13 +49,13 @@
 - **来源:** spec-plan.md Task 2 检查步骤 / spec-design.md §坐标映射与换行计算
 - **目的:** 确认换行映射表计算正确
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- ui::render_thread::tests::test_build_wrap_map 2>&1 | tail -5` → 期望包含: passed
+  1. [A] `cargo test -p peri-tui --lib -- ui::render_thread::tests::test_build_wrap_map 2>&1 | tail -5` → 期望包含: passed
 
 #### - [x] 3.2 渲染线程既有测试无回归
 - **来源:** spec-plan.md Task 2 检查步骤
 - **目的:** 确认 wrap_map 不影响已有渲染逻辑
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- ui::render_thread::tests 2>&1 | tail -5` → 期望包含: test result: ok
+  1. [A] `cargo test -p peri-tui --lib -- ui::render_thread::tests 2>&1 | tail -5` → 期望包含: test result: ok
 
 ---
 
@@ -65,19 +65,19 @@
 - **来源:** spec-plan.md Task 3 检查步骤 / spec-design.md §鼠标事件处理
 - **目的:** 确认 ScrollUp/ScrollDown 分支未丢失
 - **操作步骤:**
-  1. [A] `grep -n "ScrollUp\|ScrollDown" rust-agent-tui/src/event.rs` → 期望包含: ScrollUp
+  1. [A] `grep -n "ScrollUp\|ScrollDown" peri-tui/src/event.rs` → 期望包含: ScrollUp
 
 #### - [x] 4.2 extract_selected_text 调用包含 usable_width 参数
 - **来源:** spec-plan.md Task 3 检查步骤
 - **目的:** 确认字符级提取接口调用正确
 - **操作步骤:**
-  1. [A] `grep -n "extract_selected_text" rust-agent-tui/src/event.rs` → 期望包含: usable_width
+  1. [A] `grep -n "extract_selected_text" peri-tui/src/event.rs` → 期望包含: usable_width
 
 #### - [x] 4.3 坐标映射与文本提取测试通过
 - **来源:** spec-plan.md Task 3 检查步骤 / spec-design.md §坐标映射与换行计算
 - **目的:** 确认字符级坐标映射和文本提取正确
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- app::text_selection::tests 2>&1 | tail -10` → 期望包含: test result: ok
+  1. [A] `cargo test -p peri-tui --lib -- app::text_selection::tests 2>&1 | tail -10` → 期望包含: test result: ok
 
 ---
 
@@ -87,25 +87,25 @@
 - **来源:** spec-plan.md Task 4 检查步骤 / spec-design.md §Ctrl+C 冲突处理
 - **目的:** 确认选区复制在加载中断之前
 - **操作步骤:**
-  1. [A] `grep -A 10 "key: Key::Char.*c.*ctrl: true" rust-agent-tui/src/event.rs | head -15` → 期望包含: selected_text
+  1. [A] `grep -A 10 "key: Key::Char.*c.*ctrl: true" peri-tui/src/event.rs | head -15` → 期望包含: selected_text
 
 #### - [x] 5.2 消息区域 Rect 在渲染时更新
 - **来源:** spec-plan.md Task 4 检查步骤 / spec-design.md §鼠标事件处理
 - **目的:** 确认 messages_area 用于坐标判定
 - **操作步骤:**
-  1. [A] `grep -n "messages_area = Some" rust-agent-tui/src/ui/main_ui.rs` → 期望包含: messages_area = Some
+  1. [A] `grep -n "messages_area = Some" peri-tui/src/ui/main_ui.rs` → 期望包含: messages_area = Some
 
 #### - [x] 5.3 选区高亮渲染测试通过
 - **来源:** spec-plan.md Task 4 检查步骤 / spec-design.md §选区渲染与高亮
 - **目的:** 确认字符级 span 拆分高亮正确
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- ui::main_ui::tests 2>&1 | tail -5` → 期望包含: test result: ok
+  1. [A] `cargo test -p peri-tui --lib -- ui::main_ui::tests 2>&1 | tail -5` → 期望包含: test result: ok
 
 ---
 
 ### 场景 6：端到端交互验证
 
-> **前置操作:** 启动 TUI (`cargo run -p rust-agent-tui`)，发送一条包含中文和英文混合内容的消息。
+> **前置操作:** 启动 TUI (`cargo run -p peri-tui`)，发送一条包含中文和英文混合内容的消息。
 
 #### - [x] 6.1 鼠标拖拽选中文字有反色高亮
 - **来源:** spec-plan.md Task 5.3 / spec-design.md 验收标准 1
@@ -164,7 +164,7 @@
 - **来源:** spec-plan.md Task 5.1 / spec-design.md §约束一致性
 - **目的:** 确认无功能回归
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui 2>&1 | tail -10` → 期望包含: test result: ok
+  1. [A] `cargo test -p peri-tui 2>&1 | tail -10` → 期望包含: test result: ok
 
 ---
 

@@ -21,16 +21,16 @@
 
 **执行步骤:**
 - [x] 验证构建工具可用
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
 - [x] 验证测试工具可用
-  - `cargo test -p rust-agent-tui --lib -- --test-threads=1 2>&1 | tail -5`
+  - `cargo test -p peri-tui --lib -- --test-threads=1 2>&1 | tail -5`
 
 **检查步骤:**
 - [x] 构建命令执行成功
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 构建成功，无错误
 - [x] 测试命令可用
-  - `cargo test -p rust-agent-tui --lib 2>&1 | tail -5`
+  - `cargo test -p peri-tui --lib 2>&1 | tail -5`
   - 预期: 测试框架可用，现有测试通过
 
 ---
@@ -41,14 +41,14 @@
 实现鼠标文本选择功能的第一步：建立选区状态数据模型。当前 `AppCore` 不记录任何鼠标选区状态和消息区域坐标，后续 Task（鼠标事件处理、坐标映射、渲染高亮）均依赖本 Task 建立的 `TextSelection` 结构和 `AppCore` 新字段。
 
 **涉及文件:**
-- 新建: `rust-agent-tui/src/app/text_selection.rs`
-- 修改: `rust-agent-tui/src/app/core.rs`
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 新建: `peri-tui/src/app/text_selection.rs`
+- 修改: `peri-tui/src/app/core.rs`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
 
 - [x] 新建 `TextSelection` 模块文件
-  - 位置: `rust-agent-tui/src/app/text_selection.rs`（新建）
+  - 位置: `peri-tui/src/app/text_selection.rs`（新建）
   - 定义 `TextSelection` 结构体，包含以下字段：
     ```rust
     use ratatui::layout::Rect;
@@ -117,11 +117,11 @@
     ```
 
 - [x] 在 `AppCore` 中注册模块并添加字段
-  - 位置: `rust-agent-tui/src/app/mod.rs` 第 1 行模块声明区域（~L1，在 `pub mod agent;` 之前）
+  - 位置: `peri-tui/src/app/mod.rs` 第 1 行模块声明区域（~L1，在 `pub mod agent;` 之前）
   - 添加: `pub mod text_selection;`
 
 - [x] 在 `AppCore` struct 中添加 `text_selection` 和 `messages_area` 字段
-  - 位置: `rust-agent-tui/src/app/core.rs` `AppCore` struct 定义中，在 `pub draft_input: Option<String>` 之后（~L49）
+  - 位置: `peri-tui/src/app/core.rs` `AppCore` struct 定义中，在 `pub draft_input: Option<String>` 之后（~L49）
   - 添加两个字段：
     ```rust
     pub text_selection: crate::app::text_selection::TextSelection,
@@ -130,7 +130,7 @@
     ```
 
 - [x] 在 `AppCore::new()` 构造函数中初始化新字段
-  - 位置: `rust-agent-tui/src/app/core.rs` `AppCore::new()` 方法的 Self 初始化块中，在 `draft_input: None,` 之后（~L90）
+  - 位置: `peri-tui/src/app/core.rs` `AppCore::new()` 方法的 Self 初始化块中，在 `draft_input: None,` 之后（~L90）
   - 添加：
     ```rust
     text_selection: crate::app::text_selection::TextSelection::new(),
@@ -138,25 +138,25 @@
     ```
 
 - [x] 为 `TextSelection` 编写单元测试
-  - 测试文件: `rust-agent-tui/src/app/text_selection.rs`（`#[cfg(test)] mod tests` 块）
+  - 测试文件: `peri-tui/src/app/text_selection.rs`（`#[cfg(test)] mod tests` 块）
   - 测试场景:
     - `test_start_drag_sets_coords`: 调用 `start_drag(5, 10)` → `start == Some((5, 10))`, `end == Some((5, 10))`, `dragging == true`, `selected_text == None`
     - `test_update_drag_moves_end`: 先 `start_drag(0, 0)` 再 `update_drag(3, 8)` → `start == Some((0, 0))`, `end == Some((3, 8))`
     - `test_end_drag_stops_dragging`: `start_drag` 后 `end_drag()` → `dragging == false`, `start/end` 保持不变
     - `test_clear_resets_all`: 设置选区后 `clear()` → 所有字段为 None/false
     - `test_is_active`: 无选区时 `is_active() == false`；`start_drag` 后 `is_active() == true`；`end_drag` 后（无 selected_text）`is_active() == false`；`set_selected_text(Some("x".into()))` 后 `is_active() == true`
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- app::text_selection::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- app::text_selection::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 - [x] 验证模块编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 构建成功，无错误
 - [x] 验证新字段在构造时正确初始化
-  - `cargo test -p rust-agent-tui --lib -- app::core::tests::test_appcore_pipeline_initialized`
+  - `cargo test -p peri-tui --lib -- app::core::tests::test_appcore_pipeline_initialized`
   - 预期: 已有测试仍通过（新增字段有默认初始化，不破坏现有构造逻辑）
 - [x] 验证 TextSelection 单元测试通过
-  - `cargo test -p rust-agent-tui --lib -- app::text_selection::tests`
+  - `cargo test -p peri-tui --lib -- app::text_selection::tests`
   - 预期: 5 个测试全部通过
 
 ---
@@ -167,7 +167,7 @@
 鼠标选区需要将屏幕像素坐标映射到文本字符位置。由于 ratatui 的 `Paragraph` widget 使用 `Wrap` 换行，一个逻辑行可能跨越多个视觉行。本 Task 在 `RenderCache` 中建立 `wrap_map` 映射表，记录每个逻辑行对应的视觉行范围和纯文本内容，供 Task 3（坐标映射）和 Task 4（高亮渲染）使用。
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/render_thread.rs`
+- 修改: `peri-tui/src/ui/render_thread.rs`
 
 **执行步骤:**
 
@@ -259,7 +259,7 @@
   - 原因: wrap_map 必须与 lines 始终保持同步，否则坐标映射会产生错误结果
 
 - [x] 为 `build_wrap_map` 编写单元测试
-  - 测试文件: `rust-agent-tui/src/ui/render_thread.rs`（`#[cfg(test)] mod tests` 块内）
+  - 测试文件: `peri-tui/src/ui/render_thread.rs`（`#[cfg(test)] mod tests` 块内）
   - 测试场景:
     - `test_build_wrap_map_empty`: 传入空 `lines` 和 `width=80` → 返回空 Vec
     - `test_build_wrap_map_single_short_line`: 一行短文本 "Hello"（5 字符，宽度 80）→ wrap_map 长度为 1，`visual_row_start=0, visual_row_end=1, plain_text="Hello"`
@@ -268,18 +268,18 @@
     - `test_build_wrap_map_multi_line_visual_rows`: 两行文本，第一行 wrap 占 2 个视觉行，第二行占 1 个 → `wrap_map[0].visual_row_start=0, visual_row_end=2; wrap_map[1].visual_row_start=2, visual_row_end=3`
     - `test_build_wrap_map_empty_line`: 空行 "" → `visual_row_start` 和 `visual_row_end` 差值为 1
   - 测试辅助: 在测试中构造 `vec![Line::from("Hello")]` 等 `Vec<Line<'static>>` 作为输入
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- ui::render_thread::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- ui::render_thread::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 构建成功，无错误
 - [x] 验证已有渲染测试仍通过
-  - `cargo test -p rust-agent-tui --lib -- ui::render_thread::tests`
+  - `cargo test -p peri-tui --lib -- ui::render_thread::tests`
   - 预期: 既有 `test_add_message_increments_version` 和 `test_append_chunk_updates_last_message` 通过，新增 wrap_map 测试通过
 - [x] 验证 wrap_map 在 rebuild 后有正确条目数
-  - `cargo test -p rust-agent-tui --lib -- ui::render_thread::tests::test_build_wrap_map`
+  - `cargo test -p peri-tui --lib -- ui::render_thread::tests::test_build_wrap_map`
   - 预期: 所有 build_wrap_map 测试通过
 
 ---
@@ -290,18 +290,18 @@
 用户在消息区域拖拽鼠标时，需要捕获 Down/Drag/Up 事件并记录视觉坐标，松开鼠标后通过 wrap_map 将视觉坐标映射为逻辑行索引和字符偏移，最终提取选区纯文本。当前 event.rs 的 `Event::Mouse` 分支（L449-453）仅处理 ScrollUp/ScrollDown，其他鼠标事件被丢弃。本 Task 扩展鼠标事件处理并实现坐标映射与文本提取逻辑，供 Task 4 使用选区数据。
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/event.rs`
-- 修改: `rust-agent-tui/src/app/text_selection.rs`
+- 修改: `peri-tui/src/event.rs`
+- 修改: `peri-tui/src/app/text_selection.rs`
 
 **执行步骤:**
 
 - [x] 在 event.rs 顶部 import 中添加 `MouseButton`
-  - 位置: `rust-agent-tui/src/event.rs` 第 3 行 import 语句
+  - 位置: `peri-tui/src/event.rs` 第 3 行 import 语句
   - 修改为: `use ratatui::crossterm::event::{self, Event, KeyEventKind, MouseButton, MouseEventKind};`
   - 原因: Down/Drag/Up 事件需要 `MouseButton::Left` 参数
 
 - [x] 扩展 `Event::Mouse` 分支，添加鼠标左键 Down/Drag/Up 处理
-  - 位置: `rust-agent-tui/src/event.rs` L449-453 `Event::Mouse(mouse) => match mouse.kind {` 块
+  - 位置: `peri-tui/src/event.rs` L449-453 `Event::Mouse(mouse) => match mouse.kind {` 块
   - 将现有 `_ => {}` 分支替换为完整的鼠标事件处理：
     ```rust
     Event::Mouse(mouse) => match mouse.kind {
@@ -349,7 +349,7 @@
     ```
 
 - [x] 在 `Event::Resize` 分支中清除选区
-  - 位置: `rust-agent-tui/src/event.rs` L41-43 `Event::Resize(w, _) => {` 块
+  - 位置: `peri-tui/src/event.rs` L41-43 `Event::Resize(w, _) => {` 块
   - 在 `let _ = app.core.render_tx.send(RenderEvent::Resize(w));` 之后添加：
     ```rust
     app.core.text_selection.clear();
@@ -357,7 +357,7 @@
   - 原因: resize 后 wrap_map 重新计算，旧选区坐标失效
 
 - [x] 在 `text_selection.rs` 中添加 `visual_to_logical` 坐标映射函数
-  - 位置: `rust-agent-tui/src/app/text_selection.rs` `impl TextSelection` 块之后，模块级别
+  - 位置: `peri-tui/src/app/text_selection.rs` `impl TextSelection` 块之后，模块级别
   - 代码：
     ```rust
     /// 将视觉坐标 (visual_row, visual_col) 通过 wrap_map 映射为 (line_idx, char_offset)。
@@ -383,7 +383,7 @@
     ```
 
 - [x] 在 `text_selection.rs` 中添加 `char_col_to_offset` 辅助函数
-  - 位置: `rust-agent-tui/src/app/text_selection.rs` 模块级别（`visual_to_logical` 之前）
+  - 位置: `peri-tui/src/app/text_selection.rs` 模块级别（`visual_to_logical` 之前）
   - 代码：
     ```rust
     /// 在 char_widths 中定位到第 row_in_line 个视觉行，在该视觉行内
@@ -435,7 +435,7 @@
     ```
 
 - [ ] 在 `text_selection.rs` 中修改 `extract_selected_text` 函数，实现字符级提取
-  - 位置: `rust-agent-tui/src/app/text_selection.rs` 模块级别（`visual_to_logical` 之后）
+  - 位置: `peri-tui/src/app/text_selection.rs` 模块级别（`visual_to_logical` 之后）
   - **变更说明:** 原实现忽略列坐标（`_start_col`、`_end_col`），整行整行提取。现改为利用 `char_col_to_offset` 计算首行起始字符偏移和末行结束字符偏移，中间行保持整行提取。
   - 新增 unicode 安全辅助函数（放在 `text_selection.rs` 模块级别）：
     ```rust
@@ -521,7 +521,7 @@
   - **同时需要更新 `event.rs` 调用点:** `extract_selected_text` 新增 `usable_width` 参数，调用处需传入消息区域宽度。在 `MouseEventKind::Up(MouseButton::Left)` 分支中，将 `extract_selected_text(start, end, &cache.wrap_map)` 改为 `extract_selected_text(start, end, &cache.wrap_map, usable_width)`，其中 `usable_width` 从 `app.core.messages_area` 获取：`app.core.messages_area.map(|a| a.width.saturating_sub(1)).unwrap_or(0)`
 
 - [ ] 更新坐标映射和文本提取的单元测试（适配字符级提取）
-  - 测试文件: `rust-agent-tui/src/app/text_selection.rs`（`#[cfg(test)] mod tests` 块内）
+  - 测试文件: `peri-tui/src/app/text_selection.rs`（`#[cfg(test)] mod tests` 块内）
   - **变更说明:** 所有 `extract_selected_text` 调用需新增 `usable_width` 参数（如 `80`）；单行/跨行断言改为精确子串而非整行。
   - 测试场景（需更新）:
     - `test_visual_to_logical_basic`: 无需改动
@@ -532,21 +532,21 @@
     - `test_extract_selected_text_partial_first_and_last`: wrap_map 2 条目 "Hello" + "World"，start=(0,2) end=(1,3) → `"llo\nWor"`
     - `test_char_col_to_offset_ascii`: 无需改动
     - `test_char_col_to_offset_cjk`: 无需改动
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- app::text_selection::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- app::text_selection::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 - [ ] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 构建成功，无错误
 - [ ] 验证鼠标滚轮不受影响
-  - `grep -n "ScrollUp\|ScrollDown" rust-agent-tui/src/event.rs`
+  - `grep -n "ScrollUp\|ScrollDown" peri-tui/src/event.rs`
   - 预期: ScrollUp/ScrollDown 分支仍在 Event::Mouse match 中
 - [ ] 验证 `extract_selected_text` 调用点已传入 `usable_width`
-  - `grep -n "extract_selected_text" rust-agent-tui/src/event.rs`
+  - `grep -n "extract_selected_text" peri-tui/src/event.rs`
   - 预期: 调用包含 4 个参数（start, end, wrap_map, usable_width）
 - [ ] 验证坐标映射测试通过
-  - `cargo test -p rust-agent-tui --lib -- app::text_selection::tests`
+  - `cargo test -p peri-tui --lib -- app::text_selection::tests`
   - 预期: Task 1 的 5 个 + Task 3 更新后的字符级提取测试全部通过
 
 ---
@@ -557,15 +557,15 @@
 前三个 Task 已建立选区数据模型（Task 1）、wrap_map 映射表（Task 2）和鼠标事件处理+坐标映射（Task 3）。本 Task 实现两个用户可感知的功能：1）拖拽选中文本时在消息区域显示反色高亮，2）Ctrl+C 将选中文字复制到系统剪贴板并在状态栏显示复制成功提示。当前 `render_messages` 函数不处理选区高亮，Ctrl+C 仅支持中断/退出。
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
-- 修改: `rust-agent-tui/src/event.rs`
-- 修改: `rust-agent-tui/src/app/core.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/status_bar.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/event.rs`
+- 修改: `peri-tui/src/app/core.rs`
+- 修改: `peri-tui/src/ui/main_ui/status_bar.rs`
 
 **执行步骤:**
 
 - [x] 在 `AppCore` 中新增 `copy_message_until` 和 `copy_char_count` 字段
-  - 位置: `rust-agent-tui/src/app/core.rs` `AppCore` struct 中，在 `pub draft_input: Option<String>` 之后
+  - 位置: `peri-tui/src/app/core.rs` `AppCore` struct 中，在 `pub draft_input: Option<String>` 之后
   - 添加：
     ```rust
     /// 复制成功提示截止时间，None 表示不显示
@@ -580,14 +580,14 @@
     ```
 
 - [x] 在 `render_messages` 中保存消息区域 Rect 到 `app.core.messages_area`
-  - 位置: `rust-agent-tui/src/ui/main_ui.rs` `render_messages()` 函数中，在 `let inner = messages_area;` 之后（L165 之后）
+  - 位置: `peri-tui/src/ui/main_ui.rs` `render_messages()` 函数中，在 `let inner = messages_area;` 之后（L165 之后）
   - 添加：
     ```rust
     app.core.messages_area = Some(inner);
     ```
 
 - [ ] 在 `render_messages` 中实现字符级选区高亮渲染
-  - 位置: `rust-agent-tui/src/ui/main_ui.rs` `render_messages()` 函数中，替换现有的整行高亮逻辑（~L268-296）
+  - 位置: `peri-tui/src/ui/main_ui.rs` `render_messages()` 函数中，替换现有的整行高亮逻辑（~L268-296）
   - **变更说明:** 原实现对整行所有 span 应用 `REVERSED`。现改为：利用 `visual_to_logical` 将起止视觉坐标映射为 `(line_idx, char_offset)`，然后对每行的 span 做字符级拆分，仅对选区范围内的字符应用 `REVERSED`。
   - 核心思路:
     1. 用 `visual_to_logical(start)` 和 `visual_to_logical(end)` 获取首尾逻辑位置
@@ -703,7 +703,7 @@
   - **Unicode 安全:** `char_col_to_offset` 返回的是**字符索引**（遍历 `char_widths` 得到），所有对 `plain_text` 和 `span.content` 的切割均通过 `char_to_byte_idx` / `char_indices().nth()` 转换为字节索引后再切片，保证 CJK/emoji 等多字节字符不会 panic。
 
 - [x] 修改 Ctrl+C 处理逻辑，增加选区复制最高优先级
-  - 位置: `rust-agent-tui/src/event.rs` L214-226 Ctrl+C 分支
+  - 位置: `peri-tui/src/event.rs` L214-226 Ctrl+C 分支
   - 将现有 Ctrl+C 分支替换为：
     ```rust
     Input {
@@ -735,7 +735,7 @@
   - 原因: 有选区时 Ctrl+C 应复制而非中断/退出，符合用户对文本选择的直觉预期。`arboard` crate 已是项目依赖（用于 Ctrl+V 粘贴）。
 
 - [x] 在状态栏第一行显示复制成功提示
-  - 位置: `rust-agent-tui/src/ui/main_ui/status_bar.rs` `render_first_row()` 函数中，在"工作目录"部分之前（L51 之前）
+  - 位置: `peri-tui/src/ui/main_ui/status_bar.rs` `render_first_row()` 函数中，在"工作目录"部分之前（L51 之前）
   - 添加复制提示显示逻辑：
     ```rust
     // 复制成功提示
@@ -751,28 +751,28 @@
     ```
 
 - [ ] 更新选区高亮逻辑的单元测试（字符级）
-  - 测试文件: `rust-agent-tui/src/ui/main_ui.rs`（`#[cfg(test)] mod tests` 块，如不存在则新建）
+  - 测试文件: `peri-tui/src/ui/main_ui.rs`（`#[cfg(test)] mod tests` 块，如不存在则新建）
   - 测试场景（需更新）:
     - `test_highlight_line_spans_full_span`: 整个 span 在选区内 → 返回 1 个 REVERSED span
     - `test_highlight_line_spans_partial_start`: 选区从 span 中间开始 → 返回 2 个 span（原样 + REVERSED）
     - `test_highlight_line_spans_partial_both`: 选区两端都在 span 内部 → 返回 3 个 span（原样 + REVERSED + 原样）
     - `test_highlight_line_spans_multi_span`: 多个 span，选区跨越两个 span → 第一个被拆分，第二个被拆分
     - `test_highlight_line_spans_outside`: 选区不覆盖该 span → 返回原 span 不变
-  - 运行命令: `cargo test -p rust-agent-tui --lib -- ui::main_ui::tests`
+  - 运行命令: `cargo test -p peri-tui --lib -- ui::main_ui::tests`
   - 预期: 所有测试通过
 
 **检查步骤:**
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 构建成功，无错误
 - [x] 验证 Ctrl+C 优先级正确
-  - `grep -A 10 "key: Key::Char.*c.*ctrl: true" rust-agent-tui/src/event.rs | head -15`
+  - `grep -A 10 "key: Key::Char.*c.*ctrl: true" peri-tui/src/event.rs | head -15`
   - 预期: 选区复制分支在 loading 中断和退出之前
 - [x] 验证 messages_area 在渲染时更新
-  - `grep -n "messages_area = Some" rust-agent-tui/src/ui/main_ui.rs`
+  - `grep -n "messages_area = Some" peri-tui/src/ui/main_ui.rs`
   - 预期: 在 render_messages 中有赋值
 - [x] 验证单元测试通过
-  - `cargo test -p rust-agent-tui --lib -- ui::main_ui::tests`
+  - `cargo test -p peri-tui --lib -- ui::main_ui::tests`
   - 预期: 所有测试通过
 
 ---
@@ -780,14 +780,14 @@
 ### Task 5: 鼠标文本选择 验收
 
 **前置条件:**
-- 启动命令: `cargo run -p rust-agent-tui`
+- 启动命令: `cargo run -p peri-tui`
 - 至少发送一条消息使消息区域有可选中内容
 
 **端到端验证:**
 
 1. 运行完整测试套件确保无回归
-   - [x] `cargo test -p rust-agent-tui 2>&1 | tail -10`
-   - `cargo test -p rust-agent-tui 2>&1 | tail -10`
+   - [x] `cargo test -p peri-tui 2>&1 | tail -10`
+   - `cargo test -p peri-tui 2>&1 | tail -10`
    - 预期: 全部测试通过
    - 失败排查: 检查各 Task 的测试步骤，重点关注 Task 2 的 wrap_map 测试和 Task 3 的坐标映射测试
 

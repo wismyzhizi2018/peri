@@ -6,17 +6,17 @@
 
 ## 问题描述
 
-`rust-agent-tui/src/event.rs` 的 `handle_event` 函数约 1120 行，`rust-agent-tui/src/app/agent_ops.rs` 的 `handle_agent_event` 函数约 890 行。两个函数是整个代码库中最长的单函数，认知复杂度极高，修改时难以理解和测试。
+`peri-tui/src/event.rs` 的 `handle_event` 函数约 1120 行，`peri-tui/src/app/agent_ops.rs` 的 `handle_agent_event` 函数约 890 行。两个函数是整个代码库中最长的单函数，认知复杂度极高，修改时难以理解和测试。
 
 ## 现状数据
 
 | 函数 | 文件 | 约行数 | 主要职责 |
 |------|------|--------|---------|
-| `handle_event` | `rust-agent-tui/src/event.rs` | 1120 (L254-1335) | 键盘/粘贴/鼠标全部事件分发 |
-| `handle_agent_event` | `rust-agent-tui/src/app/agent_ops.rs` | 890 (L7-896) | 20+ 种 AgentEvent 变体的 match 分支 |
-| `open_plugin_panel` | `rust-agent-tui/src/app/panel_ops.rs` | 280 (L334-615) | 插件列表加载 + manifest 解析 + Discover 构建 |
-| `invoke` | `rust-create-agent/src/llm/anthropic.rs` | 300 (L517-816) | 请求构建 + HTTP + 响应解析 + 缓存 |
-| `run_universal_agent` | `rust-agent-tui/src/app/agent.rs` | 500 (L62-617) | 15 个中间件实例化 + 事件注册 + 执行 |
+| `handle_event` | `peri-tui/src/event.rs` | 1120 (L254-1335) | 键盘/粘贴/鼠标全部事件分发 |
+| `handle_agent_event` | `peri-tui/src/app/agent_ops.rs` | 890 (L7-896) | 20+ 种 AgentEvent 变体的 match 分支 |
+| `open_plugin_panel` | `peri-tui/src/app/panel_ops.rs` | 280 (L334-615) | 插件列表加载 + manifest 解析 + Discover 构建 |
+| `invoke` | `peri-agent/src/llm/anthropic.rs` | 300 (L517-816) | 请求构建 + HTTP + 响应解析 + 缓存 |
+| `run_universal_agent` | `peri-tui/src/app/agent.rs` | 500 (L62-617) | 15 个中间件实例化 + 事件注册 + 执行 |
 
 ### `handle_event` 的问题
 
@@ -38,8 +38,8 @@
 
 ## 涉及文件
 
-- `rust-agent-tui/src/event.rs`（1379 行）—— handle_event 所在文件
-- `rust-agent-tui/src/app/agent_ops.rs`（1500 行）—— handle_agent_event 所在文件
-- `rust-agent-tui/src/app/panel_ops.rs`（1084 行）—— open_plugin_panel 所在文件
-- `rust-create-agent/src/llm/anthropic.rs`（1983 行）—— invoke 所在文件
-- `rust-agent-tui/src/app/agent.rs`（797 行）—— run_universal_agent 所在文件
+- `peri-tui/src/event.rs`（1379 行）—— handle_event 所在文件
+- `peri-tui/src/app/agent_ops.rs`（1500 行）—— handle_agent_event 所在文件
+- `peri-tui/src/app/panel_ops.rs`（1084 行）—— open_plugin_panel 所在文件
+- `peri-agent/src/llm/anthropic.rs`（1983 行）—— invoke 所在文件
+- `peri-tui/src/app/agent.rs`（797 行）—— run_universal_agent 所在文件

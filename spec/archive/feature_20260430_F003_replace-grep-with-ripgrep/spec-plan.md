@@ -8,7 +8,7 @@
 
 ## 改动总览
 
-- 本次改动仅涉及 `rust-agent-middlewares` crate，修改 2 个文件（`Cargo.toml` 新增依赖、`grep.rs` 重写实现）
+- 本次改动仅涉及 `peri-middlewares` crate，修改 2 个文件（`Cargo.toml` 新增依赖、`grep.rs` 重写实现）
 - Task 1 完成全部重写：添加依赖、构建参数解析器 + 并行搜索引擎、重写 `invoke()`、移除旧代码、更新测试
 - `SearchFilesRgTool` 的公开接口（`name()`/`description()`/`parameters()`）完全不变，所有调用方（`FilesystemMiddleware`、TUI `tool_display`、compact config）无需修改
 - 经代码确认，`ignore` crate 已在依赖中；`grep` 0.4 是 meta-crate，re-export `grep_regex as regex`、`grep_searcher as searcher`、`grep_matcher as matcher`，只需添加一个依赖
@@ -22,18 +22,18 @@
 
 **执行步骤:**
 - [x] 验证构建工具可用
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: 构建成功，无错误
 - [x] 验证测试工具可用
-  - `cargo test -p rust-agent-middlewares --lib -- tools::filesystem::grep 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares --lib -- tools::filesystem::grep 2>&1 | tail -10`
   - 预期: 测试框架可用，现有 5 个 grep 测试全部通过（或因 rg 未安装而跳过）
 
 **检查步骤:**
 - [x] 构建命令执行成功
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -3`
+  - `cargo build -p peri-middlewares 2>&1 | tail -3`
   - 预期: 输出包含 `Finished` 且无 error
 - [x] 测试命令可用
-  - `cargo test -p rust-agent-middlewares --lib -- tools::filesystem::grep 2>&1 | grep -E "test result|running"`
+  - `cargo test -p peri-middlewares --lib -- tools::filesystem::grep 2>&1 | grep -E "test result|running"`
   - 预期: 输出包含 `test result`，测试可执行
 
 ---
@@ -46,17 +46,17 @@
 [上下游影响] 无下游依赖——`SearchFilesRgTool` 的公开接口不变，所有调用方无需感知实现变更
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/Cargo.toml`
-- 重写: `rust-agent-middlewares/src/tools/filesystem/grep.rs`
+- 修改: `peri-middlewares/Cargo.toml`
+- 重写: `peri-middlewares/src/tools/filesystem/grep.rs`
 
 **执行步骤:**
 - [x] 添加 `grep` 依赖到 Cargo.toml
-  - 位置: `rust-agent-middlewares/Cargo.toml` 的 `[dependencies]` 段末尾（`parking_lot` 之后）
+  - 位置: `peri-middlewares/Cargo.toml` 的 `[dependencies]` 段末尾（`parking_lot` 之后）
   - 添加一行: `grep = "0.4"`
   - 原因: `grep` 0.4 是 meta-crate，re-export `grep_regex` as `regex`、`grep_searcher` as `searcher`、`grep_matcher` as `matcher`，只需一个依赖即可获得完整搜索能力
 
 - [x] 重写 grep.rs 文件：移除旧 import 和函数，添加新 import
-  - 位置: `rust-agent-middlewares/src/tools/filesystem/grep.rs` 文件头部
+  - 位置: `peri-middlewares/src/tools/filesystem/grep.rs` 文件头部
   - 移除以下 import:
     ```rust
     use std::process::Stdio;
@@ -64,7 +64,7 @@
     use tokio::process::Command;
     use tokio::time::{timeout, Duration};
     ```
-  - 保留 `use rust_create_agent::tools::BaseTool;`、`use serde_json::Value;`、`use std::path::Path;`
+  - 保留 `use peri_agent::tools::BaseTool;`、`use serde_json::Value;`、`use std::path::Path;`
   - 添加新 import:
     ```rust
     use grep::regex::RegexMatcher;
@@ -276,7 +276,7 @@
   - 原因: 并行搜索是高性能场景的核心，`ignore::WalkParallel` 自动管理线程池
 
 - [x] 重写 `invoke()` 方法
-  - 位置: `rust-agent-middlewares/src/tools/filesystem/grep.rs` 的 `impl BaseTool for SearchFilesRgTool` 中的 `invoke()` 方法（L85-L152）
+  - 位置: `peri-middlewares/src/tools/filesystem/grep.rs` 的 `impl BaseTool for SearchFilesRgTool` 中的 `invoke()` 方法（L85-L152）
   - 保留 `name()`、`description()`、`parameters()` 不变
   - 新 `invoke()` 实现:
     ```rust
@@ -320,12 +320,12 @@
   - 原因: 使用 `spawn_blocking` 将同步的 grep 搜索放到独立线程池，避免阻塞 async runtime；保留 15 秒超时和 500 行上限
 
 - [x] 移除 `which_rg()` 函数
-  - 位置: `rust-agent-middlewares/src/tools/filesystem/grep.rs` 文件末尾（L235-L256）
+  - 位置: `peri-middlewares/src/tools/filesystem/grep.rs` 文件末尾（L235-L256）
   - 删除整个 `which_rg()` 函数
   - 原因: 不再需要查找外部 rg 二进制
 
 - [x] 更新测试用例
-  - 位置: `rust-agent-middlewares/src/tools/filesystem/grep.rs` 的 `#[cfg(test)] mod tests` 段（L155-L232）
+  - 位置: `peri-middlewares/src/tools/filesystem/grep.rs` 的 `#[cfg(test)] mod tests` 段（L155-L232）
   - 修改所有测试：移除 `if result.starts_with("Error executing ripgrep") { return; }` 的跳过逻辑（不再需要 rg 二进制）
   - 保留 `test_search_files_rg_hit`、`test_search_files_rg_no_match`、`test_search_files_rg_empty_args`、`test_search_files_rg_regex`、`test_description_extended` 五个测试
   - 新增测试:
@@ -333,24 +333,24 @@
     - `test_search_files_rg_count`: 使用 `["-c", "needle", "./"]` 参数，验证返回结果包含匹配计数
     - `test_search_files_rg_case_insensitive`: 使用 `["-i", "NEEDLE", "./"]` 参数，验证大小写不敏感匹配
     - `test_search_files_rg_glob_filter`: 使用 `["-n", "-g", "*.txt", "needle", "./"]` 参数，创建 .rs 和 .txt 文件，验证只搜索 .txt 文件
-  - 运行命令: `cargo test -p rust-agent-middlewares --lib -- tools::filesystem::grep`
+  - 运行命令: `cargo test -p peri-middlewares --lib -- tools::filesystem::grep`
   - 预期: 所有测试通过
 
 **检查步骤:**
 - [x] 验证 grep 依赖添加成功
-  - `grep "grep = " rust-agent-middlewares/Cargo.toml`
+  - `grep "grep = " peri-middlewares/Cargo.toml`
   - 预期: 输出包含 `grep = "0.4"`
 - [x] 验证旧代码已移除
-  - `grep -c "which_rg\|tokio::process::Command\|OnceLock\|Stdio" rust-agent-middlewares/src/tools/filesystem/grep.rs`
+  - `grep -c "which_rg\|tokio::process::Command\|OnceLock\|Stdio" peri-middlewares/src/tools/filesystem/grep.rs`
   - 预期: 输出为 0
 - [x] 验证新代码包含关键 API 调用
-  - `grep -c "RegexMatcher\|WalkBuilder\|SearcherBuilder\|SearchSink\|spawn_blocking" rust-agent-middlewares/src/tools/filesystem/grep.rs`
+  - `grep -c "RegexMatcher\|WalkBuilder\|SearcherBuilder\|SearchSink\|spawn_blocking" peri-middlewares/src/tools/filesystem/grep.rs`
   - 预期: 输出大于 0
 - [x] 验证构建成功
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -3`
+  - `cargo build -p peri-middlewares 2>&1 | tail -3`
   - 预期: 输出包含 `Finished` 且无 error
 - [x] 验证测试通过
-  - `cargo test -p rust-agent-middlewares --lib -- tools::filesystem::grep 2>&1 | tail -5`
+  - `cargo test -p peri-middlewares --lib -- tools::filesystem::grep 2>&1 | tail -5`
   - 预期: 所有测试通过，无 skipped
 
 ---
@@ -359,27 +359,27 @@
 
 **前置条件:**
 - Task 0 和 Task 1 已完成
-- 构建成功：`cargo build -p rust-agent-middlewares`
+- 构建成功：`cargo build -p peri-middlewares`
 
 **端到端验证:**
 
 1. 运行完整测试套件确保无回归
-   - `cargo test -p rust-agent-middlewares --lib 2>&1 | tail -10`
+   - `cargo test -p peri-middlewares --lib 2>&1 | tail -10`
    - 预期: 全部测试通过
    - 失败排查: 检查 Task 1 的测试步骤
 
 2. 验证 grep crate 搜索功能与原 rg 行为一致
-   - `cargo test -p rust-agent-middlewares --lib -- tools::filesystem::grep 2>&1`
+   - `cargo test -p peri-middlewares --lib -- tools::filesystem::grep 2>&1`
    - 预期: 所有 grep 测试通过（包括新增的 -l/-c/-i/-g 测试）
    - 失败排查: 检查 Task 1 中 `execute_search` 的输出格式化逻辑
 
 3. 验证全 workspace 构建无破坏
    - `cargo build 2>&1 | tail -5`
-   - 预期: 全部三个 crate 构建成功（rust-create-agent, rust-agent-middlewares, rust-agent-tui）
-   - 失败排查: 检查 `rust-agent-middlewares` 的公开 API 是否有破坏性变更
+   - 预期: 全部三个 crate 构建成功（peri-agent, peri-middlewares, peri-tui）
+   - 失败排查: 检查 `peri-middlewares` 的公开 API 是否有破坏性变更
 
 4. 验证 TUI 层无编译错误
-   - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+   - `cargo build -p peri-tui 2>&1 | tail -5`
    - 预期: 构建成功
    - 失败排查: `SearchFilesRgTool` 的公开接口未变，TUI 层不应有编译问题
 

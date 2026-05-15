@@ -652,7 +652,7 @@ pub(crate) fn ingestion_events_to_otel(events: &[IngestionEvent]) -> OtelTraceEx
         resource_spans: vec![OtelResourceSpan {
             resource: Some(OtelResource {
                 attributes: Some(vec![
-                    OtelAttribute::string("service.name", "perihelion-agent"),
+                    OtelAttribute::string("service.name", "peri-agent"),
                     OtelAttribute::string("service.version", env!("CARGO_PKG_VERSION")),
                 ]),
             }),

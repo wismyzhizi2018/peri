@@ -10,8 +10,8 @@
 
 ### 环境要求
 - [ ] [AUTO] 确认 Rust 工具链可用: `cargo --version`
-- [ ] [AUTO] 编译 rust-agent-tui: `cargo build -p rust-agent-tui 2>&1 | tail -3`
-- [ ] [MANUAL] （可选）如需验证 Langfuse UI 展示效果（场景 2.2、3.3、4.2），需要：准备 Langfuse 服务访问地址及 Public Key / Secret Key，在 `rust-agent-tui/.env` 中配置 `LANGFUSE_PUBLIC_KEY`、`LANGFUSE_SECRET_KEY`、`LANGFUSE_HOST`
+- [ ] [AUTO] 编译 peri-tui: `cargo build -p peri-tui 2>&1 | tail -3`
+- [ ] [MANUAL] （可选）如需验证 Langfuse UI 展示效果（场景 2.2、3.3、4.2），需要：准备 Langfuse 服务访问地址及 Public Key / Secret Key，在 `peri-tui/.env` 中配置 `LANGFUSE_PUBLIC_KEY`、`LANGFUSE_SECRET_KEY`、`LANGFUSE_HOST`
 
 ### 测试数据准备
 - 无需额外测试数据，代码级验证使用静态分析命令
@@ -26,17 +26,17 @@
 
 - **来源:** Task 5 检查步骤 / Task 6 验收
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | grep "^error" | wc -l` → 期望: 输出 `0`
+  1. [A] `cargo build -p peri-tui 2>&1 | grep "^error" | wc -l` → 期望: 输出 `0`
 - **异常排查:**
-  - 如果有编译错误: 运行 `cargo build -p rust-agent-tui 2>&1 | head -30` 查看详细错误，重点检查 `rust-agent-tui/src/langfuse/mod.rs` 的 import 声明和字段定义
+  - 如果有编译错误: 运行 `cargo build -p peri-tui 2>&1 | head -30` 查看详细错误，重点检查 `peri-tui/src/langfuse/mod.rs` 的 import 声明和字段定义
 
 #### - [x] 1.2 单元测试全部通过
 
 - **来源:** Task 5 检查步骤 / Task 6 验收
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui 2>&1 | grep -E "^test result"` → 期望: 输出包含 `test result: ok`
+  1. [A] `cargo test -p peri-tui 2>&1 | grep -E "^test result"` → 期望: 输出包含 `test result: ok`
 - **异常排查:**
-  - 如果测试失败: 运行 `cargo test -p rust-agent-tui 2>&1 | grep "FAILED"` 定位失败测试，检查 `on_llm_end` 签名变更是否与调用方一致
+  - 如果测试失败: 运行 `cargo test -p peri-tui 2>&1 | grep "FAILED"` 定位失败测试，检查 `on_llm_end` 签名变更是否与调用方一致
 
 ---
 
@@ -46,18 +46,18 @@
 
 - **来源:** Task 3 检查步骤 / Task 6 验收
 - **操作步骤:**
-  1. [A] `grep -n 'format!("Chat{}"' rust-agent-tui/src/langfuse/mod.rs` → 期望: 至少 1 行，出现在 `on_llm_end` 函数体内
-  2. [A] `grep -n 'provider: &str' rust-agent-tui/src/langfuse/mod.rs` → 期望: 至少 1 行，出现在 `on_llm_end` 函数签名中
+  1. [A] `grep -n 'format!("Chat{}"' peri-tui/src/langfuse/mod.rs` → 期望: 至少 1 行，出现在 `on_llm_end` 函数体内
+  2. [A] `grep -n 'provider: &str' peri-tui/src/langfuse/mod.rs` → 期望: 至少 1 行，出现在 `on_llm_end` 函数签名中
 - **异常排查:**
-  - 如果未找到: 检查 `rust-agent-tui/src/langfuse/mod.rs` 第 107 行附近的 `on_llm_end` 实现
+  - 如果未找到: 检查 `peri-tui/src/langfuse/mod.rs` 第 107 行附近的 `on_llm_end` 实现
 
 #### - [x] 2.2 Langfuse UI 中 Generation 名称正确显示（可选，需 Langfuse 服务）
 
 - **来源:** spec-design.md 验收标准
 - **操作步骤:**
-  1. [H] 启动 TUI（`cargo run -p rust-agent-tui`），发送一条消息触发 LLM 调用，等待完成后打开 Langfuse UI → 在 Traces 列表中点开当前 Trace，查看 Generations 观测的 name 字段，应显示 `ChatAnthropic` 或 `ChatOpenAI`（不再是 `llm-call-step-0`）→ 是/否
+  1. [H] 启动 TUI（`cargo run -p peri-tui`），发送一条消息触发 LLM 调用，等待完成后打开 Langfuse UI → 在 Traces 列表中点开当前 Trace，查看 Generations 观测的 name 字段，应显示 `ChatAnthropic` 或 `ChatOpenAI`（不再是 `llm-call-step-0`）→ 是/否
 - **异常排查:**
-  - 如果仍显示旧名称: 确认 `rust-agent-tui/.env` 中 Langfuse 配置正确，并检查 `app/agent.rs` 中 `provider_name_for_handler` 是否已传入 `on_llm_end`
+  - 如果仍显示旧名称: 确认 `peri-tui/.env` 中 Langfuse 配置正确，并检查 `app/agent.rs` 中 `provider_name_for_handler` 是否已传入 `on_llm_end`
 
 ---
 
@@ -67,8 +67,8 @@
 
 - **来源:** Task 2 检查步骤 / Task 6 验收
 - **操作步骤:**
-  1. [A] `grep -n 'ObservationType::Agent' rust-agent-tui/src/langfuse/mod.rs` → 期望: 至少 1 行，出现在 `on_trace_start` 函数体内
-  2. [A] `grep -n 'agent_span_id' rust-agent-tui/src/langfuse/mod.rs | wc -l` → 期望: 至少 5 行（字段定义 + new() 初始化 + on_trace_start + on_trace_end + on_llm_end + on_tool_start 各用到）
+  1. [A] `grep -n 'ObservationType::Agent' peri-tui/src/langfuse/mod.rs` → 期望: 至少 1 行，出现在 `on_trace_start` 函数体内
+  2. [A] `grep -n 'agent_span_id' peri-tui/src/langfuse/mod.rs | wc -l` → 期望: 至少 5 行（字段定义 + new() 初始化 + on_trace_start + on_trace_end + on_llm_end + on_tool_start 各用到）
 - **异常排查:**
   - 如果 ObservationType::Agent 未找到: 检查 `on_trace_start` 内 `IngestionEventOneOf8` 的创建逻辑
 
@@ -76,9 +76,9 @@
 
 - **来源:** Task 6 验收
 - **操作步骤:**
-  1. [A] `grep -n 'parent_observation_id' rust-agent-tui/src/langfuse/mod.rs | wc -l` → 期望: 至少 3（on_trace_end UpdateSpanBody + on_llm_end CreateGenerationBody + on_tool_start ObservationBody 各 1 处）
+  1. [A] `grep -n 'parent_observation_id' peri-tui/src/langfuse/mod.rs | wc -l` → 期望: 至少 3（on_trace_end UpdateSpanBody + on_llm_end CreateGenerationBody + on_tool_start ObservationBody 各 1 处）
 - **异常排查:**
-  - 如果数量不足: 运行 `grep -n 'parent_observation_id' rust-agent-tui/src/langfuse/mod.rs` 确认缺少哪个函数中的设置
+  - 如果数量不足: 运行 `grep -n 'parent_observation_id' peri-tui/src/langfuse/mod.rs` 确认缺少哪个函数中的设置
 
 #### - [x] 3.3 Langfuse UI 中 Agent Observation 可见（可选，需 Langfuse 服务）
 
@@ -96,8 +96,8 @@
 
 - **来源:** Task 4 检查步骤 / Task 6 验收
 - **操作步骤:**
-  1. [A] `grep -n 'ObservationType::Tool' rust-agent-tui/src/langfuse/mod.rs` → 期望: 至少 1 行，出现在 `on_tool_start` 函数体内
-  2. [A] `grep -n 'IngestionEventOneOf8' rust-agent-tui/src/langfuse/mod.rs | wc -l` → 期望: 至少 3 行（on_trace_start Agent 创建 + on_tool_start 工具创建，每处有 struct 实例化和引用）
+  1. [A] `grep -n 'ObservationType::Tool' peri-tui/src/langfuse/mod.rs` → 期望: 至少 1 行，出现在 `on_tool_start` 函数体内
+  2. [A] `grep -n 'IngestionEventOneOf8' peri-tui/src/langfuse/mod.rs | wc -l` → 期望: 至少 3 行（on_trace_start Agent 创建 + on_tool_start 工具创建，每处有 struct 实例化和引用）
 - **异常排查:**
   - 如果 Tool 类型未找到: 检查 `on_tool_start` 是否仍使用旧的 `client.span()` 方法（应已改为 Batcher + IngestionEventOneOf8）
 

@@ -1,4 +1,4 @@
-# perihelion-widgets 组件库执行计划（1/3）
+# peri-widgets 组件库执行计划（1/3）
 
 **目标:** 创建独立的 ratatui widget crate，实现 Theme trait、BorderedPanel、ScrollableArea、SelectableList 基础组件
 
@@ -8,7 +8,7 @@
 
 ## 改动总览
 
-- 新增 `perihelion-widgets` workspace crate，包含 Theme trait、DarkTheme、BorderedPanel、ScrollableArea、ListState<T>、SelectableList 组件
+- 新增 `peri-widgets` workspace crate，包含 Theme trait、DarkTheme、BorderedPanel、ScrollableArea、ListState<T>、SelectableList 组件
 - Task 1 创建 crate 骨架和 Theme trait，Task 2-3 依赖 Task 1 的 Theme 和 ScrollState
 - 关键决策：Theme trait 仅含纯 UI 颜色方法（不含 tool_danger 等业务方法）；RenderState 颜色参数化在 Task 7（MarkdownRenderer）处理
 
@@ -42,25 +42,25 @@
 ### Task 1: Crate 骨架 + Theme trait
 
 **背景:**
-创建 `perihelion-widgets` crate 的基础结构。本 Task 是整个组件库的地基——后续所有 Task（2-10）都依赖本 Task 创建的 crate 骨架和 Theme trait。Theme trait 仅包含纯 UI 颜色方法，不含业务语义（如工具分级色）。现有 `rust-agent-tui/src/ui/theme.rs` 有 15 个颜色常量，经分析 13 个是纯 UI 概念、2 个是业务别名（TOOL_NAME=SAGE, SUB_AGENT=SAGE）、1 个是业务专用（MODEL_INFO），这些业务常量保留在 TUI 层不迁移。
+创建 `peri-widgets` crate 的基础结构。本 Task 是整个组件库的地基——后续所有 Task（2-10）都依赖本 Task 创建的 crate 骨架和 Theme trait。Theme trait 仅包含纯 UI 颜色方法，不含业务语义（如工具分级色）。现有 `peri-tui/src/ui/theme.rs` 有 15 个颜色常量，经分析 13 个是纯 UI 概念、2 个是业务别名（TOOL_NAME=SAGE, SUB_AGENT=SAGE）、1 个是业务专用（MODEL_INFO），这些业务常量保留在 TUI 层不迁移。
 
 **涉及文件:**
 
-- 新建: `perihelion-widgets/Cargo.toml`
-- 新建: `perihelion-widgets/src/lib.rs`
-- 新建: `perihelion-widgets/src/theme/mod.rs`
-- 新建: `perihelion-widgets/src/theme/presets.rs`
-- 修改: `Cargo.toml`（~L2，在 members 数组中添加 `perihelion-widgets`）
+- 新建: `peri-widgets/Cargo.toml`
+- 新建: `peri-widgets/src/lib.rs`
+- 新建: `peri-widgets/src/theme/mod.rs`
+- 新建: `peri-widgets/src/theme/presets.rs`
+- 修改: `Cargo.toml`（~L2，在 members 数组中添加 `peri-widgets`）
 
 **执行步骤:**
 
-- [x] 创建 `perihelion-widgets/Cargo.toml`
+- [x] 创建 `peri-widgets/Cargo.toml`
   - 位置: workspace 根目录下新建
   - 内容:
 
     ```toml
     [package]
-    name = "perihelion-widgets"
+    name = "peri-widgets"
     version = "0.1.0"
     edition = "2021"
     description = "Reusable ratatui widget library for Peri"
@@ -79,9 +79,9 @@
 
 - [x] 在 workspace Cargo.toml 中注册新 crate
   - 位置: `Cargo.toml` ~L2 members 数组
-  - 在 `"langfuse-client",` 行后追加 `"perihelion-widgets",`
+  - 在 `"langfuse-client",` 行后追加 `"peri-widgets",`
 
-- [x] 创建 `perihelion-widgets/src/lib.rs`
+- [x] 创建 `peri-widgets/src/lib.rs`
   - 位置: crate 根模块
   - 内容:
 
@@ -92,7 +92,7 @@
     pub use theme::{Theme, DarkTheme};
     ```
 
-- [x] 创建 `perihelion-widgets/src/theme/mod.rs`
+- [x] 创建 `peri-widgets/src/theme/mod.rs`
   - 位置: theme 子模块入口
   - 内容:
 
@@ -150,7 +150,7 @@
 
   - 原因: 13 个方法对应现有 theme.rs 中全部 13 个纯 UI 颜色常量。不含 TOOL_NAME、SUB_AGENT、MODEL_INFO 等业务别名/专用常量
 
-- [x] 创建 `perihelion-widgets/src/theme/presets.rs`
+- [x] 创建 `peri-widgets/src/theme/presets.rs`
   - 位置: 预设主题实现
   - 内容:
 
@@ -160,7 +160,7 @@
 
     /// 项目默认深色主题
     ///
-    /// 色值与 rust-agent-tui/src/ui/theme.rs 的常量一一对应。
+    /// 色值与 peri-tui/src/ui/theme.rs 的常量一一对应。
     /// 业务特有常量（TOOL_NAME=SAGE, SUB_AGENT=SAGE, MODEL_INFO=#A0825F）
     /// 保留在 TUI 层，不在此处定义。
     #[derive(Debug, Clone)]
@@ -186,28 +186,28 @@
   - 原因: DarkTheme 是零大小类型（ZST），所有色值编译期内联，无运行时开销
 
 - [x] 验证 crate 独立编译
-  - `cargo build -p perihelion-widgets`
+  - `cargo build -p peri-widgets`
   - 预期: 编译成功
 
 - [x] 为 Theme trait 和 DarkTheme 编写单元测试
-  - 测试文件: `perihelion-widgets/src/theme/presets.rs` 底部 `#[cfg(test)] mod tests`
+  - 测试文件: `peri-widgets/src/theme/presets.rs` 底部 `#[cfg(test)] mod tests`
   - 测试场景:
     - `dark_theme_returns_correct_colors`: 验证 `DarkTheme` 的 `accent()` 返回 `Color::Rgb(255, 107, 43)`
     - `dark_theme_trait_object_usable`: 验证 `let theme: &dyn Theme = &DarkTheme;` 可正常调用所有方法
     - `dark_theme_cloneable`: 验证 `DarkTheme` 可 clone（`Theme: Clone` 约束）
-  - 运行命令: `cargo test -p perihelion-widgets`
+  - 运行命令: `cargo test -p peri-widgets`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] workspace Cargo.toml 包含新 crate
-  - `grep "perihelion-widgets" /Users/konghayao/code/ai/perihelion/Cargo.toml`
-  - 预期: 输出包含 `"perihelion-widgets"`
+  - `grep "peri-widgets" /Users/konghayao/code/ai/peri/Cargo.toml`
+  - 预期: 输出包含 `"peri-widgets"`
 - [x] 新 crate 可独立编译
-  - `cargo build -p perihelion-widgets 2>&1 | tail -3`
-  - 预期: 输出包含 "Compiling perihelion-widgets" 和 "Finished"
+  - `cargo build -p peri-widgets 2>&1 | tail -3`
+  - 预期: 输出包含 "Compiling peri-widgets" 和 "Finished"
 - [x] 公共 API 可被外部 crate 引用
-  - `cargo test -p perihelion-widgets 2>&1 | grep "test result"`
+  - `cargo test -p peri-widgets 2>&1 | grep "test result"`
   - 预期: 所有测试通过
 
 ---
@@ -219,13 +219,13 @@
 
 **涉及文件:**
 
-- 新建: `perihelion-widgets/src/bordered_panel.rs`
-- 新建: `perihelion-widgets/src/scrollable.rs`
-- 修改: `perihelion-widgets/src/lib.rs`（添加 mod 声明和重导出）
+- 新建: `peri-widgets/src/bordered_panel.rs`
+- 新建: `peri-widgets/src/scrollable.rs`
+- 修改: `peri-widgets/src/lib.rs`（添加 mod 声明和重导出）
 
 **执行步骤:**
 
-- [x] 创建 `perihelion-widgets/src/bordered_panel.rs`
+- [x] 创建 `peri-widgets/src/bordered_panel.rs`
   - 位置: crate 根目录
   - 内容:
 
@@ -275,7 +275,7 @@
 
   - 原因: 将 `f.render_widget(Clear, area)` + `Block::default().title(...).borders(Borders::ALL).border_style(...)` + `block.inner(area)` 三步封装为一步调用
 
-- [x] 创建 `perihelion-widgets/src/scrollable.rs`
+- [x] 创建 `peri-widgets/src/scrollable.rs`
   - 位置: crate 根目录
   - 内容:
 
@@ -291,7 +291,7 @@
     /// 滚动偏移状态
     ///
     /// 管理垂直滚动 offset，提供 ensure_visible 方法自动调整 offset 使指定行可见。
-    /// 逻辑从 `rust-agent-tui/src/app/mod.rs:ensure_cursor_visible()` 迁移。
+    /// 逻辑从 `peri-tui/src/app/mod.rs:ensure_cursor_visible()` 迁移。
     #[derive(Debug, Clone, Default)]
     pub struct ScrollState {
         offset: u16,
@@ -400,8 +400,8 @@
 
   - 原因: ScrollState 的 ensure_visible 方法合并了 TUI 层 `ensure_cursor_visible()` 的逻辑；ScrollableArea 封装了 Paragraph + Scrollbar + offset clamp 的完整渲染逻辑
 
-- [x] 更新 `perihelion-widgets/src/lib.rs` 添加 mod 声明和重导出
-  - 位置: `perihelion-widgets/src/lib.rs`
+- [x] 更新 `peri-widgets/src/lib.rs` 添加 mod 声明和重导出
+  - 位置: `peri-widgets/src/lib.rs`
   - 将现有内容替换为:
 
     ```rust
@@ -418,15 +418,15 @@
   - 原因: 添加 bordered_panel 和 scrollable 模块声明及重导出
 
 - [x] 为 BorderedPanel 编写单元测试
-  - 测试文件: `perihelion-widgets/src/bordered_panel.rs` 底部 `#[cfg(test)] mod tests`
+  - 测试文件: `peri-widgets/src/bordered_panel.rs` 底部 `#[cfg(test)] mod tests`
   - 测试场景:
     - `render_returns_inner_area`: 创建 10x6 的 TestBackend area，调用 `BorderedPanel::new("Title").border_style(Style::default()).render(f, area)`，验证返回的 inner area 宽度 = area.width - 2（左右边框各 1）、高度 = area.height - 2（上下边框各 1）
     - `render_with_empty_title`: 使用空标题 `""`，验证不 panic 且 inner area 正常返回
-  - 运行命令: `cargo test -p perihelion-widgets -- bordered_panel`
+  - 运行命令: `cargo test -p peri-widgets -- bordered_panel`
   - 预期: 所有测试通过
 
 - [x] 为 ScrollState 和 ScrollableArea 编写单元测试
-  - 测试文件: `perihelion-widgets/src/scrollable.rs` 底部 `#[cfg(test)] mod tests`
+  - 测试文件: `peri-widgets/src/scrollable.rs` 底部 `#[cfg(test)] mod tests`
   - 测试场景:
     - `scroll_state_ensure_visible_above`: offset=5, row=2, visible=10 → offset 应变为 2
     - `scroll_state_ensure_visible_below`: offset=0, row=15, visible=10 → offset 应变为 6（15 - (10-1)）
@@ -434,19 +434,19 @@
     - `scroll_state_scroll_up_down`: scroll_down(3, 20, 10) → offset=3; scroll_up(1) → offset=2
     - `scrollable_area_renders_content`: 创建 20 行内容，20x5 area，验证 Paragraph 渲染到 buffer 中（使用 TestBackend 检查）
     - `scrollable_area_clamps_offset`: offset=100 但内容仅 20 行、可见 5 行，render 后 offset 应 clamp 为 15
-  - 运行命令: `cargo test -p perihelion-widgets -- scrollable`
+  - 运行命令: `cargo test -p peri-widgets -- scrollable`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] bordered_panel.rs 和 scrollable.rs 存在且可编译
-  - `cargo build -p perihelion-widgets 2>&1 | tail -3`
+  - `cargo build -p peri-widgets 2>&1 | tail -3`
   - 预期: 输出包含 "Finished"，无 error
 - [x] BorderedPanel 和 ScrollableArea 在 lib.rs 中正确重导出
-  - `grep -E "pub use (bordered_panel|scrollable)" /Users/konghayao/code/ai/perihelion/perihelion-widgets/src/lib.rs`
+  - `grep -E "pub use (bordered_panel|scrollable)" /Users/konghayao/code/ai/peri/peri-widgets/src/lib.rs`
   - 预期: 输出包含 `pub use bordered_panel::BorderedPanel` 和 `pub use scrollable::{ScrollState, ScrollableArea}`
 - [x] 全部单元测试通过
-  - `cargo test -p perihelion-widgets 2>&1 | grep "test result"`
+  - `cargo test -p peri-widgets 2>&1 | grep "test result"`
   - 预期: 所有测试通过
 
 ---
@@ -458,12 +458,12 @@
 
 **涉及文件:**
 
-- 新建: `perihelion-widgets/src/list.rs`
-- 修改: `perihelion-widgets/src/lib.rs`（添加 `pub mod list;` 和 `pub use list::{ListState, SelectableList};`）
+- 新建: `peri-widgets/src/list.rs`
+- 修改: `peri-widgets/src/lib.rs`（添加 `pub mod list;` 和 `pub use list::{ListState, SelectableList};`）
 
 **执行步骤:**
 
-- [x] 创建 `perihelion-widgets/src/list.rs`
+- [x] 创建 `peri-widgets/src/list.rs`
   - 位置: crate 根目录
   - 内容:
 
@@ -604,13 +604,13 @@
 
   - 原因: ListState<T> 内嵌 Task 2 的 ScrollState，统一 cursor + scroll 管理。SelectableList 通过闭包实现渲染灵活性。StatefulWidget 直接操作 Buffer，cursor_marker 自动在行首插入。
 
-- [x] 更新 `perihelion-widgets/src/lib.rs` 添加 list 模块
-  - 位置: `perihelion-widgets/src/lib.rs`
+- [x] 更新 `peri-widgets/src/lib.rs` 添加 list 模块
+  - 位置: `peri-widgets/src/lib.rs`
   - 在 `pub mod scrollable;` 行之后插入 `pub mod list;`
   - 在重导出区域添加 `pub use list::{ListState, SelectableList};`
 
 - [x] 为 ListState<T> 和 SelectableList 编写单元测试
-  - 测试文件: `perihelion-widgets/src/list.rs` 底部 `#[cfg(test)] mod tests`
+  - 测试文件: `peri-widgets/src/list.rs` 底部 `#[cfg(test)] mod tests`
   - 测试场景:
     - `list_state_move_cursor_clamp`: items=["a","b","c"], move_cursor(1)→cursor=1, move_cursor(5)→cursor=2（clamp 到 max）, move_cursor(-10)→cursor=0（clamp 到 0）
     - `list_state_empty_items`: items=[], move_cursor(1) 不 panic，selected() 返回 None
@@ -618,19 +618,19 @@
     - `list_state_ensure_visible`: items 长度 20, cursor=15, ensure_visible(10)→scroll.offset 应为 6（15-(10-1)）
     - `selectable_list_renders_cursor_marker`: 使用 TestBackend（ratatui::backend::TestBackend::new(20, 5)），3 个 items ["a","b","c"]，cursor=1，render 后验证 buffer 第 2 行包含 "▶ " 前缀，其余行包含 "  " 前缀
     - `selectable_list_custom_render_item`: 闭包返回 `Line::styled(format!("[{}]", item), Style::default().bold())`，验证 buffer 包含 "[a]"、"[b]" 等自定义渲染内容
-  - 运行命令: `cargo test -p perihelion-widgets -- list`
+  - 运行命令: `cargo test -p peri-widgets -- list`
   - 预期: 所有测试通过
 
 **检查步骤:**
 
 - [x] list.rs 存在且可编译
-  - `cargo build -p perihelion-widgets 2>&1 | tail -3`
+  - `cargo build -p peri-widgets 2>&1 | tail -3`
   - 预期: 输出包含 "Finished"，无 error
 - [x] ListState 和 SelectableList 在 lib.rs 中正确重导出
-  - `grep "pub use list" /Users/konghayao/code/ai/perihelion/perihelion-widgets/src/lib.rs`
+  - `grep "pub use list" /Users/konghayao/code/ai/peri/peri-widgets/src/lib.rs`
   - 预期: 输出包含 `pub use list::{ListState, SelectableList}`
 - [x] 全部单元测试通过
-  - `cargo test -p perihelion-widgets 2>&1 | grep "test result"`
+  - `cargo test -p peri-widgets 2>&1 | grep "test result"`
   - 预期: 所有测试通过
 
 ---

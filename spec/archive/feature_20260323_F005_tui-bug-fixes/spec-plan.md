@@ -11,10 +11,10 @@
 ### Task 1: 弹窗/面板滚动支持
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/app/model_panel.rs`
-- 修改: `rust-agent-tui/src/app/agent_panel.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/app/model_panel.rs`
+- 修改: `peri-tui/src/app/agent_panel.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`
 
 **执行步骤:**
 
@@ -36,16 +36,16 @@
 **检查步骤:**
 
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 输出 `Finished` 无 error
 - [x] 确认 scroll_offset 字段存在
-  - `grep -n 'scroll_offset' rust-agent-tui/src/app/mod.rs rust-agent-tui/src/app/model_panel.rs rust-agent-tui/src/app/agent_panel.rs`
+  - `grep -n 'scroll_offset' peri-tui/src/app/mod.rs peri-tui/src/app/model_panel.rs peri-tui/src/app/agent_panel.rs`
   - 预期: 每个文件中至少有 1 处 scroll_offset 定义
 - [x] 确认 ensure_cursor_visible 函数存在
-  - `grep -n 'fn ensure_cursor_visible' rust-agent-tui/src/app/mod.rs`
+  - `grep -n 'fn ensure_cursor_visible' peri-tui/src/app/mod.rs`
   - 预期: 找到该函数定义
 - [x] 确认所有弹窗的 popup_height 有 80% 上限
-  - `grep -n 'area.height \* 4 / 5' rust-agent-tui/src/ui/main_ui.rs`
+  - `grep -n 'area.height \* 4 / 5' peri-tui/src/ui/main_ui.rs`
   - 预期: render_ask_user_popup, render_model_panel, render_agent_panel, render_thread_browser 各出现 1 次
 
 ---
@@ -53,8 +53,8 @@
 ### Task 2: Bracketed Paste Mode
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/main.rs`
-- 修改: `rust-agent-tui/src/event.rs`
+- 修改: `peri-tui/src/main.rs`
+- 修改: `peri-tui/src/event.rs`
 
 **执行步骤:**
 
@@ -70,13 +70,13 @@
 **检查步骤:**
 
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 输出 `Finished` 无 error
 - [x] 确认 EnableBracketedPaste 在初始化中
-  - `grep -n 'EnableBracketedPaste' rust-agent-tui/src/main.rs`
+  - `grep -n 'EnableBracketedPaste' peri-tui/src/main.rs`
   - 预期: 至少 2 处（Enable + Disable）
 - [x] 确认 Paste 事件处理存在
-  - `grep -n 'Event::Paste' rust-agent-tui/src/event.rs`
+  - `grep -n 'Event::Paste' peri-tui/src/event.rs`
   - 预期: 至少 1 处匹配
 
 ---
@@ -84,8 +84,8 @@
 ### Task 3: Loading 输入缓冲
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/mod.rs`
-- 修改: `rust-agent-tui/src/event.rs`
+- 修改: `peri-tui/src/app/mod.rs`
+- 修改: `peri-tui/src/event.rs`
 
 **执行步骤:**
 
@@ -107,16 +107,16 @@
 **检查步骤:**
 
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 输出 `Finished` 无 error
 - [x] 确认 pending_messages 字段存在
-  - `grep -n 'pending_messages' rust-agent-tui/src/app/mod.rs`
+  - `grep -n 'pending_messages' peri-tui/src/app/mod.rs`
   - 预期: 至少 3 处（声明、初始化、使用）
 - [x] 确认缓冲标题逻辑
-  - `grep -n '已缓存' rust-agent-tui/src/app/mod.rs`
+  - `grep -n '已缓存' peri-tui/src/app/mod.rs`
   - 预期: 1 处匹配（build_textarea 函数中）
 - [x] 确认 Done 分支的自动发送逻辑
-  - `grep -A15 'AgentEvent::Done' rust-agent-tui/src/app/mod.rs | grep -c 'pending_messages'`
+  - `grep -A15 'AgentEvent::Done' peri-tui/src/app/mod.rs | grep -c 'pending_messages'`
   - 预期: 至少 1
 
 ---
@@ -124,27 +124,27 @@
 ### Task 4: TUI Bug Fixes Acceptance
 
 **Prerequisites:**
-- 启动命令: `cargo run -p rust-agent-tui`
+- 启动命令: `cargo run -p peri-tui`
 - 确保已配置 API Key（`ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY`）
 
 **End-to-end verification:**
 
 1. [x] 弹窗滚动：触发一个会生成多选项的 AskUser 弹窗，验证内容超过屏幕时可通过 ↑↓ 滚动
-   - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+   - `cargo build -p peri-tui 2>&1 | tail -3`
    - Expected: 编译成功；运行时 AskUser 弹窗高度不超过屏幕 80%，可滚动
    - On failure: check Task 1 [弹窗/面板滚动支持]
 
 2. [x] 粘贴换行：在输入框中粘贴含换行符的多行文本
-   - `grep -c 'Event::Paste' rust-agent-tui/src/event.rs`
+   - `grep -c 'Event::Paste' peri-tui/src/event.rs`
    - Expected: 粘贴后文本完整保留在输入框内，不触发提交；grep 结果 >= 1
    - On failure: check Task 2 [Bracketed Paste Mode]
 
 3. [x] Loading 缓冲：Agent 运行中在输入框键入内容并按 Enter
-   - `grep -c 'pending_messages' rust-agent-tui/src/app/mod.rs`
+   - `grep -c 'pending_messages' peri-tui/src/app/mod.rs`
    - Expected: 消息进入缓冲区，输入框标题显示 "已缓存 N 条"；Agent 完成后自动合并发送；grep 结果 >= 3
    - On failure: check Task 3 [Loading 输入缓冲]
 
 4. [x] 全量测试通过
-   - `cargo test -p rust-agent-tui 2>&1 | tail -5`
+   - `cargo test -p peri-tui 2>&1 | tail -5`
    - Expected: 所有测试通过（40 passed），无 panic
    - On failure: check all Tasks

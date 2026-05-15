@@ -39,7 +39,7 @@ MCP HTTP 请求
 **McpServerConfig 新增字段**
 
 ```rust
-// rust-agent-middlewares/src/mcp/config.rs
+// peri-middlewares/src/mcp/config.rs
 pub struct McpServerConfig {
     // 现有字段
     pub command: Option<String>,
@@ -99,7 +99,7 @@ impl OAuthConfig {
 路径：`~/.peri/oauth_tokens.json`，权限 `0600`。
 
 ```rust
-// rust-agent-middlewares/src/mcp/auth_store.rs（新文件）
+// peri-middlewares/src/mcp/auth_store.rs（新文件）
 use rmcp::transport::auth::{CredentialStore, StoredCredentials};
 
 #[derive(Serialize, Deserialize)]
@@ -326,7 +326,7 @@ fn build_authed_transport(
 ### TUI 事件扩展
 
 ```rust
-// rust-create-agent/src/event.rs（或在 TUI 层扩展）
+// peri-agent/src/event.rs（或在 TUI 层扩展）
 pub enum AgentEvent {
     // 现有事件...
 
@@ -414,7 +414,7 @@ MCP 面板新增 OAuth 状态列：
 
 ## 约束一致性
 
-- **依赖方向**：新增 `auth_store.rs`、`oauth_flow.rs` 位于 `rust-agent-middlewares`，依赖 `rust-create-agent` 的事件定义，符合 workspace 依赖方向
+- **依赖方向**：新增 `auth_store.rs`、`oauth_flow.rs` 位于 `peri-middlewares`，依赖 `peri-agent` 的事件定义，符合 workspace 依赖方向
 - **错误处理**：库 crate 使用 `thiserror`，遵循现有 `McpPoolError` / `ToolCallError` 模式
 - **日志**：使用 `tracing` 宏，不使用 `println!`
 - **文件权限**：Token 文件 0600，启动时检查并警告

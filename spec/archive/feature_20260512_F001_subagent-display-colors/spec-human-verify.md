@@ -9,8 +9,8 @@
 ## 验收前准备
 
 ### 环境要求
-- [ ] [AUTO] 编译项目: `cargo build -p rust-agent-tui`
-- [ ] [AUTO] 运行全量测试: `cargo test -p rust-agent-tui`
+- [ ] [AUTO] 编译项目: `cargo build -p peri-tui`
+- [ ] [AUTO] 运行全量测试: `cargo test -p peri-tui`
 - [ ] [MANUAL] 准备一个可用的 LLM Provider（Anthropic 或 OpenAI 兼容），用于启动 TUI 交互测试
 
 ### 测试数据准备
@@ -25,7 +25,7 @@
 **用户目标:** 确认前台 SubAgent 以新的 `Agent(type)` 格式显示，颜色为绿色
 
 **触发路径:**
-1. 启动 TUI (`cargo run -p rust-agent-tui`)
+1. 启动 TUI (`cargo run -p peri-tui`)
 2. 输入一个触发前台 Agent 工具调用的指令
 3. 观察 SubAgentGroup 的渲染格式和颜色
 
@@ -33,7 +33,7 @@
 - **来源:** spec-plan.md Task 6
 - **目的:** 确认基础代码无回归
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui 2>&1` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui 2>&1` → 期望包含: `test result: ok`
 
 #### - [x] 1.2 前台 SubAgent 显示格式正确
 - **来源:** spec-design.md §4.2
@@ -171,13 +171,13 @@
 - **来源:** spec-plan.md Task 6
 - **目的:** 确认 bg_hash 解析边界情况已覆盖
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui parse_bg_hash 2>&1` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui parse_bg_hash 2>&1` → 期望包含: `test result: ok`
 
 #### - [x] 7.3 in_subagent() 仅检查前台 agent
 - **来源:** spec-plan.md Task 6 额外修复
 - **目的:** 确认后台 agent 不阻塞 Done 事件
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui 2>&1` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui 2>&1` → 期望包含: `test result: ok`
 
 #### - [!] 7.4 折叠/展开状态不被重置（跳过：需要实际 TUI 操作，代码逻辑已验证）
 - **来源:** spec-design.md 实现要点 §5

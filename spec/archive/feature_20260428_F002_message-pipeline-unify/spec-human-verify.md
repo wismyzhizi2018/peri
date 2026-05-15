@@ -22,7 +22,7 @@
 - **来源:** spec-plan.md Task 1 步骤 12
 - **目的:** 确认 ToolCall 拆分后所有 headless 测试通过
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- headless` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui --lib -- headless` → 期望包含: `test result: ok`
 
 ---
 
@@ -32,13 +32,13 @@
 - **来源:** spec-plan.md Task 2 步骤 8
 - **目的:** 确认 AppCore 正确持有并初始化 Pipeline
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- test_appcore_pipeline_initialized` → 期望包含: `test test_appcore_pipeline_initialized ... ok`
+  1. [A] `cargo test -p peri-tui --lib -- test_appcore_pipeline_initialized` → 期望包含: `test test_appcore_pipeline_initialized ... ok`
 
 #### - [x] 2.2 AppCore::new 签名变更无回归
 - **来源:** spec-plan.md Task 2 步骤 9
 - **目的:** 确认所有调用点（mod.rs / panel_ops.rs）正确适配
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui --lib` → 期望包含: `test result: ok`
 
 ---
 
@@ -48,13 +48,13 @@
 - **来源:** spec-plan.md Task 3 检查步骤 1
 - **目的:** 确认 handle_event 方法编译无错误
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | tail -5` → 期望包含: `Finished` 或 `Compiling`（无 `error`）
+  1. [A] `cargo build -p peri-tui 2>&1 | tail -5` → 期望包含: `Finished` 或 `Compiling`（无 `error`）
 
 #### - [x] 3.2 Pipeline 单元测试全部通过
 - **来源:** spec-plan.md Task 3 检查步骤 2
 - **目的:** 确认 handle_event 路由逻辑正确（流式文本、空 chunk、工具生命周期、Done reconcile、StateSnapshot）
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- message_pipeline` → 期望包含: `test result: ok`
+  1. [A] `cargo test -p peri-tui --lib -- message_pipeline` → 期望包含: `test result: ok`
 
 ---
 
@@ -80,25 +80,25 @@
 - **来源:** spec-design.md §6 AgentEvent 调整 / spec-plan.md Task 1
 - **目的:** 确认 ToolCall 变体已完全替换
 - **操作步骤:**
-  1. [A] `grep -rn "ToolCall" rust-agent-tui/src/` → 期望精确: （无输出，即无残留引用）
+  1. [A] `grep -rn "ToolCall" peri-tui/src/` → 期望精确: （无输出，即无残留引用）
 
 #### - [x] 5.2 PipelineAction 变体覆盖完整
 - **来源:** spec-design.md §3 PipelineAction → RenderEvent 映射
 - **目的:** 确认所有 PipelineAction 变体均被 handle_event 使用
 - **操作步骤:**
-  1. [A] `grep -c "PipelineAction::" rust-agent-tui/src/app/message_pipeline.rs` → 期望包含: 数字 >= 7（AddMessage/AppendChunk/UpdateLast/RemoveLast/RemoveLastN/RebuildAll/StreamingDone/None）
+  1. [A] `grep -c "PipelineAction::" peri-tui/src/app/message_pipeline.rs` → 期望包含: 数字 >= 7（AddMessage/AppendChunk/UpdateLast/RemoveLast/RemoveLastN/RebuildAll/StreamingDone/None）
 
 #### - [x] 5.3 subagent_group_idx 已移除
 - **来源:** spec-design.md §1 AppCore 持有 MessagePipeline（subagent_group_idx 移除）
 - **目的:** 确认 subagent_group_idx 被 pipeline.in_subagent() 替代（⚠ 注意: plan 仅 Task 2 提及保留，实际移除在 Task 4——此步骤验证移除完成）
 - **操作步骤:**
-  1. [A] `grep -rn "subagent_group_idx" rust-agent-tui/src/` → 期望精确: （无输出，即已完全移除）
+  1. [A] `grep -rn "subagent_group_idx" peri-tui/src/` → 期望精确: （无输出，即已完全移除）
 
 #### - [x] 5.4 agent_ops 无直接 view_messages 操作
 - **来源:** spec-design.md §目标 / spec-plan.md Task 4（重构 agent_ops）
 - **目的:** 确认 agent_ops 通过 PipelineAction 间接操作 view_messages
 - **操作步骤:**
-  1. [A] `grep -n "view_messages\\.push\\|view_messages\\.pop\\|view_messages = " rust-agent-tui/src/app/agent_ops.rs` → 期望精确: （无输出，即无直接操作）
+  1. [A] `grep -n "view_messages\\.push\\|view_messages\\.pop\\|view_messages = " peri-tui/src/app/agent_ops.rs` → 期望精确: （无输出，即无直接操作）
 
 ---
 

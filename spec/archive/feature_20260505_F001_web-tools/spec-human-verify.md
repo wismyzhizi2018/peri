@@ -21,19 +21,19 @@
 
 ### 场景 1：构建与编译
 
-#### - [x] 1.1 rust-agent-middlewares 编译通过
+#### - [x] 1.1 peri-middlewares 编译通过
 - **来源:** spec-plan.md Task 4 / spec-design.md §文件变更清单
 - **目的:** 确认新增 web.rs 及依赖集成无编译错误
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-middlewares 2>&1 | tail -5` → 期望包含: Finished
+  1. [A] `cargo build -p peri-middlewares 2>&1 | tail -5` → 期望包含: Finished
 
 ---
 
-#### - [x] 1.2 rust-agent-tui 编译通过
+#### - [x] 1.2 peri-tui 编译通过
 - **来源:** spec-plan.md Task 3 / spec-design.md §中间件集成
 - **目的:** 确认 TUI agent 中间件链注册无误
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | tail -5` → 期望包含: Finished
+  1. [A] `cargo build -p peri-tui 2>&1 | tail -5` → 期望包含: Finished
 
 ---
 
@@ -43,7 +43,7 @@
 - **来源:** spec-plan.md Task 1 / spec-design.md §安全措施
 - **目的:** 确认 SSRF 防护覆盖 FTP/localhost/私有IP/链路本地
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests::test_validate_url 2>&1 | grep -E '^test '`
+  1. [A] `cargo test -p peri-middlewares --lib -- middleware::web::tests::test_validate_url 2>&1 | grep -E '^test '`
      → 期望包含: test_validate_url_rejects_ftp ... ok
      → 期望包含: test_validate_url_rejects_localhost ... ok
      → 期望包含: test_validate_url_rejects_private_ip ... ok
@@ -59,8 +59,8 @@
 - **来源:** spec-plan.md Task 1 / spec-design.md §WebFetch 执行流程
 - **目的:** 确认 HTML→文本、截断逻辑正确
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests::test_html_to_text_basic 2>&1 | grep 'test '` → 期望包含: test_html_to_text_basic ... ok
-  2. [A] `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests::test_truncate_content 2>&1 | grep 'test '` → 期望包含: test_truncate_content_no_truncation ... ok
+  1. [A] `cargo test -p peri-middlewares --lib -- middleware::web::tests::test_html_to_text_basic 2>&1 | grep 'test '` → 期望包含: test_html_to_text_basic ... ok
+  2. [A] `cargo test -p peri-middlewares --lib -- middleware::web::tests::test_truncate_content 2>&1 | grep 'test '` → 期望包含: test_truncate_content_no_truncation ... ok
      → 期望包含: test_truncate_content_with_truncation ... ok
 
 ---
@@ -69,8 +69,8 @@
 - **来源:** spec-plan.md Task 1 / spec-design.md §工具参数
 - **目的:** 确认工具名和参数 schema 符合设计
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests::test_tool_name_is_web_fetch 2>&1 | grep 'test '` → 期望包含: test_tool_name_is_web_fetch ... ok
-  2. [A] `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests::test_tool_parameters_required_url 2>&1 | grep 'test '` → 期望包含: test_tool_parameters_required_url ... ok
+  1. [A] `cargo test -p peri-middlewares --lib -- middleware::web::tests::test_tool_name_is_web_fetch 2>&1 | grep 'test '` → 期望包含: test_tool_name_is_web_fetch ... ok
+  2. [A] `cargo test -p peri-middlewares --lib -- middleware::web::tests::test_tool_parameters_required_url 2>&1 | grep 'test '` → 期望包含: test_tool_parameters_required_url ... ok
 
 ---
 
@@ -80,7 +80,7 @@
 - **来源:** spec-plan.md Task 2 / spec-design.md §WebSearch 执行流程
 - **目的:** 确认空结果/正常/截断/无摘要四种场景格式化正确
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests::test_format_search 2>&1 | grep 'test '` → 期望包含: test_format_search_results_empty ... ok
+  1. [A] `cargo test -p peri-middlewares --lib -- middleware::web::tests::test_format_search 2>&1 | grep 'test '` → 期望包含: test_format_search_results_empty ... ok
      → 期望包含: test_format_search_results_with_snippet ... ok
      → 期望包含: test_format_search_results_text_truncation ... ok
      → 期望包含: test_format_search_results_no_snippet ... ok
@@ -91,9 +91,9 @@
 - **来源:** spec-plan.md Task 2 / spec-design.md §工具参数
 - **目的:** 确认工具名、参数 schema、缺失 query 报错
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests::test_websearch_name 2>&1 | grep 'test '` → 期望包含: test_websearch_name ... ok
-  2. [A] `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests::test_websearch_parameters_required 2>&1 | grep 'test '` → 期望包含: test_websearch_parameters_required ... ok
-  3. [A] `cargo test -p rust-agent-middlewares --lib -- middleware::web::tests::test_websearch_missing_query 2>&1 | grep 'test '` → 期望包含: test_websearch_missing_query ... ok
+  1. [A] `cargo test -p peri-middlewares --lib -- middleware::web::tests::test_websearch_name 2>&1 | grep 'test '` → 期望包含: test_websearch_name ... ok
+  2. [A] `cargo test -p peri-middlewares --lib -- middleware::web::tests::test_websearch_parameters_required 2>&1 | grep 'test '` → 期望包含: test_websearch_parameters_required ... ok
+  3. [A] `cargo test -p peri-middlewares --lib -- middleware::web::tests::test_websearch_missing_query 2>&1 | grep 'test '` → 期望包含: test_websearch_missing_query ... ok
 
 ---
 
@@ -103,7 +103,7 @@
 - **来源:** spec-plan.md Task 3 / spec-design.md §HITL 集成
 - **目的:** 确认两个 Web 工具在默认审批清单中
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-middlewares --lib -- hitl::tests::test_default_requires_approval 2>&1 | grep 'test '` → 期望包含: test_default_requires_approval ... ok
+  1. [A] `cargo test -p peri-middlewares --lib -- hitl::tests::test_default_requires_approval 2>&1 | grep 'test '` → 期望包含: test_default_requires_approval ... ok
 
 ---
 
@@ -113,8 +113,8 @@
 - **来源:** spec-plan.md Task 3 / spec-design.md §中间件集成
 - **目的:** 确认 WebMiddleware 通过 mod.rs 和 lib.rs 正确导出
 - **操作步骤:**
-  1. [A] `grep 'pub use web::WebMiddleware' rust-agent-middlewares/src/middleware/mod.rs` → 期望包含: pub use web::WebMiddleware;
-  2. [A] `grep 'WebMiddleware' rust-agent-middlewares/src/lib.rs` → 期望包含: WebMiddleware
+  1. [A] `grep 'pub use web::WebMiddleware' peri-middlewares/src/middleware/mod.rs` → 期望包含: pub use web::WebMiddleware;
+  2. [A] `grep 'WebMiddleware' peri-middlewares/src/lib.rs` → 期望包含: WebMiddleware
 
 ---
 
@@ -122,7 +122,7 @@
 - **来源:** spec-plan.md Task 3 / spec-design.md §注册位置
 - **目的:** 确认 WebMiddleware 在 agent.rs 中间件链中
 - **操作步骤:**
-  1. [A] `grep 'WebMiddleware' rust-agent-tui/src/app/agent.rs` → 期望包含: WebMiddleware::new()
+  1. [A] `grep 'WebMiddleware' peri-tui/src/app/agent.rs` → 期望包含: WebMiddleware::new()
 
 ---
 
@@ -156,8 +156,8 @@
 
 | 场景 | 序号 | 验收项 | [A] | [H] | 结果 |
 |------|------|--------|-----|-----|------|
-| 场景 1 | 1.1 | rust-agent-middlewares 编译 | 1 | 0 | ✅ |
-| 场景 1 | 1.2 | rust-agent-tui 编译 | 1 | 0 | ✅ |
+| 场景 1 | 1.1 | peri-middlewares 编译 | 1 | 0 | ✅ |
+| 场景 1 | 1.2 | peri-tui 编译 | 1 | 0 | ✅ |
 | 场景 2 | 2.1 | URL 校验拦截非法协议与内网 | 1 | 0 | ✅ |
 | 场景 3 | 3.1 | HTML 转换与内容截断 | 2 | 0 | ✅ |
 | 场景 3 | 3.2 | WebFetch 工具注册 | 2 | 0 | ✅ |

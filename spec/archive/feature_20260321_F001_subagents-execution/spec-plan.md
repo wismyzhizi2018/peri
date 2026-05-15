@@ -1,8 +1,8 @@
 # subagents-execution 执行计划
 
-**目标:** 在 rust-agent-middlewares 中实现 `launch_agent` 工具，允许 LLM 将子任务委派给专门配置的子 agent 执行
+**目标:** 在 peri-middlewares 中实现 `launch_agent` 工具，允许 LLM 将子任务委派给专门配置的子 agent 执行
 
-**技术栈:** Rust / Tokio / async-trait / serde_json / rust-create-agent
+**技术栈:** Rust / Tokio / async-trait / serde_json / peri-agent
 
 **设计文档:** [spec-design.md](./spec-design.md)
 
@@ -11,7 +11,7 @@
 ### Task 1: ArcToolWrapper 包装层
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/tools/mod.rs`
+- 修改: `peri-middlewares/src/tools/mod.rs`
 
 **执行步骤:**
 - [x] 在 `tools/mod.rs` 中新增 `ArcToolWrapper` 结构体，将 `Arc<dyn BaseTool>` 包装为 `Box<dyn BaseTool>` 可用的形式
@@ -33,14 +33,14 @@ impl BaseTool for ArcToolWrapper {
 }
 ```
 - [x] 在 `tools/mod.rs` 中 pub 导出 `ArcToolWrapper`
-- [x] 在 `rust-agent-middlewares/src/lib.rs` 的 `prelude` 中导出 `ArcToolWrapper`
+- [x] 在 `peri-middlewares/src/lib.rs` 的 `prelude` 中导出 `ArcToolWrapper`
 
 **检查步骤:**
 - [x] 编译通过，无错误
-  - `cargo build -p rust-agent-middlewares 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-middlewares 2>&1 | grep -E "^error"`
   - 预期: 无输出（无编译错误）
 - [x] ArcToolWrapper 可被 Box::new 包裹注册为 BaseTool
-  - `cargo test -p rust-agent-middlewares --lib 2>&1 | grep -E "FAILED|ok"`
+  - `cargo test -p peri-middlewares --lib 2>&1 | grep -E "FAILED|ok"`
   - 预期: 所有已有测试仍为 ok
 
 ---
@@ -48,10 +48,10 @@ impl BaseTool for ArcToolWrapper {
 ### Task 2: SubAgentTool 实现
 
 **涉及文件:**
-- 新建: `rust-agent-middlewares/src/subagent/tool.rs`
+- 新建: `peri-middlewares/src/subagent/tool.rs`
 
 **执行步骤:**
-- [x] 创建 `rust-agent-middlewares/src/subagent/` 目录和 `tool.rs` 文件
+- [x] 创建 `peri-middlewares/src/subagent/` 目录和 `tool.rs` 文件
 - [x] 定义 `SubAgentTool` 结构体，持有三个字段：
   - `parent_tools: Arc<Vec<Arc<dyn BaseTool>>>` — 父 agent 工具集
   - `event_handler: Option<Arc<dyn AgentEventHandler>>` — 父 agent 事件处理器
@@ -94,10 +94,10 @@ impl BaseTool for ArcToolWrapper {
 
 **检查步骤:**
 - [x] 工具名称正确
-  - `cargo test -p rust-agent-middlewares -- subagent::tool 2>&1 | grep -E "FAILED|ok"`
+  - `cargo test -p peri-middlewares -- subagent::tool 2>&1 | grep -E "FAILED|ok"`
   - 预期: 所有单测 ok
 - [x] 工具 JSON Schema 参数格式正确（required 包含 agent_id 和 task）
-  - `cargo test -p rust-agent-middlewares -- subagent 2>&1 | grep -E "FAILED|ok"`
+  - `cargo test -p peri-middlewares -- subagent 2>&1 | grep -E "FAILED|ok"`
   - 预期: 无 FAILED
 - [x] agent 文件不存在时返回错误字符串（非 Err）
   - 单测 `test_tool_agent_not_found` 验证 `invoke` 返回包含"找不到"的 Ok 字符串
@@ -111,7 +111,7 @@ impl BaseTool for ArcToolWrapper {
 ### Task 3: SubAgentMiddleware 实现
 
 **涉及文件:**
-- 新建: `rust-agent-middlewares/src/subagent/mod.rs`
+- 新建: `peri-middlewares/src/subagent/mod.rs`
 
 **执行步骤:**
 - [x] 在 `mod.rs` 中定义 `SubAgentMiddleware` 结构体（同 `SubAgentTool` 持有相同三字段），再加 `cwd: Option<String>` 用于构建时传入
@@ -133,13 +133,13 @@ pub struct SubAgentMiddleware {
 
 **检查步骤:**
 - [x] 中间件可正常挂载到 ReActAgent
-  - `cargo build -p rust-agent-middlewares 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-middlewares 2>&1 | grep -E "^error"`
   - 预期: 无输出
 - [x] `collect_tools()` 返回包含 `launch_agent` 的工具列表
   - 单测 `test_middleware_collect_tools` 验证工具名称
   - 预期: `tools[0].name() == "launch_agent"`
 - [x] 所有已有测试不受影响
-  - `cargo test -p rust-agent-middlewares --lib 2>&1 | tail -5`
+  - `cargo test -p peri-middlewares --lib 2>&1 | tail -5`
   - 预期: 输出包含 "test result: ok"
 
 ---
@@ -147,11 +147,11 @@ pub struct SubAgentMiddleware {
 ### Task 4: lib.rs 导出与集成
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/lib.rs`
-- 修改: `rust-agent-middlewares/src/tools/mod.rs`（pub use ArcToolWrapper）
+- 修改: `peri-middlewares/src/lib.rs`
+- 修改: `peri-middlewares/src/tools/mod.rs`（pub use ArcToolWrapper）
 
 **执行步骤:**
-- [x] 在 `rust-agent-middlewares/src/lib.rs` 中添加 `pub mod subagent;`
+- [x] 在 `peri-middlewares/src/lib.rs` 中添加 `pub mod subagent;`
 - [x] 在 `lib.rs` 中添加顶层导出：`pub use subagent::{SubAgentMiddleware, SubAgentTool};`
 - [x] 在 `lib.rs` 的 `prelude` 模块中添加导出：
   ```rust
@@ -169,7 +169,7 @@ pub struct SubAgentMiddleware {
   - `cargo test --lib 2>&1 | grep -E "FAILED|error\["`
   - 预期: 无 FAILED 也无编译错误
 - [x] SubAgentMiddleware 和 SubAgentTool 可从 crate root 访问
-  - `cargo doc -p rust-agent-middlewares 2>&1 | grep -E "^error"`
+  - `cargo doc -p peri-middlewares 2>&1 | grep -E "^error"`
   - 预期: 无文档生成错误
 
 ---
@@ -184,27 +184,27 @@ pub struct SubAgentMiddleware {
 **端到端验证:**
 
 1. [x] launch_agent 工具出现在 LLM 工具列表
-   - `cargo test -p rust-agent-middlewares -- test_launch_agent_tool_in_list 2>&1 | grep -E "ok|FAILED"`
+   - `cargo test -p peri-middlewares -- test_launch_agent_tool_in_list 2>&1 | grep -E "ok|FAILED"`
    - Expected: ok
    - On failure: 检查 Task 3 SubAgentMiddleware::collect_tools
 
 2. [x] agent 定义文件不存在时返回清晰错误
-   - `cargo test -p rust-agent-middlewares -- test_tool_agent_not_found 2>&1 | grep -E "ok|FAILED"`
+   - `cargo test -p peri-middlewares -- test_tool_agent_not_found 2>&1 | grep -E "ok|FAILED"`
    - Expected: ok，invoke 返回包含"找不到"的 Ok 字符串
    - On failure: 检查 Task 2 invoke 错误路径处理
 
 3. [x] tools 字段为空时子 agent 继承所有父工具（但不含 launch_agent）
-   - `cargo test -p rust-agent-middlewares -- test_tool_filter_inherit_all 2>&1 | grep -E "ok|FAILED"`
+   - `cargo test -p peri-middlewares -- test_tool_filter_inherit_all 2>&1 | grep -E "ok|FAILED"`
    - Expected: ok，子 agent 工具集 == 父工具集 - {launch_agent}
    - On failure: 检查 Task 2 工具过滤逻辑
 
 4. [x] tools 字段有值时只保留指定工具
-   - `cargo test -p rust-agent-middlewares -- test_tool_filter_allowlist 2>&1 | grep -E "ok|FAILED"`
+   - `cargo test -p peri-middlewares -- test_tool_filter_allowlist 2>&1 | grep -E "ok|FAILED"`
    - Expected: ok，子 agent 仅有 tools 字段指定的工具
    - On failure: 检查 Task 2 工具过滤 allow list 逻辑
 
 5. [x] disallowedTools 正确排除工具
-   - `cargo test -p rust-agent-middlewares -- test_tool_filter_disallow 2>&1 | grep -E "ok|FAILED"`
+   - `cargo test -p peri-middlewares -- test_tool_filter_disallow 2>&1 | grep -E "ok|FAILED"`
    - Expected: ok，被拒绝的工具不在子 agent 工具集中
    - On failure: 检查 Task 2 disallowed_tools 过滤逻辑
 
@@ -218,10 +218,10 @@ pub struct SubAgentMiddleware {
 ### Task 6: TUI 接入
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/tools/mod.rs`
-- 修改: `rust-agent-middlewares/src/lib.rs`
-- 修改: `rust-agent-tui/src/app/agent.rs`
-- 修改: `rust-agent-tui/src/ui.rs`
+- 修改: `peri-middlewares/src/tools/mod.rs`
+- 修改: `peri-middlewares/src/lib.rs`
+- 修改: `peri-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/ui.rs`
 
 **执行步骤:**
 - [x] 在 `tools/mod.rs` 新增 `BoxToolWrapper`：将 `Box<dyn BaseTool>` 包装为 `Arc<dyn BaseTool>` 可用形式，用于从中间件工具收集结果构建父工具集
@@ -234,7 +234,7 @@ pub struct SubAgentMiddleware {
 
 **检查步骤:**
 - [x] 全量编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-tui 2>&1 | grep -E "^error"`
   - 预期: 无输出
 
 ---
@@ -242,7 +242,7 @@ pub struct SubAgentMiddleware {
 ### Task 7: 子 Agent 执行结果摘要
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/subagent/tool.rs`
+- 修改: `peri-middlewares/src/subagent/tool.rs`
 
 **执行步骤:**
 - [x] 新增 `format_subagent_result(output: &AgentOutput) -> String` 函数
@@ -252,5 +252,5 @@ pub struct SubAgentMiddleware {
 
 **检查步骤:**
 - [x] 全量测试无回归
-  - `cargo test -p rust-agent-middlewares --lib 2>&1 | tail -3`
+  - `cargo test -p peri-middlewares --lib 2>&1 | tail -3`
   - 预期: 输出包含 "test result: ok"

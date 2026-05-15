@@ -13,7 +13,7 @@
 - [ ] [AUTO] 检查 Rust 工具链已安装: `rustc --version`
 - [ ] [AUTO] 检查 cargo 可用: `cargo --version`
 - [ ] [AUTO] 确认工作目录为项目根: `test -f Cargo.toml && echo OK`
-- [ ] [AUTO] 全量编译通过: `cargo build -p rust-agent-tui 2>&1 | tail -3`
+- [ ] [AUTO] 全量编译通过: `cargo build -p peri-tui 2>&1 | tail -3`
 
 ### 测试数据准备
 
@@ -29,10 +29,10 @@
 
 - **来源:** Task 1 检查步骤
 - **操作步骤:**
-  1. [A] `grep 'pulldown-cmark' rust-agent-tui/Cargo.toml` → 期望: 输出 `pulldown-cmark = "0.12"`
-  2. [A] `cargo tree -p rust-agent-tui 2>/dev/null | grep pulldown` → 期望: 输出含 `pulldown-cmark v0.12`
+  1. [A] `grep 'pulldown-cmark' peri-tui/Cargo.toml` → 期望: 输出 `pulldown-cmark = "0.12"`
+  2. [A] `cargo tree -p peri-tui 2>/dev/null | grep pulldown` → 期望: 输出含 `pulldown-cmark v0.12`
 - **异常排查:**
-  - 如果 grep 无输出: 检查 `rust-agent-tui/Cargo.toml` 中 `[dependencies]` 是否包含 `pulldown-cmark = "0.12"`
+  - 如果 grep 无输出: 检查 `peri-tui/Cargo.toml` 中 `[dependencies]` 是否包含 `pulldown-cmark = "0.12"`
   - 如果 cargo tree 报错: 运行 `cargo fetch` 确保依赖已下载
 
 #### - [x] 1.2 spec/global/constraints.md 约束文档已同步更新
@@ -48,19 +48,19 @@
 
 ### 场景 2：编译稳定性与接口不变性
 
-#### - [x] 2.1 rust-agent-tui 编译无错误
+#### - [x] 2.1 peri-tui 编译无错误
 
 - **来源:** Task 2 检查步骤
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | grep -E '^error\[' | head -5` → 期望: 无输出（无编译错误）
+  1. [A] `cargo build -p peri-tui 2>&1 | grep -E '^error\[' | head -5` → 期望: 无输出（无编译错误）
 - **异常排查:**
-  - 如果出现编译错误: 检查 `rust-agent-tui/src/ui/markdown.rs` 中 pulldown-cmark API 用法是否与 0.12 版本匹配
+  - 如果出现编译错误: 检查 `peri-tui/src/ui/markdown.rs` 中 pulldown-cmark API 用法是否与 0.12 版本匹配
 
 #### - [x] 2.2 parse_markdown / ensure_rendered 接口签名不变
 
 - **来源:** Task 2 检查步骤 + 设计文档约束一致性
 - **操作步骤:**
-  1. [A] `grep 'pub fn parse_markdown' rust-agent-tui/src/ui/markdown.rs` → 期望: 输出 `pub fn parse_markdown(input: &str) -> Text<'static>`
+  1. [A] `grep 'pub fn parse_markdown' peri-tui/src/ui/markdown.rs` → 期望: 输出 `pub fn parse_markdown(input: &str) -> Text<'static>`
 - **异常排查:**
   - 如果签名不符: 恢复 `parse_markdown(input: &str) -> Text<'static>` 签名，接口是公开契约，不可更改
 
@@ -70,7 +70,7 @@
 - **操作步骤:**
   1. [A] `git diff --name-only | grep -E 'message_render|message_view'; echo "exit:$?"` → 期望: 第一行无文件名输出，`exit:1`
 - **异常排查:**
-  - 如果出现文件名: 运行 `git diff rust-agent-tui/src/ui/message_render.rs` 检查是否有意外改动，必要时 `git checkout` 还原
+  - 如果出现文件名: 运行 `git diff peri-tui/src/ui/message_render.rs` 检查是否有意外改动，必要时 `git checkout` 还原
 
 ---
 
@@ -80,16 +80,16 @@
 
 - **来源:** Task 3 test_md_heading + 设计文档视觉样式映射
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui test_md_heading 2>&1 | grep -E 'ok|FAILED'` → 期望: 输出含 `test_md_heading ... ok`
+  1. [A] `cargo test -p peri-tui test_md_heading 2>&1 | grep -E 'ok|FAILED'` → 期望: 输出含 `test_md_heading ... ok`
 - **异常排查:**
-  - 如果测试失败: 运行 `cargo test -p rust-agent-tui test_md_heading -- --nocapture` 查看断言失败详情
+  - 如果测试失败: 运行 `cargo test -p peri-tui test_md_heading -- --nocapture` 查看断言失败详情
   - 检查 `markdown.rs` 中 `Tag::Heading { level, .. }` 的 H1 处理：颜色应为 `Color::Cyan`，前缀应为 `━━ `
 
 #### - [x] 3.2 粗体 / 斜体 / 删除线 Modifier 正确
 
 - **来源:** Task 3 test_md_inline_styles + 设计文档
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui test_md_inline_styles 2>&1 | grep -E 'ok|FAILED'` → 期望: 输出含 `test_md_inline_styles ... ok`
+  1. [A] `cargo test -p peri-tui test_md_inline_styles 2>&1 | grep -E 'ok|FAILED'` → 期望: 输出含 `test_md_inline_styles ... ok`
 - **异常排查:**
   - BOLD: 检查 `Tag::Strong` → `inline_style.add_modifier(Modifier::BOLD)`
   - ITALIC: 检查 `Tag::Emphasis` → `inline_style.add_modifier(Modifier::ITALIC)`
@@ -99,7 +99,7 @@
 
 - **来源:** Task 3 test_md_inline_code + 设计文档
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui test_md_inline_code 2>&1 | grep -E 'ok|FAILED'` → 期望: 输出含 `test_md_inline_code ... ok`
+  1. [A] `cargo test -p peri-tui test_md_inline_code 2>&1 | grep -E 'ok|FAILED'` → 期望: 输出含 `test_md_inline_code ... ok`
 - **异常排查:**
   - 检查 `Event::Code(text)` 处理中是否使用 `Style::default().fg(Color::Yellow).bg(Color::DarkGray)`
 
@@ -111,7 +111,7 @@
 
 - **来源:** Task 3 test_md_code_block + 设计文档
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui test_md_code_block 2>&1 | grep -E 'ok|FAILED'` → 期望: 输出含 `test_md_code_block ... ok`
+  1. [A] `cargo test -p peri-tui test_md_code_block 2>&1 | grep -E 'ok|FAILED'` → 期望: 输出含 `test_md_code_block ... ok`
 - **异常排查:**
   - `[lang]` 标签：检查 `Start(Tag::CodeBlock(Fenced(lang)))` 中 lang 非空时的首行处理
   - `│ ` 前缀：检查 `Event::Text` 在 `in_code_block=true` 时的按换行分割逻辑
@@ -120,8 +120,8 @@
 
 - **来源:** Task 3 test_md_unordered_list + test_md_ordered_list + 设计文档
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui test_md_unordered_list 2>&1 | grep -E 'ok|FAILED'` → 期望: `test_md_unordered_list ... ok`
-  2. [A] `cargo test -p rust-agent-tui test_md_ordered_list 2>&1 | grep -E 'ok|FAILED'` → 期望: `test_md_ordered_list ... ok`
+  1. [A] `cargo test -p peri-tui test_md_unordered_list 2>&1 | grep -E 'ok|FAILED'` → 期望: `test_md_unordered_list ... ok`
+  2. [A] `cargo test -p peri-tui test_md_ordered_list 2>&1 | grep -E 'ok|FAILED'` → 期望: `test_md_ordered_list ... ok`
 - **异常排查:**
   - 无序列表：检查 `Start(Tag::Item)` 对 `ListType::Unordered` 的处理，确认 `• ` 拼接了缩进
   - 有序列表：检查 `ListType::Ordered(n)` 自增逻辑，`*n += 1`
@@ -130,8 +130,8 @@
 
 - **来源:** Task 3 test_md_blockquote + test_md_rule + 设计文档
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui test_md_blockquote 2>&1 | grep -E 'ok|FAILED'` → 期望: `test_md_blockquote ... ok`
-  2. [A] `cargo test -p rust-agent-tui test_md_rule 2>&1 | grep -E 'ok|FAILED'` → 期望: `test_md_rule ... ok`
+  1. [A] `cargo test -p peri-tui test_md_blockquote 2>&1 | grep -E 'ok|FAILED'` → 期望: `test_md_blockquote ... ok`
+  2. [A] `cargo test -p peri-tui test_md_rule 2>&1 | grep -E 'ok|FAILED'` → 期望: `test_md_rule ... ok`
 - **异常排查:**
   - 引用块：检查 `flush_line()` 中 `quote_depth > 0` 时向 spans 首部插入 `▍ ` 的逻辑
   - 水平线：检查 `Event::Rule` 生成 `"─".repeat(60)` Span
@@ -144,7 +144,7 @@
 
 - **来源:** Task 3 test_md_incomplete_does_not_panic + 设计文档容错处理
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui test_md_incomplete_does_not_panic 2>&1 | grep -E 'ok|FAILED'` → 期望: `test_md_incomplete_does_not_panic ... ok`
+  1. [A] `cargo test -p peri-tui test_md_incomplete_does_not_panic 2>&1 | grep -E 'ok|FAILED'` → 期望: `test_md_incomplete_does_not_panic ... ok`
 - **异常排查:**
   - 如果 panic：检查 pulldown-cmark 的 `Options::all()` 是否正确开启容错解析
 
@@ -152,17 +152,17 @@
 
 - **来源:** Task 3 检查步骤
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui markdown_tests 2>&1 | grep 'test result'` → 期望: 输出 `test result: ok. 9 passed; 0 failed`
+  1. [A] `cargo test -p peri-tui markdown_tests 2>&1 | grep 'test result'` → 期望: 输出 `test result: ok. 9 passed; 0 failed`
 - **异常排查:**
-  - 如果有失败：运行 `cargo test -p rust-agent-tui markdown_tests -- --nocapture` 查看具体失败信息
+  - 如果有失败：运行 `cargo test -p peri-tui markdown_tests -- --nocapture` 查看具体失败信息
   - 注意：`test_tool_call_message_visible_when_toggled` 为 pre-existing 失败，与本 feature 无关，不计入
 
 #### - [x] 5.3 TUI 实机 Markdown 视觉效果验证
 
 - **来源:** 设计文档视觉样式映射（人工验证补充）
 - **操作步骤:**
-  1. [A] `ANTHROPIC_API_KEY=test cargo run -p rust-agent-tui 2>&1 &; sleep 3; kill %1 2>/dev/null; echo "启动测试完成"` → 期望: 进程正常启动后退出，无 panic
-  2. [H] 运行 `cargo run -p rust-agent-tui`（需配置 `.env` 或环境变量），在输入框中发送包含以下内容的消息后确认：
+  1. [A] `ANTHROPIC_API_KEY=test cargo run -p peri-tui 2>&1 &; sleep 3; kill %1 2>/dev/null; echo "启动测试完成"` → 期望: 进程正常启动后退出，无 panic
+  2. [H] 运行 `cargo run -p peri-tui`（需配置 `.env` 或环境变量），在输入框中发送包含以下内容的消息后确认：
      ```
      # 标题测试
      **粗体** *斜体* ~~删除线~~ `行内代码`

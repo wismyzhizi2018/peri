@@ -67,7 +67,7 @@ CREATE INDEX idx_messages_thread_seq ON messages(thread_id, seq);
 
 #### 1.3 ThreadStore Trait
 
-位于 `rust-create-agent/src/thread/store.rs`（现有 trait 不变）。
+位于 `peri-agent/src/thread/store.rs`（现有 trait 不变）。
 
 实现类 `SqliteThreadStore`：
 
@@ -193,10 +193,10 @@ pub fn new_thread(&mut self) {
 
 #### 3.1 模块结构
 
-在 `rust-create-agent/src/messages/adapters/` 下新增：
+在 `peri-agent/src/messages/adapters/` 下新增：
 
 ```
-rust-create-agent/src/messages/
+peri-agent/src/messages/
   adapters/
     mod.rs
     openai.rs       # OpenAI 格式转换
@@ -285,15 +285,15 @@ LLM 请求发送时，通过 `MessageAdapter` 将 `BaseMessage` 转为 Provider 
 
 | 文件 | 操作 | 说明 |
 |------|------|------|
-| `rust-create-agent/src/thread/store.rs` | 不变 | ThreadStore trait 保持不变 |
-| `rust-create-agent/src/thread/mod.rs` | 修改 | 导出 `SqliteThreadStore` |
-| `rust-create-agent/src/thread/sqlite_store.rs` | 新增 | SQLite 实现 |
-| `rust-create-agent/src/messages/adapters/mod.rs` | 新增 | 模块入口 |
-| `rust-create-agent/src/messages/adapters/openai.rs` | 新增 | OpenAI 适配器 |
-| `rust-create-agent/src/messages/adapters/anthropic.rs` | 新增 | Anthropic 适配器 |
-| `rust-agent-tui/src/thread/mod.rs` | 修改 | 导出 `SqliteThreadStore` |
-| `rust-agent-tui/src/app/mod.rs` | 修改 | 移除 persist_pending_messages，重构 StateSnapshot 处理 |
-| `rust-agent-tui/src/app/agent.rs` | 修改 | 确保 thread_id 在 agent 执行前创建 |
+| `peri-agent/src/thread/store.rs` | 不变 | ThreadStore trait 保持不变 |
+| `peri-agent/src/thread/mod.rs` | 修改 | 导出 `SqliteThreadStore` |
+| `peri-agent/src/thread/sqlite_store.rs` | 新增 | SQLite 实现 |
+| `peri-agent/src/messages/adapters/mod.rs` | 新增 | 模块入口 |
+| `peri-agent/src/messages/adapters/openai.rs` | 新增 | OpenAI 适配器 |
+| `peri-agent/src/messages/adapters/anthropic.rs` | 新增 | Anthropic 适配器 |
+| `peri-tui/src/thread/mod.rs` | 修改 | 导出 `SqliteThreadStore` |
+| `peri-tui/src/app/mod.rs` | 修改 | 移除 persist_pending_messages，重构 StateSnapshot 处理 |
+| `peri-tui/src/app/agent.rs` | 修改 | 确保 thread_id 在 agent 执行前创建 |
 
 ## 实现要点
 

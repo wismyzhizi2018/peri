@@ -11,8 +11,8 @@
 ### Task 1: AgentEvent CompactDone 结构体变更
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/events.rs`
-- 修改: `rust-agent-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/events.rs`
+- 修改: `peri-tui/src/app/agent.rs`
 
 **执行步骤:**
 - [x] 将 `AgentEvent::CompactDone(String)` 改为结构体变体：
@@ -30,10 +30,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
-  - 预期: 输出 `Compiling rust-agent-tui` 且无 error
+  - `cargo build -p peri-tui 2>&1 | tail -5`
+  - 预期: 输出 `Compiling peri-tui` 且无 error
 - [x] 所有引用 `CompactDone` 的代码已更新
-  - `grep -rn "CompactDone" rust-agent-tui/src/`
+  - `grep -rn "CompactDone" peri-tui/src/`
   - 预期: 无旧的 `CompactDone(String)` 模式匹配
 
 ---
@@ -41,7 +41,7 @@
 ### Task 2: TUI CompactDone 分支迁移逻辑
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`
+- 修改: `peri-tui/src/app/agent_ops.rs`
 
 **执行步骤:**
 - [x] 重写 `handle_agent_event` 中 `AgentEvent::CompactDone` 分支（当前在 `agent_ops.rs:503-558`）
@@ -64,10 +64,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 无 error
 - [x] CompactDone 分支使用 `block_in_place` 模式（与 `ensure_thread_id` 一致）
-  - `grep -A5 "CompactDone" rust-agent-tui/src/app/agent_ops.rs | head -20`
+  - `grep -A5 "CompactDone" peri-tui/src/app/agent_ops.rs | head -20`
   - 预期: 包含 `block_in_place` 调用
 
 ---
@@ -130,7 +130,7 @@
 ### Task 5: Compact Thread Acceptance
 
 **Prerequisites:**
-- Start command: `cargo build -p rust-agent-tui -p rust-relay-server`
+- Start command: `cargo build -p peri-tui -p rust-relay-server`
 - Test data setup: 确保已有至少一条对话历史（发送过至少一条消息的 Thread）
 
 **End-to-end verification:**
@@ -146,7 +146,7 @@
    - On failure: 检查对应测试用例引用的 Task
 
 3. CompactDone 事件结构验证
-   - `grep -A5 "CompactDone {" rust-agent-tui/src/app/events.rs`
+   - `grep -A5 "CompactDone {" peri-tui/src/app/events.rs`
    - ✅ 结构体变体包含 `summary: String` 和 `new_thread_id: String`
    - On failure: 检查 Task 1
 

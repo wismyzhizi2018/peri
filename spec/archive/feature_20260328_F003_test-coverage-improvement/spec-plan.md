@@ -11,12 +11,12 @@
 ### Task 1: 文件系统工具单元测试
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/tools/filesystem/read.rs`
-- 修改: `rust-agent-middlewares/src/tools/filesystem/write.rs`
-- 修改: `rust-agent-middlewares/src/tools/filesystem/edit.rs`
-- 修改: `rust-agent-middlewares/src/tools/filesystem/glob.rs`
-- 修改: `rust-agent-middlewares/src/tools/filesystem/grep.rs`
-- 修改: `rust-agent-middlewares/src/tools/filesystem/folder.rs`
+- 修改: `peri-middlewares/src/tools/filesystem/read.rs`
+- 修改: `peri-middlewares/src/tools/filesystem/write.rs`
+- 修改: `peri-middlewares/src/tools/filesystem/edit.rs`
+- 修改: `peri-middlewares/src/tools/filesystem/glob.rs`
+- 修改: `peri-middlewares/src/tools/filesystem/grep.rs`
+- 修改: `peri-middlewares/src/tools/filesystem/folder.rs`
 
 **执行步骤:**
 
@@ -75,7 +75,7 @@
 **检查步骤:**
 
 - [x] 文件系统工具测试全部通过
-  - `cargo test -p rust-agent-middlewares -- tools::filesystem 2>&1 | tail -20`
+  - `cargo test -p peri-middlewares -- tools::filesystem 2>&1 | tail -20`
   - 预期: 输出含 `test result: ok. N passed; 0 failed`，N ≥ 24
 
 ---
@@ -140,7 +140,7 @@
 ### Task 3: AskUserTool 单元测试
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/tools/ask_user_tool.rs`
+- 修改: `peri-middlewares/src/tools/ask_user_tool.rs`
 
 **执行步骤:**
 
@@ -187,7 +187,7 @@
 **检查步骤:**
 
 - [x] ask_user_tool 测试全部通过
-  - `cargo test -p rust-agent-middlewares -- tools::ask_user_tool 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares -- tools::ask_user_tool 2>&1 | tail -10`
   - 预期: `test result: ok. N passed; 0 failed`，N ≥ 10
 
 ---
@@ -195,7 +195,7 @@
 ### Task 4: TUI 命令系统单元测试
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/command/mod.rs`
+- 修改: `peri-tui/src/command/mod.rs`
 
 **执行步骤:**
 
@@ -246,7 +246,7 @@
 **检查步骤:**
 
 - [x] TUI 命令系统测试全部通过
-  - `cargo test -p rust-agent-tui -- command 2>&1 | tail -10`
+  - `cargo test -p peri-tui -- command 2>&1 | tail -10`
   - 预期: `test result: ok. N passed; 0 failed`，N ≥ 8
 
 ---
@@ -259,8 +259,8 @@
 
 **端到端验证:**
 
-1. [x] rust-agent-middlewares 全量测试通过
-   - `cargo test -p rust-agent-middlewares 2>&1 | tail -5`
+1. [x] peri-middlewares 全量测试通过
+   - `cargo test -p peri-middlewares 2>&1 | tail -5`
    - 预期: `test result: ok. N passed; 0 failed`，N ≥ 125（原有约 65 + 新增约 37）
    - 失败时：检查 Task 1（文件系统工具）、Task 3（AskUserTool）
 
@@ -269,8 +269,8 @@
    - 预期: `test result: ok. N passed; 0 failed`，N ≥ 25（原有约 13 + 新增约 12）
    - 失败时：检查 Task 2（Relay Server auth + client）
 
-3. [x] rust-agent-tui 全量测试通过
-   - `cargo test -p rust-agent-tui 2>&1 | tail -5`
+3. [x] peri-tui 全量测试通过
+   - `cargo test -p peri-tui 2>&1 | tail -5`
    - 预期: `test result: ok. N passed; 0 failed`，N ≥ 63（原有约 55 + 新增约 8）
    - 失败时：检查 Task 4（TUI 命令系统）
 

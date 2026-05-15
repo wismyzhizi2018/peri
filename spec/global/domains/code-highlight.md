@@ -5,6 +5,7 @@
 代码高亮领域负责 TUI 中 Markdown 多行代码块的语法高亮渲染，使用 syntect 实现基于语法分析的高精度着色。
 
 核心职责：
+
 - 通过 markdown-highlight feature flag 控制启用
 - syntect default-fancy 纯 Rust 实现，避免 C 库编译问题
 - 延迟初始化 SyntaxSet/ThemeSet，仅加载一次
@@ -39,8 +40,10 @@ Markdown 解析遇到代码块（```lang）
 ## Feature 附录
 
 ### feature_20260429_F001_syntect-codeblock-highlight
+
 **摘要:** 使用 syntect 为 Markdown 多行代码块添加语法高亮
 **关键决策:**
+
 - 通过 feature flag markdown-highlight 控制启用，不影响默认构建
 - 使用 syntect default-fancy（纯 Rust）避免 C 库 oniguruma 编译问题
 - SyntaxSet/ThemeSet 通过 once_cell::sync::Lazy 延迟初始化
@@ -53,5 +56,6 @@ Markdown 解析遇到代码块（```lang）
 ---
 
 ## 相关 Feature
+
 - → [tui.md](./tui.md) — Markdown 渲染集成点
-- → [tui-widgets.md](./tui-widgets.md) — perihelion-widgets MarkdownRenderer 组件
+- → [tui-widgets.md](./tui-widgets.md) — peri-widgets MarkdownRenderer 组件

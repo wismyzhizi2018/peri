@@ -37,7 +37,7 @@ pub struct AgentFrontmatter {
 
 ### SkillPreloadMiddleware
 
-新建文件 `rust-agent-middlewares/src/subagent/skill_preload.rs`，实现 `Middleware<S>` trait。
+新建文件 `peri-middlewares/src/subagent/skill_preload.rs`，实现 `Middleware<S>` trait。
 
 **`before_agent` 注入逻辑：**
 
@@ -114,7 +114,7 @@ if !agent_def.frontmatter.skills.is_empty() {
 
 ## 约束一致性
 
-- **Workspace 分层**：改动限于 `rust-agent-middlewares` crate，不涉及 `rust-create-agent` 核心层，符合"禁止下层依赖上层"约束
+- **Workspace 分层**：改动限于 `peri-middlewares` crate，不涉及 `peri-agent` 核心层，符合"禁止下层依赖上层"约束
 - **Middleware Chain 模式**：`SkillPreloadMiddleware` 实现 `Middleware<S>` trait，通过 `before_agent` 钩子注入，符合横切关注点解耦原则
 - **消息不可变历史**：使用 `prepend_message`（非修改），状态只追加，符合 `AgentState` 约束
 - **异步优先**：`before_agent` 中的文件 IO 通过 `tokio::task::spawn_blocking` 包装，与现有 `SkillsMiddleware` 一致

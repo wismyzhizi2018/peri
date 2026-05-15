@@ -71,13 +71,13 @@ Assistant 消息 [5] 无 tool_calls，但 user 消息 [6] 却有 tool_result blo
 ### 代码定位
 
 **索引设置**（时间点 A）：
-`rust-create-agent/src/agent/executor/mod.rs:186`
+`peri-agent/src/agent/executor/mod.rs:186`
 ```rust
 let mut last_message_count: usize = state.messages().len();
 ```
 
 **索引破坏**（时间点 B）：
-`rust-create-agent/src/agent/executor/mod.rs:238-239`
+`peri-agent/src/agent/executor/mod.rs:238-239`
 ```rust
 if let Some(ref prompt) = self.system_prompt {
     state.prepend_message(BaseMessage::system(prompt.clone()));
@@ -99,7 +99,7 @@ fn prepend_message(&mut self, message: BaseMessage) {
 当 `prepend_message` 在 `before_agent` 之前、`last_message_count` 之后执行时，StateSnapshot 会捕获**包含所有旧消息在内的超集**。
 
 **增量扩展**：
-`rust-agent-tui/src/app/agent_ops.rs:811-814`
+`peri-tui/src/app/agent_ops.rs:811-814`
 ```rust
 self.session_mgr.sessions[self.session_mgr.active]
     .agent
@@ -147,11 +147,11 @@ last_message_count += 1;  // 补偿 insert(0) 的右移
 
 ## 涉及文件
 
-- `rust-create-agent/src/agent/executor/mod.rs:186` — `last_message_count` 设置
-- `rust-create-agent/src/agent/executor/mod.rs:238-239` — `prepend_message` 破坏索引
-- `rust-create-agent/src/agent/state.rs:161-163` — `prepend_message` 实现
-- `rust-agent-tui/src/app/agent_ops.rs:811-814` — `agent_state_messages.extend()` 增量累积
-- `rust-create-agent/src/agent/executor/final_answer.rs:102-110` — `handle_final_answer` 中的快照
+- `peri-agent/src/agent/executor/mod.rs:186` — `last_message_count` 设置
+- `peri-agent/src/agent/executor/mod.rs:238-239` — `prepend_message` 破坏索引
+- `peri-agent/src/agent/state.rs:161-163` — `prepend_message` 实现
+- `peri-tui/src/app/agent_ops.rs:811-814` — `agent_state_messages.extend()` 增量累积
+- `peri-agent/src/agent/executor/final_answer.rs:102-110` — `handle_final_answer` 中的快照
 
 ## 关联 Issue
 

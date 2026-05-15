@@ -1,0 +1,128 @@
+//! Git attribution 中间件。
+//!
+//! 追踪 Write/Edit 工具修改的文件，在 agent 执行前注入 Co-Authored-By 指令，
+//! 引导模型在 git commit 时自动追加署名 trailer。
+//!
+//! ## 钩子流程
+//!
+//! ```text
+//! before_tool (Write/Edit) → 读取旧文件内容 → 存入 pending
+//!   → [工具执行]
+//! after_tool  (Write/Edit) → 读取新文件内容 → track_change()
+//! before_agent              → 注入 Co-Authored-By System 消息（仅首次）
+//! ```
+
+mod model_email;
+mod state;
+
+pub use model_email::get_attribution_email;
+pub use state::AttributionState;
+
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+use async_trait::async_trait;
+use peri_agent::agent::react::{ToolCall, ToolResult};
+use peri_agent::agent::state::State;
+use peri_agent::error::AgentResult;
+use peri_agent::messages::BaseMessage;
+use peri_agent::middleware::Middleware;
+
+/// Git 留名中间件
+///
+/// 注册在 `FilesystemMiddleware` 之后，hook 其 Write/Edit 工具调用。
+/// `before_tool` 暂存旧文件内容，`after_tool` 计算贡献字符数。
+/// `before_agent` 注入 Co-Authored-By 指令到消息历史。
+pub struct GitAttributionMiddleware {
+    state: Arc<Mutex<AttributionState>>,
+    pending_old_content: Arc<Mutex<HashMap<String, String>>>,
+}
+
+impl GitAttributionMiddleware {
+    pub fn new(model_name: &str) -> Self {
+        Self {
+            state: Arc::new(Mutex::new(AttributionState::new(model_name.to_string()))),
+            pending_old_content: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    /// 获取当前 attribution text（用于调试）
+    pub fn attribution_text(&self) -> String {
+        self.state.lock().unwrap().co_authored_by()
+    }
+}
+
+#[async_trait]
+impl<S: State> Middleware<S> for GitAttributionMiddleware {
+    fn name(&self) -> &str {
+        "GitAttributionMiddleware"
+    }
+
+    async fn before_tool(&self, _state: &mut S, tool_call: &ToolCall) -> AgentResult<ToolCall> {
+        // 仅处理 Write 和 Edit
+        if tool_call.name != "Write" && tool_call.name != "Edit" {
+            return Ok(tool_call.clone());
+        }
+        // 读取当前文件内容，暂存到 pending
+        if let Some(file_path) = tool_call.input.get("file_path").and_then(|v| v.as_str()) {
+            if let Ok(old_content) = tokio::fs::read_to_string(file_path).await {
+                self.pending_old_content
+                    .lock()
+                    .unwrap()
+                    .insert(file_path.to_string(), old_content);
+            }
+        }
+        Ok(tool_call.clone())
+    }
+
+    async fn after_tool(
+        &self,
+        _state: &mut S,
+        tool_call: &ToolCall,
+        _result: &ToolResult,
+    ) -> AgentResult<()> {
+        // 仅处理 Write 和 Edit
+        if tool_call.name != "Write" && tool_call.name != "Edit" {
+            return Ok(());
+        }
+        let file_path = match tool_call.input.get("file_path").and_then(|v| v.as_str()) {
+            Some(p) => p,
+            None => return Ok(()),
+        };
+        let old_content = self
+            .pending_old_content
+            .lock()
+            .unwrap()
+            .remove(file_path)
+            .unwrap_or_default();
+        let new_content = match tokio::fs::read_to_string(file_path).await {
+            Ok(c) => c,
+            Err(_) => return Ok(()),
+        };
+        self.state
+            .lock()
+            .unwrap()
+            .track_change(file_path, &old_content, &new_content);
+        Ok(())
+    }
+
+    async fn before_agent(&self, state: &mut S) -> AgentResult<()> {
+        let attr_text = self.attribution_text();
+        let text = format!(
+            "## Git Attribution\n\nWhen creating git commits, append the following line to the commit message:\n\n```\n{}\n```\n\nThis tracks AI contributions and should always be included in commit messages for code you authored.",
+            attr_text
+        );
+
+        // 避免跨轮次重复注入：检查消息历史中是否已包含相同 System 消息
+        let already_injected = state.messages().iter().any(|m| {
+            m.is_system()
+                && m.content_blocks()
+                    .iter()
+                    .any(|b| matches!(b, peri_agent::messages::ContentBlock::Text { text } if text.contains("## Git Attribution")))
+        });
+        if !already_injected {
+            state.add_message(BaseMessage::system(text));
+        }
+        Ok(())
+    }
+}

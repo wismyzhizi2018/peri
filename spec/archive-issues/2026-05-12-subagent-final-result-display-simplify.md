@@ -70,7 +70,7 @@
 
 ## 相关代码
 
-- `rust-agent-tui/src/ui/message_render.rs:403-406` — 渲染 "——执行结果——" 分隔符
+- `peri-tui/src/ui/message_render.rs:403-406` — 渲染 "——执行结果——" 分隔符
 
   ```rust
   lines.push(Line::from(vec![Span::styled(
@@ -79,9 +79,9 @@
   )]));
   ```
 
-- `rust-agent-tui/src/ui/message_render.rs:397-429` — final_result 渲染逻辑
+- `peri-tui/src/ui/message_render.rs:397-429` — final_result 渲染逻辑
 
-- `rust-agent-tui/src/ui/message_view.rs:233-252` — SubAgentGroup 定义
+- `peri-tui/src/ui/message_view.rs:233-252` — SubAgentGroup 定义
 
 ## 期望改进方向
 

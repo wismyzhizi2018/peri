@@ -1,6 +1,6 @@
 # 颜色系统重构（对齐 Claude Dark 主题）执行计划
 
-**目标:** 将 perihelion TUI 配色方案从暖棕系对齐到 Claude Code Dark 主题的中性灰系，清理全部硬编码颜色
+**目标:** 将 peri TUI 配色方案从暖棕系对齐到 Claude Code Dark 主题的中性灰系，清理全部硬编码颜色
 
 **技术栈:** Rust, ratatui (Color::Rgb), cargo test
 
@@ -10,7 +10,7 @@
 
 - 本次改动涉及 14 个文件（2 个主题定义 + 11 个 UI 渲染文件 + 1 个风格指南文档），核心变更是 `theme.rs` + `presets.rs` 中 12 个颜色值的 RGB 替换 + 2 个新增常量
 - Task 1 是核心依赖——先更新主题定义（TUI 层 + widgets 层同步），Task 2/3 才能用新常量替换硬编码颜色
-- 经代码分析确认：`perihelion-widgets/src/theme/presets.rs` 的 `DarkTheme` 实现与 `theme.rs` 一一对应，必须同步更新，且 L61 测试断言了旧 ACCENT 值需一并修正；`headless.rs` 已使用 `theme::SAGE`/`theme::ERROR` 常量，无需改动；`Color::Reset`（hints.rs L80/L123）是透明背景语义，保留不替换；`Color::Cyan/Magenta/Yellow`（login.rs）是模型类型区分色，保留不替换
+- 经代码分析确认：`peri-widgets/src/theme/presets.rs` 的 `DarkTheme` 实现与 `theme.rs` 一一对应，必须同步更新，且 L61 测试断言了旧 ACCENT 值需一并修正；`headless.rs` 已使用 `theme::SAGE`/`theme::ERROR` 常量，无需改动；`Color::Reset`（hints.rs L80/L123）是透明背景语义，保留不替换；`Color::Cyan/Magenta/Yellow`（login.rs）是模型类型区分色，保留不替换
 
 ---
 
@@ -20,19 +20,21 @@
 确保构建和测试工具链可用，建立颜色变更前的基线状态。
 
 **执行步骤:**
+
 - [x] 验证构建工具可用
-  - `cargo build -p rust-agent-tui`
+  - `cargo build -p peri-tui`
   - 预期: 编译成功，无错误
 - [x] 验证测试工具可用
-  - `cargo test -p rust-agent-tui`
+  - `cargo test -p peri-tui`
   - 预期: 全部测试通过
 
 **检查步骤:**
+
 - [x] 构建成功
-  - `cargo build -p rust-agent-tui 2>&1 | tail -3`
+  - `cargo build -p peri-tui 2>&1 | tail -3`
   - 预期: 输出包含 "Finished" 且无 error
 - [x] 测试通过
-  - `cargo test -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo test -p peri-tui 2>&1 | tail -5`
   - 预期: 输出包含 "test result: ok"
 
 ---
@@ -43,10 +45,12 @@
 本次重构的核心——将 `theme.rs` 中 12 个颜色常量的 RGB 值从暖棕系替换为 Claude Dark 主题的中性灰系值，并新增 `USER_BG` 和 `BASH_BORDER` 两个常量。后续所有 Task 依赖此文件的新值。
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/theme.rs`
-- 修改: `perihelion-widgets/src/theme/presets.rs`
+
+- 修改: `peri-tui/src/ui/theme.rs`
+- 修改: `peri-widgets/src/theme/presets.rs`
 
 **执行步骤:**
+
 - [x] 更新 ACCENT 常量 RGB 值
   - 位置: `theme.rs` L11
   - 将 `Color::Rgb(255, 107, 43)` 改为 `Color::Rgb(215, 119, 87)`
@@ -120,6 +124,7 @@
 - [x] 更新文件头部注释
   - 位置: `theme.rs` L1-L6
   - 将设计哲学描述更新为反映 Claude 配色风格:
+
     ```rust
     /// TUI 统一颜色主题（对齐 Claude Code Dark 配色方案）
     ///
@@ -128,7 +133,7 @@
     /// 信息层级用亮度区分（TEXT/MUTED/DIM），颜色表达状态语义。
     ```
 
-- [x] 同步更新 `perihelion-widgets/src/theme/presets.rs` 中 DarkTheme 的全部 RGB 值
+- [x] 同步更新 `peri-widgets/src/theme/presets.rs` 中 DarkTheme 的全部 RGB 值
   - 此文件与 `theme.rs` 一一对应，所有 12 个方法的返回值需同步更新为新 RGB 值
   - L14: `Color::Rgb(255, 107, 43)` → `Color::Rgb(215, 119, 87)` // accent
   - L17: `Color::Rgb(110, 181, 106)` → `Color::Rgb(78, 186, 101)` // success
@@ -153,13 +158,13 @@
   - 预期: 编译成功（全 workspace）
 
 - [x] 验证 widgets 测试通过
-  - `cargo test -p perihelion-widgets`
+  - `cargo test -p peri-widgets`
   - 预期: 全部测试通过（含 dark_theme_returns_correct_colors）
 - [x] 确认 theme.rs 和 presets.rs 中无旧 RGB 值残留
-  - `grep -n "255, 107, 43\|218, 206, 208\|140, 125, 120\|72, 62, 58\|48, 38, 32\|10, 8, 6\|38, 22, 10\|34, 211, 238\|176, 152, 120\|204, 70, 62\|167, 139, 250\|110, 181, 106" rust-agent-tui/src/ui/theme.rs perihelion-widgets/src/theme/presets.rs`
+  - `grep -n "255, 107, 43\|218, 206, 208\|140, 125, 120\|72, 62, 58\|48, 38, 32\|10, 8, 6\|38, 22, 10\|34, 211, 238\|176, 152, 120\|204, 70, 62\|167, 139, 250\|110, 181, 106" peri-tui/src/ui/theme.rs peri-widgets/src/theme/presets.rs`
   - 预期: 无输出（旧 RGB 值已全部替换）
 - [x] 确认新常量已定义
-  - `grep -n "USER_BG\|BASH_BORDER" rust-agent-tui/src/ui/theme.rs`
+  - `grep -n "USER_BG\|BASH_BORDER" peri-tui/src/ui/theme.rs`
   - 预期: 各出现 1 次（定义行）
 
 ---
@@ -170,11 +175,13 @@
 清理 `main_ui.rs`、`message_render.rs`、`sticky_header.rs` 三个核心渲染文件中的硬编码颜色。这三个文件是消息显示和主界面的核心，包含最多的硬编码颜色使用。本 Task 依赖 Task 1 的主题常量更新。
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`
-- 修改: `rust-agent-tui/src/ui/message_render.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/sticky_header.rs`
+
+- 修改: `peri-tui/src/ui/main_ui.rs`
+- 修改: `peri-tui/src/ui/message_render.rs`
+- 修改: `peri-tui/src/ui/main_ui/sticky_header.rs`
 
 **执行步骤:**
+
 - [x] 替换 `main_ui.rs` 中 4 处硬编码颜色
   - L113: `Color::White` → `theme::TEXT` — 主界面消息渲染
   - L214: `Color::Rgb(255, 140, 0)` → `theme::ACCENT` — 自定义橙色样式
@@ -197,16 +204,17 @@
   - 注意: 由于是 const 绑定，且文件已 `use crate::ui::theme;`，可直接引用 `theme::USER_BG`
 
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui`
+  - `cargo build -p peri-tui`
   - 预期: 编译成功
 
 - [x] 运行 headless 测试确认无回归
-  - `cargo test -p rust-agent-tui`
+  - `cargo test -p peri-tui`
   - 预期: 全部测试通过
 
 **检查步骤:**
+
 - [x] 确认三个文件中无硬编码颜色残留
-  - `grep -n "Color::White\|Color::Green\|Color::Gray\|Color::DarkGray\|Color::Rgb(255, 140, 0)\|Color::Rgb(74, 70, 66)" rust-agent-tui/src/ui/main_ui.rs rust-agent-tui/src/ui/message_render.rs rust-agent-tui/src/ui/main_ui/sticky_header.rs`
+  - `grep -n "Color::White\|Color::Green\|Color::Gray\|Color::DarkGray\|Color::Rgb(255, 140, 0)\|Color::Rgb(74, 70, 66)" peri-tui/src/ui/main_ui.rs peri-tui/src/ui/message_render.rs peri-tui/src/ui/main_ui/sticky_header.rs`
   - 预期: 无输出
 
 ---
@@ -217,15 +225,17 @@
 清理剩余 8 个面板/弹窗文件中的 `Color::White` 硬编码。这些文件的模式统一：按钮文字和选中行使用 `Color::White`，需替换为 `theme::TEXT`。`Color::Cyan/Magenta/Yellow`（login.rs 模型类型区分）和 `Color::Reset`（hints.rs 透明背景）保留不替换。
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/ui/main_ui/popups/setup_wizard.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/cron.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/thread_browser.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/popups/ask_user.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/model.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/login.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/agent.rs`
+
+- 修改: `peri-tui/src/ui/main_ui/popups/setup_wizard.rs`
+- 修改: `peri-tui/src/ui/main_ui/panels/cron.rs`
+- 修改: `peri-tui/src/ui/main_ui/panels/thread_browser.rs`
+- 修改: `peri-tui/src/ui/main_ui/popups/ask_user.rs`
+- 修改: `peri-tui/src/ui/main_ui/panels/model.rs`
+- 修改: `peri-tui/src/ui/main_ui/panels/login.rs`
+- 修改: `peri-tui/src/ui/main_ui/panels/agent.rs`
 
 **执行步骤:**
+
 - [x] 替换 `setup_wizard.rs` 中 4 处 `Color::White` → `theme::TEXT`
   - L59: `.fg(Color::White)` — 光标行文字
   - L62: `.fg(Color::White).bg(theme::ACCENT)` — 按钮选中文字
@@ -268,19 +278,20 @@
   - L77: `.fg(Color::White)` — Agent 名称
 
 - [x] 验证编译通过
-  - `cargo build -p rust-agent-tui`
+  - `cargo build -p peri-tui`
   - 预期: 编译成功
 
 - [x] 运行全量测试确认无回归
-  - `cargo test -p rust-agent-tui`
+  - `cargo test -p peri-tui`
   - 预期: 全部测试通过
 
 **检查步骤:**
+
 - [x] 确认面板/弹窗文件中无 `Color::White` 残留（login.rs 中 `Color::Cyan/Magenta/Yellow` 除外）
-  - `grep -rn "Color::White" rust-agent-tui/src/ui/main_ui/popups/ rust-agent-tui/src/ui/main_ui/panels/`
+  - `grep -rn "Color::White" peri-tui/src/ui/main_ui/popups/ peri-tui/src/ui/main_ui/panels/`
   - 预期: 无输出
 - [x] 确认 login.rs 中 Cyan/Magenta/Yellow 保留
-  - `grep -c "Color::Cyan\|Color::Magenta\|Color::Yellow" rust-agent-tui/src/ui/main_ui/panels/login.rs`
+  - `grep -c "Color::Cyan\|Color::Magenta\|Color::Yellow" peri-tui/src/ui/main_ui/panels/login.rs`
   - 预期: 输出 6（三对 × 2 = 6 处保留）
 
 ---
@@ -288,24 +299,25 @@
 ### Task 4: 颜色系统重构验收
 
 **前置条件:**
+
 - Task 1/2/3 全部完成
-- 构建环境: `cargo build -p rust-agent-tui` 成功
+- 构建环境: `cargo build -p peri-tui` 成功
 
 **端到端验证:**
 
 - [x] 1. 运行完整测试套件确保无回归
-   - `cargo test` — 通过（1 个预存失败 test_subagent_group_basic，与本次改动无关）
+  - `cargo test` — 通过（1 个预存失败 test_subagent_group_basic，与本次改动无关）
 
 - [x] 2. 全局硬编码颜色扫描——确认无遗漏
-   - `grep -rn "Color::White\|Color::Green\b\|Color::Gray\b\|Color::DarkGray" rust-agent-tui/src/ui/ --include="*.rs"`
-   - 结果: 无输出 ✅
+  - `grep -rn "Color::White\|Color::Green\b\|Color::Gray\b\|Color::DarkGray" peri-tui/src/ui/ --include="*.rs"`
+  - 结果: 无输出 ✅
 
 - [x] 3. 主题常量 RGB 值验证——确认 theme.rs 和 presets.rs 全部更新
-   - `grep -n "pub const" rust-agent-tui/src/ui/theme.rs` — 包含 USER_BG 和 BASH_BORDER ✅
-   - `grep -n "Rgb(255, 107, 43)" perihelion-widgets/src/theme/presets.rs` — 无输出 ✅
+  - `grep -n "pub const" peri-tui/src/ui/theme.rs` — 包含 USER_BG 和 BASH_BORDER ✅
+  - `grep -n "Rgb(255, 107, 43)" peri-widgets/src/theme/presets.rs` — 无输出 ✅
 
 - [x] 4. Color::Reset 保留验证——确认透明背景语义未被误改
-   - `grep -n "Color::Reset" hints.rs` — 输出 2 处（L80, L123）✅
+  - `grep -n "Color::Reset" hints.rs` — 输出 2 处（L80, L123）✅
 
 - [x] 5. Login 面板保留色验证——确认模型类型区分色未被替换
-   - `grep -c "Color::Cyan\|Color::Magenta\|Color::Yellow" login.rs` — 输出 2（6 个引用）✅
+  - `grep -c "Color::Cyan\|Color::Magenta\|Color::Yellow" login.rs` — 输出 2（6 个引用）✅

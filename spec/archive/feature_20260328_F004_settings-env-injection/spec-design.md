@@ -21,7 +21,7 @@
 在 `AppConfig` 中增加 `env` 字段：
 
 ```rust
-// rust-agent-tui/src/config/types.rs
+// peri-tui/src/config/types.rs
 use std::collections::HashMap;
 
 pub struct AppConfig {
@@ -54,7 +54,7 @@ pub struct AppConfig {
 在 `main.rs` 最开始位置注入环境变量：
 
 ```rust
-// rust-agent-tui/src/main.rs
+// peri-tui/src/main.rs
 fn main() -> Result<()> {
     // 最先注入环境变量（进程环境变量优先）
     inject_env_from_settings();
@@ -89,8 +89,8 @@ fn inject_env_from_settings() {
 ## 实现要点
 
 1. **修改文件：**
-   - `rust-agent-tui/src/config/types.rs`：增加 `env` 字段
-   - `rust-agent-tui/src/main.rs`：增加 `inject_env_from_settings()` 函数
+   - `peri-tui/src/config/types.rs`：增加 `env` 字段
+   - `peri-tui/src/main.rs`：增加 `inject_env_from_settings()` 函数
 
 2. **不引入新依赖：** 复用 `serde_json` 和 `std::collections::HashMap`
 

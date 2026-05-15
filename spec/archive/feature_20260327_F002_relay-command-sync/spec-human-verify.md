@@ -14,7 +14,7 @@
 - [ ] [AUTO] 全量编译无错误: `cargo build --workspace 2>&1 | grep -E "^error" | wc -l`
 - [ ] [AUTO/SERVICE] 启动 Relay Server（需设置 RELAY_TOKEN 环境变量）: `RELAY_TOKEN=test cargo run -p rust-relay-server --features server` (port: 8080)
 - [ ] [AUTO] 验证 Relay Server 健康: `curl -s http://localhost:8080/health`
-- [ ] [MANUAL] 在另一个终端启动 Agent TUI 并连接 Relay（需设置 API Key）：`ANTHROPIC_API_KEY=<your-key> cargo run -p rust-agent-tui -- -y --remote-control ws://localhost:8080 --relay-token test --relay-name test-agent`
+- [ ] [MANUAL] 在另一个终端启动 Agent TUI 并连接 Relay（需设置 API Key）：`ANTHROPIC_API_KEY=<your-key> cargo run -p peri-tui -- -y --remote-control ws://localhost:8080 --relay-token test --relay-name test-agent`
 - [ ] [MANUAL] 打开浏览器，访问 `http://localhost:8080/web/?token=test`，确认看到 Agent 在线（侧边栏显示绿点）
 
 ### 测试数据准备
@@ -52,10 +52,10 @@
 - **来源:** Task 2-5 检查步骤
 - **操作步骤:**
   1. [A] `grep -n "send_thread_reset" rust-relay-server/src/client/mod.rs` → 期望: 至少一行包含 `pub fn send_thread_reset`
-  2. [A] `grep -A 8 "WebMessage::ClearThread" rust-agent-tui/src/app/relay_ops.rs | grep send_thread_reset` → 期望: 找到 `relay.send_thread_reset(&[])`
-  3. [A] `grep -n "CompactThread\|start_compact" rust-agent-tui/src/app/relay_ops.rs` → 期望: 至少两行，含 `CompactThread` 和 `start_compact`
-  4. [A] `grep -A 15 "pub fn new_thread" rust-agent-tui/src/app/thread_ops.rs | grep send_thread_reset` → 期望: 找到匹配行
-  5. [A] `grep -A 55 "pub fn open_thread" rust-agent-tui/src/app/thread_ops.rs | grep -E "send_thread_reset|clear_history"` → 期望: 两行，分别含 `clear_history` 和 `send_thread_reset`
+  2. [A] `grep -A 8 "WebMessage::ClearThread" peri-tui/src/app/relay_ops.rs | grep send_thread_reset` → 期望: 找到 `relay.send_thread_reset(&[])`
+  3. [A] `grep -n "CompactThread\|start_compact" peri-tui/src/app/relay_ops.rs` → 期望: 至少两行，含 `CompactThread` 和 `start_compact`
+  4. [A] `grep -A 15 "pub fn new_thread" peri-tui/src/app/thread_ops.rs | grep send_thread_reset` → 期望: 找到匹配行
+  5. [A] `grep -A 55 "pub fn open_thread" peri-tui/src/app/thread_ops.rs | grep -E "send_thread_reset|clear_history"` → 期望: 两行，分别含 `clear_history` 和 `send_thread_reset`
   6. [A] `grep -n "compact_thread" rust-relay-server/web/js/render.js` → 期望: 包含 `type: 'compact_thread'`
   7. [A] `grep -n "thread_reset" rust-relay-server/web/js/events.js` → 期望: 包含 `case 'thread_reset'`
 - **异常排查:**
@@ -108,7 +108,7 @@
 
 - **来源:** spec-design.md 验收标准
 - **操作步骤:**
-  1. [A] `grep -A 15 "pub fn new_thread" rust-agent-tui/src/app/thread_ops.rs | grep send_thread_reset` → 期望: 找到 `relay.send_thread_reset(&[])`
+  1. [A] `grep -A 15 "pub fn new_thread" peri-tui/src/app/thread_ops.rs | grep send_thread_reset` → 期望: 找到 `relay.send_thread_reset(&[])`
   2. [H] 确认浏览器消息列表当前有消息（非空）→ 消息列表是否非空？ 是/否
   3. [H] 在 Agent TUI 输入框中输入 `/clear` 并按 Enter → TUI 消息列表是否立即清空？ 是/否
   4. [H] 观察浏览器页面，在 1 秒内消息列表是否也自动清空（无需刷新页面）？ 是/否
@@ -126,7 +126,7 @@
 
 - **来源:** spec-design.md 验收标准
 - **操作步骤:**
-  1. [A] `grep -A 55 "pub fn open_thread" rust-agent-tui/src/app/thread_ops.rs | grep -E "send_thread_reset|clear_history"` → 期望: 两行分别匹配
+  1. [A] `grep -A 55 "pub fn open_thread" peri-tui/src/app/thread_ops.rs | grep -E "send_thread_reset|clear_history"` → 期望: 两行分别匹配
   2. [H] 在 Agent TUI 输入 `/history` 打开历史面板，按 ↑↓ 选择一条有内容的历史，按 Enter 打开 → 历史是否成功加载到 TUI？ 是/否
   3. [H] 观察浏览器消息列表，是否被替换为所选历史的消息内容（与 TUI 显示一致）？ 是/否
 - **异常排查:**
@@ -137,7 +137,7 @@
 
 - **来源:** spec-design.md 验收标准
 - **操作步骤:**
-  1. [A] `grep -A 60 "AgentEvent::CompactDone" rust-agent-tui/src/app/agent_ops.rs | grep send_thread_reset` → 期望: 找到匹配行
+  1. [A] `grep -A 60 "AgentEvent::CompactDone" peri-tui/src/app/agent_ops.rs | grep send_thread_reset` → 期望: 找到匹配行
   2. [H] 在 Agent TUI 输入 `/compact` 并等待完成，观察浏览器消息列表是否替换为压缩摘要（显示「📋 压缩摘要」类内容）→ 是/否
 - **异常排查:**
   - 如果浏览器未更新: 检查 `agent_ops.rs` CompactDone 分支中 `send_thread_reset` 调用是否在 `agent_rx = None` 之后
@@ -156,7 +156,7 @@
   2. [A] `grep -A 10 "fn forward_to_web" rust-relay-server/src/relay.rs | grep "for tx in"` → 期望: 找到遍历所有 web_txs 的循环（确认广播机制）
   3. [A] `grep -n "send_raw\|forward_to_web" rust-relay-server/src/client/mod.rs` → 期望: `send_raw` 存在（ThreadReset 通过此路径发送）
   4. [A] `grep -c "web_txs" rust-relay-server/src/relay.rs` → 期望: ≥3（多处使用 web_txs，确认广播结构）
-  5. [A] `grep -rn "send_thread_reset" rust-agent-tui/src/app/ | wc -l` → 期望: ≥4
+  5. [A] `grep -rn "send_thread_reset" peri-tui/src/app/ | wc -l` → 期望: ≥4
   6. [A] `cargo test -p rust-relay-server --lib 2>&1 | tail -3` → 期望: `test result: ok`
 - **异常排查:**
   - 如果 forward_to_web 循环未找到: 查看 `rust-relay-server/src/relay.rs` 中 `forward_to_web` 实现

@@ -22,7 +22,7 @@
   - `server`（默认）：依赖 axum, axum-extra, tokio-tungstenite, tower-http, rust-embed, dashmap, tracing
   - `client`：仅依赖 tokio-tungstenite, tokio, serde, serde_json, tracing
   - 共享依赖（无条件）：serde, serde_json, uuid, tokio
-  - 依赖 `rust-create-agent`（path 引用，获取 AgentEvent 类型）
+  - 依赖 `peri-agent`（path 引用，获取 AgentEvent 类型）
 - [x] 创建 `rust-relay-server/src/lib.rs`，使用条件编译导出模块：
   - `#[cfg(feature = "server")] pub mod relay;`
   - `#[cfg(feature = "server")] pub mod auth;`
@@ -52,10 +52,10 @@
 
 **涉及文件:**
 - 新建: `rust-relay-server/src/protocol.rs`
-- 修改: `rust-create-agent/src/agent/events.rs`（为 AgentEvent 添加 Serialize 派生）
+- 修改: `peri-agent/src/agent/events.rs`（为 AgentEvent 添加 Serialize 派生）
 
 **执行步骤:**
-- [x] 在 `rust-create-agent/src/agent/events.rs` 中为 `AgentEvent` 及其内部类型添加 `#[derive(serde::Serialize, serde::Deserialize)]`
+- [x] 在 `peri-agent/src/agent/events.rs` 中为 `AgentEvent` 及其内部类型添加 `#[derive(serde::Serialize, serde::Deserialize)]`
   - 检查 AgentEvent 的所有变体字段类型是否都已支持 Serialize（serde_json::Value 已支持，BaseMessage 检查是否需要补充）
   - 若 BaseMessage 或 ContentBlock 缺少 Serialize 派生，需补充
 - [x] 创建 `rust-relay-server/src/protocol.rs`，定义通信协议类型：
@@ -68,7 +68,7 @@
 
 **检查步骤:**
 - [x] AgentEvent 序列化往返正确
-  - `cargo test -p rust-create-agent --lib 2>&1 | tail -5`
+  - `cargo test -p peri-agent --lib 2>&1 | tail -5`
   - 预期: 现有测试仍通过
 - [x] protocol 类型编译通过
   - `cargo build -p rust-relay-server`
@@ -240,14 +240,14 @@
 
 ---
 
-### Task 6: rust-agent-tui 集成 RelayClient
+### Task 6: peri-tui 集成 RelayClient
 
 **涉及文件:**
-- 修改: `rust-agent-tui/Cargo.toml`
-- 修改: `rust-agent-tui/src/app/mod.rs`
+- 修改: `peri-tui/Cargo.toml`
+- 修改: `peri-tui/src/app/mod.rs`
 
 **执行步骤:**
-- [x] 在 `rust-agent-tui/Cargo.toml` 添加依赖：
+- [x] 在 `peri-tui/Cargo.toml` 添加依赖：
   - `rust-relay-server = { path = "../rust-relay-server", default-features = false, features = ["client"] }`
 - [x] 扩展 settings 配置读取：
   - 在 `AppConfig` 的 `extra` 字段中读取 `relay_url`, `relay_token`, `relay_name`（利用 `#[serde(flatten)] extra: Map<String, Value>` 已有机制）
@@ -262,7 +262,7 @@
   - 连接失败 → 仅日志 warn，不阻塞 TUI 启动
 - [x] 在 Agent 事件处理路径中转发事件到 Relay：
   - `handle_agent_event()` 中每收到一个 AgentEvent → 若 relay_client 存在则 `relay_client.send_agent_event(&event)`
-  - 将 TUI 层的 AgentEvent 映射为 rust-create-agent 层的 AgentEvent（或直接序列化 TUI AgentEvent）
+  - 将 TUI 层的 AgentEvent 映射为 peri-agent 层的 AgentEvent（或直接序列化 TUI AgentEvent）
 - [x] 在主事件循环中接收 Relay 事件：
   - poll relay_event_rx → 收到 WebMessage::UserInput → 调用 `submit_message(text)`
   - 收到 WebMessage::HitlDecision → 调用 `hitl_confirm(decisions)`
@@ -274,10 +274,10 @@
 
 **检查步骤:**
 - [x] TUI 编译通过
-  - `cargo build -p rust-agent-tui`
+  - `cargo build -p peri-tui`
   - 预期: 编译通过无错误
 - [x] 无 relay 配置时 TUI 正常启动（无回归）
-  - `cargo test -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo test -p peri-tui 2>&1 | tail -5`
   - 预期: 所有测试通过
 - [x] 全量编译通过
   - `cargo build`
@@ -335,7 +335,7 @@
    - On failure: check Task 1 Cargo.toml feature flag 配置
 
 9. TUI 无 relay 配置时行为无回归
-   - `cargo test -p rust-agent-tui 2>&1 | tail -3`
+   - `cargo test -p peri-tui 2>&1 | tail -3`
    - Expected: 所有测试通过
    - On failure: check Task 6 relay_client 守卫逻辑
 
@@ -349,7 +349,7 @@
     - Expected: 0
     - On failure: 检查各 Task 新增代码
 
-12. rust-create-agent 现有测试无回归（AgentEvent Serialize 改动）
-    - `cargo test -p rust-create-agent 2>&1 | tail -3`
+12. peri-agent 现有测试无回归（AgentEvent Serialize 改动）
+    - `cargo test -p peri-agent 2>&1 | tail -3`
     - Expected: 所有测试通过
     - On failure: check Task 2 Serialize 派生兼容性

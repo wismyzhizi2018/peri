@@ -81,8 +81,8 @@
 
 ## 涉及文件
 
-- `rust-agent-middlewares/src/tool_search/middleware.rs` — ToolSearch 中间件
-- `rust-agent-middlewares/src/agents_md.rs` — AgentsMd 中间件
-- `rust-agent-middlewares/src/skills/mod.rs` — Skills 中间件
-- `rust-create-agent/src/llm/anthropic.rs` — 缓存策略实现
-- `rust-agent-middlewares/src/tools/ask_user_tool.rs` — AskUserQuestion 工具
+- `peri-middlewares/src/tool_search/middleware.rs` — ToolSearch 中间件
+- `peri-middlewares/src/agents_md.rs` — AgentsMd 中间件
+- `peri-middlewares/src/skills/mod.rs` — Skills 中间件
+- `peri-agent/src/llm/anthropic.rs` — 缓存策略实现
+- `peri-middlewares/src/tools/ask_user_tool.rs` — AskUserQuestion 工具

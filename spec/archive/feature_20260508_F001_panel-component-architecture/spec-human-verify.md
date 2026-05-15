@@ -10,8 +10,8 @@
 
 ### 环境要求
 - [x] [AUTO] 检查 Rust 工具链: `rustc --version && cargo --version` → rustc 1.95.0, cargo 1.95.0
-- [x] [AUTO] 全量编译: `cargo build -p rust-agent-tui 2>&1 | tail -3` → Finished
-- [x] [AUTO] 运行全量测试: `cargo test -p rust-agent-tui 2>&1 | tail -10` → test result: ok (369+1)
+- [x] [AUTO] 全量编译: `cargo build -p peri-tui 2>&1 | tail -3` → Finished
+- [x] [AUTO] 运行全量测试: `cargo test -p peri-tui 2>&1 | tail -10` → test result: ok (369+1)
 
 ---
 
@@ -25,25 +25,25 @@
 - **来源:** spec-plan-1.md Task 1 / spec-design.md §核心抽象
 - **目的:** 确认核心类型文件已创建
 - **操作步骤:**
-  1. [A] `ls rust-agent-tui/src/app/panel_manager.rs rust-agent-tui/src/app/panel_component.rs 2>&1` → 期望包含: panel_manager.rs 和 panel_component.rs 两个文件路径
+  1. [A] `ls peri-tui/src/app/panel_manager.rs peri-tui/src/app/panel_component.rs 2>&1` → 期望包含: panel_manager.rs 和 panel_component.rs 两个文件路径
 
 #### - [x] 1.2 PanelKind 枚举覆盖 11 个面板
 - **来源:** spec-plan-1.md Task 1 检查步骤 / spec-design.md §PanelKind 枚举
 - **目的:** 确认所有面板类型在枚举中穷举
 - **操作步骤:**
-  1. [A] `grep -c "Model\|Login\|Agent\|Hooks\|Config\|ThreadBrowser\|Mcp\|Plugin\|Cron\|Status\|Memory" rust-agent-tui/src/app/panel_manager.rs` → 期望包含: 数值 ≥ 22（枚举定义 + impl match 分支）
+  1. [A] `grep -c "Model\|Login\|Agent\|Hooks\|Config\|ThreadBrowser\|Mcp\|Plugin\|Cron\|Status\|Memory" peri-tui/src/app/panel_manager.rs` → 期望包含: 数值 ≥ 22（枚举定义 + impl match 分支）
 
 #### - [x] 1.3 PanelState 枚举包含 11 个变体
 - **来源:** spec-plan-1.md Task 1 检查步骤 / spec-design.md §PanelState 枚举
 - **目的:** 确认穷举式枚举存储面板实例
 - **操作步骤:**
-  1. [A] `grep "PanelState::" rust-agent-tui/src/app/panel_manager.rs | grep -v "//" | wc -l` → 期望包含: ≥ 33（kind + as_any_ref + as_any_mut 各 11）
+  1. [A] `grep "PanelState::" peri-tui/src/app/panel_manager.rs | grep -v "//" | wc -l` → 期望包含: ≥ 33（kind + as_any_ref + as_any_mut 各 11）
 
 #### - [x] 1.4 模块声明和 re-export 完整
 - **来源:** spec-plan-1.md Task 1
 - **目的:** 确认其他文件可引用新类型
 - **操作步骤:**
-  1. [A] `grep "pub use panel" rust-agent-tui/src/app/mod.rs` → 期望包含: PanelComponent, EventResult, PanelContext, PanelKind, PanelManager, PanelScope, PanelState
+  1. [A] `grep "pub use panel" peri-tui/src/app/mod.rs` → 期望包含: PanelComponent, EventResult, PanelContext, PanelKind, PanelManager, PanelScope, PanelState
 
 ---
 
@@ -55,31 +55,31 @@
 - **来源:** spec-plan-1.md Task 2 / spec-design.md §面板作用域
 - **目的:** 确认 session-scoped 面板管理器已注入
 - **操作步骤:**
-  1. [A] `grep "session_panels" rust-agent-tui/src/app/core.rs` → 期望包含: PanelManager 相关声明
+  1. [A] `grep "session_panels" peri-tui/src/app/core.rs` → 期望包含: PanelManager 相关声明
 
 #### - [x] 2.2 App 包含 global_panels 字段
 - **来源:** spec-plan-1.md Task 2 / spec-design.md §面板作用域
 - **目的:** 确认 global-scoped 面板管理器已注入
 - **操作步骤:**
-  1. [A] `grep "global_panels" rust-agent-tui/src/app/mod.rs | head -5` → 期望包含: PanelManager 相关声明和初始化
+  1. [A] `grep "global_panels" peri-tui/src/app/mod.rs | head -5` → 期望包含: PanelManager 相关声明和初始化
 
 #### - [x] 2.3 open_panel 和 close_all_panels 方法存在
 - **来源:** spec-plan-1.md Task 2
 - **目的:** 确认统一面板操作入口
 - **操作步骤:**
-  1. [A] `grep -n "pub fn open_panel\|pub fn close_all_panels" rust-agent-tui/src/app/mod.rs` → 期望包含: 两个方法声明
+  1. [A] `grep -n "pub fn open_panel\|pub fn close_all_panels" peri-tui/src/app/mod.rs` → 期望包含: 两个方法声明
 
 #### - [x] 2.4 CronPanel 从 CronState 迁移到 global_panels
 - **来源:** spec-plan-1.md Task 2
 - **目的:** 确认 CronPanel 不再在 CronState 中
 - **操作步骤:**
-  1. [A] `grep "cron_panel" rust-agent-tui/src/app/cron_state.rs` → 期望包含: 无匹配（或仅函数名引用）
+  1. [A] `grep "cron_panel" peri-tui/src/app/cron_state.rs` → 期望包含: 无匹配（或仅函数名引用）
 
 #### - [x] 2.5 cron_ops.rs 不再引用 self.cron.cron_panel
 - **来源:** spec-plan-1.md Task 2
 - **目的:** 确认 cron_ops 全部迁移到 global_panels
 - **操作步骤:**
-  1. [A] `grep "self.cron.cron_panel" rust-agent-tui/src/app/cron_ops.rs` → 期望精确: （无输出）
+  1. [A] `grep "self.cron.cron_panel" peri-tui/src/app/cron_ops.rs` → 期望精确: （无输出）
 
 ---
 
@@ -91,13 +91,13 @@
 - **来源:** spec-plan-2.md Acceptance / spec-design.md §PanelComponent Trait
 - **目的:** 确认所有面板都实现了统一接口
 - **操作步骤:**
-  1. [A] `grep -rl "impl PanelComponent for" rust-agent-tui/src/ | wc -l` → 期望包含: 11
+  1. [A] `grep -rl "impl PanelComponent for" peri-tui/src/ | wc -l` → 期望包含: 11
 
 #### - [x] 3.2 列出所有 PanelComponent 实现文件
 - **来源:** spec-plan-2.md Acceptance
 - **目的:** 确认覆盖 Model/Login/Agent/Hooks/Config/ThreadBrowser/Mcp/Plugin/Cron/Status/Memory
 - **操作步骤:**
-  1. [A] `grep -rl "impl PanelComponent for" rust-agent-tui/src/` → 期望包含: model_panel.rs, login_panel.rs, agent_panel.rs, hooks_panel.rs, config_panel.rs, browser.rs (ThreadBrowser), mcp_panel.rs, plugin_panel.rs, cron_state.rs, status_panel.rs, memory_panel.rs
+  1. [A] `grep -rl "impl PanelComponent for" peri-tui/src/` → 期望包含: model_panel.rs, login_panel.rs, agent_panel.rs, hooks_panel.rs, config_panel.rs, browser.rs (ThreadBrowser), mcp_panel.rs, plugin_panel.rs, cron_state.rs, status_panel.rs, memory_panel.rs
 
 ---
 
@@ -109,19 +109,19 @@
 - **来源:** spec-plan-2.md Acceptance / spec-design.md §P1
 - **目的:** 确认面板分发走 PanelManager 路径
 - **操作步骤:**
-  1. [A] `grep -c "if app.*\.is_some()" rust-agent-tui/src/event.rs` → 期望包含: ≤ 5（仅剩 Setup Wizard / OAuth / Interaction Prompt）
+  1. [A] `grep -c "if app.*\.is_some()" peri-tui/src/event.rs` → 期望包含: ≤ 5（仅剩 Setup Wizard / OAuth / Interaction Prompt）
 
 #### - [x] 4.2 PanelManager dispatch_key 调用存在
 - **来源:** spec-plan-2.md Task 4-5
 - **目的:** 确认事件分发通过 PanelManager
 - **操作步骤:**
-  1. [A] `grep -c "dispatch_key\|dispatch_paste\|dispatch_scroll" rust-agent-tui/src/event.rs` → 期望包含: ≥ 2
+  1. [A] `grep -c "dispatch_key\|dispatch_paste\|dispatch_scroll" peri-tui/src/event.rs` → 期望包含: ≥ 2
 
 #### - [x] 4.3 event.rs 无迁移残留注释
 - **来源:** spec-plan-2.md Task 7
 - **目的:** 确认清理完成
 - **操作步骤:**
-  1. [A] `grep -c "Task [345].*已迁移\|panel_ops\|旧面板分发" rust-agent-tui/src/event.rs` → 期望包含: 0
+  1. [A] `grep -c "Task [345].*已迁移\|panel_ops\|旧面板分发" peri-tui/src/event.rs` → 期望包含: 0
 
 ---
 
@@ -133,13 +133,13 @@
 - **来源:** spec-plan-2.md Task 7 / Acceptance
 - **目的:** 确认 6 个旧 Option 字段已移除
 - **操作步骤:**
-  1. [A] `grep -c "model_panel:\|login_panel:\|agent_panel:\|hooks_panel:\|config_panel:\|thread_browser:" rust-agent-tui/src/app/core.rs` → 期望包含: 0（注释中的引用可忽略）
+  1. [A] `grep -c "model_panel:\|login_panel:\|agent_panel:\|hooks_panel:\|config_panel:\|thread_browser:" peri-tui/src/app/core.rs` → 期望包含: 0（注释中的引用可忽略）
 
 #### - [x] 5.2 App 中无旧 global 面板字段
 - **来源:** spec-plan-2.md Task 7 / Acceptance
 - **目的:** 确认 4 个旧 Option 字段已移除
 - **操作步骤:**
-  1. [A] `grep -E "Option<.*Panel>" rust-agent-tui/src/app/mod.rs` → 期望包含: 无匹配（或仅 setup_wizard 等特殊面板）
+  1. [A] `grep -E "Option<.*Panel>" peri-tui/src/app/mod.rs` → 期望包含: 无匹配（或仅 setup_wizard 等特殊面板）
 
 ---
 
@@ -151,13 +151,13 @@
 - **来源:** spec-plan-2.md Acceptance / spec-design.md §P3
 - **目的:** 确认最复杂的面板消除了 unwrap
 - **操作步骤:**
-  1. [A] `grep -rn "\.unwrap()" rust-agent-tui/src/app/login_panel.rs | grep -v "#\[cfg(test)\]" | grep -v "mod tests" | grep -v "fn test_"` → 期望包含: 无匹配
+  1. [A] `grep -rn "\.unwrap()" peri-tui/src/app/login_panel.rs | grep -v "#\[cfg(test)\]" | grep -v "mod tests" | grep -v "fn test_"` → 期望包含: 无匹配
 
 #### - [x] 6.2 ModelPanel PanelComponent 无 unwrap
 - **来源:** spec-plan-2.md Acceptance / spec-design.md §P3
 - **目的:** 确认 Model 面板消除了 unwrap
 - **操作步骤:**
-  1. [A] `grep "\.unwrap()" rust-agent-tui/src/app/model_panel.rs | grep -v "test"` → 期望包含: 无匹配
+  1. [A] `grep "\.unwrap()" peri-tui/src/app/model_panel.rs | grep -v "test"` → 期望包含: 无匹配
 
 ---
 
@@ -169,7 +169,7 @@
 - **来源:** spec-plan-2.md Acceptance / spec-design.md §P4
 - **目的:** 确认状态栏通过 PanelManager 查询快捷键
 - **操作步骤:**
-  1. [A] `grep -c "login_panel\|model_panel\|config_panel\|agent_panel\|hooks_panel\|mcp_panel\|status_panel\|memory_panel\|plugin_panel\|thread_browser\|cron_panel" rust-agent-tui/src/ui/main_ui/status_bar.rs` → 期望包含: 0
+  1. [A] `grep -c "login_panel\|model_panel\|config_panel\|agent_panel\|hooks_panel\|mcp_panel\|status_panel\|memory_panel\|plugin_panel\|thread_browser\|cron_panel" peri-tui/src/ui/main_ui/status_bar.rs` → 期望包含: 0
 
 ---
 
@@ -181,7 +181,7 @@
 - **来源:** spec-plan-2.md Task 6
 - **目的:** 确认渲染通过 PanelManager 查询面板类型
 - **操作步骤:**
-  1. [A] `grep -c "active_kind\|dispatch_desired_height" rust-agent-tui/src/ui/main_ui.rs` → 期望包含: ≥ 2
+  1. [A] `grep -c "active_kind\|dispatch_desired_height" peri-tui/src/ui/main_ui.rs` → 期望包含: ≥ 2
 
 ---
 
@@ -211,25 +211,25 @@
 - **来源:** spec-plan-2.md Acceptance
 - **目的:** 确认编译无错误
 - **操作步骤:**
-  1. [A] `cargo build -p rust-agent-tui 2>&1 | tail -3` → 期望包含: Finished
+  1. [A] `cargo build -p peri-tui 2>&1 | tail -3` → 期望包含: Finished
 
 #### - [x] 10.2 全量测试通过
 - **来源:** spec-plan-1.md + spec-plan-2.md Acceptance
 - **目的:** 确认所有测试通过
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui 2>&1 | tail -5` → 期望包含: test result: ok
+  1. [A] `cargo test -p peri-tui 2>&1 | tail -5` → 期望包含: test result: ok
 
 #### - [x] 10.3 clippy 无新增警告
 - **来源:** spec-plan-1.md + spec-plan-2.md Acceptance / spec-design.md
 - **目的:** 确认代码质量
 - **操作步骤:**
-  1. [A] `cargo clippy -p rust-agent-tui 2>&1 | grep -E "warning|error" | grep -v "generated" | head -5` → 期望包含: 仅预先存在的警告（无来自 panel_manager.rs / panel_component.rs 的警告）
+  1. [A] `cargo clippy -p peri-tui 2>&1 | grep -E "warning|error" | grep -v "generated" | head -5` → 期望包含: 仅预先存在的警告（无来自 panel_manager.rs / panel_component.rs 的警告）
 
 #### - [x] 10.4 PanelManager 单元测试通过
 - **来源:** spec-plan-1.md Task 1
 - **目的:** 确认核心类型测试覆盖
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui --lib -- panel_manager::tests 2>&1 | tail -5` → 期望包含: test result: ok
+  1. [A] `cargo test -p peri-tui --lib -- panel_manager::tests 2>&1 | tail -5` → 期望包含: test result: ok
 
 ---
 
@@ -241,7 +241,7 @@
 - **来源:** spec-design.md §验收标准
 - **目的:** 确认 Model 面板交互正常
 - **操作步骤:**
-  1. [H] 启动 TUI `cargo run -p rust-agent-tui`，输入 `/model` → 面板弹出，显示模型列表
+  1. [H] 启动 TUI `cargo run -p peri-tui`，输入 `/model` → 面板弹出，显示模型列表
   2. [H] ↑↓ 导航 → 光标移动
   3. [H] Enter 选择 → 面板关闭，状态栏显示新模型
   4. [H] Esc 关闭 → 面板关闭 → 是/否

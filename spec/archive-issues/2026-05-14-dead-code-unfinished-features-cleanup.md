@@ -16,32 +16,32 @@
 
 | 位置 | 类型 | 说明 |
 |------|------|------|
-| `rust-agent-middlewares/src/subagent/tool_test.rs:686-702` | struct+impl | `CaptureLLM` 完整实现了 `ReactLLM` trait（含 `new()` + trait impl），但在其之后定义的 9 个测试函数无一使用它。属于"写了但忘接入"的死代码。 |
+| `peri-middlewares/src/subagent/tool_test.rs:686-702` | struct+impl | `CaptureLLM` 完整实现了 `ReactLLM` trait（含 `new()` + trait impl），但在其之后定义的 9 个测试函数无一使用它。属于"写了但忘接入"的死代码。 |
 
 ### 未完成功能 / 未使用字段（5 处）
 
 | 位置 | 类型 | 说明 |
 |------|------|------|
-| `rust-agent-tui/src/app/message_pipeline.rs:74-79` | struct fields | `PendingTool` 的 `tool_call_id`/`name`/`input` 三个字段被赋值但从未读取，存入 `pending_tools` HashMap 后未被消费。可能是未完成的 gap 展示逻辑。 |
-| `rust-agent-middlewares/src/tool_search/tool_index.rs:23` | struct field | `TfIdfIndex::doc_freqs` 被填充但从未读取。TF-IDF 算法中 IDF 部分未实现，要么补全算法要么移除字段。 |
-| `rust-agent-tui/src/app/login_panel.rs:198` | method | `request_delete()` 进入删除确认模式的方法，功能完整但无 UI 入口调用。 |
-| `rust-agent-tui/src/app/panel_ops.rs:919` | method | `agent_panel_clear()` 关闭 Agent 面板但不改变 agent_id，与 `agent_panel_select()` 成对但无调用方。 |
-| `rust-agent-tui/src/app/plugin_panel.rs:1535` | method | `discover_toggle_selected()` 切换插件发现列表选中状态，功能完整但无 UI 入口。 |
+| `peri-tui/src/app/message_pipeline.rs:74-79` | struct fields | `PendingTool` 的 `tool_call_id`/`name`/`input` 三个字段被赋值但从未读取，存入 `pending_tools` HashMap 后未被消费。可能是未完成的 gap 展示逻辑。 |
+| `peri-middlewares/src/tool_search/tool_index.rs:23` | struct field | `TfIdfIndex::doc_freqs` 被填充但从未读取。TF-IDF 算法中 IDF 部分未实现，要么补全算法要么移除字段。 |
+| `peri-tui/src/app/login_panel.rs:198` | method | `request_delete()` 进入删除确认模式的方法，功能完整但无 UI 入口调用。 |
+| `peri-tui/src/app/panel_ops.rs:919` | method | `agent_panel_clear()` 关闭 Agent 面板但不改变 agent_id，与 `agent_panel_select()` 成对但无调用方。 |
+| `peri-tui/src/app/plugin_panel.rs:1535` | method | `discover_toggle_selected()` 切换插件发现列表选中状态，功能完整但无 UI 入口。 |
 
 ### 多余注解（2 处）
 
 | 位置 | 说明 |
 |------|------|
-| `rust-agent-tui/src/app/agent_comm.rs:1-11` | 5 个 `#[allow(unused)]` 导入（`AgentCancellationToken`, `BaseMessage`, `mpsc`, `AgentEvent`, `InteractionPrompt`）实际全部在使用，注解多余。 |
-| `perihelion-lsp/src/client.rs:43` | `OpenFileInfo::language_id` 从未读取。 |
+| `peri-tui/src/app/agent_comm.rs:1-11` | 5 个 `#[allow(unused)]` 导入（`AgentCancellationToken`, `BaseMessage`, `mpsc`, `AgentEvent`, `InteractionPrompt`）实际全部在使用，注解多余。 |
+| `peri-lsp/src/client.rs:43` | `OpenFileInfo::language_id` 从未读取。 |
 
 ### TODO 注释（3 处）
 
 | 位置 | 内容 |
 |------|------|
-| `rust-agent-tui/src/prompt.rs:16` | `subagent_enabled: true, // TODO: 从中间件注册状态推断` |
-| `rust-agent-tui/src/prompt.rs:17` | `cron_enabled: true, // TODO: 从中间件注册状态推断` |
-| `rust-agent-tui/src/prompt.rs:18` | `skills_enabled: true, // TODO: 从中间件注册状态推断` |
+| `peri-tui/src/prompt.rs:16` | `subagent_enabled: true, // TODO: 从中间件注册状态推断` |
+| `peri-tui/src/prompt.rs:17` | `cron_enabled: true, // TODO: 从中间件注册状态推断` |
+| `peri-tui/src/prompt.rs:18` | `skills_enabled: true, // TODO: 从中间件注册状态推断` |
 
 ### 注释掉的代码块
 
@@ -72,8 +72,8 @@
 
 ## 涉及文件
 
-- `rust-agent-middlewares/src/subagent/tool_test.rs`（CaptureLLM 死代码）
-- `rust-agent-tui/src/app/message_pipeline.rs`（PendingTool 未使用字段）
-- `rust-agent-middlewares/src/tool_search/tool_index.rs`（doc_freqs 未使用）
-- `rust-agent-tui/src/app/agent_comm.rs`（多余 allow 注解）
-- `rust-agent-tui/src/prompt.rs`（3 个 TODO）
+- `peri-middlewares/src/subagent/tool_test.rs`（CaptureLLM 死代码）
+- `peri-tui/src/app/message_pipeline.rs`（PendingTool 未使用字段）
+- `peri-middlewares/src/tool_search/tool_index.rs`（doc_freqs 未使用）
+- `peri-tui/src/app/agent_comm.rs`（多余 allow 注解）
+- `peri-tui/src/prompt.rs`（3 个 TODO）

@@ -190,7 +190,7 @@ Setup Wizard、OAuth Prompt、Interaction Prompts 不纳入 PanelManager：
 | `app/panel_component.rs` | 新建：定义 `PanelComponent` trait |
 | `app/mod.rs` | 添加 module 声明 |
 
-验证：`cargo build -p rust-agent-tui` 编译通过。新类型未使用，标注 `#[allow(dead_code)]`。
+验证：`cargo build -p peri-tui` 编译通过。新类型未使用，标注 `#[allow(dead_code)]`。
 
 #### Phase 2: PanelManager 互斥管理（替换 panel_ops.rs 逻辑）
 
@@ -270,7 +270,7 @@ Setup Wizard、OAuth Prompt、Interaction Prompts 不纳入 PanelManager：
 - [ ] `status_bar.rs` 的 `render_second_row` 从 ~170 行 match 链简化为 `PanelManager::status_bar_hints()` 查询
 - [ ] 所有旧 `Option<XxxPanel>` 字段迁移到 `PanelManager`
 - [ ] 所有现有 headless 测试通过
-- [ ] `cargo clippy -p rust-agent-tui` 无警告
+- [ ] `cargo clippy -p peri-tui` 无警告
 - [ ] 手动测试：11 个面板的打开/关闭/互斥/按键/渲染/状态栏快捷键均正常
 - [ ] 新增面板生命周期 headless 测试覆盖
 - [ ] 多 session 分屏下面板状态独立、切换正常

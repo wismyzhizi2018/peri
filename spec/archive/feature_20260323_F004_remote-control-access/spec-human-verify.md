@@ -62,13 +62,13 @@
 - **异常排查:**
   - 如果有 warning: 根据 warning 消息定位并修复
 
-#### - [x] 2.3 rust-create-agent 现有测试无回归
+#### - [x] 2.3 peri-agent 现有测试无回归
 
 - **来源:** Task 2 检查步骤 / Task 7 验收 #12
 - **操作步骤:**
-  1. [A] `cargo test -p rust-create-agent 2>&1 | grep "test result"` → 期望: 输出包含 "ok" 且 "0 failed"
+  1. [A] `cargo test -p peri-agent 2>&1 | grep "test result"` → 期望: 输出包含 "ok" 且 "0 failed"
 - **异常排查:**
-  - 如果测试失败: 检查 `rust-create-agent/src/agent/events.rs` 的 `Serialize`/`Deserialize` 派生是否破坏了现有 AgentEvent 结构
+  - 如果测试失败: 检查 `peri-agent/src/agent/events.rs` 的 `Serialize`/`Deserialize` 派生是否破坏了现有 AgentEvent 结构
 
 ### 场景 3：Web 前端页面加载
 
@@ -151,7 +151,7 @@
 
 - **来源:** Task 6 检查步骤 / Task 7 验收 #9 / 验收标准
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui 2>&1 | grep "test result"` → 期望: 输出包含 "ok" 且 "0 failed"
+  1. [A] `cargo test -p peri-tui 2>&1 | grep "test result"` → 期望: 输出包含 "ok" 且 "0 failed"
   2. [A] `cargo test -p rust-relay-server --lib 2>&1 | grep "test result"` → 期望: 输出包含 "ok" 且 "0 failed"
 - **异常排查:**
   - 如果测试失败: 检查 `App` 新增的 relay 字段是否正确初始化为 `None`，以及 `poll_relay` 在无 rx 时是否立即返回
@@ -160,8 +160,8 @@
 
 - **来源:** Task 6 / spec-design.md
 - **操作步骤:**
-  1. [A] `grep -c "relay_client" rust-agent-tui/src/app/mod.rs` → 期望: 输出 >= 5（多处引用 relay_client 字段）
-  2. [A] `grep -c "send_agent_event" rust-agent-tui/src/app/agent.rs` → 期望: 输出 >= 1（事件转发调用存在）
+  1. [A] `grep -c "relay_client" peri-tui/src/app/mod.rs` → 期望: 输出 >= 5（多处引用 relay_client 字段）
+  2. [A] `grep -c "send_agent_event" peri-tui/src/app/agent.rs` → 期望: 输出 >= 1（事件转发调用存在）
   3. [H] 配置 TUI 的 `~/.peri/settings.json` 添加 `relay_url`/`relay_token`/`relay_name`，启动 TUI，终端日志中是否出现 "Relay 已连接" 或 "session" 相关日志 → 是/否
 - **异常排查:**
   - 如果无连接日志: 确认 settings.json 中 relay 配置在 `config` 对象内（`{"config": {"relay_url": "...", ...}}`）
@@ -177,7 +177,7 @@
 | 服务启动与健康检查 | 1.2 | Token 验证拒绝非法请求 | 2 | 0 | ⬜ | |
 | Feature 隔离与编译 | 2.1 | client feature 隔离 | 2 | 0 | ⬜ | |
 | Feature 隔离与编译 | 2.2 | 全量编译无 warning | 1 | 0 | ⬜ | |
-| Feature 隔离与编译 | 2.3 | rust-create-agent 测试无回归 | 1 | 0 | ⬜ | |
+| Feature 隔离与编译 | 2.3 | peri-agent 测试无回归 | 1 | 0 | ⬜ | |
 | Web 前端页面加载 | 3.1 | 静态资源可访问 | 3 | 0 | ⬜ | |
 | Web 前端页面加载 | 3.2 | 页面布局与样式 | 0 | 4 | ⬜ | |
 | Web 前端交互 | 4.1 | 输入框发送消息 | 0 | 2 | ⬜ | |

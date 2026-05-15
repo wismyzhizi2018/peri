@@ -32,26 +32,29 @@
 
 | 依赖 | 当前要求 | 最新 | 差距 | 使用位置 |
 |------|---------|------|------|----------|
-| **sysinfo** | `0.34` | 0.39.1 | 5 minor | rust-agent-tui |
-| **lru** | `0.12` | 0.18.0 | 6 minor | perihelion-lsp |
-| **html2text** | `0.14` | 0.17.1 | 3 minor | rust-agent-middlewares |
-| **pulldown-cmark** | `0.12` | 0.13.3 | 1 minor | perihelion-widgets |
-| **tui-textarea-2** | `0.10` | 0.11.0 | 1 minor | rust-agent-tui |
-| **rand** | `0.9` | 0.10.1 | 0.x 不兼容 | rust-create-agent, perihelion-widgets |
-| **walkdir** | `2.4` | 2.5.0 | 1 minor | rust-agent-middlewares |
-| **fluent** | `0.16` | 0.17.0 | 1 minor | rust-agent-tui |
-| **fluent-bundle** | `0.15` | 0.16.0 | 1 minor | rust-agent-tui |
-| **rmcp** | `1.6`（本地补丁） | 1.7.0 | 1 minor | rust-agent-middlewares |
+| **sysinfo** | `0.34` | 0.39.1 | 5 minor | peri-tui |
+| **lru** | `0.12` | 0.18.0 | 6 minor | peri-lsp |
+| **html2text** | `0.14` | 0.17.1 | 3 minor | peri-middlewares |
+| **pulldown-cmark** | `0.12` | 0.13.3 | 1 minor | peri-widgets |
+| **tui-textarea-2** | `0.10` | 0.11.0 | 1 minor | peri-tui |
+| **rand** | `0.9` | 0.10.1 | 0.x 不兼容 | peri-agent, peri-widgets |
+| **walkdir** | `2.4` | 2.5.0 | 1 minor | peri-middlewares |
+| **fluent** | `0.16` | 0.17.0 | 1 minor | peri-tui |
+| **fluent-bundle** | `0.15` | 0.16.0 | 1 minor | peri-tui |
+| **rmcp** | `1.6`（本地补丁） | 1.7.0 | 1 minor | peri-middlewares |
 
 ## 升级策略建议
 
 ### 第一步：安全补丁（立即可做）
+
 ```bash
 cargo update
 ```
+
 应用全部 84 个 patch 级升级，变更仅限于 `Cargo.lock`。
 
 ### 第二步：低风险 minor（逐个升级）
+
 - `walkdir` 2.4→2.5
 - `fluent` 0.16→0.17、`fluent-bundle` 0.15→0.16
 - `tui-textarea-2` 0.10→0.11
@@ -59,15 +62,18 @@ cargo update
 改 `Cargo.toml` 版本号后 `cargo build && cargo test` 验证。
 
 ### 第三步：需功能验证
+
 - `pulldown-cmark` 0.12→0.13 — Markdown 解析行为变化，需检查 widget 渲染是否正常
 - `rand` 0.9→0.10 — API 可能不兼容，需检查所有 `rand::` 调用点
 - `html2text` 0.14→0.17 — 输出格式和 API 变化
 
 ### 第四步：大跨度升级
+
 - `sysinfo` 0.34→0.39 ✅ 零代码修改
 - `lru` 0.12→0.18 ✅ 零代码修改
 
 ### 阻塞项：rmcp
+
 - 当前通过 `[patch.crates-io]` 指向 `rust-mcp-patch/`（v1.6.0），修复了 Streamable HTTP 200 OK + empty body 的 bug
 - 需确认 rmcp 1.7.0 是否已包含此修复，如已包含则可删除 patch 目录直接升
 
@@ -77,11 +83,11 @@ cargo update
 |------|------|
 | `Cargo.toml` | ✅ workspace 依赖升级：sysinfo 0.34→0.39, lru 0.12→0.18, 移除 rmcp patch |
 | `Cargo.lock` | ✅ 84 patch 升级 + 10 direct 升级 |
-| `rust-create-agent/Cargo.toml` | ✅ rand 0.9→0.10 |
-| `rust-agent-middlewares/Cargo.toml` | ✅ rmcp 1.6→1.7, walkdir 2.4→2.5, html2text 0.14→0.17 |
-| `rust-agent-tui/Cargo.toml` | ✅ fluent 0.16→0.17, fluent-bundle 0.15→0.16, tui-textarea-2 0.10→0.11 |
-| `perihelion-widgets/Cargo.toml` | ✅ pulldown-cmark 0.12→0.13, rand 0.9→0.10 |
-| `perihelion-lsp/Cargo.toml` | lru via workspace |
+| `peri-agent/Cargo.toml` | ✅ rand 0.9→0.10 |
+| `peri-middlewares/Cargo.toml` | ✅ rmcp 1.6→1.7, walkdir 2.4→2.5, html2text 0.14→0.17 |
+| `peri-tui/Cargo.toml` | ✅ fluent 0.16→0.17, fluent-bundle 0.15→0.16, tui-textarea-2 0.10→0.11 |
+| `peri-widgets/Cargo.toml` | ✅ pulldown-cmark 0.12→0.13, rand 0.9→0.10 |
+| `peri-lsp/Cargo.toml` | lru via workspace |
 | `rust-mcp-patch/` | ✅ 已删除 — rmcp 1.7.0 已包含 Streamable HTTP 修复 |
 
 ## 执行结果
@@ -98,7 +104,7 @@ cargo update
 
 ### 源码修复
 
-- `rand::Rng` → `rand::RngExt`（rand 0.10 breaking change）：`rust-create-agent/src/llm/retry.rs:5`, `perihelion-widgets/src/spinner/verb.rs:1`
+- `rand::Rng` → `rand::RngExt`（rand 0.10 breaking change）：`peri-agent/src/llm/retry.rs:5`, `peri-widgets/src/spinner/verb.rs:1`
 
 ### 延期
 

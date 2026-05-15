@@ -8,7 +8,7 @@
 
 ## 问题描述
 
-Grep 工具（`rust-agent-middlewares/src/tools/filesystem/grep.rs`）基于 Rust `grep` + `ignore` crate 实现，但存在两类问题：多个已声明参数未实际实现（`multiline`、`-n`、`whole_word`），且缺少标准 grep 的高频能力（`-v`、`-F`、`-A`/`-B` 等）。这会导致 LLM 在调用时产生错误预期——例如依赖 `multiline` 写跨行正则却得不到正确结果，或因缺少 `invert_match` 而构造不必要的复杂正则。
+Grep 工具（`peri-middlewares/src/tools/filesystem/grep.rs`）基于 Rust `grep` + `ignore` crate 实现，但存在两类问题：多个已声明参数未实际实现（`multiline`、`-n`、`whole_word`），且缺少标准 grep 的高频能力（`-v`、`-F`、`-A`/`-B` 等）。这会导致 LLM 在调用时产生错误预期——例如依赖 `multiline` 写跨行正则却得不到正确结果，或因缺少 `invert_match` 而构造不必要的复杂正则。
 
 ## 症状详情
 
@@ -61,7 +61,7 @@ Grep 工具（`rust-agent-middlewares/src/tools/filesystem/grep.rs`）基于 Rus
 
 ## 涉及文件
 
-- `rust-agent-middlewares/src/tools/filesystem/grep.rs`（Grep 工具实现）
+- `peri-middlewares/src/tools/filesystem/grep.rs`（Grep 工具实现）
 
 ## 参考
 

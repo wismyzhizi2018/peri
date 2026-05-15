@@ -11,8 +11,8 @@
 ### Task 1: 核心数据结构变更
 
 **涉及文件:**
-- 修改: `rust-create-agent/src/interaction/mod.rs`
-- 修改: `rust-create-agent/src/ask_user/mod.rs`
+- 修改: `peri-agent/src/interaction/mod.rs`
+- 修改: `peri-agent/src/ask_user/mod.rs`
 
 **执行步骤:**
 - [x] 更新 `QuestionOption` struct：新增 `description: Option<String>` 字段
@@ -25,7 +25,7 @@
 
 **检查步骤:**
 - [x] 数据结构编译通过（仅核心库）
-  - `cargo build -p rust-create-agent 2>&1 | tail -5`
+  - `cargo build -p peri-agent 2>&1 | tail -5`
   - 预期: 输出包含 `Finished` 且无 `error`
 
 ---
@@ -33,8 +33,8 @@
 ### Task 2: 工具 Schema 与实现变更
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/src/ask_user/mod.rs`
-- 修改: `rust-agent-middlewares/src/tools/ask_user_tool.rs`
+- 修改: `peri-middlewares/src/ask_user/mod.rs`
+- 修改: `peri-middlewares/src/tools/ask_user_tool.rs`
 
 **执行步骤:**
 - [x] 重写 `ask_user_tool_definition()` 中的 JSON Schema：
@@ -57,14 +57,14 @@
     回答: {answer}
     ```
     单问题时直接返回答案字符串（不加前缀）
-- [x] 更新 `rust-agent-middlewares/src/lib.rs` 中 `parse_ask_user` 的导出签名注释（返回类型变更）
+- [x] 更新 `peri-middlewares/src/lib.rs` 中 `parse_ask_user` 的导出签名注释（返回类型变更）
 
 **检查步骤:**
 - [x] 中间件库编译通过
-  - `cargo build -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo build -p peri-middlewares 2>&1 | tail -5`
   - 预期: `Finished` 无 `error`
 - [x] 工具名称正确
-  - `cargo test -p rust-agent-middlewares --lib 2>&1 | grep "FAILED\|ok"`
+  - `cargo test -p peri-middlewares --lib 2>&1 | grep "FAILED\|ok"`
   - 预期: 所有测试 `ok`，无 `FAILED`
 
 ---
@@ -72,9 +72,9 @@
 ### Task 3: TUI 桥接与展示更新
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`
-- 修改: `rust-agent-tui/src/app/ask_user_prompt.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui/popups/ask_user.rs`
+- 修改: `peri-tui/src/app/agent_ops.rs`
+- 修改: `peri-tui/src/app/ask_user_prompt.rs`
+- 修改: `peri-tui/src/ui/main_ui/popups/ask_user.rs`
 
 **执行步骤:**
 - [x] 更新 `agent_ops.rs` 中的桥接逻辑（`InteractionContext::Questions` 分支）：
@@ -94,10 +94,10 @@
 
 **检查步骤:**
 - [x] TUI 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: `Finished` 无 `error`
 - [x] TUI 单元测试通过
-  - `cargo test -p rust-agent-tui --lib 2>&1 | grep "FAILED\|test result"`
+  - `cargo test -p peri-tui --lib 2>&1 | grep "FAILED\|test result"`
   - 预期: `test result: ok`，无 `FAILED`
 
 ---
@@ -151,12 +151,12 @@
    - On failure: check Task 1–3（数据结构变更可能引发级联编译错误）
 
 2. ✅ 工具名称已更新为 `ask_user_question`
-   - `grep -r '"ask_user"' rust-agent-middlewares/src/ask_user/ rust-agent-middlewares/src/tools/ask_user_tool.rs`
+   - `grep -r '"ask_user"' peri-middlewares/src/ask_user/ peri-middlewares/src/tools/ask_user_tool.rs`
    - Expected: 无输出（旧工具名已全部替换）
    - On failure: check Task 2（工具 Schema 实现）
 
 3. ✅ 旧字段已从源码中移除
-   - `grep -r "allow_custom_input\|\.placeholder" rust-agent-middlewares/src/ rust-agent-tui/src/ rust-create-agent/src/interaction/ rust-create-agent/src/ask_user/`
+   - `grep -r "allow_custom_input\|\.placeholder" peri-middlewares/src/ peri-tui/src/ peri-agent/src/interaction/ peri-agent/src/ask_user/`
    - Expected: 无输出（旧字段已完全清除）
    - On failure: check Task 1（数据结构）、Task 2（工具实现）、Task 3（TUI）
 

@@ -26,12 +26,12 @@
 
 | Crate | 已分离 | INFO 残留 | 违规率 |
 |-------|--------|-----------|--------|
-| rust-create-agent | 31+ | 0 | 0% |
-| rust-agent-middlewares | 45+ | 1 | ~2% |
-| rust-agent-tui | 43+ | 3 | ~7% |
-| perihelion-widgets | 20+ | 1 | ~5% |
+| peri-agent | 31+ | 0 | 0% |
+| peri-middlewares | 45+ | 1 | ~2% |
+| peri-tui | 43+ | 3 | ~7% |
+| peri-widgets | 20+ | 1 | ~5% |
 | langfuse-client | 5 | 0 | 0% |
-| perihelion-lsp | 8 | 0 | 0% |
+| peri-lsp | 8 | 0 | 0% |
 
 ## 分离模式
 
@@ -70,12 +70,12 @@ mod tests {
 
 | 文件 | 行数 |
 |------|------|
-| `rust-agent-middlewares/src/mcp/middleware.rs` | 20 |
-| `rust-agent-tui/src/ui/main_ui/panels/cron.rs` | 28 |
-| `rust-agent-tui/src/main.rs` | 23 |
-| `rust-agent-tui/src/command/plugin_command.rs` | 26 |
-| `rust-agent-tui/src/command/doctor.rs` | 23 |
-| `perihelion-widgets/src/spinner/verb.rs` | 24 |
+| `peri-middlewares/src/mcp/middleware.rs` | 20 |
+| `peri-tui/src/ui/main_ui/panels/cron.rs` | 28 |
+| `peri-tui/src/main.rs` | 23 |
+| `peri-tui/src/command/plugin_command.rs` | 26 |
+| `peri-tui/src/command/doctor.rs` | 23 |
+| `peri-widgets/src/spinner/verb.rs` | 24 |
 
 ## 涉及文件
 

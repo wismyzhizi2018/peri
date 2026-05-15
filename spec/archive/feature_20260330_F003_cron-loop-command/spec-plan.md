@@ -11,13 +11,13 @@
 ### Task 1: 添加 croner 依赖 + CronScheduler 核心数据结构
 
 **涉及文件:**
-- 修改: `rust-agent-middlewares/Cargo.toml`
-- 新建: `rust-agent-middlewares/src/cron/mod.rs`
+- 修改: `peri-middlewares/Cargo.toml`
+- 新建: `peri-middlewares/src/cron/mod.rs`
 
 **执行步骤:**
-- [x] 在 `rust-agent-middlewares/Cargo.toml` 的 `[dependencies]` 中添加 `croner` crate
+- [x] 在 `peri-middlewares/Cargo.toml` 的 `[dependencies]` 中添加 `croner` crate
   - `croner = "2"`
-- [x] 新建 `rust-agent-middlewares/src/cron/mod.rs`
+- [x] 新建 `peri-middlewares/src/cron/mod.rs`
   - 定义 `CronTask` 结构体：`id`（String）、`expression`（String）、`prompt`（String）、`next_fire`（`Option<chrono::DateTime<chrono::Utc>>`）、`enabled`（bool）
   - 定义 `CronTrigger` 结构体：`task_id`（String）、`prompt`（String），derive `Clone`
   - 定义常量 `MAX_CRON_TASKS: usize = 20`
@@ -42,7 +42,7 @@
 
 **检查步骤:**
 - [x] CronScheduler 单元测试通过
-  - `cd rust-agent-middlewares && cargo test -p rust-agent-middlewares --lib -- cron`
+  - `cd peri-middlewares && cargo test -p peri-middlewares --lib -- cron`
   - 预期: 测试注册、删除、tick 触发、上限检查、无效表达式拒绝
 
 ---
@@ -50,11 +50,11 @@
 ### Task 2: CronMiddleware + 三个工具实现
 
 **涉及文件:**
-- 新建: `rust-agent-middlewares/src/cron/middleware.rs`
-- 新建: `rust-agent-middlewares/src/cron/tools.rs`
-- 修改: `rust-agent-middlewares/src/cron/mod.rs`（添加 pub mod 声明 + re-export）
-- 修改: `rust-agent-middlewares/src/lib.rs`（添加 `pub mod cron` + re-export）
-- 修改: `rust-agent-middlewares/src/prelude` 部分（添加 CronMiddleware re-export）
+- 新建: `peri-middlewares/src/cron/middleware.rs`
+- 新建: `peri-middlewares/src/cron/tools.rs`
+- 修改: `peri-middlewares/src/cron/mod.rs`（添加 pub mod 声明 + re-export）
+- 修改: `peri-middlewares/src/lib.rs`（添加 `pub mod cron` + re-export）
+- 修改: `peri-middlewares/src/prelude` 部分（添加 CronMiddleware re-export）
 
 **执行步骤:**
 - [x] 新建 `cron/tools.rs`，实现三个 `BaseTool`
@@ -86,10 +86,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-middlewares`
+  - `cargo build -p peri-middlewares`
   - 预期: 无错误
 - [x] 工具单元测试通过
-  - `cargo test -p rust-agent-middlewares --lib -- cron::tools`
+  - `cargo test -p peri-middlewares --lib -- cron::tools`
   - 预期: register/list/remove 工具测试通过
 
 ---
@@ -97,9 +97,9 @@
 ### Task 3: TUI CronState + CronManager Task
 
 **涉及文件:**
-- 新建: `rust-agent-tui/src/app/cron_state.rs`
-- 修改: `rust-agent-tui/src/app/mod.rs`（添加 `mod cron_state` + CronState 字段到 App）
-- 修改: `rust-agent-tui/src/app/core.rs`（无需修改，cron 面板状态放 CronState）
+- 新建: `peri-tui/src/app/cron_state.rs`
+- 修改: `peri-tui/src/app/mod.rs`（添加 `mod cron_state` + CronState 字段到 App）
+- 修改: `peri-tui/src/app/core.rs`（无需修改，cron 面板状态放 CronState）
 
 **执行步骤:**
 - [x] 新建 `cron_state.rs`
@@ -136,10 +136,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui`
+  - `cargo build -p peri-tui`
   - 预期: 无错误
 - [x] CronState 初始化无 panic
-  - `cargo test -p rust-agent-tui --lib -- headless`
+  - `cargo test -p peri-tui --lib -- headless`
   - 预期: 已有测试不受影响
 
 ---
@@ -147,8 +147,8 @@
 ### Task 4: TUI CronTrigger 消费 + submit_message 触发
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent_ops.rs`（`poll_agent()` 末尾消费 CronTrigger）
-- 修改: `rust-agent-tui/src/app/agent.rs`（`run_universal_agent` 中插入 CronMiddleware）
+- 修改: `peri-tui/src/app/agent_ops.rs`（`poll_agent()` 末尾消费 CronTrigger）
+- 修改: `peri-tui/src/app/agent.rs`（`run_universal_agent` 中插入 CronMiddleware）
 
 **执行步骤:**
 - [x] 在 `agent_ops.rs` 的 `poll_agent()` 函数末尾（`loop` 结束前、return updated 前），添加 CronTrigger 消费：
@@ -174,10 +174,10 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui`
+  - `cargo build -p peri-tui`
   - 预期: 无错误
 - [x] 现有测试不受影响
-  - `cargo test -p rust-agent-tui`
+  - `cargo test -p peri-tui`
   - 预期: 全部通过
 
 ---
@@ -185,10 +185,10 @@
 ### Task 5: /loop 和 /cron 命令注册
 
 **涉及文件:**
-- 新建: `rust-agent-tui/src/command/loop_cmd.rs`
-- 新建: `rust-agent-tui/src/command/cron.rs`
-- 修改: `rust-agent-tui/src/command/mod.rs`（注册两个命令）
-- 修改: `rust-agent-tui/src/app/mod.rs`（添加 cron panel 操作方法）
+- 新建: `peri-tui/src/command/loop_cmd.rs`
+- 新建: `peri-tui/src/command/cron.rs`
+- 修改: `peri-tui/src/command/mod.rs`（注册两个命令）
+- 修改: `peri-tui/src/app/mod.rs`（添加 cron panel 操作方法）
 
 **执行步骤:**
 - [x] 新建 `command/loop_cmd.rs`
@@ -223,13 +223,13 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui`
+  - `cargo build -p peri-tui`
   - 预期: 无错误
 - [ ] /loop 和 /cron 命令出现在帮助列表
-  - `cargo test -p rust-agent-tui --lib -- command`
+  - `cargo test -p peri-tui --lib -- command`
   - 预期: `list()` 包含 "loop" 和 "cron"
 - [ ] 命令逻辑单元测试
-  - `cargo test -p rust-agent-tui --lib -- loop_cmd`
+  - `cargo test -p peri-tui --lib -- loop_cmd`
   - 预期: register 成功/失败路径测试通过
 
 ---
@@ -237,10 +237,10 @@
 ### Task 6: CronPanel UI 渲染 + 键盘事件处理
 
 **涉及文件:**
-- 新建: `rust-agent-tui/src/ui/main_ui/panels/cron.rs`
-- 修改: `rust-agent-tui/src/ui/main_ui.rs`（面板渲染分发 + 高度计算）
-- 修改: `rust-agent-tui/src/ui/main_ui/panels/mod.rs`（添加 pub mod cron）
-- 修改: `rust-agent-tui/src/event.rs`（CronPanel 键盘处理分支）
+- 新建: `peri-tui/src/ui/main_ui/panels/cron.rs`
+- 修改: `peri-tui/src/ui/main_ui.rs`（面板渲染分发 + 高度计算）
+- 修改: `peri-tui/src/ui/main_ui/panels/mod.rs`（添加 pub mod cron）
+- 修改: `peri-tui/src/event.rs`（CronPanel 键盘处理分支）
 
 **执行步骤:**
 - [ ] 新建 `panels/cron.rs`
@@ -285,7 +285,7 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui`
+  - `cargo build -p peri-tui`
   - 预期: 无错误
 - [ ] Headless UI 测试：CronPanel 渲染
   - 创建 headless app → 注入 cron 任务 → 设置 cron_panel → render → assert 包含 "⏰ 定时任务"
@@ -296,7 +296,7 @@
 ### Task 7: Cron Loop Command Acceptance
 
 **Prerequisites:**
-- Start command: `cargo run -p rust-agent-tui`
+- Start command: `cargo run -p peri-tui`
 - Test data setup: 无需额外数据，使用内置工具
 
 **End-to-end verification:**

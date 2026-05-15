@@ -2,7 +2,7 @@
 
 **目标:** 在 `SubAgentTool::invoke` 中补全三个缺失中间件（AgentsMdMiddleware、SkillsMiddleware、TodoMiddleware），使子 agent 上下文与父 agent 一致
 
-**技术栈:** Rust 2021、tokio mpsc、rust-agent-middlewares 内部中间件
+**技术栈:** Rust 2021、tokio mpsc、peri-middlewares 内部中间件
 
 **设计文档:** ./spec-design.md
 
@@ -12,7 +12,7 @@
 
 **涉及文件:**
 
-- 修改: `rust-agent-middlewares/src/subagent/tool.rs`
+- 修改: `peri-middlewares/src/subagent/tool.rs`
 
 **执行步骤:**
 
@@ -39,13 +39,13 @@
 **检查步骤:**
 
 - [x] 编译通过，无错误无警告
-  - `cargo build -p rust-agent-middlewares 2>&1 | grep -E "^error"`
+  - `cargo build -p peri-middlewares 2>&1 | grep -E "^error"`
   - 预期: 无输出（无编译错误）
 - [x] 现有子 agent 测试全部通过
-  - `cargo test -p rust-agent-middlewares -- subagent 2>&1 | tail -10`
+  - `cargo test -p peri-middlewares -- subagent 2>&1 | tail -10`
   - 预期: 输出包含 `test result: ok`，`0 failed`
 - [x] 全量测试无回归
-  - `cargo test -p rust-agent-middlewares 2>&1 | tail -5`
+  - `cargo test -p peri-middlewares 2>&1 | tail -5`
   - 预期: 输出包含 `test result: ok`，`0 failed`
 
 ---
@@ -54,22 +54,22 @@
 
 **Prerequisites:**
 
-- 编译环境: `cargo build -p rust-agent-middlewares`
+- 编译环境: `cargo build -p peri-middlewares`
 - 无需额外环境或服务
 
 **End-to-end verification:**
 
 1. [x] AGENTS.md 内容被注入子 agent 上下文
-   - `cargo test -p rust-agent-middlewares -- test_tool_executes_with_valid_agent_file --nocapture 2>&1 | tail -5`
+   - `cargo test -p peri-middlewares -- test_tool_executes_with_valid_agent_file --nocapture 2>&1 | tail -5`
    - Expected: 测试通过（此测试验证子 agent 能正常执行，不崩溃）
    - On failure: check Task 1 AgentsMdMiddleware import 是否正确
 
 2. [x] 新增的三个中间件不破坏现有工具过滤逻辑
-   - `cargo test -p rust-agent-middlewares -- test_tool_filter 2>&1 | grep -E "ok|FAILED"`
+   - `cargo test -p peri-middlewares -- test_tool_filter 2>&1 | grep -E "ok|FAILED"`
    - Expected: 所有 `test_tool_filter_*` 测试均显示 `ok`
    - On failure: check Task 1 中间件注册位置是否在 filter_tools 调用之后
 
 3. [x] 全量测试无回归（含 subagent、filesystem、terminal、hitl、skills 等模块）
-   - `cargo test -p rust-agent-middlewares 2>&1 | grep -E "test result"`
+   - `cargo test -p peri-middlewares 2>&1 | grep -E "test result"`
    - Expected: `test result: ok. N passed; 0 failed`
    - On failure: check Task 1 是否引入了意外的 import 冲突或类型错误

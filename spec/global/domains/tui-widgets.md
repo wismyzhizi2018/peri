@@ -5,7 +5,8 @@
 TUI 组件领域负责通用 UI 组件的抽取和独立 widget crate 的创建，以及对标 Claude Code 的信息展示组件。
 
 核心职责：
-- perihelion-widgets crate 提供 11 个通用组件，零内部依赖
+
+- peri-widgets crate 提供 11 个通用组件，零内部依赖
 - SpinnerWidget：动词从 TODO activeForm 获取，Token 计数平滑递增动画
 - ToolCallWidget：工具调用状态指示器，智能折叠策略
 - MessageBlockWidget：消息块渲染，代码高亮和 diff 着色
@@ -39,7 +40,7 @@ TUI tick 事件
 
 | 维度 | 选型 |
 |------|------|
-| 独立 crate | perihelion-widgets，零内部依赖，仅依赖 ratatui + pulldown-cmark |
+| 独立 crate | peri-widgets，零内部依赖，仅依赖 ratatui + pulldown-cmark |
 | 组件数量 | 11 个：BorderedPanel/ScrollableArea/SelectableList/InputField/TabBar/RadioGroup/CheckboxGroup/FormState/MarkdownRenderer/Spinner/ToolCall |
 | API 风格 | ratatui StatefulWidget trait 原生风格 |
 | 泛型设计 | ListState<T> 不要求 T: Clone；FormState<F> 泛型管理字段导航 |
@@ -50,8 +51,10 @@ TUI tick 事件
 ## Feature 附录
 
 ### feature_20260427_F001_claude-code-info-display
+
 **摘要:** 对标 Claude Code 新增 Spinner、工具调用、消息块三个 widget
 **关键决策:**
+
 - Spinner 动词从 TODO activeForm 获取，无任务时随机选取默认动词池
 - 动画帧通过 ratatui tick 事件驱动，不引入额外线程
 - Token 计数使用平滑递增动画（维护 displayed_tokens 与 token_count 双值）
@@ -62,9 +65,11 @@ TUI tick 事件
 **归档日期:** 2026-04-30
 
 ### feature_20260427_F001_ratatui-widget-lib
+
 **摘要:** 抽取 TUI 重复 UI 代码为独立可复用 ratatui widget crate
 **关键决策:**
-- 新增 perihelion-widgets crate，零内部依赖仅依赖 ratatui + pulldown-cmark
+
+- 新增 peri-widgets crate，零内部依赖仅依赖 ratatui + pulldown-cmark
 - 全量抽取 11 个通用组件（BorderedPanel、ScrollableArea、SelectableList 等）
 - 所有组件遵循 ratatui StatefulWidget trait 原生 API 风格
 - ListState<T> 泛型设计不要求 T: Clone
@@ -77,5 +82,6 @@ TUI tick 事件
 ---
 
 ## 相关 Feature
-- → [tui.md](./tui.md) — TUI 集成使用 perihelion-widgets 组件
+
+- → [tui.md](./tui.md) — TUI 集成使用 peri-widgets 组件
 - → [code-highlight.md](./code-highlight.md) — syntect 代码高亮集成

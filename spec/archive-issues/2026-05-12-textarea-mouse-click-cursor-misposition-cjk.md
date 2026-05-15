@@ -54,7 +54,7 @@
 
 ## 相关代码
 
-- `rust-agent-tui/src/event.rs:14-29` —— `display_col_to_char_idx()` 辅助函数
-- `rust-agent-tui/src/event.rs:31-90` —— `textarea_mouse_to_cursor()` 主函数
-- `rust-agent-tui/src/app/mod.rs:760-763` —— textarea block 配置（Padding + Borders）
-- `rust-agent-tui/src/ui/main_ui.rs:260-265` —— textarea 渲染和 area 赋值
+- `peri-tui/src/event.rs:14-29` —— `display_col_to_char_idx()` 辅助函数
+- `peri-tui/src/event.rs:31-90` —— `textarea_mouse_to_cursor()` 主函数
+- `peri-tui/src/app/mod.rs:760-763` —— textarea block 配置（Padding + Borders）
+- `peri-tui/src/ui/main_ui.rs:260-265` —— textarea 渲染和 area 赋值

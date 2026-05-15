@@ -28,7 +28,7 @@
 保持现有的两层压缩架构（Micro + Full），逐层增强。整体模块划分如下：
 
 ```
-rust-create-agent（核心层）
+peri-agent（核心层）
 ├── agent/
 │   ├── compact/
 │   │   ├── mod.rs           — CompactManager 统一入口
@@ -40,10 +40,10 @@ rust-create-agent（核心层）
 │   ├── token.rs             — ContextBudget / TokenTracker（现有，扩展）
 │   └── state.rs             — AgentState（现有，扩展 compact 方法）
 
-rust-agent-middlewares（中间件层）
+peri-middlewares（中间件层）
 └── 无新增模块（compact 不需要中间件参与）
 
-rust-agent-tui（应用层）
+peri-tui（应用层）
 ├── app/
 │   ├── agent.rs             — compact_task()（现有，重写）
 │   └── agent_ops.rs         — auto-compact 触发逻辑（现有，扩展）
@@ -55,9 +55,9 @@ rust-agent-tui（应用层）
 
 **分层决策**：
 
-- `MicroCompact`、工具对保护、`CompactConfig` 放在 `rust-create-agent` — 纯消息操作，不依赖 TUI 或具体中间件
-- `FullCompact`（LLM 摘要调用）也放在 `rust-create-agent` — 通过 `BaseModel` trait 调用，保持框架独立性
-- `PostCompactReInjector` 放在 `rust-create-agent` — 基于消息历史和目录扫描，不需要 TUI 依赖
+- `MicroCompact`、工具对保护、`CompactConfig` 放在 `peri-agent` — 纯消息操作，不依赖 TUI 或具体中间件
+- `FullCompact`（LLM 摘要调用）也放在 `peri-agent` — 通过 `BaseModel` trait 调用，保持框架独立性
+- `PostCompactReInjector` 放在 `peri-agent` — 基于消息历史和目录扫描，不需要 TUI 依赖
 - TUI 层仅负责触发时机控制和 UI 展示
 
 ### Micro-compact 层增强
@@ -290,7 +290,7 @@ pub struct CompactConfig {
 
 ## 约束一致性
 
-- **Workspace 分层**：compact 核心逻辑放在 `rust-create-agent`，TUI 层仅做触发和 UI，符合"禁止下层依赖上层"约束
+- **Workspace 分层**：compact 核心逻辑放在 `peri-agent`，TUI 层仅做触发和 UI，符合"禁止下层依赖上层"约束
 - **异步优先**：compact task 中的 LLM 调用和文件读取都是异步操作，通过 `async-trait` 标注
 - **消息不可变历史**：compact 生成新的消息序列，不修改旧 Thread 的历史（创建新 Thread）
 - **事件驱动通信**：compact 完成后通过 `AgentEvent::CompactDone` / `CompactError` 通知 TUI

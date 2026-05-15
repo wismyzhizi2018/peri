@@ -42,8 +42,8 @@ AskUserQuestion 工具的问答结果显示时，问题和答案内部的换行�
 
 ## 相关代码
 
-- `rust-agent-tui/src/ui/message_render.rs:24-73` — `render_ask_user_block()` 函数
-- `rust-agent-tui/src/ui/message_render.rs:473-524` — `ToolCallGroup` 中的 AskUser 渲染逻辑
+- `peri-tui/src/ui/message_render.rs:24-73` — `render_ask_user_block()` 函数
+- `peri-tui/src/ui/message_render.rs:473-524` — `ToolCallGroup` 中的 AskUser 渲染逻辑
 
 当前解析逻辑：
 ```rust

@@ -154,55 +154,55 @@
 - **来源:** spec-plan.md Task 5 检查步骤
 - **目的:** 确认第三方依赖完全替换
 - **操作步骤:**
-  1. [A] `grep -E 'langfuse-ergonomic|langfuse-client-base' rust-agent-tui/Cargo.toml` → 期望包含: 无匹配（exit code 1）
+  1. [A] `grep -E 'langfuse-ergonomic|langfuse-client-base' peri-tui/Cargo.toml` → 期望包含: 无匹配（exit code 1）
 
 #### - [x] 5.2 Cargo.toml 新依赖已添加
 - **来源:** spec-plan.md Task 5
 - **目的:** 确认 path dependency 正确
 - **操作步骤:**
-  1. [A] `grep 'langfuse-client' rust-agent-tui/Cargo.toml` → 期望包含: `langfuse-client = { path = "../langfuse-client" }`
+  1. [A] `grep 'langfuse-client' peri-tui/Cargo.toml` → 期望包含: `langfuse-client = { path = "../langfuse-client" }`
 
 #### - [x] 5.3 session.rs 仅使用新 crate
 - **来源:** spec-plan.md Task 5
 - **目的:** 确认无旧 crate 引用
 - **操作步骤:**
-  1. [A] `grep 'langfuse_' rust-agent-tui/src/langfuse/session.rs` → 期望包含: 仅 `langfuse_client::` 前缀
+  1. [A] `grep 'langfuse_' peri-tui/src/langfuse/session.rs` → 期望包含: 仅 `langfuse_client::` 前缀
 
 #### - [x] 5.4 tracer.rs 无旧事件类型
 - **来源:** spec-plan.md Task 5 检查步骤
 - **目的:** 确认 IngestionEventOneOf 等旧类型已清除
 - **操作步骤:**
-  1. [A] `grep -E 'IngestionEventOneOf|ingestion_event_one_of|CreateSpanBody|CreateGenerationBody' rust-agent-tui/src/langfuse/tracer.rs` → 期望包含: 无匹配（exit code 1）
+  1. [A] `grep -E 'IngestionEventOneOf|ingestion_event_one_of|CreateSpanBody|CreateGenerationBody' peri-tui/src/langfuse/tracer.rs` → 期望包含: 无匹配（exit code 1）
 
 #### - [x] 5.5 tracer.rs 无 double Option
 - **来源:** spec-plan.md Task 5 检查步骤
 - **目的:** 确认 Some(Some(...)) 模式已消除
 - **操作步骤:**
-  1. [A] `grep -c 'Some(Some(' rust-agent-tui/src/langfuse/tracer.rs` → 期望精确: 0
+  1. [A] `grep -c 'Some(Some(' peri-tui/src/langfuse/tracer.rs` → 期望精确: 0
 
 #### - [x] 5.6 tracer.rs 使用新 IngestionEvent 枚举变体
 - **来源:** spec-plan.md Task 5
 - **目的:** 确认 4 种事件类型使用正确
 - **操作步骤:**
-  1. [A] `grep -E 'IngestionEvent::(SpanCreate|GenerationCreate|ObservationCreate|TraceCreate)' rust-agent-tui/src/langfuse/tracer.rs` → 期望包含: 4 种变体
+  1. [A] `grep -E 'IngestionEvent::(SpanCreate|GenerationCreate|ObservationCreate|TraceCreate)' peri-tui/src/langfuse/tracer.rs` → 期望包含: 4 种变体
 
 #### - [x] 5.7 tracer.rs 不再调用 client.trace()
 - **来源:** spec-plan.md Task 5 检查步骤
 - **目的:** 确认旧高级 API 已替换为 batcher.add()
 - **操作步骤:**
-  1. [A] `grep -c 'client\.trace()' rust-agent-tui/src/langfuse/tracer.rs` → 期望精确: 0
+  1. [A] `grep -c 'client\.trace()' peri-tui/src/langfuse/tracer.rs` → 期望精确: 0
 
 #### - [x] 5.8 config.rs 未被修改
 - **来源:** spec-plan.md Task 5
 - **目的:** 确认配置读取逻辑保持不变
 - **操作步骤:**
-  1. [A] `grep -E 'langfuse_ergonomic|langfuse_client_base|langfuse_client' rust-agent-tui/src/langfuse/config.rs` → 期望包含: 无匹配（exit code 1）
+  1. [A] `grep -E 'langfuse_ergonomic|langfuse_client_base|langfuse_client' peri-tui/src/langfuse/config.rs` → 期望包含: 无匹配（exit code 1）
 
 #### - [x] 5.9 mod.rs 公开导出不变
 - **来源:** spec-plan.md Task 5 检查步骤
 - **目的:** 确认对外接口一致
 - **操作步骤:**
-  1. [A] `grep -E 'pub use' rust-agent-tui/src/langfuse/mod.rs` → 期望包含: LangfuseConfig, LangfuseSession, LangfuseTracer
+  1. [A] `grep -E 'pub use' peri-tui/src/langfuse/mod.rs` → 期望包含: LangfuseConfig, LangfuseSession, LangfuseTracer
 
 ---
 
@@ -248,11 +248,11 @@
 - **操作步骤:**
   1. [A] `grep -B2 'pub struct LangfuseClient' langfuse-client/src/client.rs` → 期望包含: `#[derive(Clone)]` 或 `Clone`
 
-#### - [x] 7.3 rust-agent-tui 测试通过
+#### - [x] 7.3 peri-tui 测试通过
 - **来源:** spec-plan.md Task 5 检查步骤
 - **目的:** 确认 TUI 集成后测试无回归
 - **操作步骤:**
-  1. [A] `cargo test -p rust-agent-tui 2>&1 | grep 'test result'` → 期望包含: `0 failed`
+  1. [A] `cargo test -p peri-tui 2>&1 | grep 'test result'` → 期望包含: `0 failed`
 
 ---
 

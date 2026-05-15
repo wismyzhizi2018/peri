@@ -11,7 +11,7 @@
 ### Task 1: 后端发送 loading 事件
 
 **涉及文件:**
-- 修改: `rust-agent-tui/src/app/agent.rs`
+- 修改: `peri-tui/src/app/agent.rs`
 
 **执行步骤:**
 - [x] 在 `executor.execute()` 调用前，通过 `relay_client` 发送 `agent_running` 事件
@@ -32,7 +32,7 @@
 
 **检查步骤:**
 - [x] 编译通过
-  - `cargo build -p rust-agent-tui 2>&1 | tail -5`
+  - `cargo build -p peri-tui 2>&1 | tail -5`
   - 预期: 输出包含 `Finished` 且无 `error`
 - [x] 事件类型序列化正确
   - `cargo test -p rust-relay-server --lib -- test_relay 2>&1 | tail -5`
@@ -158,7 +158,7 @@
 
 **Prerequisites:**
 - 启动 relay server: `cargo run -p rust-relay-server`
-- 启动 TUI 并连接 relay: `cargo run -p rust-agent-tui -- --remote-control ws://localhost:8080 --relay-token <token>`
+- 启动 TUI 并连接 relay: `cargo run -p peri-tui -- --remote-control ws://localhost:8080 --relay-token <token>`
 - 在浏览器打开: `http://localhost:8080?token=<token>`
 
 **端到端验证:**

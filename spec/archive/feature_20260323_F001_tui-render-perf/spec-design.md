@@ -130,7 +130,7 @@ loop {
 
 ## 实现要点
 
-1. **新增模块**：在 `rust-agent-tui/src/ui/` 下新增 `render_thread.rs`，包含 `RenderCache`、`RenderEvent` 和渲染线程逻辑
+1. **新增模块**：在 `peri-tui/src/ui/` 下新增 `render_thread.rs`，包含 `RenderCache`、`RenderEvent` 和渲染线程逻辑
 2. **App 改造**：`App::new()` 时启动渲染线程，持有 `render_tx: mpsc::Sender<RenderEvent>` 和 `render_cache: Arc<RwLock<RenderCache>>`
 3. **消息写入路径改造**：`poll_agent()` 中收到事件后不再直接操作 `view_messages`，改为发送 `RenderEvent`
 4. **main_ui.rs 改造**：`render_messages()` 从 RenderCache 读取可见行，不再遍历 view_messages

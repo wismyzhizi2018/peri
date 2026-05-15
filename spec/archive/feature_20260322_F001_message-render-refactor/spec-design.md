@@ -142,7 +142,7 @@ AgentEvent → poll_agent() → 转换为 MessageViewModel
 ### 文件结构
 
 ```
-rust-agent-tui/src/
+peri-tui/src/
 ├── ui.rs                      # 主渲染入口（保留，精简）
 ├── ui/
 │   ├── mod.rs                 # ui 子模块声明
@@ -186,7 +186,7 @@ fn render_view_model(vm: &MessageViewModel, width: usize) -> Vec<Line<'static>> 
 
 ## 实现要点
 
-1. **依赖新增**：`tui-markdown = "0.3"` 加入 `rust-agent-tui/Cargo.toml`
+1. **依赖新增**：`tui-markdown = "0.3"` 加入 `peri-tui/Cargo.toml`
 2. **完全替换 ChatMessage**：不做渐进迁移，一次性将 ChatMessage 替换为 MessageViewModel
 3. **poll_agent() 精简**：仅负责 `AgentEvent → ViewModel` 转换，不再直接操作 UI 状态逻辑
 4. **Markdown 解析降频**：流式输出时不需要每个 chunk 都重新解析，累积后批量解析
