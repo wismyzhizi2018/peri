@@ -45,6 +45,16 @@ impl App {
             .scroll_follow = false;
     }
 
+    /// 滚动到底部（恢复 follow 模式）
+    pub fn scroll_to_bottom(&mut self) {
+        self.session_mgr.sessions[self.session_mgr.active]
+            .ui
+            .scroll_offset = u16::MAX;
+        self.session_mgr.sessions[self.session_mgr.active]
+            .ui
+            .scroll_follow = true;
+    }
+
     /// 展开/折叠所有工具调用消息
     pub fn toggle_collapsed_messages(&mut self) {
         self.session_mgr.sessions[self.session_mgr.active]

@@ -1152,6 +1152,22 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                     .ui
                     .messages_area
                 {
+                    // 滚动到底按钮：右下角点击且用户已滚离底部
+                    let btn_col_start = area.right().saturating_sub(2);
+                    let btn_row_start = area.bottom().saturating_sub(2);
+                    let not_at_bottom = !app.session_mgr.sessions[app.session_mgr.active]
+                        .ui
+                        .scroll_follow;
+                    if not_at_bottom
+                        && mouse.column >= btn_col_start
+                        && mouse.column < area.right()
+                        && mouse.row >= btn_row_start
+                        && mouse.row < area.bottom()
+                    {
+                        app.scroll_to_bottom();
+                        return Ok(Some(Action::Redraw));
+                    }
+
                     if mouse.row >= area.y
                         && mouse.row < area.y + area.height
                         && mouse.column >= area.x

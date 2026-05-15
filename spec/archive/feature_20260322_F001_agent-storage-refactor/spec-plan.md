@@ -45,7 +45,7 @@
 - [x] 创建 `rust-create-agent/src/thread/sqlite_store.rs`
   - 实现 `SqliteThreadStore` 结构体，内部 `conn: parking_lot::Mutex<rusqlite::Connection>`
   - `new(db_path)` 打开连接，执行 `PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;`
-  - `default_path()` 使用 `dirs_next::home_dir().join(".peri-core/threads/threads.db")`，自动创建父目录
+  - `default_path()` 使用 `dirs_next::home_dir().join(".peri/threads/threads.db")`，自动创建父目录
   - `init_schema()` 执行 CREATE TABLE IF NOT EXISTS（线程安全，幂等）
 - [x] 实现 `ThreadStore` trait 的 7 个方法：
   - `create_thread`: 事务插入 threads 表
@@ -184,7 +184,7 @@
 - [x] `cargo test -p rust-create-agent 2>&1 | grep -E "test result|FAILED|passed|failed"`
   - 预期: `test result: ok` 且无 FAILED
 - [x] 确认旧 JSONL 存在时程序正常启动
-  - 在已有 `~/.peri-core/threads/` 的机器上运行 `cargo build -p rust-agent-tui`
+  - 在已有 `~/.peri/threads/` 的机器上运行 `cargo build -p rust-agent-tui`
   - 预期: 编译通过，运行时创建 `threads.db` 不报错
 
 ---
@@ -200,13 +200,13 @@
 
 1. **新建会话正常持久化**
    - 启动 TUI，发送一条消息，等待 Done
-   - `sqlite3 ~/.peri-core/threads/threads.db "SELECT COUNT(*) FROM messages;"`
+   - `sqlite3 ~/.peri/threads/threads.db "SELECT COUNT(*) FROM messages;"`
    - Expected: `>= 2`（至少用户消息 + assistant 消息；实际数量取决于工具调用次数）
    - On failure: check Task 2 [SqliteThreadStore.append_messages]
 
 2. **加载历史会话后消息顺序一致**
    - 发送第二条消息，触发 Done
-   - `sqlite3 ~/.peri-core/threads/threads.db "SELECT seq, role FROM messages ORDER BY seq;"`
+   - `sqlite3 ~/.peri/threads/threads.db "SELECT seq, role FROM messages ORDER BY seq;"`
    - Expected: seq 递增，role 交替（user → assistant → ...）
    - On failure: check Task 2 [load_messages ORDER BY seq]
 
@@ -221,7 +221,7 @@
    - On failure: check Task 3 [AnthropicAdapter.from_base_message]
 
 5. **TUI 启动无 panic（无旧 JSONL 迁移）**
-   - 删除 `~/.peri-core/threads/threads.db`，保留旧 `index.json`
+   - 删除 `~/.peri/threads/threads.db`，保留旧 `index.json`
    - `cargo run -p rust-agent-tui 2>&1 | head -20`
    - Expected: 正常启动，无文件找不到错误
    - On failure: check Task 4 [SqliteThreadStore.default_path]

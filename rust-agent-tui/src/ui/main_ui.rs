@@ -676,6 +676,23 @@ fn render_messages(f: &mut Frame, app: &mut App, header_area: Rect, messages_are
             .track_symbol(None)
             .style(Style::default().fg(theme::MUTED));
         f.render_stateful_widget(scrollbar, inner, &mut scrollbar_state);
+
+        // 滚动到底按钮（当用户滚离底部时显示）
+        if offset < max_scroll {
+            let btn_area = Rect {
+                x: inner.right().saturating_sub(1),
+                y: inner.bottom().saturating_sub(1),
+                width: 1,
+                height: 1,
+            };
+            let arrow = Paragraph::new(Text::from(Span::styled(
+                "▼",
+                Style::default()
+                    .fg(theme::SAGE)
+                    .add_modifier(Modifier::BOLD),
+            )));
+            f.render_widget(arrow, btn_area);
+        }
     }
 }
 

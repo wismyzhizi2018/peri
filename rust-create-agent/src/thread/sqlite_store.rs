@@ -39,11 +39,11 @@ impl SqliteThreadStore {
         Ok(store)
     }
 
-    /// 使用默认路径 `~/.peri-core/threads/threads.db` 创建
+    /// 使用默认路径 `~/.peri/threads/threads.db` 创建
     pub async fn default_path() -> Result<Self> {
         let db_path = dirs_next::home_dir()
             .context("无法获取 home 目录")?
-            .join(".peri-core")
+            .join(".peri")
             .join("threads")
             .join("threads.db");
         Self::new(db_path).await

@@ -87,27 +87,27 @@
 
 - **来源:** Task 4 E2E #4, spec-design.md 边界情况处理
 - **操作步骤:**
-  1. [A] 确认 threads.db 路径: `ls ~/.peri-core/threads/threads.db` → 期望: 文件存在
+  1. [A] 确认 threads.db 路径: `ls ~/.peri/threads/threads.db` → 期望: 文件存在
   2. [A] 创建测试 thread（孤立 Tool 消息，无对应 Ai 消息）:
 
      ```
-     sqlite3 ~/.peri-core/threads/threads.db "INSERT OR IGNORE INTO threads (id, title, cwd, created_at, updated_at) VALUES ('test-orphan-tool', 'orphan test', '/tmp', datetime('now'), datetime('now'));"
+     sqlite3 ~/.peri/threads/threads.db "INSERT OR IGNORE INTO threads (id, title, cwd, created_at, updated_at) VALUES ('test-orphan-tool', 'orphan test', '/tmp', datetime('now'), datetime('now'));"
      ```
 
      → 期望: 命令成功执行无报错
   3. [A] 插入一条孤立 Tool 消息（无对应 Ai 消息的 tool_calls）:
 
      ```
-     sqlite3 ~/.peri-core/threads/threads.db "INSERT INTO messages (thread_id, role, content, seq) VALUES ('test-orphan-tool', 'tool', json_object('tool_call_id', 'orphan-id-123', 'content', json_object('type', 'text', 'text', 'some result'), 'is_error', json('false')), 1);"
+     sqlite3 ~/.peri/threads/threads.db "INSERT INTO messages (thread_id, role, content, seq) VALUES ('test-orphan-tool', 'tool', json_object('tool_call_id', 'orphan-id-123', 'content', json_object('type', 'text', 'text', 'some result'), 'is_error', json('false')), 1);"
      ```
 
      → 期望: 命令成功执行无报错
-  4. [A] 验证测试数据已插入: `sqlite3 ~/.peri-core/threads/threads.db "SELECT count(*) FROM messages WHERE thread_id='test-orphan-tool';"` → 期望: 输出 1
+  4. [A] 验证测试数据已插入: `sqlite3 ~/.peri/threads/threads.db "SELECT count(*) FROM messages WHERE thread_id='test-orphan-tool';"` → 期望: 输出 1
   5. [H] 运行 `cargo run -p rust-agent-tui`，输入 `/history`，选择 "orphan test" thread。观察 TUI 是否正常加载且不崩溃，ToolBlock 显示工具名或 tool_call_id（无参数）→ 是/否
-  6. [A] 清理测试数据: `sqlite3 ~/.peri-core/threads/threads.db "DELETE FROM threads WHERE id='test-orphan-tool'; DELETE FROM messages WHERE thread_id='test-orphan-tool';"` → 期望: 命令成功
+  6. [A] 清理测试数据: `sqlite3 ~/.peri/threads/threads.db "DELETE FROM threads WHERE id='test-orphan-tool'; DELETE FROM messages WHERE thread_id='test-orphan-tool';"` → 期望: 命令成功
 - **异常排查:**
   - 如果 TUI 崩溃: 检查 `from_base_message` 中 `unwrap_or_else` 降级逻辑，确认当 `prev_ai_tool_calls` 中找不到匹配时使用 `tool_call_id` 作为工具名
-  - 如果 sqlite3 命令失败: 检查数据库路径和 schema，运行 `sqlite3 ~/.peri-core/threads/threads.db ".schema"`
+  - 如果 sqlite3 命令失败: 检查数据库路径和 schema，运行 `sqlite3 ~/.peri/threads/threads.db ".schema"`
 
 ---
 

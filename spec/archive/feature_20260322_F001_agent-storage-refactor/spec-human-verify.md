@@ -63,7 +63,7 @@
 - **来源:** Task 7 端到端验证 1
 - **操作步骤:**
   1. [H] 在终端运行 `cargo run -p rust-agent-tui`，等待 TUI 界面加载完成，发送一条消息（如 "你好"），等待回复出现，然后关闭 TUI（按 Ctrl+C 或 Ctrl+Q）→ 是/否（TUI 正常启动并收到回复？）
-  2. [A] `sqlite3 ~/.peri-core/threads/threads.db "SELECT COUNT(*) FROM messages;"` → 期望: 输出数字 `>= 2`（用户消息 + assistant 消息）
+  2. [A] `sqlite3 ~/.peri/threads/threads.db "SELECT COUNT(*) FROM messages;"` → 期望: 输出数字 `>= 2`（用户消息 + assistant 消息）
 - **异常排查:**
   - 如果 TUI 启动失败: 运行 `cargo run -p rust-agent-tui 2>&1 | head -30` 查看错误
   - 如果 messages 表为空: 检查 `poll_agent` 中 StateSnapshot 分支是否触发，查看 `RUST_LOG=debug cargo run -p rust-agent-tui` 日志中是否有 `received StateSnapshot in poll_agent`
@@ -73,7 +73,7 @@
 - **来源:** Task 7 端到端验证 2 / spec-design.md 验收标准
 - **操作步骤:**
   1. [H] 在同一个 TUI 会话中再发送第二条消息，等待回复后关闭 TUI → 是/否（成功发送并收到第二条回复？）
-  2. [A] `sqlite3 ~/.peri-core/threads/threads.db "SELECT seq, role FROM messages WHERE thread_id=(SELECT id FROM threads ORDER BY updated_at DESC LIMIT 1) ORDER BY seq;"` → 期望: seq 从 1 开始严格递增，role 列值按顺序为 user, assistant, user, assistant...（或包含 tool）
+  2. [A] `sqlite3 ~/.peri/threads/threads.db "SELECT seq, role FROM messages WHERE thread_id=(SELECT id FROM threads ORDER BY updated_at DESC LIMIT 1) ORDER BY seq;"` → 期望: seq 从 1 开始严格递增，role 列值按顺序为 user, assistant, user, assistant...（或包含 tool）
 - **异常排查:**
   - 如果 seq 不连续: 检查 `append_messages` 中 `SELECT COALESCE(MAX(seq),0)` 逻辑是否正确
   - 如果消息重复: 确认 `persist_pending_messages` 函数已被删除（`grep "persist_pending" rust-agent-tui/src/app/mod.rs` 应无输出）
@@ -138,10 +138,10 @@
 
 - **来源:** Task 7 端到端验证 5 / spec-design.md 4 向后兼容
 - **操作步骤:**
-  1. [A] `test -f ~/.peri-core/threads/threads.db && echo "db_exists" || echo "no_db"` → 期望: 任意结果均可（验证命令本身可执行）
-  2. [H] 如果存在旧的 `~/.peri-core/threads/index.json`，删除 `threads.db`（`rm -f ~/.peri-core/threads/threads.db`），然后运行 `cargo run -p rust-agent-tui`，观察 TUI 是否正常启动（不出现 `panic` 或 `thread main panicked` 字样）→ 是/否
+  1. [A] `test -f ~/.peri/threads/threads.db && echo "db_exists" || echo "no_db"` → 期望: 任意结果均可（验证命令本身可执行）
+  2. [H] 如果存在旧的 `~/.peri/threads/index.json`，删除 `threads.db`（`rm -f ~/.peri/threads/threads.db`），然后运行 `cargo run -p rust-agent-tui`，观察 TUI 是否正常启动（不出现 `panic` 或 `thread main panicked` 字样）→ 是/否
 - **异常排查:**
-  - 如果出现 panic: 查看错误堆栈，通常是 `SqliteThreadStore::default_path()` 目录创建失败，检查 `~/.peri-core/threads/` 目录权限
+  - 如果出现 panic: 查看错误堆栈，通常是 `SqliteThreadStore::default_path()` 目录创建失败，检查 `~/.peri/threads/` 目录权限
 
 ---
 
