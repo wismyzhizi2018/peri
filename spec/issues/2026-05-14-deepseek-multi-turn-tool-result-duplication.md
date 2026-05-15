@@ -1,8 +1,9 @@
 # DeepSeek API 400: 多轮对话中 tool_result 消息重复导致 invalid_request_error
 
-**状态**：Open
+**状态**：Fixed
 **优先级**：高
 **创建日期**：2026-05-14
+**修复日期**：2026-05-15
 
 ## 问题描述
 

@@ -1,8 +1,9 @@
 # Thinking/Reasoning 数据流问题：占位 thinking 缺 signature + AiReasoning 死代码
 
-**状态**：Partial（现象 1 已修复，现象 2 待处理）
+**状态**：Fixed
 **优先级**：中
 **创建日期**：2026-05-12
+**修复日期**：2026-05-15
 
 ## 现象 1 修复记录（2026-05-12）
 

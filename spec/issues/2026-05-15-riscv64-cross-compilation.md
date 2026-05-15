@@ -1,6 +1,6 @@
 # RISC-V (riscv64gc-unknown-linux-gnu) 交叉编译支持
 
-**状态**：Open
+**状态**：In Progress
 **优先级**：中
 **创建日期**：2026-05-15
 
@@ -103,8 +103,13 @@ reqwest = [
 ### 验证方式
 
 1. 本地：`cross build -p rust-agent-tui --release --target riscv64gc-unknown-linux-gnu`（需先确认 `aws-lc-sys` 已消除）
-2. CI 测试：手动触发 `.github/workflows/test-riscv.yml`（保留此工作流，方便日常验证 RISC-V 构建状态）
-3. Release：tag `agent-v*` 自动触发全矩阵构建（含 RISC-V）
+2. Release：tag `agent-v*` 自动触发全矩阵构建（含 RISC-V）
+
+## 进度
+
+- [x] **Step 3**：`release-agent.yml` 构建矩阵已追加 RISC-V 条目（`linux-riscv64`），`test-riscv.yml` 已移除（RISC-V 直接走 release 矩阵验证，无需独立 workflow）
+- [ ] **Step 1**：workspace `Cargo.toml` —— `reqwest` 改为 `rustls-no-provider` + 显式引入 `rustls`（ring 后端）
+- [ ] **Step 2**：`rust-mcp-patch/Cargo.toml` —— rmcp 的 `reqwest` feature 转发改为 `rustls-no-provider`
 
 ## 涉及文件
 
@@ -113,7 +118,7 @@ reqwest = [
 | `Cargo.toml` | `reqwest` features 改为 `rustls-no-provider`；新增 `rustls` workspace dep（ring 后端） |
 | `rust-mcp-patch/Cargo.toml` | `reqwest` feature 的转发 target 改为 `rustls-no-provider` |
 | `.github/workflows/release-agent.yml` | 构建矩阵新增 `riscv64gc-unknown-linux-gnu` 条目 |
-| `.github/workflows/test-riscv.yml` | 已存在，保留用于手动触发验证 |
+| `.github/workflows/test-riscv.yml` | 已移除（RISC-V 直接纳入 release-agent.yml 矩阵） |
 
 ## 相关 Issue
 
