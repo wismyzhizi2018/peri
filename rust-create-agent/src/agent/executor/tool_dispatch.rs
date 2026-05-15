@@ -58,7 +58,7 @@ pub(crate) async fn dispatch_tools<L: ReactLLM, S: State>(
             // modified_calls 中的调用已通过 before_tool 但尚未执行，
             // 必须补全 error tool_result，否则 AI 消息中的 tool_use 无配对 tool_result，
             // 导致 Anthropic API 400 (orphaned tool_use without tool_result)。
-            flush_pending_tool_errors(
+            flush_modified_tool_errors(
                 agent,
                 state,
                 &modified_calls,
