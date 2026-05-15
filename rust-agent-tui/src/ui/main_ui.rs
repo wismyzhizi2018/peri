@@ -688,7 +688,24 @@ fn render_messages(f: &mut Frame, app: &mut App, header_area: Rect, messages_are
             let arrow = Paragraph::new(Text::from(Span::styled(
                 "▼",
                 Style::default()
-                    .fg(theme::SAGE)
+                    .fg(theme::MUTED)
+                    .add_modifier(Modifier::BOLD),
+            )));
+            f.render_widget(arrow, btn_area);
+        }
+
+        // 滚动到顶按钮（当用户滚离顶部时显示）
+        if offset > 0 {
+            let btn_area = Rect {
+                x: inner.right().saturating_sub(1),
+                y: inner.y,
+                width: 1,
+                height: 1,
+            };
+            let arrow = Paragraph::new(Text::from(Span::styled(
+                "▲",
+                Style::default()
+                    .fg(theme::MUTED)
                     .add_modifier(Modifier::BOLD),
             )));
             f.render_widget(arrow, btn_area);

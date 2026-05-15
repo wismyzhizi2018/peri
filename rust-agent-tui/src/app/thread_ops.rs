@@ -55,6 +55,16 @@ impl App {
             .scroll_follow = true;
     }
 
+    /// 滚动到顶部
+    pub fn scroll_to_top(&mut self) {
+        self.session_mgr.sessions[self.session_mgr.active]
+            .ui
+            .scroll_offset = 0;
+        self.session_mgr.sessions[self.session_mgr.active]
+            .ui
+            .scroll_follow = false;
+    }
+
     /// 展开/折叠所有工具调用消息
     pub fn toggle_collapsed_messages(&mut self) {
         self.session_mgr.sessions[self.session_mgr.active]

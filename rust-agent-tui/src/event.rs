@@ -1152,19 +1152,34 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                     .ui
                     .messages_area
                 {
+                    let scroll_offset = app.session_mgr.sessions[app.session_mgr.active]
+                        .ui
+                        .scroll_offset;
+                    let scroll_follow = app.session_mgr.sessions[app.session_mgr.active]
+                        .ui
+                        .scroll_follow;
+
                     // 滚动到底按钮：右下角点击且用户已滚离底部
                     let btn_col_start = area.right().saturating_sub(2);
                     let btn_row_start = area.bottom().saturating_sub(2);
-                    let not_at_bottom = !app.session_mgr.sessions[app.session_mgr.active]
-                        .ui
-                        .scroll_follow;
-                    if not_at_bottom
+                    if !scroll_follow
                         && mouse.column >= btn_col_start
                         && mouse.column < area.right()
                         && mouse.row >= btn_row_start
                         && mouse.row < area.bottom()
                     {
                         app.scroll_to_bottom();
+                        return Ok(Some(Action::Redraw));
+                    }
+
+                    // 滚动到顶按钮：右上角点击且用户已滚离顶部
+                    if scroll_offset > 0
+                        && mouse.column >= btn_col_start
+                        && mouse.column < area.right()
+                        && mouse.row >= area.y
+                        && mouse.row < area.y.saturating_add(2)
+                    {
+                        app.scroll_to_top();
                         return Ok(Some(Action::Redraw));
                     }
 
