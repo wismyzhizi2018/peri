@@ -154,6 +154,28 @@ impl ReactLLM for BaseModelReactLLM {
             r.model = model_name;
             r.streamed = streamed;
             Ok(r)
+        } else if response.message.has_tool_calls() {
+            // 防御：某些 provider（如 DeepSeek）可能返回 stop_reason != ToolUse
+            // 但响应内容含 tool_use blocks。此时必须按工具调用处理，
+            // 否则 source_message（含 tool_use）会通过 handle_final_answer 写入 state
+            // 而无配对 tool_result，导致下次 API 调用 400。
+            let tc_reqs = response.message.tool_calls();
+            let calls: Vec<ToolCall> = tc_reqs
+                .iter()
+                .map(|tc| ToolCall::new(tc.id.clone(), tc.name.clone(), tc.arguments.clone()))
+                .collect();
+            tracing::warn!(
+                stop_reason = ?response.stop_reason,
+                tool_count = calls.len(),
+                "stop_reason 与内容不一致：响应含 tool_use 但 stop_reason 非 ToolUse，按工具调用处理"
+            );
+            let text = response.message.content();
+            let mut r = Reasoning::with_tools(text, calls);
+            r.source_message = Some(response.message);
+            r.usage = usage;
+            r.model = model_name;
+            r.streamed = streamed;
+            Ok(r)
         } else {
             // 最终答案：text_content() 提取所有文字（跳过 reasoning block）
             let mut text = response.message.content();
