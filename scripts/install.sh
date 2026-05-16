@@ -113,7 +113,7 @@ main() {
             exit 1
         }
         # Find latest agent-* tag
-        VERSION_TAG=$(echo "${RELEASES_JSON}" | grep -oE '"tag_name": *"agent-[^"]+"' | head -1 | cut -d'"' -f4)
+        VERSION_TAG=$(echo "${RELEASES_JSON}" | tr ',' '\n' | grep -F '"tag_name"' | grep -F '"agent-' | head -1 | cut -d'"' -f4)
         if [[ -z "${VERSION_TAG}" ]]; then
             error "No agent release found."
             exit 1
@@ -129,13 +129,13 @@ main() {
     info "Found release: ${VERSION_TAG}"
 
     # Find matching asset
-    ASSET_DOWNLOAD_URL=$(echo "${RELEASE_JSON}" | grep -oE "\"browser_download_url\": *\"[^\"]*${ASSET_NAME}[^\"]*\"" | head -1 | cut -d'"' -f4)
+    ASSET_DOWNLOAD_URL=$(echo "${RELEASE_JSON}" | tr ',' '\n' | grep -F '"browser_download_url"' | grep -F "${ASSET_NAME}" | head -1 | cut -d'"' -f4)
 
     if [[ -z "${ASSET_DOWNLOAD_URL}" ]]; then
         error "No binary found for platform '${PLATFORM}'."
         echo ""
         echo "Available assets:"
-        echo "${RELEASE_JSON}" | grep -oE '"browser_download_url": *"[^"]+"' | sed 's/"browser_download_url": *"/  - /;s/"//'
+        echo "${RELEASE_JSON}" | tr ',' '\n' | grep -F '"browser_download_url"' | cut -d'"' -f4 | sed 's/^/  - /'
         exit 1
     fi
 
@@ -165,7 +165,7 @@ main() {
         step "Verifying checksum..."
 
         # Find checksums.txt download URL from the same release
-        CHECKSUMS_URL=$(echo "${RELEASE_JSON}" | grep -oE "\"browser_download_url\": *\"[^\"]*checksums\.txt[^\"]*\"" | head -1 | cut -d'"' -f4)
+        CHECKSUMS_URL=$(echo "${RELEASE_JSON}" | tr ',' '\n' | grep -F '"browser_download_url"' | grep -F 'checksums.txt' | head -1 | cut -d'"' -f4)
         CHECKSUMS_FILE="${VERSION_DIR}/checksums.txt"
 
         if [[ -n "${CHECKSUMS_URL}" ]]; then
