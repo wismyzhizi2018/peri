@@ -279,9 +279,9 @@ impl SetupWizardPanel {
         }
     }
 
-    /// 粘贴文本到当前聚焦的字段
+    /// 粘贴文本到当前聚焦的字段（仅保留第一行）
     pub fn paste_text(&mut self, text: &str) {
-        let text = text.replace('\n', "");
+        let text = text.lines().next().unwrap_or("");
         if self.step != SetupStep::Form || self.form_mode != FormMode::Edit {
             return;
         }
@@ -331,6 +331,8 @@ impl SetupWizardPanel {
     /// - `OPENAI_` / `CODEX_` → OpenAI Compatible provider
     ///
     /// 同步字段：API_KEY、BASE_URL、DEFAULT_OPUS/SONNET/HAIKU_MODEL
+    ///
+    /// CODEX 前缀使用与 OPENAI 相同的默认 provider_id（"openai"）和 key 名检测逻辑。
     pub fn migrate_from_claude_code(&mut self) -> bool {
         let claude_dir = dirs_next::home_dir()
             .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -367,6 +369,12 @@ impl SetupWizardPanel {
                 ProviderType::OpenAiCompatible,
                 "openai",
                 &["OPENAI_API_KEY"],
+            ),
+            (
+                "CODEX",
+                ProviderType::OpenAiCompatible,
+                "openai",
+                &["CODEX_API_KEY"],
             ),
         ];
 
@@ -442,18 +450,27 @@ impl SetupWizardPanel {
     }
 }
 
-/// 从 env JSON 对象中读取字符串值，不存在或非字符串返回空串
+/// 从 env JSON 对象中读取字符串值，不存在或非字符串返回空串并告警
 fn env_get(env: &serde_json::Map<String, serde_json::Value>, key: &str) -> String {
-    env.get(key)
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string()
+    match env.get(key) {
+        Some(v) if v.is_string() => v.as_str().unwrap_or("").to_string(),
+        Some(v) => {
+            tracing::warn!(
+                "setup wizard: env key '{}' has non-string value (type {:?}), skipping",
+                key,
+                v
+            );
+            String::new()
+        }
+        None => String::new(),
+    }
 }
 
 /// 在光标位置插入字符串并移动光标
 fn insert_at_cursor(buf: &mut String, cursor: &mut usize, text: &str) {
-    if *cursor > buf.len() {
-        *cursor = buf.len();
+    let char_count = buf.chars().count();
+    if *cursor > char_count {
+        *cursor = char_count;
     }
     let byte_pos = buf
         .char_indices()
@@ -470,6 +487,10 @@ pub fn needs_setup(config: &crate::config::types::AppConfig) -> bool {
         return true;
     }
     for provider in &config.providers {
+        if provider.id.trim().is_empty() {
+            // provider_id 缺失 → 配置不完整
+            return true;
+        }
         if provider.api_key.is_empty() {
             let key_env = match provider.provider_type.as_str() {
                 "anthropic" => "ANTHROPIC_API_KEY",
@@ -509,6 +530,10 @@ fn handle_step_choose(
     input: tui_textarea::Input,
 ) -> Option<SetupWizardAction> {
     use tui_textarea::Key;
+    debug_assert!(
+        !SetupSource::ALL.is_empty(),
+        "SetupSource::ALL must not be empty"
+    );
     match input {
         tui_textarea::Input { key: Key::Up, .. } => {
             wizard.choose_cursor =
@@ -559,6 +584,10 @@ fn handle_step_language(
     input: tui_textarea::Input,
 ) -> Option<SetupWizardAction> {
     use tui_textarea::Key;
+    debug_assert!(
+        !LANGUAGE_OPTIONS.is_empty(),
+        "LANGUAGE_OPTIONS must not be empty"
+    );
     match input {
         tui_textarea::Input { key: Key::Up, .. } => {
             wizard.language_cursor =
@@ -687,10 +716,16 @@ fn handle_edit(
             wizard.form_focus = wizard.form_focus.next();
             Some(SetupWizardAction::Redraw)
         }
-        // ←/→: ProviderType 切换或文本光标移动
-        tui_textarea::Input { key: Key::Left, .. }
+        // ←/→: ProviderType 切换或文本光标移动（忽略 Ctrl 修饰）
+        tui_textarea::Input {
+            key: Key::Left,
+            ctrl: false,
+            ..
+        }
         | tui_textarea::Input {
-            key: Key::Right, ..
+            key: Key::Right,
+            ctrl: false,
+            ..
         } => {
             if wizard.form_focus == FormField::ProviderType {
                 let mp = &mut wizard.providers[wizard.active_provider];
@@ -731,13 +766,22 @@ fn handle_edit(
                 None
             }
         }
-        // Enter: Confirm 返回 Browse，其他字段无操作
+        // Enter: Confirm 返回 Browse（校验字段完整性）
         tui_textarea::Input {
             key: Key::Enter, ..
         } => {
             if wizard.form_focus == FormField::Confirm {
-                wizard.form_mode = FormMode::Browse;
-                Some(SetupWizardAction::Redraw)
+                let mp = &wizard.providers[wizard.active_provider];
+                if !mp.provider_id.trim().is_empty()
+                    && !mp.api_key.trim().is_empty()
+                    && mp.aliases.iter().all(|a| !a.model_id.trim().is_empty())
+                {
+                    wizard.form_mode = FormMode::Browse;
+                    Some(SetupWizardAction::Redraw)
+                } else {
+                    // 不完整时暂不显示错误（Submit 阶段兜底），仅保持在 Edit 模式
+                    Some(SetupWizardAction::Redraw)
+                }
             } else {
                 None
             }

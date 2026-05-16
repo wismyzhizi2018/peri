@@ -196,6 +196,7 @@ setup-complete-title =  ── 设置完成 ✓
 setup-press-enter = 按
 setup-to-start = 开始使用
 setup-no-key = (无密钥)
+setup-no-providers = 未配置任何 Provider，请选择"Custom API"或从 Claude Code 导入。
 
 setup-language-title = ── Peri 设置 ── 语言
 setup-language-prompt = 选择界面语言：

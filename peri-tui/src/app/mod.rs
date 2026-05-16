@@ -642,7 +642,8 @@ pub fn handle_edit_key(buf: &mut String, cursor: &mut usize, input: tui_textarea
             key: Key::Backspace,
             ..
         } => {
-            if *cursor > 0 && *cursor <= buf.len() {
+            let char_count = buf.chars().count();
+            if *cursor > 0 && *cursor <= char_count {
                 let byte_pos = buf.char_indices().nth(*cursor - 1).map(|(i, _)| i);
                 let next_byte = buf
                     .char_indices()
@@ -660,7 +661,8 @@ pub fn handle_edit_key(buf: &mut String, cursor: &mut usize, input: tui_textarea
         tui_textarea::Input {
             key: Key::Delete, ..
         } => {
-            if *cursor < buf.len() {
+            let char_count = buf.chars().count();
+            if *cursor < char_count {
                 let byte_pos = buf.char_indices().nth(*cursor).map(|(i, _)| i);
                 let next_byte = buf
                     .char_indices()

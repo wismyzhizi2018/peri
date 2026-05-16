@@ -356,8 +356,21 @@ fn test_edit_confirm_returns_to_browse() {
     wizard.step = SetupStep::Form;
     wizard.form_mode = FormMode::Edit;
     wizard.form_focus = FormField::Confirm;
+    // 填写必要字段
+    wizard.providers[0].api_key = "sk-test".to_string();
     let _ = handle_setup_wizard_key(&mut wizard, make_key(Key::Enter));
     assert_eq!(wizard.form_mode, FormMode::Browse);
+}
+
+#[test]
+fn test_edit_confirm_stays_in_edit_when_incomplete() {
+    let mut wizard = SetupWizardPanel::new();
+    wizard.step = SetupStep::Form;
+    wizard.form_mode = FormMode::Edit;
+    wizard.form_focus = FormField::Confirm;
+    // api_key 为空 → 不完整，保持在 Edit 模式
+    let _ = handle_setup_wizard_key(&mut wizard, make_key(Key::Enter));
+    assert_eq!(wizard.form_mode, FormMode::Edit);
 }
 
 #[test]

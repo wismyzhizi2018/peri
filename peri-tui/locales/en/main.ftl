@@ -197,6 +197,7 @@ setup-complete-title =  ── Setup Complete ✓
 setup-press-enter = Press
 setup-to-start = to start using
 setup-no-key = (no key)
+setup-no-providers = No providers configured. Add one by selecting "Custom API" or importing from Claude Code.
 
 setup-language-title = ── Peri Setup ── Language
 setup-language-prompt = Choose your interface language:

@@ -171,6 +171,14 @@ fn render_form_browse(
 
     let submit_pos = wizard.providers.len();
 
+    if wizard.providers.is_empty() {
+        lines.push(Line::from(Span::styled(
+            lc.tr("setup-no-providers"),
+            Style::default().fg(theme::MUTED),
+        )));
+        lines.push(Line::from(""));
+    }
+
     for (idx, mp) in wizard.providers.iter().enumerate() {
         let is_cursor = idx == wizard.browse_cursor;
         let cursor = if is_cursor { "❯" } else { " " };
