@@ -91,11 +91,11 @@ fn render_step_choose(
 fn render_step_language(
     f: &mut Frame,
     wizard: &SetupWizardPanel,
-    _lc: &crate::i18n::LcRegistry,
+    lc: &crate::i18n::LcRegistry,
     area: Rect,
 ) {
     let inner = BorderedPanel::new(Span::styled(
-        "── Peri Setup ── Language / 语言",
+        lc.tr("setup-language-title"),
         Style::default()
             .fg(theme::ACCENT)
             .add_modifier(Modifier::BOLD),
@@ -106,7 +106,7 @@ fn render_step_language(
     let mut lines: Vec<Line> = vec![
         Line::from(""),
         Line::from(Span::styled(
-            "Choose your language / 选择语言：",
+            lc.tr("setup-language-prompt"),
             Style::default().fg(theme::MUTED),
         )),
         Line::from(""),
@@ -131,12 +131,9 @@ fn render_step_language(
 
     lines.push(Line::from(""));
     lines.push(make_hint_line(vec![
-        ("Enter".to_string(), ":Confirm / 确认".to_string()),
-        (
-            "\u{2191}/\u{2193}".to_string(),
-            ":Select / 选择".to_string(),
-        ),
-        ("Esc".to_string(), ":Quit / 退出".to_string()),
+        ("Enter".to_string(), lc.tr("setup-key-confirm")),
+        ("\u{2191}/\u{2193}".to_string(), lc.tr("setup-key-select")),
+        ("Esc".to_string(), lc.tr("setup-key-quit")),
     ]));
 
     f.render_widget(Paragraph::new(Text::from(lines)), inner);
