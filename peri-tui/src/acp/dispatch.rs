@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
 use agent_client_protocol::schema::{
-    ClientNotification, CloseSessionRequest, CloseSessionResponse, ConfigOptionUpdate,
-    ContentBlock, CurrentModeUpdate, ForkSessionRequest, ForkSessionResponse, ListSessionsRequest,
-    ListSessionsResponse, LoadSessionRequest, LoadSessionResponse, ModelId, ModelInfo,
-    NewSessionRequest, NewSessionResponse, Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus,
-    PromptRequest, PromptResponse, SessionConfigId, SessionConfigKind, SessionConfigOptionCategory,
+    AuthenticateRequest, AuthenticateResponse, ClientNotification, CloseSessionRequest,
+    CloseSessionResponse, ConfigOptionUpdate, ContentBlock, CurrentModeUpdate, ForkSessionRequest,
+    ForkSessionResponse, ListSessionsRequest, ListSessionsResponse, LoadSessionRequest,
+    LoadSessionResponse, LogoutRequest, LogoutResponse, ModelId, ModelInfo, NewSessionRequest,
+    NewSessionResponse, Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus, PromptRequest,
+    PromptResponse, SessionConfigId, SessionConfigKind, SessionConfigOptionCategory,
     SessionConfigOptionValue, SessionConfigSelect, SessionConfigSelectOption, SessionConfigValueId,
     SessionId, SessionInfo, SessionMode, SessionModeId, SessionModeState, SessionModelState,
     SessionNotification, SessionUpdate, SetSessionConfigOptionRequest,
@@ -953,6 +954,30 @@ fn truncate_str(s: &str, max_len: usize) -> String {
         let boundary = s.floor_char_boundary(max_len);
         format!("{}...", &s[..boundary])
     }
+}
+
+// ─── authenticate handler ────────────────────────────────────────────────────
+
+pub async fn handle_authenticate(
+    req: AuthenticateRequest,
+    responder: agent_client_protocol::Responder<AuthenticateResponse>,
+    _conn: ConnectionTo<Client>,
+) -> Result<(), agent_client_protocol::Error> {
+    tracing::info!(method_id = %req.method_id, "ACP authenticate request");
+    let _ = responder.respond(AuthenticateResponse::new());
+    Ok(())
+}
+
+// ─── logout handler ──────────────────────────────────────────────────────────
+
+pub async fn handle_logout(
+    _req: LogoutRequest,
+    responder: agent_client_protocol::Responder<LogoutResponse>,
+    _conn: ConnectionTo<Client>,
+) -> Result<(), agent_client_protocol::Error> {
+    tracing::info!("ACP logout request");
+    let _ = responder.respond(LogoutResponse::new());
+    Ok(())
 }
 
 // ─── dispatch handler（通知 + 未匹配请求）────────────────────────────────────

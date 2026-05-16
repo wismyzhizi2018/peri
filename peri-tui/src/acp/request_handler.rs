@@ -1,5 +1,6 @@
 use agent_client_protocol::schema::{
-    AgentCapabilities, Implementation, InitializeRequest, InitializeResponse,
+    AgentAuthCapabilities, AgentCapabilities, Implementation, InitializeRequest,
+    InitializeResponse, LogoutCapabilities,
 };
 use agent_client_protocol::{Client, ConnectionTo, Responder};
 
@@ -14,6 +15,7 @@ pub async fn handle_initialize(
     caps.session_capabilities.close = Some(Default::default());
     caps.session_capabilities.list = Some(Default::default());
     caps.session_capabilities.resume = Some(Default::default());
+    caps.auth = AgentAuthCapabilities::default().logout(LogoutCapabilities::default());
 
     let agent_info = Implementation::new("peri", env!("CARGO_PKG_VERSION")).title("Peri Agent");
 

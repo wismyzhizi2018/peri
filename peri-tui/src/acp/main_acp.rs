@@ -70,6 +70,8 @@ pub async fn run_acp_mode(
         .on_receive_request(dispatch::handle_set_config_option, on_receive_request!())
         .on_receive_request(dispatch::handle_set_model, on_receive_request!())
         .on_receive_request(dispatch::handle_fork_session, on_receive_request!())
+        .on_receive_request(dispatch::handle_authenticate, on_receive_request!())
+        .on_receive_request(dispatch::handle_logout, on_receive_request!())
         .on_receive_dispatch(dispatch::handle_dispatch, on_receive_dispatch!())
         .connect_to(Stdio::new())
         .await
