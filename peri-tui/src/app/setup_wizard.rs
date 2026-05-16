@@ -681,7 +681,7 @@ fn handle_edit(
             if wizard.form_focus == FormField::ProviderType {
                 let mp = &mut wizard.providers[wizard.active_provider];
                 mp.provider_type.cycle();
-                mp.refresh_provider_defaults();
+                // 仅切换类型，不覆盖用户已输入的其他字段
                 Some(SetupWizardAction::Redraw)
             } else if wizard.form_focus.is_text_input() {
                 let mp = &mut wizard.providers[wizard.active_provider];
@@ -695,7 +695,7 @@ fn handle_edit(
                 None
             }
         }
-        // Space: ProviderType 切换或文本输入
+        // Space: ProviderType 切换（仅切换类型枚举）
         tui_textarea::Input {
             key: Key::Char(' '),
             ..
@@ -703,7 +703,7 @@ fn handle_edit(
             if wizard.form_focus == FormField::ProviderType {
                 let mp = &mut wizard.providers[wizard.active_provider];
                 mp.provider_type.cycle();
-                mp.refresh_provider_defaults();
+                // 仅切换类型，不覆盖用户已输入的其他字段
                 Some(SetupWizardAction::Redraw)
             } else if wizard.form_focus.is_text_input() {
                 let mp = &mut wizard.providers[wizard.active_provider];
@@ -786,11 +786,8 @@ fn handle_step_done(
     }
 }
 
-/// 将 setup wizard 结果写入指定路径
-pub fn save_setup_to(
-    wizard: &SetupWizardPanel,
-    path: &std::path::Path,
-) -> anyhow::Result<crate::config::PeriConfig> {
+/// 从 wizard 数据构建 PeriConfig（纯数据转换，无磁盘 I/O）
+pub fn build_wizard_config(wizard: &SetupWizardPanel) -> crate::config::PeriConfig {
     let mut cfg = crate::config::PeriConfig::default();
     let mut first_id = String::new();
 
@@ -825,39 +822,53 @@ pub fn save_setup_to(
     }
 
     cfg.config.language = Some(wizard.language.clone());
+    cfg
+}
 
-    let content = serde_json::to_string_pretty(&cfg)?;
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::fs::write(path, content)?;
+/// 将 setup wizard 结果写入指定路径
+pub fn save_setup_to(
+    wizard: &SetupWizardPanel,
+    path: &std::path::Path,
+) -> anyhow::Result<crate::config::PeriConfig> {
+    let cfg = build_wizard_config(wizard);
+    crate::config::store::save_to(&cfg, path)?;
     Ok(cfg)
 }
 
-/// 将 setup wizard 结果写入默认配置路径
+/// 将 setup wizard 结果合并到已有配置并保存。
+///
+/// 先加载现有 `~/.peri/settings.json`（保留 skills_dir/thinking/env 等非 provider 字段），
+/// 再将 wizard 中选中的 provider 追加到 providers 列表（按 id 去重），更新
+/// active_alias / active_provider_id / language，最后保存。
 pub fn save_setup(wizard: &SetupWizardPanel) -> anyhow::Result<crate::config::PeriConfig> {
-    let path = crate::config::store::config_path();
-    let cfg = save_setup_to(wizard, &path)?;
+    // 先加载已有配置，保留所有非 provider 字段
+    let mut merged = crate::config::load().unwrap_or_else(|_| crate::config::PeriConfig::default());
 
-    if let Ok(existing) = crate::config::load() {
-        let mut merged = existing;
-        for new_provider in &cfg.config.providers {
-            if !merged
-                .config
-                .providers
-                .iter()
-                .any(|p| p.id == new_provider.id)
-            {
-                merged.config.providers.push(new_provider.clone());
-            }
+    let wizard_cfg = build_wizard_config(wizard);
+
+    // 追加 wizard 中选中的 provider（按 id 去重）
+    for new_provider in &wizard_cfg.config.providers {
+        if !merged
+            .config
+            .providers
+            .iter()
+            .any(|p| p.id == new_provider.id)
+        {
+            merged.config.providers.push(new_provider.clone());
         }
-        merged.config.active_alias = cfg.config.active_alias;
-        merged.config.active_provider_id = cfg.config.active_provider_id;
-        crate::config::save(&merged)?;
-        return Ok(merged);
     }
 
-    Ok(cfg)
+    if !wizard_cfg.config.active_provider_id.is_empty() {
+        merged.config.active_alias = wizard_cfg.config.active_alias;
+        merged.config.active_provider_id = wizard_cfg.config.active_provider_id;
+    }
+
+    if let Some(lang) = wizard_cfg.config.language {
+        merged.config.language = Some(lang);
+    }
+
+    crate::config::save(&merged)?;
+    Ok(merged)
 }
 
 #[cfg(test)]
