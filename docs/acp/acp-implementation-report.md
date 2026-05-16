@@ -655,3 +655,18 @@ ACP Client 可通过 `session/set_config_option` 配置：
 | 多会话 | DashMap + CancellationToken（每会话独立取消） |
 | 配置项 | 3 种（mode / model / thinking_effort） |
 | 测试 | 2 个序列化测试（覆盖率偏低） |
+
+### 2026-05-16 更新
+
+**Agent 构建已统一**：`agent.rs:build_bare_agent()` 为 TUI 和 ACP 的唯一构建入口。`agent_assembler.rs` 已简化为薄封装（180 行 → 70 行），直接调用 `build_bare_agent()`。
+
+**事件映射已对齐**：
+- `LlmCallEnd` → `UsageUpdate`（token 消耗可见）
+- `ContextWarning` → `UsageUpdate`（上下文溢出预警）
+- `LlmRetrying` → `SessionInfoUpdate`（重试状态可见）
+- `ToolCall` 补全 `raw_input`/`raw_output` 字段
+- `ToolKind` 细化：`WebFetch`/`WebSearch` → `Fetch`
+- `StopReason` 精确映射：`MaxIterationsExceeded` → `MaxTurnRequests`
+- `context_window` 从 model 获取（含 `context_1m` 覆盖），不再硬编码
+- `set_mode`/`set_model`/`set_config_option` 后主动下发 `CurrentModeUpdate`/`ConfigOptionUpdate` 通知
+- ACP 路径自动获得完整中间件栈：`WebMiddleware`、`McpMiddleware`、`ToolSearchMiddleware`、`context_budget`、`compact_config`

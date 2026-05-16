@@ -264,10 +264,18 @@ enum StopReason {
 
 ```
 稳定方法实现:  ██████████░  10/11 (91%)  ← authenticate 是唯一缺口
-SessionUpdate: █████░░░░░░   5/11 (45%)  ← Usage/Mode/Config/Commands/SessionInfo 缺失
-字段完整性:    ████░░░░░░   核心 OK，raw + locations 缺
+SessionUpdate: █████████░░   8/11 (73%)  ← AvailableCommands/SessionInfo 缺失
+字段完整性:    ████████░░   raw_input/raw_output 已补，locations 缺
 能力声明:      ███░░░░░░░   漏声明 fork/models/config
-StopReason:    ██░░░░░░░░   只映射了 EndTurn/Cancelled
+StopReason:    ████████░░   已补 MaxIterationsExceeded→MaxTurnRequests
 ```
+
+**2026-05-16 修复后更新**：
+- SessionUpdate: 5/11 → 8/11（新增 UsageUpdate、CurrentModeUpdate、ConfigOptionUpdate、AgentThoughtChunk+AgentMessageChunk 已经正常）
+- ToolCall 字段：`raw_input`/`raw_output` 已补
+- StopReason：`MaxIterationsExceeded` → `MaxTurnRequests` 已修复
+- `context_window` 从 model 获取（含 `context_1m` 覆盖），不再硬编码
+- Agent 构建：`build_bare_agent()` 统一 TUI/ACP 入口
+- 仍缺失：`authenticate`、`AvailableCommandsUpdate`、`locations`、能力声明
 
 **最大缺口不是方法数量，而是运行时的通知丰富度**——IDE 客户端看不到 token 消耗、模式变更、配置更新、命令列表。这些直接决定 Cursor 等 IDE 中的用户交互体验。

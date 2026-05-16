@@ -191,8 +191,8 @@ Client                            Agent (perihelion)
 |------|------|------|
 | 协议方法实现 | 9/10 | 11 个 session 方法实现了 10 个，缺少 `authenticate` |
 | 核心事件映射 | 4/5 | Text/ToolStart/ToolEnd/Reasoning 全部映射 |
-| 辅助事件映射 | 1/6 | Plan 映射了，Usage/Mode/Config/SessionInfo/Commands 缺失 |
-| 字段完整性 | 2/5 | 核心字段 OK，raw_input/raw_output/locations 缺失 |
+| 辅助事件映射 | ~~1/6~~ **4/6** | Usage/Mode/Config/SessionInfo 已修复，Commands/AvailableCommands 仍缺失 |
+| 字段完整性 | ~~2/5~~ **4/5** | raw_input/raw_output 已补，locations 仍缺 |
 | 生命周期正确性 | ✅ | Pending→InProgress→Completed/Failed 状态机正确 |
 
-**综合评分：60/100** — 核心流程完备，但辅助事件和字段细节缺失较多。
+**评分更新：60/100 → 85/100**（2026-05-16 修复后）
