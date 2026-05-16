@@ -200,10 +200,94 @@ fn fill_load_session_resp(
 
 // ─── session/new handler ─────────────────────────────────────────────────────
 
+/// Build the list of available slash commands for AvailableCommandsUpdate.
+fn build_available_commands() -> Vec<agent_client_protocol::schema::AvailableCommand> {
+    vec![
+        agent_client_protocol::schema::AvailableCommand::new(
+            "help",
+            "Show available commands and their descriptions",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "clear",
+            "Clear the conversation history",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "compact",
+            "Compress conversation context to save tokens",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "cost",
+            "Show token usage and cost summary",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "context",
+            "Show context window usage statistics",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new("model", "Switch the active AI model"),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "doctor",
+            "Diagnose configuration and connectivity issues",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "mcp",
+            "Manage MCP (Model Context Protocol) servers",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new("plugin", "Manage plugins"),
+        agent_client_protocol::schema::AvailableCommand::new("hooks", "Manage hooks"),
+        agent_client_protocol::schema::AvailableCommand::new("exit", "Exit the application"),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "agents",
+            "List available agent configurations",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "history",
+            "View conversation history",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "loop",
+            "Toggle auto-continue loop mode",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new("cron", "Manage scheduled tasks"),
+        agent_client_protocol::schema::AvailableCommand::new("memory", "View or edit agent memory"),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "split",
+            "Split current session into a new one",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "effort",
+            "Set thinking/reasoning effort level",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "rename",
+            "Rename the current session",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "login",
+            "Configure API provider authentication",
+        ),
+        agent_client_protocol::schema::AvailableCommand::new("lang", "Switch display language"),
+        agent_client_protocol::schema::AvailableCommand::new("setup", "Run initial setup wizard"),
+        agent_client_protocol::schema::AvailableCommand::new(
+            "config",
+            "View or edit configuration",
+        ),
+    ]
+}
+
+/// Send AvailableCommandsUpdate notification for a session.
+fn send_available_commands(conn: &ConnectionTo<Client>, session_id: &SessionId) {
+    let update =
+        agent_client_protocol::schema::AvailableCommandsUpdate::new(build_available_commands());
+    let _ = conn.send_notification(SessionNotification::new(
+        session_id.clone(),
+        SessionUpdate::AvailableCommandsUpdate(update),
+    ));
+}
+
 pub async fn handle_new_session(
     req: NewSessionRequest,
     responder: agent_client_protocol::Responder<NewSessionResponse>,
-    _conn: ConnectionTo<Client>,
+    conn: ConnectionTo<Client>,
 ) -> Result<(), agent_client_protocol::Error> {
     let cwd = req.cwd.to_string_lossy().to_string();
 
@@ -215,6 +299,10 @@ pub async fn handle_new_session(
                 .unwrap_or_else(|| NewSessionResponse::new(session_id.clone()));
 
             let _ = responder.respond(resp);
+
+            // Send available commands after session creation
+            let sid = SessionId::new(session_id.clone());
+            send_available_commands(&conn, &sid);
         }
         Err(e) => {
             tracing::error!("Failed to create session: {e}");
@@ -517,6 +605,10 @@ pub async fn handle_load_session(
         .unwrap_or_default();
 
     let _ = responder.respond(resp);
+
+    // Send available commands after session load
+    send_available_commands(&conn, &session_id_acp);
+
     Ok(())
 }
 
@@ -527,7 +619,7 @@ pub async fn handle_resume_session(
     responder: agent_client_protocol::Responder<
         agent_client_protocol::schema::ResumeSessionResponse,
     >,
-    _conn: ConnectionTo<Client>,
+    conn: ConnectionTo<Client>,
 ) -> Result<(), agent_client_protocol::Error> {
     let thread_id_str = req.session_id.0.as_ref().to_string();
     let cwd = req.cwd.to_string_lossy().to_string();
@@ -549,6 +641,10 @@ pub async fn handle_resume_session(
         .unwrap_or_default();
 
     let _ = responder.respond(resp);
+
+    // Send available commands after session resume
+    send_available_commands(&conn, &req.session_id);
+
     Ok(())
 }
 
