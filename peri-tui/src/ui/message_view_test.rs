@@ -172,7 +172,7 @@ fn make_done_subagent(agent_id: &str, task: &str) -> MessageViewModel {
         final_result: Some("done".to_string()),
         is_error: false,
         is_background: false,
-        bg_hash: None,
+        bg_hash: Some("test01".to_string()),
         batch_agents: Vec::new(),
     }
 }
@@ -189,7 +189,7 @@ fn make_running_subagent(agent_id: &str, task: &str) -> MessageViewModel {
         final_result: None,
         is_error: false,
         is_background: false,
-        bg_hash: None,
+        bg_hash: Some("test02".to_string()),
         batch_agents: Vec::new(),
     }
 }
@@ -292,7 +292,7 @@ fn test_aggregate_batch_groups_already_aggregated_skip() {
         final_result: Some("done".to_string()),
         is_error: false,
         is_background: false,
-        bg_hash: None,
+        bg_hash: Some("batch01".to_string()),
         batch_agents: vec![
             AgentSummary {
                 agent_id: "agent-1".to_string(),

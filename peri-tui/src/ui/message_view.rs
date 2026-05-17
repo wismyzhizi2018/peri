@@ -7,6 +7,18 @@ use ratatui::text::Text;
 
 use super::markdown::parse_markdown_default;
 
+/// 从字符串生成短 hash（FNV-1a，6 位十六进制，确定性）。
+///
+/// 用于为每个 Agent 实例生成唯一的显示标识符。
+fn instance_hash(s: &str) -> String {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for byte in s.bytes() {
+        hash ^= byte as u64;
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("{:06x}", hash as u32)
+}
+
 /// 从后台任务结果字符串中解析 task_id 短格式（前 8 位）。
 ///
 /// 输入格式: `"Background task bg-{uuid} started..."`
@@ -364,7 +376,7 @@ pub enum MessageViewModel {
         is_error: bool,
         /// 是否为后台 agent
         is_background: bool,
-        /// 后台任务的短 ID（task_id 前 8 位）
+        /// Agent 实例的短显示标识符（6 位十六进制）
         bg_hash: Option<String>,
         /// 批次汇总信息：空 = 单 agent，非空 = 批次汇总模式
         batch_agents: Vec<AgentSummary>,
@@ -795,11 +807,11 @@ impl MessageViewModel {
                         .collect::<String>();
                     // 检测是否为后台 agent（从 result 字符串检测 "Background task" 前缀）
                     let is_background = raw_content.starts_with("Background task");
-                    // 解析 bg_hash（如果是后台任务）
+                    // 解析 bg_hash（后台任务从 result 解析，前台从 tool_call_id 生成）
                     let bg_hash = if is_background {
                         parse_bg_hash(&raw_content)
                     } else {
-                        None
+                        Some(instance_hash(tool_call_id))
                     };
                     return MessageViewModel::SubAgentGroup {
                         agent_id,

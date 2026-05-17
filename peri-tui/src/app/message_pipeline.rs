@@ -99,6 +99,18 @@ struct CompletedTool {
     is_error: bool,
 }
 
+/// 从字符串生成短 hash（FNV-1a，6 位十六进制，确定性）。
+///
+/// 用于为每个 Agent 实例生成唯一的显示标识符。
+fn instance_hash(s: &str) -> String {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for byte in s.bytes() {
+        hash ^= byte as u64;
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("{:06x}", hash as u32)
+}
+
 /// 从后台任务结果字符串中解析 task_id 短格式（前 8 位）。
 ///
 /// 输入格式: `"Background task bg-{uuid} started..."`
@@ -122,7 +134,7 @@ struct SubAgentState {
     finalized_vm: Option<MessageViewModel>,
     /// 是否为后台 agent
     is_background: bool,
-    /// 后台任务的短 ID（task_id 前 8 位）
+    /// Agent 实例的短显示标识符（6 位十六进制）
     bg_hash: Option<String>,
 }
 
@@ -431,7 +443,7 @@ impl MessagePipeline {
                 is_running: true,
                 finalized_vm: None,
                 is_background,
-                bg_hash: None,
+                bg_hash: Some(instance_hash(tool_call_id)),
             });
             // 批次检测：第一个 agent 创建批次，后续递增
             let stack_depth = self.subagent_stack.len() - 1;
@@ -496,7 +508,7 @@ impl MessagePipeline {
                         final_result: Some(output.to_string()),
                         is_error,
                         is_background: false,
-                        bg_hash: None,
+                        bg_hash: sub.bg_hash.clone(),
                         batch_agents: Vec::new(),
                     };
                     sub.finalized_vm = Some(vm.clone());

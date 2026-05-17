@@ -428,6 +428,7 @@ pub fn render_view_model(
                     ),
                     Span::styled(format!("({})", agent_id), Style::default().fg(theme::MUTED)),
                 ];
+                // 折叠状态显示短 hash
                 if let Some(ref hash) = bg_hash {
                     header_spans.push(Span::styled(
                         format!(" #{}", hash),
@@ -467,6 +468,7 @@ pub fn render_view_model(
                     ),
                     Span::styled(format!("({})", agent_id), Style::default().fg(theme::MUTED)),
                 ];
+                // 展开状态显示短 hash
                 if let Some(ref hash) = bg_hash {
                     header_spans.push(Span::styled(
                         format!(" #{}", hash),
