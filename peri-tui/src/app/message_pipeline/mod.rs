@@ -25,65 +25,24 @@ use peri_agent::messages::{BaseMessage, ToolCallRequest};
 
 use crate::app::events::AgentEvent;
 use crate::app::tool_display;
-use crate::ui::markdown::parse_markdown_default;
-pub use crate::ui::message_view::aggregate_batch_groups;
-use crate::ui::message_view::{
-    aggregate_tool_groups, tool_color, ContentBlockView, MessageViewModel,
-};
+#[allow(unused_imports)]
+use crate::ui::message_view::{aggregate_tool_groups, ContentBlockView, MessageViewModel};
 use crate::ui::theme;
 
-/// 合并冻结的 SubAgentGroup VM 到 reconcile 重建后的新 VMs 中，防止 Done 后 SubAgent 显示退化。
-///
-/// `frozen_vms` 是 SubAgentEnd 时构建的完整 SubAgentGroup VM（含 recent_messages、final_result 等），
-/// 按 `agent_id` 精确匹配替换新 VMs 中的 SubAgentGroup 占位符。
-/// 同一 agent_id（重试场景）取 frozen_vms 中最后一次出现的。
-fn merge_frozen_subagents(frozen_vms: &[MessageViewModel], new_vms: &mut [MessageViewModel]) {
-    if frozen_vms.is_empty() {
-        return;
-    }
+mod reconcile;
+mod transform;
 
-    // 构建 agent_id → frozen VM 映射（后出现的覆盖先出现的——取最终状态）
-    let frozen_by_id: std::collections::HashMap<&str, &MessageViewModel> = frozen_vms
-        .iter()
-        .filter_map(|vm| {
-            if let MessageViewModel::SubAgentGroup { agent_id, .. } = vm {
-                Some((agent_id.as_str(), vm))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    // 按 agent_id 精确匹配替换
-    for vm in new_vms.iter_mut() {
-        if let MessageViewModel::SubAgentGroup { agent_id, .. } = vm {
-            if let Some(frozen) = frozen_by_id.get(agent_id.as_str()) {
-                *vm = (*frozen).clone();
-            }
-        }
-    }
-}
-
-// ─── 管线事件 ────────────────────────────────────────────────────────────────
-
-/// 管线处理事件后的输出动作
-#[derive(Debug)]
-pub enum PipelineAction {
-    /// 无 UI 变化
-    None,
-    /// 新增消息（外部通知 + 用户消息）
-    AddMessage(MessageViewModel),
-    /// 尾部重建（prefix_len 标记不变前缀长度，tail_vms 存储重建尾部）
-    RebuildAll {
-        prefix_len: usize,
-        tail_vms: Vec<MessageViewModel>,
-    },
-}
+pub use crate::ui::message_view::aggregate_batch_groups;
+pub use reconcile::PipelineAction;
+#[allow(unused_imports)]
+pub(crate) use reconcile::{
+    add_thinking_tail_snapshot, extract_tail_lines, merge_frozen_subagents,
+};
 
 // ─── 管线内部状态 ────────────────────────────────────────────────────────────
 
 /// 已开始但未结束的工具调用
-struct PendingTool {
+pub(crate) struct PendingTool {
     #[allow(dead_code)]
     tool_call_id: String,
     name: String,
@@ -91,7 +50,7 @@ struct PendingTool {
 }
 
 /// ToolEnd 后、StateSnapshot 前的工具结果（用于在 reconcile gap 期间显示）
-struct CompletedTool {
+pub(crate) struct CompletedTool {
     tool_call_id: String,
     name: String,
     input: serde_json::Value,
@@ -123,7 +82,7 @@ fn parse_bg_hash(result: &str) -> Option<String> {
 }
 
 /// 活跃 SubAgent 执行状态
-struct SubAgentState {
+pub(crate) struct SubAgentState {
     agent_id: String,
     task_preview: String,
     total_steps: usize,
@@ -694,41 +653,6 @@ impl MessagePipeline {
     }
 
     /// 构建当前流式 AssistantBubble（从 pipeline 流式缓冲区构建完整内容）
-    pub fn build_streaming_bubble(&self) -> MessageViewModel {
-        let mut blocks: Vec<ContentBlockView> = Vec::new();
-        if !self.current_ai_reasoning.is_empty() {
-            blocks.push(ContentBlockView::Reasoning {
-                char_count: self.current_ai_reasoning.chars().count(),
-                text: self.current_ai_reasoning.clone(),
-                tail_lines: None,
-            });
-        }
-        if !self.current_ai_text.trim().is_empty() {
-            let rendered = parse_markdown_default(&self.current_ai_text);
-            let rendered_prefix_lines = rendered.lines.len();
-            blocks.push(ContentBlockView::Text {
-                raw: self.current_ai_text.clone(),
-                rendered,
-                dirty: false,
-                rendered_prefix_len: self.current_ai_text.len(),
-                rendered_prefix_lines,
-            });
-        }
-        // 追加当前 AI 消息中已完成的 tool_use blocks（不含 pending tools）
-        for tc in &self.current_ai_tool_calls {
-            if !self.pending_tools.contains_key(&tc.id) {
-                blocks.push(ContentBlockView::ToolUse {
-                    name: tc.name.clone(),
-                });
-            }
-        }
-        MessageViewModel::AssistantBubble {
-            blocks,
-            is_streaming: true,
-            collapsed: false,
-        }
-    }
-
     // ── 轮次管理 ──────────────────────────────────────────────────────────────
 
     /// 标记新一轮对话开始。由 submit_message() 调用。
@@ -763,155 +687,13 @@ impl MessagePipeline {
         None
     }
 
-    // ── RebuildAll 构造 ───────────────────────────────────────────────────────
-
-    /// 构造 RebuildAll action：从 pipeline 规范状态重建尾部 VMs。
-    pub fn build_rebuild_all(&self, prefix_len: usize) -> PipelineAction {
-        let tail_vms = self.build_tail_vms();
-        PipelineAction::RebuildAll {
-            prefix_len,
-            tail_vms,
-        }
-    }
-
-    /// 从 pipeline 规范状态构建尾部 VMs。
-    ///
-    /// 两种情况：
-    /// - has_snapshot_this_round == true：从 completed[last_human..] reconcile + streaming + pending tools
-    /// - has_snapshot_this_round == false（Case 1）：跳过 reconcile，只输出 streaming + pending tools
-    fn build_tail_vms(&self) -> Vec<MessageViewModel> {
-        let mut tail_vms = Vec::new();
-
-        if self.has_snapshot_this_round {
-            let start = self.completed_len_at_round_start.min(self.completed.len());
-            let round_completed = &self.completed[start..];
-            let last_human_offset = round_completed
-                .iter()
-                .rposition(|msg| matches!(msg, BaseMessage::Human { .. }))
-                .map(|idx| idx + start)
-                .unwrap_or(start);
-            tail_vms =
-                Self::messages_to_view_models(&self.completed[last_human_offset..], &self.cwd);
-            let reconcile_subagent_count =
-                tail_vms.iter().filter(|vm| vm.is_subagent_group()).count();
-            tracing::debug!(
-                has_snapshot = true,
-                completed_len = self.completed.len(),
-                start_offset = start,
-                last_human_offset,
-                reconcile_total = tail_vms.len(),
-                reconcile_subagent_count,
-                frozen_count = self.frozen_subagent_vms.len(),
-                "[bg-diag] build_tail_vms reconcile"
-            );
-        }
-
-        // 追加流式 AssistantBubble（当前 AI 正在输出的文本）
-        // 必须在工具 blocks 之前：AI 先说文本，再调用工具
-        if self.has_streaming_content() {
-            tail_vms.push(self.build_streaming_bubble());
-        }
-
-        // 追加 pending tool blocks（ToolStart 后、下一个 StateSnapshot 前的工具）
-        // 跳过 Agent 工具（由 subagent_stack 表示为 SubAgentGroup）
-        for tc in &self.current_ai_tool_calls {
-            if let Some(pending) = self.pending_tools.get(&tc.id) {
-                if pending.name != "Agent" {
-                    tail_vms.push(self.build_tool_start_vm(&tc.id, &pending.name, &pending.input));
-                }
-            }
-        }
-
-        // 追加已完成但尚未进入 completed 的工具结果（ToolEnd 后、StateSnapshot 前）
-        for ct in &self.completed_tools {
-            let display = tool_display::format_tool_name(&ct.name);
-            let args = tool_display::format_tool_args(&ct.name, &ct.input, Some(&self.cwd));
-            tail_vms.push(MessageViewModel::ToolBlock {
-                tool_name: ct.name.clone(),
-                tool_call_id: ct.tool_call_id.clone(),
-                display_name: display,
-                args_display: args,
-                content: ct.output.clone(),
-                is_error: ct.is_error,
-                collapsed: true,
-                color: if ct.is_error {
-                    theme::ERROR
-                } else {
-                    tool_color(&ct.name)
-                },
-            });
-        }
-
-        // SubAgentGroup VMs
-        if self.has_snapshot_this_round {
-            // reconcile 已从 completed 生成 SubAgentGroup 占位符，用冻结版本替换
-            // （冻结版本含 recent_messages、final_result 等 richer 信息）
-            merge_frozen_subagents(&self.frozen_subagent_vms, &mut tail_vms);
-            // 追加 subagent_stack 中尚未 frozen 的运行中 SubAgent（reconcile 不生成
-            // 运行中 SubAgent 的 VM，必须手动从 stack 注入，否则在 StateSnapshot 之后
-            // 启动的 SubAgent 卡片不可见）
-            for sub in &self.subagent_stack {
-                if sub.finalized_vm.is_none() {
-                    tail_vms.push(MessageViewModel::SubAgentGroup {
-                        agent_id: sub.agent_id.clone(),
-                        task_preview: sub.task_preview.clone(),
-                        total_steps: sub.total_steps,
-                        recent_messages: sub.recent_messages.clone(),
-                        is_running: sub.is_running,
-                        collapsed: false,
-                        final_result: None,
-                        is_error: false,
-                        is_background: sub.is_background,
-                        bg_hash: sub.bg_hash.clone(),
-                        batch_agents: Vec::new(),
-                    });
-                }
-            }
-        } else {
-            // 无 snapshot 时 reconcile 不执行，直接从 subagent_stack 构建 SubAgentGroup
-            for sub in &self.subagent_stack {
-                let vm = if let Some(ref finalized) = sub.finalized_vm {
-                    finalized.clone()
-                } else {
-                    MessageViewModel::SubAgentGroup {
-                        agent_id: sub.agent_id.clone(),
-                        task_preview: sub.task_preview.clone(),
-                        total_steps: sub.total_steps,
-                        recent_messages: sub.recent_messages.clone(),
-                        is_running: sub.is_running,
-                        collapsed: false,
-                        final_result: None,
-                        is_error: false,
-                        is_background: sub.is_background,
-                        bg_hash: sub.bg_hash.clone(),
-                        batch_agents: Vec::new(),
-                    }
-                };
-                tail_vms.push(vm);
-            }
-        }
-
-        // 聚合相邻只读工具
-        aggregate_tool_groups(&mut tail_vms);
-
-        // 批次聚合：仅在无流式内容时执行（Done 后、轮次结束时）
-        // 流式期间跳过，因为 SubAgentGroup 字段不断变化会导致 hash 不稳定，引发界面跳动
-        if !self.has_streaming_content() && self.current_ai_tool_calls.is_empty() {
-            aggregate_batch_groups(&mut tail_vms);
-        }
-
-        // 后处理：最后一条 AI 消息（无 Text 正文 + 最后 block 是 Reasoning）追加思考尾部预览
-        add_thinking_tail_snapshot(&mut tail_vms);
-
-        tail_vms
-    }
-
     /// 获取已完成的 BaseMessages（用于持久化）
     pub fn completed_messages(&self) -> &[BaseMessage] {
         &self.completed
     }
 
-    /// 追加增量 BaseMessages（StateSnapshot 是增量消息），并清除流式状态防止重复
+    /// 从 pipeline 规范状态构建尾部 VMs。
+    ///
     pub fn set_completed(&mut self, msgs: Vec<BaseMessage>) {
         self.completed.extend(msgs);
         self.current_ai_text.clear();
@@ -932,133 +714,6 @@ impl MessagePipeline {
         self.current_ai_reasoning.clear();
         self.current_ai_tool_calls.clear();
         self.current_ai_finalized = true;
-    }
-
-    // ─── 核心转换函数 ─────────────────────────────────────────────────────
-
-    /// 从规范 BaseMessage[] 构建完整的 MessageViewModel[]。
-    ///
-    /// **这是唯一的转换入口**——流式 reconcile 和历史恢复都调用此函数。
-    pub fn messages_to_view_models(msgs: &[BaseMessage], cwd: &str) -> Vec<MessageViewModel> {
-        let mut vms: Vec<MessageViewModel> = Vec::with_capacity(msgs.len());
-        let mut prev_ai_tool_calls: Vec<(String, String, serde_json::Value)> = Vec::new();
-
-        for msg in msgs {
-            // 维护前一条 Ai 消息的 tool_calls，用于 Tool 消息获取工具名和参数
-            if let BaseMessage::Ai { tool_calls, .. } = msg {
-                prev_ai_tool_calls = tool_calls
-                    .iter()
-                    .map(|tc| (tc.id.clone(), tc.name.clone(), tc.arguments.clone()))
-                    .collect();
-            }
-
-            let vm =
-                MessageViewModel::from_base_message_with_cwd(msg, &prev_ai_tool_calls, Some(cwd));
-
-            // 跳过没有可见文本内容的 AssistantBubble（纯 ToolUse 或空文本 + ToolUse）
-            if let MessageViewModel::AssistantBubble { blocks, .. } = &vm {
-                let has_visible = blocks.iter().any(|b| match b {
-                    ContentBlockView::Text { raw, .. } => !raw.trim().is_empty(),
-                    ContentBlockView::Reasoning { char_count, .. } => *char_count > 0,
-                    ContentBlockView::ToolUse { .. } => false,
-                });
-                if !has_visible {
-                    continue;
-                }
-            }
-
-            vms.push(vm);
-        }
-
-        // 聚合相邻的只读工具调用为 ToolCallGroup
-        aggregate_tool_groups(&mut vms);
-        vms
-    }
-
-    /// Reconcile：从当前 completed 状态重建完整的 view_models。
-    ///
-    /// 在 "finalize 边界"（ToolStart / Done）调用，确保流式最终状态
-    /// 与 restore 路径 `messages_to_view_models()` 完全一致。
-    pub fn reconcile(&self) -> Vec<MessageViewModel> {
-        Self::messages_to_view_models(&self.completed, &self.cwd)
-    }
-
-    // ─── 内部方法 ─────────────────────────────────────────────────────────
-
-    /// Finalize 当前 AI 消息：将流式状态转为 BaseMessage 加入 completed
-    fn finalize_current_ai(&mut self) {
-        if self.current_ai_finalized {
-            return;
-        }
-        let has_content = !self.current_ai_text.trim().is_empty()
-            || !self.current_ai_reasoning.is_empty()
-            || !self.current_ai_tool_calls.is_empty();
-
-        if !has_content {
-            return;
-        }
-
-        // 不清空 current_ai_text/current_ai_reasoning：在 StateSnapshot 到达前，
-        // build_tail_vms() 仍需要这些内容来显示 AI 已输出的文本。
-        // set_completed() 到达时会清空它们。
-        // 保留 tool_calls 信息给后续 reconcile 使用
-        self.current_ai_finalized = true;
-    }
-
-    /// 构建 ToolStart 的 ToolBlock VM（与 from_base_message_with_cwd 的 Tool 路径一致）
-    fn build_tool_start_vm(
-        &self,
-        tool_call_id: &str,
-        name: &str,
-        input: &serde_json::Value,
-    ) -> MessageViewModel {
-        let display_name = tool_display::format_tool_name(name);
-        let args_display = tool_display::format_tool_args(name, input, Some(&self.cwd));
-        MessageViewModel::ToolBlock {
-            tool_name: name.to_string(),
-            tool_call_id: tool_call_id.to_string(),
-            display_name,
-            args_display,
-            content: String::new(),
-            is_error: false,
-            collapsed: true,
-            color: tool_color(name),
-        }
-    }
-}
-
-/// 提取文本的最后 `n` 行（按换行符切分，单行不截断）。
-/// 返回换行分隔的字符串。
-fn extract_tail_lines(text: &str, n: usize) -> String {
-    let lines: Vec<&str> = text.lines().collect();
-    let start = lines.len().saturating_sub(n);
-    lines[start..].join("\n")
-}
-
-/// 扫描 tail_vms 的最后一个 AssistantBubble，
-/// 若满足条件（无 Text block + 最后一个 block 是 Reasoning）则设置 tail_lines。
-fn add_thinking_tail_snapshot(tail_vms: &mut [MessageViewModel]) {
-    for vm in tail_vms.iter_mut().rev() {
-        if let MessageViewModel::AssistantBubble { blocks, .. } = vm {
-            // 条件 1：没有任何 ContentBlockView::Text block（允许空的 Text block）
-            let has_text = blocks
-                .iter()
-                .any(|b| matches!(b, ContentBlockView::Text { raw, .. } if !raw.trim().is_empty()));
-            if has_text {
-                return;
-            }
-            // 条件 2：最后一个 block 是 Reasoning
-            if let Some(ContentBlockView::Reasoning {
-                text, tail_lines, ..
-            }) = blocks.last_mut()
-            {
-                let tail = extract_tail_lines(text, 1);
-                if !tail.is_empty() {
-                    *tail_lines = Some(tail);
-                }
-            }
-            return;
-        }
     }
 }
 

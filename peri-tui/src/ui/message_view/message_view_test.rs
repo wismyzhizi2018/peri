@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::message_view::ContentBlockView;
 use peri_agent::messages::{MessageContent, ToolCallRequest};
 use serde_json::json;
 
