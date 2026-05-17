@@ -1,5 +1,5 @@
-use super::Command;
 use crate::app::App;
+use crate::command::Command;
 use crate::config::ThinkingConfig;
 use crate::ui::message_view::MessageViewModel;
 

@@ -1,18 +1,18 @@
-use super::Command;
 use crate::app::App;
+use crate::command::Command;
 
-pub struct CronCommand;
+pub struct MemoryCommand;
 
-impl Command for CronCommand {
+impl Command for MemoryCommand {
     fn name(&self) -> &str {
-        "cron"
+        "memory"
     }
 
     fn description(&self, _lc: &crate::i18n::LcRegistry) -> String {
-        _lc.tr("command-cron-description")
+        _lc.tr("command-memory-description")
     }
 
     fn execute(&self, app: &mut App, _args: &str) {
-        app.open_cron_panel();
+        app.open_memory_panel();
     }
 }

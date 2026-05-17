@@ -1,16 +1,18 @@
-use super::Command;
 use crate::app::App;
+use crate::command::Command;
 
-pub struct PluginCommand;
+pub struct CronCommand;
 
-impl Command for PluginCommand {
+impl Command for CronCommand {
     fn name(&self) -> &str {
-        "plugin"
+        "cron"
     }
+
     fn description(&self, _lc: &crate::i18n::LcRegistry) -> String {
-        _lc.tr("command-plugin-description")
+        _lc.tr("command-cron-description")
     }
+
     fn execute(&self, app: &mut App, _args: &str) {
-        app.open_plugin_panel();
+        app.open_cron_panel();
     }
 }

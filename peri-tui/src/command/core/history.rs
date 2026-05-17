@@ -1,27 +1,31 @@
-use super::Command;
 use crate::app::{App, MessageViewModel};
+use crate::command::Command;
 
-pub struct CompactCommand;
+pub struct HistoryCommand;
 
-impl Command for CompactCommand {
+impl Command for HistoryCommand {
     fn name(&self) -> &str {
-        "compact"
+        "history"
     }
 
     fn description(&self, _lc: &crate::i18n::LcRegistry) -> String {
-        _lc.tr("command-compact-description")
+        _lc.tr("command-history-description")
     }
 
-    fn execute(&self, app: &mut App, args: &str) {
+    fn aliases(&self) -> Vec<&str> {
+        vec!["resume"]
+    }
+
+    fn execute(&self, app: &mut App, _args: &str) {
         if app.session_mgr.sessions[app.session_mgr.active].ui.loading {
             app.session_mgr.sessions[app.session_mgr.active]
                 .messages
                 .view_messages
                 .push(MessageViewModel::system(
-                    "Agent 运行中，无法执行压缩".to_string(),
+                    "Agent 运行中，无法打开历史面板".to_string(),
                 ));
             return;
         }
-        app.start_compact(args.to_string());
+        app.open_thread_browser();
     }
 }

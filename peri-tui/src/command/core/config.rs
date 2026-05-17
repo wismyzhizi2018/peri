@@ -1,5 +1,5 @@
-use super::Command;
 use crate::app::App;
+use crate::command::Command;
 
 pub struct ConfigCommand;
 

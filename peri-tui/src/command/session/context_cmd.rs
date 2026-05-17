@@ -1,6 +1,6 @@
-use super::Command;
 use crate::app::status_panel::STATUS_TAB_CONTEXT;
 use crate::app::App;
+use crate::command::Command;
 
 pub struct ContextCommand;
 

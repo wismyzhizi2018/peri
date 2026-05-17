@@ -1,5 +1,5 @@
-use super::Command;
 use crate::app::App;
+use crate::command::Command;
 use crate::ui::message_view::MessageViewModel;
 
 pub struct DoctorCommand;

@@ -1,18 +1,18 @@
-use super::Command;
 use crate::app::App;
+use crate::command::Command;
 
-pub struct MemoryCommand;
+pub struct McpCommand;
 
-impl Command for MemoryCommand {
+impl Command for McpCommand {
     fn name(&self) -> &str {
-        "memory"
+        "mcp"
     }
 
     fn description(&self, _lc: &crate::i18n::LcRegistry) -> String {
-        _lc.tr("command-memory-description")
+        _lc.tr("command-mcp-description")
     }
 
     fn execute(&self, app: &mut App, _args: &str) {
-        app.open_memory_panel();
+        app.open_mcp_panel();
     }
 }

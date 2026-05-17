@@ -1,18 +1,16 @@
-use super::Command;
 use crate::app::App;
+use crate::command::Command;
 
-pub struct McpCommand;
+pub struct PluginCommand;
 
-impl Command for McpCommand {
+impl Command for PluginCommand {
     fn name(&self) -> &str {
-        "mcp"
+        "plugin"
     }
-
     fn description(&self, _lc: &crate::i18n::LcRegistry) -> String {
-        _lc.tr("command-mcp-description")
+        _lc.tr("command-plugin-description")
     }
-
     fn execute(&self, app: &mut App, _args: &str) {
-        app.open_mcp_panel();
+        app.open_plugin_panel();
     }
 }

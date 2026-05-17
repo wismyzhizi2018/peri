@@ -1,5 +1,5 @@
-use super::Command;
 use crate::app::{agent, App, MessageViewModel};
+use crate::command::Command;
 
 pub struct ModelCommand;
 

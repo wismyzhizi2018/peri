@@ -1,54 +1,35 @@
-pub mod agents;
-pub mod clear;
-pub mod compact;
-pub mod config;
-pub mod context_cmd;
-pub mod cost;
-pub mod cron;
-pub mod doctor;
-pub mod effort;
-pub mod exit;
-pub mod help;
-pub mod history;
-pub mod hooks;
-pub mod lang;
-pub mod login;
-pub mod loop_cmd;
-pub mod mcp;
-pub mod memory;
-pub mod model;
-pub mod plugin;
-pub mod plugin_command;
-pub mod rename;
-pub mod setup;
-pub mod split;
+pub mod core;
+pub mod panel;
+pub mod session;
+
+pub use panel::agents;
 
 /// 注册所有内置命令，返回配置好的 CommandRegistry
 pub fn default_registry() -> CommandRegistry {
     let mut r = CommandRegistry::new();
-    r.register(Box::new(agents::AgentsCommand));
-    r.register(Box::new(config::ConfigCommand));
-    r.register(Box::new(login::LoginCommand));
-    r.register(Box::new(model::ModelCommand));
-    r.register(Box::new(clear::ClearCommand));
-    r.register(Box::new(compact::CompactCommand));
-    r.register(Box::new(help::HelpCommand));
-    r.register(Box::new(history::HistoryCommand));
-    r.register(Box::new(loop_cmd::LoopCommand));
-    r.register(Box::new(cron::CronCommand));
-    r.register(Box::new(mcp::McpCommand));
-    r.register(Box::new(memory::MemoryCommand));
-    r.register(Box::new(plugin::PluginCommand));
-    r.register(Box::new(cost::CostCommand));
-    r.register(Box::new(context_cmd::ContextCommand));
-    r.register(Box::new(split::SplitCommand));
-    r.register(Box::new(hooks::HooksCommand));
-    r.register(Box::new(effort::EffortCommand));
-    r.register(Box::new(rename::RenameCommand));
-    r.register(Box::new(doctor::DoctorCommand));
-    r.register(Box::new(exit::ExitCommand));
-    r.register(Box::new(lang::LangCommand));
-    r.register(Box::new(setup::SetupCommand));
+    r.register(Box::new(core::config::ConfigCommand));
+    r.register(Box::new(core::clear::ClearCommand));
+    r.register(Box::new(core::help::HelpCommand));
+    r.register(Box::new(core::history::HistoryCommand));
+    r.register(Box::new(core::doctor::DoctorCommand));
+    r.register(Box::new(core::exit::ExitCommand));
+    r.register(Box::new(panel::model::ModelCommand));
+    r.register(Box::new(panel::plugin::PluginCommand));
+    r.register(Box::new(panel::mcp::McpCommand));
+    r.register(Box::new(panel::hooks::HooksCommand));
+    r.register(Box::new(panel::cron::CronCommand));
+    r.register(Box::new(panel::agents::AgentsCommand));
+    r.register(Box::new(panel::memory::MemoryCommand));
+    r.register(Box::new(panel::login::LoginCommand));
+    r.register(Box::new(session::split::SplitCommand));
+    r.register(Box::new(session::rename::RenameCommand));
+    r.register(Box::new(session::compact::CompactCommand));
+    r.register(Box::new(session::context_cmd::ContextCommand));
+    r.register(Box::new(session::cost::CostCommand));
+    r.register(Box::new(session::lang::LangCommand));
+    r.register(Box::new(session::effort::EffortCommand));
+    r.register(Box::new(session::loop_cmd::LoopCommand));
+    r.register(Box::new(session::setup::SetupCommand));
     r
 }
 
@@ -91,7 +72,9 @@ impl CommandRegistry {
         commands: Vec<peri_middlewares::plugin::CommandEntry>,
     ) {
         for entry in commands {
-            self.register(Box::new(plugin_command::PluginCommandAdapter::new(entry)));
+            self.register(Box::new(
+                session::plugin_command::PluginCommandAdapter::new(entry),
+            ));
         }
     }
 
