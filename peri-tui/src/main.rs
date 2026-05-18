@@ -177,8 +177,8 @@ struct SessionInfo {
 }
 
 struct StdioContext {
-    provider: peri_tui::app::agent::LlmProvider,
-    peri_config: Arc<peri_tui::config::PeriConfig>,
+    provider: parking_lot::RwLock<peri_tui::app::agent::LlmProvider>,
+    peri_config: parking_lot::RwLock<peri_tui::config::PeriConfig>,
     permission_mode: Arc<peri_middlewares::prelude::SharedPermissionMode>,
     cron_scheduler: Arc<parking_lot::Mutex<peri_middlewares::cron::CronScheduler>>,
     mcp_pool: Option<Arc<peri_middlewares::mcp::McpClientPool>>,
@@ -318,8 +318,8 @@ async fn run_acp_stdio(cwd: String) -> Result<()> {
 
     // 构建共享的 ServerContext，所有请求处理器通过 Arc 共享
     let ctx = Arc::new(StdioContext {
-        provider,
-        peri_config: Arc::new(peri_config),
+        provider: parking_lot::RwLock::new(provider),
+        peri_config: parking_lot::RwLock::new(peri_config),
         permission_mode,
         cron_scheduler,
         mcp_pool,
@@ -336,7 +336,9 @@ async fn run_acp_stdio(cwd: String) -> Result<()> {
     use agent_client_protocol::schema::{
         AgentCapabilities, CancelNotification, InitializeRequest, InitializeResponse,
         NewSessionRequest, NewSessionResponse, PromptRequest, PromptResponse, ProtocolVersion,
-        SessionId, SessionNotification, StopReason,
+        SessionId, SessionNotification, SetSessionConfigOptionRequest,
+        SetSessionConfigOptionResponse, SetSessionModeRequest, SetSessionModeResponse,
+        SetSessionModelRequest, SetSessionModelResponse, StopReason,
     };
     use agent_client_protocol::{Agent, Client, ConnectionTo};
     use agent_client_protocol_tokio::Stdio;
@@ -383,7 +385,22 @@ async fn run_acp_stdio(cwd: String) -> Result<()> {
                     );
                     tracing::info!(session_id = %sid, "ACP session created");
                     drop(sessions);
-                    responder.respond(NewSessionResponse::new(SessionId::new(&*sid)))
+                    let modes = acp_server::build_mode_state(&ctx.permission_mode);
+                    let models = {
+                        let p = ctx.provider.read();
+                        let c = ctx.peri_config.read();
+                        acp_server::build_model_state(&p, &c)
+                    };
+                    let config_options = {
+                        let c = ctx.peri_config.read();
+                        acp_server::build_config_options(&c)
+                    };
+                    responder.respond(
+                        NewSessionResponse::new(SessionId::new(&*sid))
+                            .modes(modes)
+                            .models(models)
+                            .config_options(config_options),
+                    )
                 }
             },
             agent_client_protocol::on_receive_request!(),
@@ -430,19 +447,21 @@ async fn run_acp_stdio(cwd: String) -> Result<()> {
 
                     let features = PromptFeatures::detect();
                     let system_prompt = build_system_prompt(None, &agent_cwd, features, &ctx.plugin_agent_dirs);
-                    let context_window = ctx.provider.context_window();
+                    let context_window = ctx.provider.read().context_window();
 
                     let broker: Arc<dyn peri_agent::interaction::UserInteractionBroker> =
                         Arc::new(StdioBroker::new());
 
+                    let provider_snapshot = ctx.provider.read().clone();
+                    let peri_config_snapshot = ctx.peri_config.read().clone();
                     let agent_output = acp_server::build_agent_bridge(
-                        &ctx.provider,
+                        &provider_snapshot,
                         &agent_cwd,
                         system_prompt,
                         event_handler,
                         cancel.clone(),
                         ctx.permission_mode.clone(),
-                        ctx.peri_config.clone(),
+                        Arc::new(peri_config_snapshot),
                         Some(ctx.cron_scheduler.clone()),
                         sid.clone(),
                         broker,
@@ -492,6 +511,85 @@ async fn run_acp_stdio(cwd: String) -> Result<()> {
 
                     let _ = responder.respond(PromptResponse::new(StopReason::EndTurn));
                     Ok(())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        // ── session/set_mode ──
+        .on_receive_request(
+            {
+                let ctx = ctx_clone.clone();
+                async move |req: SetSessionModeRequest, responder, _cx| {
+                    use peri_middlewares::prelude::PermissionMode;
+                    let mode_id = req.mode_id.0.as_ref();
+                    let mode = match mode_id {
+                        "dont_ask" => PermissionMode::DontAsk,
+                        "accept_edit" => PermissionMode::AcceptEdit,
+                        "auto" => PermissionMode::AutoMode,
+                        "bypass" => PermissionMode::Bypass,
+                        _ => PermissionMode::Default,
+                    };
+                    ctx.permission_mode.store(mode);
+                    tracing::info!(mode_id = %mode_id, "Permission mode changed");
+                    responder.respond(SetSessionModeResponse::new())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        // ── session/set_model ──
+        .on_receive_request(
+            {
+                let ctx = ctx_clone.clone();
+                async move |req: SetSessionModelRequest, responder, _cx| {
+                    let model_id = req.model_id.0.to_string();
+                    let new_provider = {
+                        let cfg = ctx.peri_config.read();
+                        peri_tui::app::agent::LlmProvider::from_config_for_alias(&cfg, &model_id)
+                            .unwrap_or_else(|| ctx.provider.read().clone())
+                    };
+                    tracing::info!(model_id = %model_id, model = %new_provider.model_name(), "Model changed");
+                    *ctx.provider.write() = new_provider;
+                    responder.respond(SetSessionModelResponse::new())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        // ── session/set_config_option ──
+        .on_receive_request(
+            {
+                let ctx = ctx_clone.clone();
+                async move |req: SetSessionConfigOptionRequest, responder, _cx| {
+                    let config_id = req.config_id.0.as_ref();
+                    match &req.value {
+                        agent_client_protocol_schema::SessionConfigOptionValue::ValueId { value } => {
+                            let effort = value.0.as_ref();
+                            if config_id == "thinking_effort" {
+                                let mut cfg = ctx.peri_config.write();
+                                let thinking = cfg.config.thinking.get_or_insert_with(|| {
+                                    peri_tui::config::ThinkingConfig {
+                                        enabled: true,
+                                        budget_tokens: 8000,
+                                        effort: "medium".to_string(),
+                                        max_tokens: 32000,
+                                    }
+                                });
+                                thinking.enabled = true;
+                                thinking.effort = effort.to_string();
+                                tracing::info!(effort = %effort, "Thinking effort changed via configOption");
+                            }
+                        }
+                        agent_client_protocol_schema::SessionConfigOptionValue::Boolean { value: _ } => {
+                            tracing::debug!(config_id = %config_id, "Boolean config option not handled");
+                        }
+                        _ => {
+                            tracing::debug!(config_id = %config_id, "Unknown config option value type");
+                        }
+                    }
+                    let config_options = {
+                        let cfg = ctx.peri_config.read();
+                        acp_server::build_config_options(&cfg)
+                    };
+                    responder.respond(SetSessionConfigOptionResponse::new(config_options))
                 }
             },
             agent_client_protocol::on_receive_request!(),

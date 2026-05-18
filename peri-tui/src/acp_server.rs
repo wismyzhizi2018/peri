@@ -3,6 +3,11 @@
 //! Accepts any [`AcpTransport`] implementation (mpsc for TUI, stdio for IDE),
 //! builds and executes ReAct agents, and pushes [`SessionUpdate`] notifications
 //! back through the transport.
+//!
+//! **Cancel architecture**: `session/prompt` execution is spawned into a
+//! background tokio task so the main server loop remains responsive to
+//! `$/cancel_request` notifications. Sessions are shared via
+//! `Arc<tokio::sync::Mutex<HashMap>>`.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -64,38 +69,71 @@ pub struct AcpServerConfig {
     pub thread_store: Arc<dyn peri_agent::thread::ThreadStore>,
 }
 
+// ── Main server loop ────────────────────────────────────────────────────────
+
+type SharedSessions = Arc<tokio::sync::Mutex<HashMap<String, SessionState>>>;
+
 /// Main ACP server loop. Accepts any `AcpTransport` (mpsc for TUI, stdio for IDE).
+///
+/// `session/prompt` is spawned into a background task so the loop stays
+/// responsive to `$/cancel_request` and other incoming messages.
 pub async fn run_acp_server(
     transport: Arc<dyn peri_acp::transport::AcpTransport>,
     cfg: AcpServerConfig,
 ) {
-    let mut sessions: HashMap<String, SessionState> = HashMap::new();
+    let sessions: SharedSessions = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
     let mut session_counter: u64 = 0;
 
     while let Some(msg) = transport.recv().await {
         match msg {
             IncomingMessage::Request { id, method, params } => {
-                let result = handle_request(
-                    &method,
-                    &params,
-                    &cfg,
-                    &mut sessions,
-                    &mut session_counter,
-                    &transport,
-                )
-                .await;
-                match result {
-                    Ok(value) => {
-                        let _ = transport.send_response(id, Ok(value)).await;
-                    }
-                    Err(e) => {
-                        error!(method = %method, error = %e.message, "ACP request failed");
-                        let _ = transport.send_response(id, Err(e)).await;
-                    }
+                if method == "session/prompt" {
+                    // Spawn long-running prompt execution so the server loop
+                    // continues processing $/cancel_request notifications.
+                    let sessions = sessions.clone();
+                    let transport = Arc::clone(&transport);
+                    let provider = cfg.provider.clone();
+                    let peri_config = cfg.peri_config.clone();
+                    let permission_mode = cfg.permission_mode.clone();
+                    let cron_scheduler = cfg.cron_scheduler.clone();
+                    let plugin_skill_dirs = cfg.plugin_skill_dirs.clone();
+                    let plugin_agent_dirs = cfg.plugin_agent_dirs.clone();
+                    let hook_groups = cfg.hook_groups.clone();
+                    let mcp_pool = cfg.mcp_pool.clone();
+                    let tool_search_index = cfg.tool_search_index.clone();
+                    let shared_tools = cfg.shared_tools.clone();
+                    let plugin_lsp_servers = cfg.plugin_lsp_servers.clone();
+                    tokio::spawn(async move {
+                        let result = execute_prompt(
+                            params,
+                            &sessions,
+                            &provider,
+                            &peri_config,
+                            &permission_mode,
+                            cron_scheduler,
+                            &plugin_skill_dirs,
+                            &plugin_agent_dirs,
+                            &hook_groups,
+                            mcp_pool,
+                            tool_search_index,
+                            shared_tools,
+                            &plugin_lsp_servers,
+                            &transport,
+                        )
+                        .await;
+                        let _ = transport.send_response(id, result).await;
+                    });
+                } else {
+                    let mut sessions = sessions.lock().await;
+                    let result =
+                        handle_request(&method, &params, &cfg, &mut sessions, &mut session_counter)
+                            .await;
+                    let _ = transport.send_response(id, result).await;
                 }
             }
             IncomingMessage::Notification { method, params } => {
-                handle_notification(&method, &params, &mut sessions).await;
+                let sessions = sessions.lock().await;
+                handle_notification(&method, &params, &sessions);
             }
             IncomingMessage::Response { .. } => {
                 // Responses are routed internally by the transport's pending map.
@@ -104,7 +142,7 @@ pub async fn run_acp_server(
     }
 }
 
-// ── Request dispatch ─────────────────────────────────────────────────────────
+// ── Request dispatch (quick handlers only) ───────────────────────────────────
 
 async fn handle_request(
     method: &str,
@@ -112,7 +150,6 @@ async fn handle_request(
     cfg: &AcpServerConfig,
     sessions: &mut HashMap<String, SessionState>,
     counter: &mut u64,
-    transport: &Arc<dyn peri_acp::transport::AcpTransport>,
 ) -> Result<Value, AcpError> {
     match method {
         "initialize" => {
@@ -145,208 +182,25 @@ async fn handle_request(
                 },
             );
             info!(session_id = %session_id, "ACP session created");
+            let modes = build_mode_state(&cfg.permission_mode);
+            let models = {
+                let p = cfg.provider.read();
+                let c = cfg.peri_config.read();
+                build_model_state(&p, &c)
+            };
+            let config_options = {
+                let c = cfg.peri_config.read();
+                build_config_options(&c)
+            };
             let resp = NewSessionResponse::new(SessionId::new(&*session_id))
-                .modes(build_mode_state(&cfg.permission_mode))
-                .models(build_model_state(&cfg.provider, &cfg.peri_config))
-                .config_options(build_config_options(&cfg.peri_config));
-            serde_json::to_value(resp)
-                .map_err(|e| AcpError::new(-32603, format!("Serialize failed: {e}")))
-        }
-
-        "session/prompt" => {
-            let session_id = params
-                .get("session_id")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| AcpError::new(-32602, "missing session_id"))?
-                .to_string();
-            let message = params
-                .get("message")
-                .ok_or_else(|| AcpError::new(-32602, "missing message"))?;
-            let content = message
-                .get("content")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-
-            let state = sessions
-                .get_mut(&session_id)
-                .ok_or_else(|| AcpError::new(-32602, "session not found"))?;
-
-            let agent_input = AgentInput::text(content.clone());
-
-            // Event channel: ExecutorEvent → SessionUpdate notifications.
-            // Sender wrapped in Arc<Mutex<Option<>>> so we can explicitly close it after
-            // execution, independent of Arc<event_handler> reference counting (the agent
-            // internals may hold leaked references that prevent drop-based closure).
-            let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel::<ExecutorEvent>();
-            let event_tx = Arc::new(std::sync::Mutex::new(Some(event_tx)));
-
-            let cancel = AgentCancellationToken::new();
-            state.cancel_token = Some(cancel.clone());
-
-            let event_handler: Arc<dyn AgentEventHandler> = Arc::new(FnEventHandler({
-                let event_tx = event_tx.clone();
-                move |event: ExecutorEvent| {
-                    if let Some(tx) = event_tx.lock().unwrap().as_ref() {
-                        let _ = tx.send(event);
-                    }
-                }
-            }));
-
-            let broker: Arc<dyn peri_agent::interaction::UserInteractionBroker> =
-                Arc::new(AcpTransportBroker::new(
-                    Arc::clone(transport) as Arc<dyn peri_acp::transport::AcpTransport>,
-                    session_id.clone().into(),
-                ));
-
-            let features = PromptFeatures::detect();
-            let system_prompt =
-                build_system_prompt(None, &state.cwd, features, &cfg.plugin_agent_dirs);
-
-            let context_window = cfg.provider.read().context_window();
-
-            // Build agent using peri-acp's builder.
-            // Convert TUI config types to peri-acp types at the boundary.
-            let provider_snapshot = cfg.provider.read().clone();
-            let peri_config_snapshot = cfg.peri_config.read().clone();
-            let agent_output = build_agent_bridge(
-                &provider_snapshot,
-                &state.cwd,
-                system_prompt,
-                event_handler,
-                cancel.clone(),
-                cfg.permission_mode.clone(),
-                Arc::new(peri_config_snapshot),
-                cfg.cron_scheduler.clone(),
-                session_id.clone(),
-                broker,
-                cfg.plugin_skill_dirs.clone(),
-                cfg.plugin_agent_dirs.clone(),
-                cfg.hook_groups.clone(),
-                state.history.is_empty(),
-                cfg.mcp_pool.clone(),
-                cfg.tool_search_index.clone(),
-                cfg.shared_tools.clone(),
-                cfg.plugin_lsp_servers.clone(),
-            );
-
-            let context_window_u32 = context_window;
-
-            // Background task: pump events to notifications.
-            // Uses oneshot to guarantee the pump completes and sends agent_event_done
-            // BEFORE we respond to the client.
-            let transport_clone = Arc::clone(transport);
-            let sid = session_id.clone();
-            let (pump_done_tx, pump_done_rx) = tokio::sync::oneshot::channel();
-            tokio::spawn(async move {
-                let mut event_count: u64 = 0;
-                while let Some(exec_event) = event_rx.recv().await {
-                    event_count += 1;
-
-                    // All events go through agent_event path for TUI consumption
-                    let event_value = match serde_json::to_value(&exec_event) {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!(event_count = event_count, error = %e, "ACP pump: serialize failed");
-                            continue;
-                        }
-                    };
-                    let agent_event_params = json!({
-                        "sessionId": sid,
-                        "event": event_value,
-                    });
-                    if let Err(e) = transport_clone
-                        .send_notification("peri/agent_event", agent_event_params)
-                        .await
-                    {
-                        error!(event_count = event_count, error = %e, "ACP pump: send agent_event failed");
-                        break;
-                    }
-
-                    // peri/* notifications for auxiliary events (Compact, SessionEnded) — sent in addition
-                    let peri_notifs = map_executor_to_peri_notifications(&exec_event);
-                    for (method, mut payload) in peri_notifs {
-                        if let serde_json::Value::Object(ref mut map) = payload {
-                            map.insert("sessionId".to_string(), json!(sid));
-                        }
-                        let _ = transport_clone.send_notification(method, payload).await;
-                    }
-
-                    // Standard ACP session/update notifications
-                    let updates = map_executor_to_updates(&exec_event, context_window_u32);
-                    for update in updates {
-                        let mut payload = match serde_json::to_value(&update) {
-                            Ok(p) => p,
-                            Err(e) => {
-                                error!(error = %e, "ACP pump: serialize SessionUpdate failed");
-                                continue;
-                            }
-                        };
-                        // Merge sessionId into the top-level object alongside the tagged SessionUpdate
-                        if let serde_json::Value::Object(ref mut map) = payload {
-                            map.insert("sessionId".to_string(), json!(sid));
-                        }
-                        let _ = transport_clone
-                            .send_notification("session/update", payload)
-                            .await;
-                    }
-                }
-                // event_rx closed → agent finished
-                debug!(session_id = %sid, event_count = event_count, "ACP pump: sending agent_event_done");
-                let send_result = transport_clone
-                    .send_notification(
-                        "peri/agent_event_done",
-                        json!({
-                            "sessionId": sid,
-                        }),
-                    )
-                    .await;
-                if let Err(e) = send_result {
-                    error!(session_id = %sid, error = %e, "ACP pump: agent_event_done send failed")
-                }
-                let _ = pump_done_tx.send(());
-            });
-
-            // Execute agent with fresh state
-            let cwd = state.cwd.clone();
-            let mut agent_state = AgentState::with_messages(cwd, state.history.clone());
-            let result = agent_output
-                .executor
-                .execute(agent_input, &mut agent_state, Some(cancel.clone()))
-                .await;
-            // Drop agent_output first to release as many references as possible.
-            drop(agent_output);
-            // Explicitly close the event channel by taking the sender out of the Mutex.
-            // This guarantees event_rx.recv() returns None even if Arc references to
-            // event_handler leak inside the agent's internal closures.
-            {
-                let mut tx_guard = event_tx.lock().unwrap();
-                *tx_guard = None;
-            }
-
-            // Wait for the pump to finish sending all events, including agent_event_done.
-            match pump_done_rx.await {
-                Ok(()) => debug!(session_id = %session_id, "ACP pump: done"),
-                Err(_) => {
-                    error!(session_id = %session_id, "ACP pump done channel closed unexpectedly")
-                }
-            }
-
-            match result {
-                Ok(_output) => {
-                    state.history = agent_state.into_messages();
-                    info!(session_id = %session_id, messages = state.history.len(), "Agent execution completed");
-                }
-                Err(e) => error!(session_id = %session_id, error = %e, "Agent execution failed"),
-            }
-
-            let resp = PromptResponse::new(StopReason::EndTurn);
+                .modes(modes)
+                .models(models)
+                .config_options(config_options);
             serde_json::to_value(resp)
                 .map_err(|e| AcpError::new(-32603, format!("Serialize failed: {e}")))
         }
 
         "session/set_model" => {
-            // ACP standard: { sessionId, modelId }
             let model_id = params
                 .get("modelId")
                 .and_then(|v| v.as_str())
@@ -362,7 +216,6 @@ async fn handle_request(
         }
 
         "session/set_mode" => {
-            // ACP standard: { sessionId, modeId }
             let mode_id = params
                 .get("modeId")
                 .and_then(|v| v.as_str())
@@ -381,7 +234,6 @@ async fn handle_request(
         }
 
         "session/setConfigOption" => {
-            // ACP standard: { sessionId, configId, value }
             let config_id = params
                 .get("configId")
                 .and_then(|v| v.as_str())
@@ -439,11 +291,9 @@ async fn handle_request(
     }
 }
 
-async fn handle_notification(
-    method: &str,
-    params: &Value,
-    sessions: &mut HashMap<String, SessionState>,
-) {
+// ── Notification dispatch ────────────────────────────────────────────────────
+
+fn handle_notification(method: &str, params: &Value, sessions: &HashMap<String, SessionState>) {
     if method == "$/cancel_request" {
         let session_id = params
             .get("session_id")
@@ -458,6 +308,222 @@ async fn handle_notification(
     } else {
         debug!(method = %method, "Unhandled notification");
     }
+}
+
+// ── Prompt execution (spawned into background task) ──────────────────────────
+
+#[allow(clippy::too_many_arguments)]
+async fn execute_prompt(
+    params: Value,
+    sessions: &SharedSessions,
+    provider: &Arc<RwLock<LlmProvider>>,
+    peri_config: &Arc<RwLock<PeriConfig>>,
+    permission_mode: &Arc<SharedPermissionMode>,
+    cron_scheduler: Option<Arc<parking_lot::Mutex<CronScheduler>>>,
+    plugin_skill_dirs: &[std::path::PathBuf],
+    plugin_agent_dirs: &[std::path::PathBuf],
+    hook_groups: &[Vec<peri_middlewares::hooks::RegisteredHook>],
+    mcp_pool: Option<Arc<peri_middlewares::mcp::McpClientPool>>,
+    tool_search_index: Arc<peri_middlewares::tool_search::ToolSearchIndex>,
+    shared_tools: Arc<RwLock<HashMap<String, Arc<dyn peri_agent::tools::BaseTool>>>>,
+    plugin_lsp_servers: &[peri_lsp::config::LspServerConfig],
+    transport: &Arc<dyn peri_acp::transport::AcpTransport>,
+) -> Result<Value, AcpError> {
+    let session_id = params
+        .get("session_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| AcpError::new(-32602, "missing session_id"))?
+        .to_string();
+    let message = params
+        .get("message")
+        .ok_or_else(|| AcpError::new(-32602, "missing message"))?;
+    let content = message
+        .get("content")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    let agent_input = AgentInput::text(content.clone());
+
+    // Event channel: ExecutorEvent → SessionUpdate notifications.
+    let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel::<ExecutorEvent>();
+    let event_tx = Arc::new(std::sync::Mutex::new(Some(event_tx)));
+
+    // Create cancel token and register it in sessions so $/cancel_request can find it.
+    let cancel = AgentCancellationToken::new();
+    {
+        let mut sessions = sessions.lock().await;
+        let state = sessions
+            .get_mut(&session_id)
+            .ok_or_else(|| AcpError::new(-32602, "session not found"))?;
+        state.cancel_token = Some(cancel.clone());
+    }
+
+    let event_handler: Arc<dyn AgentEventHandler> = Arc::new(FnEventHandler({
+        let event_tx = event_tx.clone();
+        move |event: ExecutorEvent| {
+            if let Some(tx) = event_tx.lock().unwrap().as_ref() {
+                let _ = tx.send(event);
+            }
+        }
+    }));
+
+    let broker: Arc<dyn peri_agent::interaction::UserInteractionBroker> =
+        Arc::new(AcpTransportBroker::new(
+            Arc::clone(transport) as Arc<dyn peri_acp::transport::AcpTransport>,
+            session_id.clone().into(),
+        ));
+
+    // Read session data under lock, then release immediately.
+    let (cwd, history, is_empty) = {
+        let sessions = sessions.lock().await;
+        let state = sessions
+            .get(&session_id)
+            .ok_or_else(|| AcpError::new(-32602, "session not found"))?;
+        (
+            state.cwd.clone(),
+            state.history.clone(),
+            state.history.is_empty(),
+        )
+    };
+
+    let features = PromptFeatures::detect();
+    let system_prompt = build_system_prompt(None, &cwd, features, plugin_agent_dirs);
+
+    let context_window = provider.read().context_window();
+
+    let provider_snapshot = provider.read().clone();
+    let peri_config_snapshot = peri_config.read().clone();
+    let agent_output = build_agent_bridge(
+        &provider_snapshot,
+        &cwd,
+        system_prompt,
+        event_handler,
+        cancel.clone(),
+        permission_mode.clone(),
+        Arc::new(peri_config_snapshot),
+        cron_scheduler,
+        session_id.clone(),
+        broker,
+        plugin_skill_dirs.to_vec(),
+        plugin_agent_dirs.to_vec(),
+        hook_groups.to_vec(),
+        is_empty,
+        mcp_pool,
+        tool_search_index,
+        shared_tools,
+        plugin_lsp_servers.to_vec(),
+    );
+
+    let context_window_u32 = context_window;
+
+    // Background task: pump events to notifications.
+    let transport_clone = Arc::clone(transport);
+    let sid = session_id.clone();
+    let (pump_done_tx, pump_done_rx) = tokio::sync::oneshot::channel();
+    tokio::spawn(async move {
+        let mut event_count: u64 = 0;
+        while let Some(exec_event) = event_rx.recv().await {
+            event_count += 1;
+
+            let event_value = match serde_json::to_value(&exec_event) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!(event_count = event_count, error = %e, "ACP pump: serialize failed");
+                    continue;
+                }
+            };
+            let agent_event_params = json!({
+                "sessionId": sid,
+                "event": event_value,
+            });
+            if let Err(e) = transport_clone
+                .send_notification("peri/agent_event", agent_event_params)
+                .await
+            {
+                error!(event_count = event_count, error = %e, "ACP pump: send agent_event failed");
+                break;
+            }
+
+            let peri_notifs = map_executor_to_peri_notifications(&exec_event);
+            for (method, mut payload) in peri_notifs {
+                if let serde_json::Value::Object(ref mut map) = payload {
+                    map.insert("sessionId".to_string(), json!(sid));
+                }
+                let _ = transport_clone.send_notification(method, payload).await;
+            }
+
+            let updates = map_executor_to_updates(&exec_event, context_window_u32);
+            for update in updates {
+                let mut payload = match serde_json::to_value(&update) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        error!(error = %e, "ACP pump: serialize SessionUpdate failed");
+                        continue;
+                    }
+                };
+                if let serde_json::Value::Object(ref mut map) = payload {
+                    map.insert("sessionId".to_string(), json!(sid));
+                }
+                let _ = transport_clone
+                    .send_notification("session/update", payload)
+                    .await;
+            }
+        }
+        debug!(session_id = %sid, event_count = event_count, "ACP pump: sending agent_event_done");
+        let send_result = transport_clone
+            .send_notification(
+                "peri/agent_event_done",
+                json!({
+                    "sessionId": sid,
+                }),
+            )
+            .await;
+        if let Err(e) = send_result {
+            error!(session_id = %sid, error = %e, "ACP pump: agent_event_done send failed")
+        }
+        let _ = pump_done_tx.send(());
+    });
+
+    // Execute agent with fresh state
+    let mut agent_state = AgentState::with_messages(cwd, history);
+    let result = agent_output
+        .executor
+        .execute(agent_input, &mut agent_state, Some(cancel.clone()))
+        .await;
+    drop(agent_output);
+    {
+        let mut tx_guard = event_tx.lock().unwrap();
+        *tx_guard = None;
+    }
+
+    match pump_done_rx.await {
+        Ok(()) => debug!(session_id = %session_id, "ACP pump: done"),
+        Err(_) => {
+            error!(session_id = %session_id, "ACP pump done channel closed unexpectedly")
+        }
+    }
+
+    // Update session history and clear cancel token.
+    {
+        let mut sessions = sessions.lock().await;
+        if let Some(state) = sessions.get_mut(&session_id) {
+            match result {
+                Ok(_output) => {
+                    state.history = agent_state.into_messages();
+                    info!(session_id = %session_id, messages = state.history.len(), "Agent execution completed");
+                }
+                Err(e) => {
+                    error!(session_id = %session_id, error = %e, "Agent execution failed");
+                    state.history = agent_state.into_messages();
+                }
+            }
+            state.cancel_token = None;
+        }
+    }
+
+    let resp = PromptResponse::new(StopReason::EndTurn);
+    serde_json::to_value(resp).map_err(|e| AcpError::new(-32603, format!("Serialize failed: {e}")))
 }
 
 // ── Bridge: convert TUI types → peri-acp types for build_agent ───────────────
@@ -483,10 +549,8 @@ pub fn build_agent_bridge(
     shared_tools: Arc<RwLock<HashMap<String, Arc<dyn peri_agent::tools::BaseTool>>>>,
     lsp_servers: Vec<peri_lsp::config::LspServerConfig>,
 ) -> peri_acp::agent::builder::AcpAgentOutput {
-    // Convert TUI LlmProvider → peri-acp LlmProvider
     let acp_provider = convert_provider(provider);
 
-    // Convert TUI PeriConfig → peri-acp PeriConfig (only fields used by build_agent)
     let acp_peri_config = Arc::new(peri_acp::provider::config::PeriConfig {
         config: peri_acp::provider::config::AppConfig {
             claude_md_excludes: peri_config.config.claude_md_excludes.clone(),
@@ -560,7 +624,7 @@ fn convert_provider(p: &LlmProvider) -> peri_acp::provider::LlmProvider {
 
 // ── ACP standard state builders ────────────────────────────────────────────────
 
-fn build_mode_state(pm: &SharedPermissionMode) -> SessionModeState {
+pub fn build_mode_state(pm: &SharedPermissionMode) -> SessionModeState {
     let current = pm.load();
     let current_id = match current {
         PermissionMode::Default => "default",
@@ -583,17 +647,12 @@ fn build_mode_state(pm: &SharedPermissionMode) -> SessionModeState {
     SessionModeState::new(SessionModeId::new(current_id), all_modes)
 }
 
-fn build_model_state(
-    provider: &RwLock<LlmProvider>,
-    peri_config: &RwLock<PeriConfig>,
-) -> SessionModelState {
-    let p = provider.read();
-    let cfg = peri_config.read();
-    let active_alias = cfg.config.active_alias.clone();
+pub fn build_model_state(provider: &LlmProvider, peri_config: &PeriConfig) -> SessionModelState {
+    let active_alias = peri_config.config.active_alias.clone();
 
-    // Find the active provider's models
-    let active_provider = cfg.config.providers.iter().find(|prov| {
-        prov.id == cfg.config.active_provider_id || cfg.config.active_provider_id.is_empty()
+    let active_provider = peri_config.config.providers.iter().find(|prov| {
+        prov.id == peri_config.config.active_provider_id
+            || peri_config.config.active_provider_id.is_empty()
     });
 
     let mut available = Vec::new();
@@ -612,16 +671,15 @@ fn build_model_state(
     if available.is_empty() {
         available.push(ModelInfo::new(
             ModelId::new("current".to_string()),
-            p.model_name().to_string(),
+            provider.model_name().to_string(),
         ));
     }
 
     SessionModelState::new(ModelId::new(active_alias), available)
 }
 
-fn build_config_options(peri_config: &RwLock<PeriConfig>) -> Vec<SessionConfigOption> {
-    let cfg = peri_config.read();
-    let effort = cfg
+pub fn build_config_options(peri_config: &PeriConfig) -> Vec<SessionConfigOption> {
+    let effort = peri_config
         .config
         .thinking
         .as_ref()
