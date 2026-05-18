@@ -50,7 +50,7 @@ impl App {
             .push_system_note(self.services.lc.tr_args(
                 "app-model-switched",
                 &[
-                    ("alias".into(), alias_label.into()),
+                    ("alias".into(), alias_label.clone().into()),
                     ("effort".into(), effort_display.into()),
                 ],
             ));
@@ -72,6 +72,17 @@ impl App {
         self.session_mgr.sessions[self.session_mgr.active]
             .session_panels
             .close_if(PanelKind::Model);
+
+        // ACP 模式：同步模型和思考度设置到 ACP server
+        if let Some(ref acp_client) = self.acp_client {
+            let acp = acp_client.clone();
+            let alias = alias_label.clone().to_lowercase();
+            let effort_val = effort.clone();
+            tokio::spawn(async move {
+                let _ = acp.set_model(&alias).await;
+                let _ = acp.set_thinking(&effort_val, true).await;
+            });
+        }
     }
 
     // ─── Login 面板操作 ───────────────────────────────────────────────────────
