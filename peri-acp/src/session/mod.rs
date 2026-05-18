@@ -1,3 +1,8 @@
+//! Session lifecycle management.
+//!
+//! Manages ACP session creation, loading, resumption, and closure.
+//! Each session owns a ThreadStore entry, an Agent instance, and associated state.
+
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
@@ -11,8 +16,8 @@ use peri_middlewares::prelude::{PermissionMode, SharedPermissionMode};
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
-use crate::app::agent::LlmProvider;
-use crate::config::{PeriConfig, ThinkingConfig};
+use crate::provider::config::{PeriConfig, ThinkingConfig};
+use crate::provider::LlmProvider;
 
 /// Entry in the pending requests table, keyed by JSON-RPC request ID.
 #[derive(Debug)]

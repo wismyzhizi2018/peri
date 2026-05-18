@@ -1,8 +1,9 @@
 # Compact 自动继续功能在不应触发的场景下仍然 resubmit
 
-**状态**：Open
+**状态**：Fixed（`3c0b2cd`）
 **优先级**：中
 **创建日期**：2026-05-12
+**修复日期**：2026-05-12
 
 ## 问题描述
 
@@ -45,6 +46,19 @@
 - `peri-tui/src/app/agent_ops.rs:395` —— Done 事件中 auto-compact 触发（`start_compact("auto")`）
 - `peri-tui/src/app/agent_events_bg.rs:190` —— 后台任务完成后延迟 auto-compact 触发
 - `peri-tui/src/command/compact.rs:25` —— `/compact` 命令触发（`start_compact(args)`）
+
+## 修复方案
+
+添加 `compact_should_resubmit: bool` flag 到 `AgentComm`（`agent_comm.rs:87`）：
+- `start_compact()` 根据 `instructions == "auto"` 设置 flag（`thread_ops.rs:399`）
+- Done handler 和 BG completion handler 调用 `start_compact("auto")` 后立即覆盖为 `false`
+- `handle_compact_done` 读取 flag 后清除，仅当 `true` 时 resubmit
+- `reset_agent_session` 重置 flag（`thread_ops.rs:121`）
+
+## 回归测试
+
+- `test_manual_compact_does_not_resubmit` — 手动 `/compact` 完成后不 resubmit
+- `test_post_done_auto_compact_does_not_resubmit` — Done 后 auto-compact 完成后不 resubmit
 
 ## 关联 Issue
 

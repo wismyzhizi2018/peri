@@ -13,9 +13,13 @@ use ratatui::{
 };
 use std::io;
 
+use peri_acp::transport::mpsc::mpsc_transport_pair;
+use peri_tui::acp_client::AcpTuiClient;
+use peri_tui::acp_server::{self, AcpServerConfig};
 use peri_tui::app::App;
 use peri_tui::event;
 use peri_tui::ui;
+use std::sync::Arc;
 
 // ─── CLI 定义 ──────────────────────────────────────────────────────────────
 
@@ -118,11 +122,14 @@ fn main() -> Result<()> {
 
     match cli.command {
         None => run_tui(cli.approve),
-        Some(Commands::Acp { cwd, model, agent }) => {
-            let rt = tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()?;
-            rt.block_on(peri_tui::acp::run_acp_mode(cwd, model, agent))
+        Some(Commands::Acp {
+            cwd: _,
+            model: _,
+            agent: _,
+        }) => {
+            // TODO Step 7: migrate ACP stdio mode to peri-acp binary
+            eprintln!("ACP mode is being migrated to peri-acp standalone binary");
+            std::process::exit(1);
         }
         Some(Commands::Update) => {
             let rt = tokio::runtime::Builder::new_multi_thread()
@@ -286,6 +293,92 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     session.commands.skills.push(skill.clone());
                 }
             }
+        }
+    }
+
+    // ── Step 6-a: Setup ACP Server + Client ──────────────────────────────
+    {
+        let provider = app
+            .services
+            .peri_config
+            .as_ref()
+            .and_then(|cfg| peri_tui::app::LlmProvider::from_config(cfg))
+            .or_else(peri_tui::app::LlmProvider::from_env);
+
+        if let Some(provider) = provider {
+            // Gather plugin configs
+            let plugin_skill_dirs = app
+                .services
+                .plugin_data
+                .as_ref()
+                .map(|pd| pd.all_skill_dirs.clone())
+                .unwrap_or_default();
+            let plugin_agent_dirs = app
+                .services
+                .plugin_data
+                .as_ref()
+                .map(|pd| pd.all_agent_dirs.clone())
+                .unwrap_or_default();
+            let plugin_lsp_servers = app
+                .services
+                .plugin_data
+                .as_ref()
+                .map(|pd| pd.all_lsp_servers.clone())
+                .unwrap_or_default();
+            let plugin_hooks = app
+                .services
+                .plugin_data
+                .as_ref()
+                .map(|pd| pd.all_hooks.clone())
+                .unwrap_or_default();
+
+            // Build hook groups from plugin hooks + local hooks
+            let mut hook_groups: Vec<Vec<peri_middlewares::hooks::RegisteredHook>> = Vec::new();
+            if !plugin_hooks.is_empty() {
+                hook_groups.push(plugin_hooks);
+            }
+            let local_hooks =
+                peri_middlewares::hooks::loader::load_settings_local_hooks(&app.services.cwd);
+            if !local_hooks.is_empty() {
+                hook_groups.push(local_hooks);
+            }
+
+            let flat_hooks: Vec<peri_middlewares::hooks::RegisteredHook> =
+                hook_groups.iter().flatten().cloned().collect();
+
+            // Create session-level tool_search_index and shared_tools
+            let tool_search_index = Arc::new(peri_middlewares::tool_search::ToolSearchIndex::new());
+            let shared_tools = Arc::new(parking_lot::RwLock::new(std::collections::HashMap::new()));
+
+            let server_config = AcpServerConfig {
+                provider: provider.clone(),
+                peri_config: Arc::new(app.services.peri_config.clone().unwrap_or_default()),
+                permission_mode: app.services.permission_mode.clone(),
+                cron_scheduler: Some(app.services.cron.scheduler.clone()),
+                mcp_pool: app.services.mcp_pool.clone(),
+                plugin_skill_dirs,
+                plugin_agent_dirs,
+                plugin_hooks: flat_hooks,
+                hook_groups,
+                plugin_lsp_servers,
+                tool_search_index: tool_search_index.clone(),
+                shared_tools: shared_tools.clone(),
+                thread_store: app.services.thread_store.clone(),
+            };
+
+            let (client_transport, server_transport) = mpsc_transport_pair();
+            tokio::spawn(async move {
+                acp_server::run_acp_server(server_transport, server_config).await;
+            });
+
+            let (acp_client, notification_rx) = AcpTuiClient::new(client_transport);
+            // Spawn notification pump
+            acp_client.spawn_pump();
+            // Wire notification receiver to active session's AgentComm
+            app.session_mgr.sessions[app.session_mgr.active]
+                .agent
+                .acp_notification_rx = Some(notification_rx);
+            app.acp_client = Some(acp_client);
         }
     }
 

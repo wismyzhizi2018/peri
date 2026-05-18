@@ -1166,6 +1166,7 @@ impl App {
             global_panels: PanelManager::new(),
             global_ui: super::GlobalUiState::new(),
             focused: true,
+            acp_client: None,
         };
 
         let handle = crate::ui::headless::HeadlessHandle {

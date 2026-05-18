@@ -7,6 +7,7 @@ use super::*;
 /// - `/skill-name` — 单个 skill
 /// - `/skill-a /skill-b` — 多个 skill（空格分隔）
 /// - 消息中任意位置出现即可（不限于行首）
+#[allow(dead_code)]
 fn parse_skill_names_from_input(input: &str) -> Vec<String> {
     let mut names = Vec::new();
     for word in input.split_whitespace() {
@@ -191,205 +192,32 @@ impl App {
             .agent
             .lsp_files_with_errors = 0;
 
-        let (tx, rx) = mpsc::channel(4096);
-        self.session_mgr.sessions[self.session_mgr.active]
-            .agent
-            .agent_rx = Some(rx);
-
-        // 创建取消令牌（Ctrl+C 触发中断）
-        let cancel = AgentCancellationToken::new();
-        self.session_mgr.sessions[self.session_mgr.active]
-            .agent
-            .cancel_token = Some(cancel.clone());
-
-        // 注意：HITL 审批和 AskUser 问答现在统一通过 TuiInteractionBroker 路由到 tx channel，
-        // YOLO 模式由 HumanInTheLoopMiddleware::from_env() 内部处理（自动放行）。
-
+        // ── ACP-based agent submission (replaces direct run_universal_agent spawn) ──
         let cwd = self.services.cwd.clone();
+        if let Some(ref acp_client) = self.acp_client {
+            // Clone what we need for the async task
+            let acp_client_clone = acp_client.clone();
+            let model_clone = self.services.model_name.clone();
+            let input_clone = input.clone();
+            let cwd_clone = cwd.clone();
 
-        // 构建多模态 AgentInput（有附件时包含图片 blocks）
-        let agent_input = if attachments.is_empty() {
-            AgentInput::text(input.clone())
-        } else {
-            let mut blocks = vec![ContentBlock::text(input.clone())];
-            for att in &attachments {
-                blocks.push(ContentBlock::image_base64(
-                    &att.media_type,
-                    &att.base64_data,
-                ));
-            }
-            AgentInput::blocks(MessageContent::blocks(blocks))
-        };
-
-        // 确保当前 thread 存在
-        let thread_id = self.ensure_thread_id();
-
-        // 懒加载 Thread 级 LangfuseSession（首轮创建，后续复用；未配置环境变量时静默跳过）
-        if self.session_mgr.sessions[self.session_mgr.active]
-            .langfuse
-            .langfuse_session
-            .is_none()
-        {
-            tracing::debug!(thread_id = %thread_id, "langfuse: session is None, attempting to create");
-            if let Some(cfg) = crate::langfuse::LangfuseConfig::from_env() {
-                tracing::debug!(host = %cfg.host, "langfuse: config found, creating session");
-                let session_id = thread_id.clone();
-                let session = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current()
-                        .block_on(crate::langfuse::LangfuseSession::new(cfg, session_id))
-                });
-                if session.is_some() {
-                    tracing::info!(thread_id = %thread_id, "langfuse: session created successfully");
-                } else {
-                    tracing::warn!(thread_id = %thread_id, "langfuse: session creation failed (None)");
+            // Spawn the ACP calls as a background task — NEVER block the TUI event loop.
+            // Events will arrive via acp_notification_rx and be processed by poll_agent().
+            tokio::spawn(async move {
+                let client = acp_client_clone;
+                if !client.has_session() {
+                    let _ = client.new_session(&cwd_clone, Some(&model_clone)).await;
                 }
-                self.session_mgr.sessions[self.session_mgr.active]
-                    .langfuse
-                    .langfuse_session = session.map(Arc::new);
-            } else {
-                tracing::debug!("langfuse: no config found in env, skipping session creation");
-            }
-        } else {
-            tracing::debug!(thread_id = %thread_id, "langfuse: reusing existing session");
-        }
-
-        // 构造当前轮次的 Langfuse Tracer（同步，复用共享 Session）
-        let langfuse_tracer = self.session_mgr.sessions[self.session_mgr.active]
-            .langfuse
-            .langfuse_session
-            .clone()
-            .map(|session| {
-                let mut t = crate::langfuse::LangfuseTracer::new(session);
-                t.on_trace_start(input.trim());
-                Arc::new(parking_lot::Mutex::new(t))
+                let _ = client.prompt(&input_clone).await;
             });
-        self.session_mgr.sessions[self.session_mgr.active]
-            .langfuse
-            .langfuse_tracer = langfuse_tracer.clone();
-
-        let span = tracing::info_span!(
-            "thread.run",
-            thread.id = %thread_id,
-            thread.cwd = %cwd,
-        );
-        let history = self.session_mgr.sessions[self.session_mgr.active]
-            .agent
-            .agent_state_messages
-            .clone();
-        let agent_id = self.session_mgr.sessions[self.session_mgr.active]
-            .agent
-            .agent_id
-            .clone();
-        let thread_store = self.services.thread_store.clone();
-        let thread_id_for_agent = thread_id.clone();
-        let peri_config_for_agent = Arc::new(self.services.peri_config.clone().unwrap_or_default());
-        let cron_scheduler = Some(self.services.cron.scheduler.clone());
-        let permission_mode = self.services.permission_mode.clone();
-
-        let mcp_pool = self.services.mcp_pool.clone();
-        let plugin_skill_dirs = self
-            .services
-            .plugin_data
-            .as_ref()
-            .map(|pd| pd.all_skill_dirs.clone())
-            .unwrap_or_default();
-        let plugin_agent_dirs = self
-            .services
-            .plugin_data
-            .as_ref()
-            .map(|pd| pd.all_agent_dirs.clone())
-            .unwrap_or_default();
-        let plugin_lsp_servers = self
-            .services
-            .plugin_data
-            .as_ref()
-            .map(|pd| pd.all_lsp_servers.clone())
-            .unwrap_or_default();
-        let mut plugin_hooks = self
-            .services
-            .plugin_data
-            .as_ref()
-            .map(|pd| pd.all_hooks.clone())
-            .unwrap_or_default();
-        let local_hooks =
-            peri_middlewares::hooks::loader::load_settings_local_hooks(&self.services.cwd);
-
-        // hook_groups：每组对应一个独立的 HookMiddleware 实例
-        // plugin hooks 和 settings.local hooks 分组，便于独立控制
-        let mut hook_groups: Vec<Vec<peri_middlewares::hooks::RegisteredHook>> = Vec::new();
-        if !plugin_hooks.is_empty() {
-            tracing::info!(count = plugin_hooks.len(), "Registering plugin hooks");
-            hook_groups.push(std::mem::take(&mut plugin_hooks));
-        }
-        if !local_hooks.is_empty() {
-            tracing::info!(
-                count = local_hooks.len(),
-                "Registering settings.local hooks"
-            );
-            hook_groups.push(local_hooks);
-        }
-
-        // 扁平化所有 hooks 供 SubAgentTool 和 SessionEnd 使用
-        let all_hooks: Vec<peri_middlewares::hooks::RegisteredHook> =
-            hook_groups.iter().flatten().cloned().collect();
-
-        tracing::info!(
-            groups = hook_groups.len(),
-            total = all_hooks.len(),
-            "Hook groups assembled for agent"
-        );
-
-        let hook_session_start = history.is_empty();
-
-        // 初始化或复用会话级 ToolSearch 索引和共享工具注册表
-        let agent = &mut self.session_mgr.sessions[self.session_mgr.active].agent;
-        if agent.tool_search_index.is_none() {
-            agent.tool_search_index = Some(std::sync::Arc::new(
-                peri_middlewares::tool_search::ToolSearchIndex::new(),
-            ));
-        }
-        if agent.shared_tools.is_none() {
-            agent.shared_tools = Some(std::sync::Arc::new(parking_lot::RwLock::new(
-                std::collections::HashMap::new(),
+        } else {
+            // Fallback: ACP client not available, show error
+            tracing::error!("ACP client not initialized, cannot submit agent");
+            self.apply_pipeline_action(PipelineAction::AddMessage(MessageViewModel::system(
+                self.services.lc.tr("app-no-provider-submit"),
             )));
+            self.set_loading(false);
         }
-        let tool_search_index = agent.tool_search_index.clone().unwrap();
-        let shared_tools = agent.shared_tools.clone().unwrap();
-
-        // 从用户输入中提取 /skill-name 模式，传给 SkillPreloadMiddleware
-        let preload_skills = parse_skill_names_from_input(&input);
-
-        tokio::spawn(
-            async move {
-                agent::run_universal_agent(agent::AgentRunConfig {
-                    provider,
-                    input: agent_input,
-                    cwd,
-                    history,
-                    tx,
-                    cancel,
-                    agent_id,
-                    langfuse_tracer,
-                    thread_store,
-                    thread_id: thread_id_for_agent,
-                    config: peri_config_for_agent,
-                    cron_scheduler,
-                    permission_mode,
-                    mcp_pool,
-                    plugin_skill_dirs,
-                    plugin_agent_dirs,
-                    plugin_hooks: all_hooks,
-                    plugin_lsp_servers,
-                    hook_groups,
-                    hook_session_start,
-                    tool_search_index,
-                    shared_tools,
-                    preload_skills,
-                })
-                .await;
-            }
-            .instrument(span),
-        );
     }
 
     /// 发送缓冲的 cron 消息（每次只发一条，其余留待后续 Done 周期发送）

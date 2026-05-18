@@ -4,7 +4,7 @@ pub mod chat_session;
 pub mod config_panel;
 pub mod events;
 pub mod hooks_panel;
-pub mod interaction_broker;
+
 pub mod login_panel;
 pub mod memory_panel;
 pub mod model_panel;
@@ -64,7 +64,6 @@ pub use ask_user_prompt::AskUserBatchPrompt;
 pub use chat_session::ChatSession;
 pub use events::AgentEvent;
 pub use hitl_prompt::{HitlBatchPrompt, PendingAttachment};
-pub use interaction_broker::TuiInteractionBroker;
 pub use oauth_prompt::OAuthPrompt;
 
 /// 统一交互弹窗枚举：同一时刻只允许一种弹窗激活
@@ -73,15 +72,14 @@ pub enum InteractionPrompt {
     Questions(AskUserBatchPrompt),
 }
 
+#[allow(unused_imports)]
+use crate::acp_client::{AcpNotification, AcpTuiClient};
 use crate::ui::theme;
-use peri_agent::agent::react::AgentInput;
-use peri_agent::agent::AgentCancellationToken;
-use peri_agent::messages::{BaseMessage, ContentBlock, MessageContent};
+use peri_agent::messages::BaseMessage;
 use peri_middlewares::prelude::HitlDecision;
 use ratatui::style::Style;
 use ratatui::text::Span;
 use tokio::sync::mpsc;
-use tracing::Instrument;
 use tui_textarea::TextArea;
 
 use crate::config::PeriConfig;
@@ -93,6 +91,7 @@ pub use crate::ui::message_view::{
     aggregate_tail_tool_groups, aggregate_tool_groups, ContentBlockView, MessageViewModel,
     ToolCategory,
 };
+pub use agent::LlmProvider;
 pub use agent_panel::AgentPanel;
 pub use hooks_panel::HooksPanel;
 pub use model_panel::ModelPanel;
@@ -124,6 +123,10 @@ pub struct App {
     pub global_panels: panel_manager::PanelManager,
     /// 应用焦点状态（true=聚焦，false=失焦）
     pub focused: bool,
+    /// ACP client — communicates with the ACP server via in-memory transport.
+    /// Initialized after App construction in run_app(); None until `set_acp_client` is called.
+    /// Added in Step 6-a; fully integrated in Steps 6-c..6-h.
+    pub acp_client: Option<AcpTuiClient>,
 }
 
 impl App {
@@ -232,6 +235,7 @@ impl App {
             global_ui: GlobalUiState::new(),
             global_panels: panel_manager::PanelManager::new(),
             focused: true,
+            acp_client: None,
         }
     }
 
@@ -393,6 +397,17 @@ impl App {
 
     /// 中断正在运行的 Agent（Ctrl+C during loading）
     pub fn interrupt(&mut self) {
+        // Try ACP cancel first (agent runs in ACP server)
+        // Spawn cancel async without blocking the UI thread
+        if let Some(ref acp_client) = self.acp_client {
+            let client = acp_client.clone();
+            tokio::spawn(async move {
+                if let Err(e) = client.cancel().await {
+                    tracing::warn!(error = %e, "ACP cancel failed (session may have ended)");
+                }
+            });
+        }
+        // Fallback: direct cancel_token (legacy path, kept for tests)
         if let Some(token) = &self.session_mgr.sessions[self.session_mgr.active]
             .agent
             .cancel_token

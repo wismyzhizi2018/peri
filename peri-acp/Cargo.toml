@@ -1,0 +1,35 @@
+[package]
+name = "peri-acp"
+version = "0.1.0"
+edition = "2021"
+description = "ACP Agent service layer — Session management, Agent construction, Middleware chain, Transport abstraction"
+
+[lib]
+name = "peri_acp"
+path = "src/lib.rs"
+
+[dependencies]
+peri-agent = { path = "../peri-agent" }
+peri-middlewares = { path = "../peri-middlewares" }
+peri-lsp = { path = "../peri-lsp" }
+langfuse-client = { path = "../langfuse-client" }
+agent-client-protocol = { version = "0.11", features = ["unstable"] }
+agent-client-protocol-schema = { version = "0.12", features = ["unstable_elicitation"] }
+agent-client-protocol-tokio = { version = "0.11" }
+tokio.workspace = true
+async-trait.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+parking_lot.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+dashmap = "6"
+tokio-util.workspace = true
+dirs-next.workspace = true
+
+[dev-dependencies]
+tokio-test.workspace = true
+tempfile.workspace = true

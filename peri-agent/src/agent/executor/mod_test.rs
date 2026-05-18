@@ -513,11 +513,13 @@ fn test_agent_event_message_id_serialization() {
         source_agent_id: None,
     };
     let json = serde_json::to_value(&ev).unwrap();
+    // Adjacently tagged: fields are inside json["value"]
+    let content = &json["value"];
     assert!(
-        json["message_id"].is_string(),
+        content["message_id"].is_string(),
         "TextChunk JSON 应含 message_id 字段"
     );
-    assert_eq!(json["chunk"].as_str().unwrap(), "hello");
+    assert_eq!(content["chunk"].as_str().unwrap(), "hello");
 
     let ev = AgentEvent::ToolStart {
         message_id: mid,
@@ -527,8 +529,9 @@ fn test_agent_event_message_id_serialization() {
         source_agent_id: None,
     };
     let json = serde_json::to_value(&ev).unwrap();
+    let content = &json["value"];
     assert!(
-        json["message_id"].is_string(),
+        content["message_id"].is_string(),
         "ToolStart JSON 应含 message_id 字段"
     );
 
@@ -541,8 +544,9 @@ fn test_agent_event_message_id_serialization() {
         source_agent_id: None,
     };
     let json = serde_json::to_value(&ev).unwrap();
+    let content = &json["value"];
     assert!(
-        json["message_id"].is_string(),
+        content["message_id"].is_string(),
         "ToolEnd JSON 应含 message_id 字段"
     );
 }

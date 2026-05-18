@@ -39,12 +39,13 @@ png = "0.18"
 base64 = { version = "0.22", features = ["alloc"] }
 langfuse-client = { path = "../langfuse-client" }
 peri-widgets = { path = "../peri-widgets", features = ["markdown-highlight"] }
+peri-acp = { path = "../peri-acp" }
+agent-client-protocol = { version = "0.11", features = ["unstable"] }
+agent-client-protocol-schema = { version = "0.12", features = ["unstable_elicitation"] }
 unicode-width = "0.2"
 unicode-segmentation = "1"
 reqwest.workspace = true
 clap = { version = "4", features = ["derive"] }
-agent-client-protocol = { version = "0.11", features = ["unstable"] }
-agent-client-protocol-tokio = { version = "0.11" }
 dashmap = "6"
 tokio-util.workspace = true
 sysinfo.workspace = true

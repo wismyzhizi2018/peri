@@ -4,6 +4,7 @@ use tokio::sync::mpsc;
 
 use super::events::AgentEvent;
 use super::InteractionPrompt;
+use crate::acp_client::AcpNotification;
 
 type SharedToolRegistry = std::sync::Arc<
     parking_lot::RwLock<
@@ -22,7 +23,10 @@ pub struct RetryStatus {
 
 /// Agent 通信状态：事件接收、交互弹窗、取消/计时
 pub struct AgentComm {
+    /// Legacy: AgentEvent receiver (will be replaced by acp_notification_rx in Step 6-e)
     pub agent_rx: Option<mpsc::Receiver<AgentEvent>>,
+    /// ACP notification receiver (new path, replaces agent_rx)
+    pub acp_notification_rx: Option<mpsc::UnboundedReceiver<AcpNotification>>,
     /// 当前激活的交互弹窗（HITL 审批或 AskUser 问答，同一时刻只有一种）
     pub interaction_prompt: Option<InteractionPrompt>,
     /// 已发送待解决的 HITL 工具名称列表（用于 approval_resolved 广播）
@@ -66,15 +70,10 @@ pub struct AgentComm {
     /// 此时 agent_rx 保持存活以接收 BackgroundTaskCompleted 事件
     pub agent_done_pending_bg: bool,
     /// Agent 尚未 Done 但后台任务已完成的通知缓存。
-    /// 修复 BackgroundTaskCompleted 与 Done 事件的竞态条件：
-    /// 当 BackgroundTaskCompleted 在 Done 之前被消费时，将显示通知暂存于此，
-    /// 待 Done 处理时检查此字段并设置 pending_bg_continuation。
     pub pre_done_bg_completions: Vec<String>,
-    /// 本轮 agent 是否已产生回复（收到 TextChunk/ToolStart/AssistantChunk），
-    /// 用于 Ctrl+C 中断时判断是否恢复用户文本
+    /// 本轮 agent 是否已产生回复（收到 TextChunk/ToolStart/AssistantChunk）
     pub agent_replied: bool,
     /// 标记 Interrupted/Error 处理器已完成 reconcile，Done 到达时应跳过重复 reconcile
-    /// （防止 Done 的 RebuildAll 覆盖 Interrupted/Error 添加的通知消息）
     pub reconcile_already_done: bool,
     /// 本轮用户原始输入（compact 后自动 re-submit 用）
     pub last_user_input: Option<String>,
@@ -93,12 +92,15 @@ pub struct AgentComm {
     pub tool_search_index: Option<std::sync::Arc<peri_middlewares::tool_search::ToolSearchIndex>>,
     /// 会话级共享工具注册表（跨 submit 复用）
     pub shared_tools: Option<SharedToolRegistry>,
+    /// Pending ACP request ID for HITL/AskUser response routing
+    pub pending_acp_request_id: Option<peri_acp::transport::types::RequestId>,
 }
 
 impl Default for AgentComm {
     fn default() -> Self {
         Self {
             agent_rx: None,
+            acp_notification_rx: None,
             interaction_prompt: None,
             pending_hitl_items: None,
             pending_ask_user: None,
@@ -131,6 +133,7 @@ impl Default for AgentComm {
             lsp_files_with_errors: 0,
             tool_search_index: None,
             shared_tools: None,
+            pending_acp_request_id: None,
         }
     }
 }

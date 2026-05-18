@@ -3,6 +3,7 @@ use peri_agent::agent::AgentCancellationToken;
 
 impl App {
     /// 获取或新建当前 thread id（同步，block_in_place）
+    #[allow(dead_code)]
     pub(super) fn ensure_thread_id(&mut self) -> ThreadId {
         if let Some(id) = &self.session_mgr.sessions[self.session_mgr.active].current_thread_id {
             return id.clone();

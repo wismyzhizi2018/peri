@@ -1,8 +1,161 @@
 use super::message_pipeline::PipelineAction;
 use super::*;
+use peri_acp::transport::types::RequestId;
 use peri_middlewares::hitl::BatchItem;
+use tracing::debug;
 
 impl App {
+    /// 处理 ACP notification — 将 AcpNotification 转换为相应的 UI 操作。
+    /// 返回 `(updated, should_break, should_return)`，与 `handle_agent_event` 相同语义。
+    pub(crate) fn handle_acp_notification(&mut self, notif: AcpNotification) -> (bool, bool, bool) {
+        match notif {
+            AcpNotification::AgentEvent { event, session_id } => {
+                // Convert peri-agent ExecutorEvent → TUI AgentEvent via map_executor_event
+                if let Some(agent_event) =
+                    super::agent::map_executor_event(event, &self.services.cwd)
+                {
+                    debug!(
+                        session_id = %session_id,
+                        "ACP→TUI: AgentEvent dispatched to handle_agent_event"
+                    );
+                    return self.handle_agent_event(agent_event);
+                }
+                debug!(
+                    session_id = %session_id,
+                    "ACP→TUI: ExecutorEvent filtered by map_executor_event (internal event)"
+                );
+                (false, false, false)
+            }
+            AcpNotification::AgentDone { session_id } => {
+                debug!(
+                    session_id = %session_id,
+                    "ACP→TUI: AgentDone received, triggering Done event"
+                );
+                self.handle_agent_event(super::AgentEvent::Done)
+            }
+            AcpNotification::RequestPermission { id, params } => {
+                self.handle_acp_request_permission(id, params)
+            }
+            AcpNotification::Elicitation { id, params } => self.handle_acp_elicitation(id, params),
+            AcpNotification::SessionUpdate { .. } => {
+                // SessionUpdate is for standard ACP clients; TUI uses AgentEvent path.
+                (false, false, false)
+            }
+            AcpNotification::Other { msg } => {
+                tracing::warn!(%msg, "Unhandled ACP notification");
+                (false, false, false)
+            }
+        }
+    }
+
+    /// Handle ACP RequestPermission: create HITL approval dialog.
+    fn handle_acp_request_permission(
+        &mut self,
+        id: RequestId,
+        params: serde_json::Value,
+    ) -> (bool, bool, bool) {
+        use tokio::sync::oneshot;
+
+        // Extract tool info from the raw params (avoid complex ACP schema type gymnastics)
+        let tool_name = params
+            .get("tool_call")
+            .and_then(|tc| tc.get("tool_call_id"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let tool_input = params
+            .get("tool_call")
+            .and_then(|tc| tc.get("raw_input"))
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+
+        let batch_items = vec![BatchItem {
+            tool_name,
+            input: tool_input,
+        }];
+
+        // Create oneshot bridge — the confirm() handler will call bridge_tx.send(decisions)
+        let (bridge_tx, _bridge_rx) = oneshot::channel::<Vec<HitlDecision>>();
+
+        // Store ACP request id for response dispatch in hitl_ops.rs
+        self.session_mgr.sessions[self.session_mgr.active]
+            .agent
+            .pending_acp_request_id = Some(id);
+
+        let prompt = HitlBatchPrompt::new(batch_items, bridge_tx);
+        self.session_mgr.sessions[self.session_mgr.active]
+            .agent
+            .interaction_prompt = Some(InteractionPrompt::Approval(prompt));
+
+        (true, true, false) // pause event consumption, wait for user confirmation
+    }
+
+    /// Handle ACP elicitation/create: create AskUser dialog.
+    fn handle_acp_elicitation(
+        &mut self,
+        id: RequestId,
+        params: serde_json::Value,
+    ) -> (bool, bool, bool) {
+        use peri_middlewares::ask_user::{AskUserBatchRequest, AskUserOption, AskUserQuestionData};
+        use tokio::sync::oneshot;
+
+        // Extract questions from raw params (avoid complex ACP schema type gymnastics)
+        let mut questions = Vec::new();
+        if let Some(mode) = params.get("mode").and_then(|m| m.get("Form")) {
+            if let Some(schema) = mode.get("schema") {
+                if let Some(props) = schema.get("properties").and_then(|p| p.as_object()) {
+                    for (prop_id, prop) in props {
+                        let options: Vec<AskUserOption> = prop
+                            .get("one_of")
+                            .and_then(|o| o.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .map(|o| AskUserOption {
+                                        label: o["label"].as_str().unwrap_or("").to_string(),
+                                        description: o["description"]
+                                            .as_str()
+                                            .map(|s| s.to_string()),
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default();
+                        questions.push(AskUserQuestionData {
+                            tool_call_id: prop_id.clone(),
+                            question: prop["description"].as_str().unwrap_or("").to_string(),
+                            header: prop["title"].as_str().unwrap_or("").to_string(),
+                            multi_select: false,
+                            options,
+                        });
+                    }
+                }
+            }
+        }
+
+        // Create oneshot bridge — confirm() handler will call bridge_tx.send(answers)
+        let (bridge_tx, _bridge_rx) = oneshot::channel::<Vec<String>>();
+
+        // Store ACP request id for response dispatch in ask_user_ops.rs
+        self.session_mgr.sessions[self.session_mgr.active]
+            .agent
+            .pending_acp_request_id = Some(id);
+        self.session_mgr.sessions[self.session_mgr.active]
+            .agent
+            .pending_ask_user = Some(false);
+
+        let (batch_req, _) = AskUserBatchRequest::new(questions);
+        let batch_req_bridged = AskUserBatchRequest {
+            questions: batch_req.questions,
+            response_tx: bridge_tx,
+        };
+        self.session_mgr.sessions[self.session_mgr.active]
+            .agent
+            .interaction_prompt = Some(InteractionPrompt::Questions(
+            AskUserBatchPrompt::from_request(batch_req_bridged),
+        ));
+
+        (true, true, false) // pause event consumption, wait for user input
+    }
+
     /// 处理单个 AgentEvent，返回 `(updated, should_break, should_return)`
     pub(crate) fn handle_agent_event(&mut self, event: AgentEvent) -> (bool, bool, bool) {
         match event {
@@ -999,11 +1152,17 @@ impl App {
             }
         }
 
-        if self.session_mgr.sessions[self.session_mgr.active]
+        // Check for events from ACP notification channel (primary path)
+        let has_acp = self.session_mgr.sessions[self.session_mgr.active]
+            .agent
+            .acp_notification_rx
+            .is_some();
+        let has_legacy_rx = self.session_mgr.sessions[self.session_mgr.active]
             .agent
             .agent_rx
-            .is_none()
-        {
+            .is_some();
+
+        if !has_acp && !has_legacy_rx {
             return false;
         }
 
@@ -1025,6 +1184,31 @@ impl App {
         }
 
         loop {
+            // Try ACP notification channel first (new path)
+            let acp_result = self.session_mgr.sessions[self.session_mgr.active]
+                .agent
+                .acp_notification_rx
+                .as_mut()
+                .map(|rx| rx.try_recv());
+            match acp_result {
+                Some(Ok(notif)) => {
+                    let (ev_updated, should_break, should_return) =
+                        self.handle_acp_notification(notif);
+                    if ev_updated {
+                        updated = true;
+                    }
+                    if should_return {
+                        return true;
+                    }
+                    if should_break {
+                        break;
+                    }
+                    continue;
+                }
+                Some(Err(_)) | None => {} // channel empty or not available, fall through to legacy
+            }
+
+            // Try legacy agent_rx channel (backward compat)
             let result = self.session_mgr.sessions[self.session_mgr.active]
                 .agent
                 .agent_rx

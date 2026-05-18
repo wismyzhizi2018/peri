@@ -12,7 +12,7 @@ pub struct BackgroundTaskResult {
 
 /// Agent 执行过程中的增量事件
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "value", rename_all = "snake_case")]
 pub enum AgentEvent {
     /// AI 推理内容（reasoning/思考过程）
     AiReasoning(String),
