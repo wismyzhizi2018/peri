@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 use serde_json::{json, Value};
-use tracing::{error, info, warn};
+use tracing::{debug, error, info};
 
 use peri_acp::broker::AcpTransportBroker;
 use peri_acp::event::{map_executor_to_peri_notifications, map_executor_to_updates};
@@ -166,16 +166,24 @@ async fn handle_request(
 
             let agent_input = AgentInput::text(content.clone());
 
-            // Event channel: ExecutorEvent → SessionUpdate notifications
+            // Event channel: ExecutorEvent → SessionUpdate notifications.
+            // Sender wrapped in Arc<Mutex<Option<>>> so we can explicitly close it after
+            // execution, independent of Arc<event_handler> reference counting (the agent
+            // internals may hold leaked references that prevent drop-based closure).
             let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel::<ExecutorEvent>();
+            let event_tx = Arc::new(std::sync::Mutex::new(Some(event_tx)));
 
             let cancel = AgentCancellationToken::new();
             state.cancel_token = Some(cancel.clone());
 
-            let event_handler: Arc<dyn AgentEventHandler> =
-                Arc::new(FnEventHandler(move |event: ExecutorEvent| {
-                    let _ = event_tx.send(event);
-                }));
+            let event_handler: Arc<dyn AgentEventHandler> = Arc::new(FnEventHandler({
+                let event_tx = event_tx.clone();
+                move |event: ExecutorEvent| {
+                    if let Some(tx) = event_tx.lock().unwrap().as_ref() {
+                        let _ = tx.send(event);
+                    }
+                }
+            }));
 
             let broker: Arc<dyn peri_agent::interaction::UserInteractionBroker> =
                 Arc::new(AcpTransportBroker::new(
@@ -216,21 +224,17 @@ async fn handle_request(
 
             // Background task: pump events to notifications.
             // Uses oneshot to guarantee the pump completes and sends agent_event_done
-            // BEFORE we respond to the client. This prevents the loading spinner
-            // from being stuck (client must see AgentDone before prompt() returns).
+            // BEFORE we respond to the client.
             let transport_clone = Arc::clone(transport);
             let sid = session_id.clone();
             let (pump_done_tx, pump_done_rx) = tokio::sync::oneshot::channel();
             tokio::spawn(async move {
                 let mut event_count: u64 = 0;
-                warn!(session_id = %sid, "ACP pump: started");
                 while let Some(exec_event) = event_rx.recv().await {
                     event_count += 1;
 
-                    // 检查是否有 peri/* 自定义通知映射
                     let peri_notifs = map_executor_to_peri_notifications(&exec_event);
 
-                    // 仅不含 peri/* 映射的事件才发送 notifications/agent_event（向后兼容）
                     if peri_notifs.is_empty() {
                         let event_value = match serde_json::to_value(&exec_event) {
                             Ok(v) => v,
@@ -252,7 +256,6 @@ async fn handle_request(
                         }
                     }
 
-                    // 发送 peri/* 自定义通知
                     for (method, mut payload) in peri_notifs {
                         if let serde_json::Value::Object(ref mut map) = payload {
                             map.insert("session_id".to_string(), json!(sid));
@@ -260,7 +263,6 @@ async fn handle_request(
                         let _ = transport_clone.send_notification(method, payload).await;
                     }
 
-                    // 标准 ACP SessionUpdate（所有事件共用）
                     let updates = map_executor_to_updates(&exec_event, context_window_u32);
                     for update in updates {
                         let payload = match serde_json::to_value(&update) {
@@ -280,7 +282,7 @@ async fn handle_request(
                     }
                 }
                 // event_rx closed → agent finished
-                warn!(session_id = %sid, event_count = event_count, "ACP pump: sending agent_event_done");
+                debug!(session_id = %sid, event_count = event_count, "ACP pump: sending agent_event_done");
                 let send_result = transport_clone
                     .send_notification(
                         "notifications/agent_event_done",
@@ -289,11 +291,8 @@ async fn handle_request(
                         }),
                     )
                     .await;
-                match send_result {
-                    Ok(()) => warn!(session_id = %sid, "ACP pump: agent_event_done sent, exiting"),
-                    Err(e) => {
-                        error!(session_id = %sid, error = %e, "ACP pump: agent_event_done send failed")
-                    }
+                if let Err(e) = send_result {
+                    error!(session_id = %sid, error = %e, "ACP pump: agent_event_done send failed")
                 }
                 let _ = pump_done_tx.send(());
             });
@@ -305,24 +304,26 @@ async fn handle_request(
                 .executor
                 .execute(agent_input, &mut agent_state, Some(cancel.clone()))
                 .await;
-            // Explicitly drop agent_output to release all references to event_handler.
-            // This must happen BEFORE we await pump_done_rx, so that event_tx closes
-            // and the pump can observe event_rx returning None.
+            // Drop agent_output first to release as many references as possible.
             drop(agent_output);
+            // Explicitly close the event channel by taking the sender out of the Mutex.
+            // This guarantees event_rx.recv() returns None even if Arc references to
+            // event_handler leak inside the agent's internal closures.
+            {
+                let mut tx_guard = event_tx.lock().unwrap();
+                *tx_guard = None;
+            }
 
             // Wait for the pump to finish sending all events, including agent_event_done.
-            // This guarantees the client receives AgentDone before prompt() returns.
-            warn!(session_id = %session_id, "ACP: waiting for pump to finish...");
             match pump_done_rx.await {
-                Ok(()) => warn!(session_id = %session_id, "ACP: pump confirmed done"),
+                Ok(()) => debug!(session_id = %session_id, "ACP pump: done"),
                 Err(_) => {
-                    error!(session_id = %session_id, "ACP: pump done channel closed unexpectedly")
+                    error!(session_id = %session_id, "ACP pump done channel closed unexpectedly")
                 }
             }
 
             match result {
                 Ok(_output) => {
-                    // Save messages from agent output back to session history
                     state.history = agent_state.into_messages();
                     info!(session_id = %session_id, messages = state.history.len(), "Agent execution completed");
                 }
@@ -334,10 +335,7 @@ async fn handle_request(
                 .map_err(|e| AcpError::new(-32603, format!("Serialize failed: {e}")))
         }
 
-        "session/set_model" => {
-            // Model switching handled via peri_config.active_alias updates
-            Ok(json!({ "status": "ok" }))
-        }
+        "session/set_model" => Ok(json!({ "status": "ok" })),
 
         "session/set_mode" => {
             let session_id = params
@@ -373,7 +371,7 @@ async fn handle_notification(
             }
         }
     } else {
-        warn!(method = %method, "Unhandled notification");
+        debug!(method = %method, "Unhandled notification");
     }
 }
 

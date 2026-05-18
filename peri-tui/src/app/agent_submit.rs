@@ -206,9 +206,22 @@ impl App {
             tokio::spawn(async move {
                 let client = acp_client_clone;
                 if !client.has_session() {
-                    let _ = client.new_session(&cwd_clone, Some(&model_clone)).await;
+                    tracing::info!("ACP submit: no session, calling new_session...");
+                    match client.new_session(&cwd_clone, Some(&model_clone)).await {
+                        Ok(sid) => {
+                            tracing::info!(session_id = %sid, "ACP submit: new_session succeeded")
+                        }
+                        Err(e) => {
+                            tracing::error!(error = %e, "ACP submit: new_session FAILED");
+                            return;
+                        }
+                    }
                 }
-                let _ = client.prompt(&input_clone).await;
+                tracing::info!("ACP submit: calling prompt...");
+                match client.prompt(&input_clone).await {
+                    Ok(()) => tracing::info!("ACP submit: prompt completed"),
+                    Err(e) => tracing::error!(error = %e, "ACP submit: prompt FAILED"),
+                }
             });
         } else {
             // Fallback: ACP client not available, show error

@@ -27,18 +27,8 @@ impl App {
                 (false, false, false)
             }
             AcpNotification::AgentDone { session_id } => {
-                tracing::warn!(
-                    session_id = %session_id,
-                    "ACP→TUI: AgentDone received, triggering Done event"
-                );
-                let result = self.handle_agent_event(super::AgentEvent::Done);
-                tracing::warn!(
-                    updated = result.0,
-                    should_break = result.1,
-                    should_return = result.2,
-                    "ACP→TUI: Done event handled"
-                );
-                result
+                debug!(session_id = %session_id, "ACP→TUI: AgentDone received");
+                self.handle_agent_event(super::AgentEvent::Done)
             }
             AcpNotification::RequestPermission { id, params } => {
                 self.handle_acp_request_permission(id, params)
@@ -114,16 +104,15 @@ impl App {
     ) -> (bool, bool, bool) {
         use tokio::sync::oneshot;
 
-        // Extract tool info from the raw params (avoid complex ACP schema type gymnastics)
-        let tool_name = params
-            .get("tool_call")
-            .and_then(|tc| tc.get("tool_call_id"))
+        // ACP protocol serializes with camelCase: toolCall, toolCallId, rawInput
+        let tool_call = params.get("toolCall").or_else(|| params.get("tool_call"));
+        let tool_name = tool_call
+            .and_then(|tc| tc.get("toolCallId").or_else(|| tc.get("tool_call_id")))
             .and_then(|v| v.as_str())
             .unwrap_or("unknown")
             .to_string();
-        let tool_input = params
-            .get("tool_call")
-            .and_then(|tc| tc.get("raw_input"))
+        let tool_input = tool_call
+            .and_then(|tc| tc.get("rawInput").or_else(|| tc.get("raw_input")))
             .cloned()
             .unwrap_or(serde_json::Value::Null);
 
@@ -157,14 +146,23 @@ impl App {
         use peri_middlewares::ask_user::{AskUserBatchRequest, AskUserOption, AskUserQuestionData};
         use tokio::sync::oneshot;
 
-        // Extract questions from raw params (avoid complex ACP schema type gymnastics)
+        // ACP CreateElicitationRequest serializes as:
+        //   {"mode": "form", "requestedSchema": {"properties": {...}}, "message": "..."}
+        // ElicitationMode uses #[serde(tag = "mode", rename_all = "snake_case")]
+        // StringPropertySchema uses #[serde(rename_all = "camelCase")]: oneOf
         let mut questions = Vec::new();
-        if let Some(mode) = params.get("mode").and_then(|m| m.get("Form")) {
-            if let Some(schema) = mode.get("schema") {
+        let is_form = params.get("mode").and_then(|m| m.as_str()) == Some("form");
+        if is_form {
+            // requestedSchema (camelCase from ElicitationFormMode.rename_all = "camelCase")
+            if let Some(schema) = params
+                .get("requestedSchema")
+                .or_else(|| params.get("requested_schema"))
+            {
                 if let Some(props) = schema.get("properties").and_then(|p| p.as_object()) {
                     for (prop_id, prop) in props {
                         let options: Vec<AskUserOption> = prop
-                            .get("one_of")
+                            .get("oneOf")
+                            .or_else(|| prop.get("one_of"))
                             .and_then(|o| o.as_array())
                             .map(|arr| {
                                 arr.iter()
@@ -606,11 +604,16 @@ impl App {
                 // TUI from treating it as parent completion (setting agent_rx=None,
                 // loading=false, etc.). The parent ReAct loop is still blocked in
                 // the tool call and will continue after it returns.
-                if self.session_mgr.sessions[self.session_mgr.active]
+                let in_sub = self.session_mgr.sessions[self.session_mgr.active]
                     .messages
                     .pipeline
-                    .in_subagent()
-                {
+                    .in_subagent();
+                debug!(
+                    in_subagent = in_sub,
+                    active = self.session_mgr.active,
+                    "AgentEvent::Done — checking in_subagent"
+                );
+                if in_sub {
                     return (false, false, false);
                 }
                 self.session_mgr.sessions[self.session_mgr.active]
@@ -656,6 +659,7 @@ impl App {
                 self.session_mgr.sessions[self.session_mgr.active]
                     .langfuse
                     .langfuse_tracer = None;
+                debug!("AgentEvent::Done — calling set_loading(false)");
                 self.set_loading(false);
                 // 如果仍有后台任务在运行，保持 agent_rx 存活以接收 BackgroundTaskCompleted 事件
                 if self.session_mgr.sessions[self.session_mgr.active].background_task_count > 0 {

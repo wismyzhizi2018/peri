@@ -143,17 +143,12 @@ impl AcpTuiClient {
                             .and_then(|v| v.as_str())
                             .unwrap_or("")
                             .to_string();
-                        warn!(
+                        debug!(
                             session_id = %session_id,
                             total_events = event_count,
-                            "ACP client pump: received agent_event_done — sending AgentDone"
+                            "ACP client pump: received agent_event_done"
                         );
-                        let send_result =
-                            notification_tx.send(AcpNotification::AgentDone { session_id });
-                        warn!(
-                            send_ok = send_result.is_ok(),
-                            "ACP client pump: AgentDone sent to notification_tx"
-                        );
+                        let _ = notification_tx.send(AcpNotification::AgentDone { session_id });
                     } else if method.starts_with("notifications/peri/") {
                         let session_id = params
                             .get("session_id")
@@ -202,8 +197,11 @@ impl AcpTuiClient {
             .send_request("session/new", params)
             .await
             .map_err(|e| e.to_string())?;
-        let session_id = result["session_id"]
-            .as_str()
+        // ACP protocol uses camelCase: {"sessionId": "..."}
+        let session_id = result
+            .get("sessionId")
+            .or_else(|| result.get("session_id"))
+            .and_then(|v| v.as_str())
             .ok_or("no session_id in response")?
             .to_string();
         *self.current_session_id.lock().unwrap() = Some(session_id.clone());
