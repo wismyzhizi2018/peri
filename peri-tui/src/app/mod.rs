@@ -55,10 +55,18 @@ mod langfuse_state;
 mod mcp_panel;
 pub mod message_pipeline;
 mod oauth_prompt;
+mod panel_agent;
 pub mod panel_component;
+mod panel_config;
+mod panel_hooks;
 pub mod panel_list;
+mod panel_login;
 pub mod panel_manager;
+mod panel_memory;
+mod panel_model;
 mod panel_ops;
+mod panel_plugin;
+mod panel_status;
 mod thread_ops;
 
 pub use ask_user_prompt::AskUserBatchPrompt;
