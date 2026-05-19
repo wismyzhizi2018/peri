@@ -49,8 +49,6 @@ pub struct AgentComm {
     pub session_token_tracker: peri_agent::agent::token::TokenTracker,
     /// 当前模型的上下文窗口大小（从最近一次 TokenUsageUpdate 中的 model 推断）
     pub context_window: u32,
-    /// 是否需要 auto-compact（在 LlmCallEnd 时标记，Done 时执行）
-    pub needs_auto_compact: bool,
     /// 连续 auto-compact 失败次数（circuit breaker，达到 3 次后停止自动触发）
     pub auto_compact_failures: u32,
     /// compact 前的 token tracker 快照（compact 失败时恢复，防止 tracker 失去对上下文大小的感知）
@@ -75,15 +73,6 @@ pub struct AgentComm {
     pub agent_replied: bool,
     /// 标记 Interrupted/Error 处理器已完成 reconcile，Done 到达时应跳过重复 reconcile
     pub reconcile_already_done: bool,
-    /// 本轮用户原始输入（compact 后自动 re-submit 用）
-    pub last_user_input: Option<String>,
-    /// compact 启动时保存的用户输入副本（防止 compact 过程中 last_user_input 被覆盖）
-    pub pre_compact_user_input: Option<String>,
-    /// 连续 auto-compact re-submit 次数（防止无限循环，上限 3 次）
-    pub auto_compact_resubmit_count: u32,
-    /// compact 完成后是否应自动 resubmit（仅 agent 执行中 auto-compact 为 true，
-    /// 手动 /compact 和 Done 后 auto-compact 为 false）
-    pub compact_should_resubmit: bool,
     /// LSP 诊断计数（由 LspDiagnostics 事件更新）
     pub lsp_errors: usize,
     pub lsp_warnings: usize,
@@ -112,7 +101,6 @@ impl Default for AgentComm {
             agent_event_queue: Vec::new(),
             session_token_tracker: peri_agent::agent::token::TokenTracker::default(),
             context_window: 200_000,
-            needs_auto_compact: false,
             auto_compact_failures: 0,
             pre_compact_token_snapshot: None,
             retry_status: None,
@@ -124,10 +112,6 @@ impl Default for AgentComm {
             pre_done_bg_completions: Vec::new(),
             agent_replied: false,
             reconcile_already_done: false,
-            last_user_input: None,
-            pre_compact_user_input: None,
-            auto_compact_resubmit_count: 0,
-            compact_should_resubmit: false,
             lsp_errors: 0,
             lsp_warnings: 0,
             lsp_files_with_errors: 0,

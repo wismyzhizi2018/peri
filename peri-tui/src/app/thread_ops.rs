@@ -112,13 +112,7 @@ impl App {
             .pre_compact_token_snapshot = None;
         self.session_mgr.sessions[self.session_mgr.active]
             .agent
-            .needs_auto_compact = false;
-        self.session_mgr.sessions[self.session_mgr.active]
-            .agent
             .auto_compact_failures = 0;
-        self.session_mgr.sessions[self.session_mgr.active]
-            .agent
-            .compact_should_resubmit = false;
         self.session_mgr.sessions[self.session_mgr.active]
             .agent
             .retry_status = None;

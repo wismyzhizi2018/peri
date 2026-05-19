@@ -64,6 +64,11 @@ impl App {
 
         // 清空 view_messages，只显示 compact 通知
         let view_msgs = vec![MessageViewModel::system(compact_label)];
+        // resubmit 后 view_messages 被清空重建，round_start_vm_idx 必须重置
+        // 否则第二轮 agent 事件的 request_rebuild() 使用旧值会越界并导致 VM 累积
+        self.session_mgr.sessions[self.session_mgr.active]
+            .messages
+            .round_start_vm_idx = 0;
         self.apply_pipeline_action(PipelineAction::RebuildAll {
             prefix_len: 0,
             tail_vms: view_msgs,
