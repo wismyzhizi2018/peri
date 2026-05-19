@@ -181,11 +181,27 @@ Stdio 路径:
 
 ## 上下文压缩
 
-Token 达到上下文窗口 85% 时自动触发：Micro-compact（清除可压缩工具结果）→ Full Compact（LLM 生成 9 段摘要）→ Re-inject（最近文件 + Skills）。
+**架构**：compact 触发 + 执行 + resubmit 全部在 `peri-acp/src/session/executor.rs` 的 `execute_prompt()` 循环内完成（TUI 和 stdio 共享）。`compact_runner` 模块封装 full/micro compact 的具体逻辑（hooks + 事件 + 取消）。TUI 侧 `handle_compact_completed` 只负责 UI 通知和 pipeline 状态清理。
 
-触发阈值：0.70 micro-compact（清除 ≥5 步前的 Bash/Read/Glob/Grep/Write/Edit 结果），0.85 full compact。环境变量覆盖：`DISABLE_COMPACT`、`DISABLE_AUTO_COMPACT`、`COMPACT_THRESHOLD`（0.0-1.0）。
+**触发**：executor 在每轮 agent 执行后检查 `ContextBudget`：0.70 micro-compact（清除 ≥5 步前的工具结果），0.85 full compact（LLM 生成摘要 + re_inject）。Full compact 后自动 resubmit（最多 3 次）。环境变量覆盖：`DISABLE_COMPACT`、`DISABLE_AUTO_COMPACT`、`COMPACT_THRESHOLD`（0.0-1.0）。
 
-**[TRAP]** Compact 是跨异步操作：状态依赖（如 resubmit 所需的原始输入）应在操作开始时保存到独立字段。Full compact 后 `prefix_len: 0` 时必须清理过期 `ephemeral_notes`，否则历史通知残留。（详见 spec/global/domains/compact.md#issue_2026-05-11-auto-compact-no-resubmit）
+**手动 /compact**：通过 ACP `session/compact` 请求 → ACP server `execute_compact()` → `compact_runner::run_full_compact()`。TUI 的 `start_compact()` 通过 `AcpTuiClient.compact()` 委托。
+
+**核心文件**：
+| 文件 | 职责 |
+|------|------|
+| `peri-agent/src/agent/events.rs` | `CompactStarted`/`CompactCompleted`/`CompactError` 事件变体，`CompactCompleted` 携带 `messages`、`files`、`skills` |
+| `peri-acp/src/session/compact_runner.rs` | `run_full_compact()`/`run_micro_compact()`：hooks + 事件 + compact 执行 |
+| `peri-acp/src/session/executor.rs` | auto-compact 循环：执行后检查阈值 → compact → resubmit |
+| `peri-tui/src/app/agent_compact.rs` | TUI 侧 compact 事件处理：pipeline 清理 + UI 通知 |
+
+**[TRAP]** `handle_compact_completed` 必须三步清理：① `pipeline.clear()` 清空内部 completed 列表和流式状态 ② `pipeline.restore_completed(messages)` 用压缩后消息重建 pipeline 内部状态 ③ `RebuildAll { prefix_len: 0 }` 清空 view_messages 只渲染 compact 通知。缺少前两步会导致 resubmit 的 StateSnapshot 与旧 completed reconcile 时旧消息残留。`restore_completed` 不能省——没有它 pipeline 的 `completed` 为空，新一轮 reconcile 会从零开始重建所有 view model。
+
+**[TRAP]** `CompactCompleted` 事件必须携带 `messages: Vec<BaseMessage>`（压缩后的消息列表），TUI 用它更新 `agent_state_messages` 和 pipeline 内部状态。没有 `messages` 字段，TUI 无法用压缩后的内容替换旧状态。
+
+**[TRAP]** 禁止在 TUI 层直接触发 auto-compact。auto-compact 的触发判断（`needs_auto_compact`、token 阈值检查）全部在 executor 内部处理。TUI 的 `ContextWarning`、`TokenUsageUpdate`、`Done`、`BackgroundTaskCompleted` 处理器不再设置 `needs_auto_compact` 标记。新增 compact 触发点只能在 executor 中。
+
+**[TRAP]** `restore_completed(messages)` 会把 messages 中的 system 消息放入 pipeline 的 completed 列表。compact 后的 messages 以 `BaseMessage::system(summary)` 开头——这是内部状态，不应被渲染。pipeline 的 reconcile 逻辑通过 `build_tail_vms()` 只渲染非 system 类型的消息，但 `round_start_vm_idx` 和 `completed_len_at_round_start` 必须正确设置，否则 view_messages 会泄漏 system 消息。
 
 ## MCP 中间件
 
