@@ -30,10 +30,11 @@ use peri_agent::thread::{ThreadId, ThreadMeta};
 use peri_middlewares::prelude::*;
 
 use agent_client_protocol::schema::{
-    AgentCapabilities, InitializeResponse, LoadSessionResponse, NewSessionResponse, PromptResponse,
-    ProtocolVersion, SessionCapabilities, SessionCloseCapabilities, SessionForkCapabilities,
-    SessionId, SessionListCapabilities, SessionResumeCapabilities, SetSessionConfigOptionResponse,
-    SetSessionModeResponse, SetSessionModelResponse, StopReason,
+    AgentCapabilities, CloseSessionResponse, ForkSessionResponse, InitializeResponse,
+    ListSessionsResponse, LoadSessionResponse, NewSessionResponse, PromptResponse, ProtocolVersion,
+    ResumeSessionResponse, SessionCapabilities, SessionCloseCapabilities, SessionForkCapabilities,
+    SessionId, SessionInfo, SessionListCapabilities, SessionResumeCapabilities,
+    SetSessionConfigOptionResponse, SetSessionModeResponse, SetSessionModelResponse, StopReason,
 };
 
 use crate::app::agent::LlmProvider;
@@ -375,6 +376,133 @@ async fn handle_request(
                 .modes(modes)
                 .models(models)
                 .config_options(config_options);
+            serde_json::to_value(resp)
+                .map_err(|e| AcpError::new(-32603, format!("Serialize failed: {e}")))
+        }
+
+        "session/list" => {
+            let threads = cfg
+                .thread_store
+                .list_threads()
+                .await
+                .map_err(|e| AcpError::new(-32603, format!("Failed to list sessions: {e}")))?;
+
+            let cwd_filter = params.get("cwd").and_then(|v| v.as_str());
+
+            let entries: Vec<SessionInfo> = threads
+                .into_iter()
+                .filter(|t| {
+                    if let Some(cwd) = cwd_filter {
+                        t.cwd == cwd
+                    } else {
+                        true
+                    }
+                })
+                .map(|t| {
+                    SessionInfo::new(
+                        SessionId::new(t.id.clone()),
+                        std::path::PathBuf::from(t.cwd.clone()),
+                    )
+                    .title(t.title.clone())
+                    .updated_at(t.updated_at.to_rfc3339())
+                })
+                .collect();
+
+            let resp = ListSessionsResponse::new(entries);
+            serde_json::to_value(resp)
+                .map_err(|e| AcpError::new(-32603, format!("Serialize failed: {e}")))
+        }
+
+        "session/close" => {
+            let req_session_id = params
+                .get("sessionId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| AcpError::new(-32602, "missing sessionId"))?;
+
+            if let Some(state) = sessions.remove(req_session_id) {
+                if let Some(ref token) = state.cancel_token {
+                    token.cancel();
+                }
+                info!(session_id = %req_session_id, "Session closed");
+            }
+            let resp = CloseSessionResponse::new();
+            serde_json::to_value(resp)
+                .map_err(|e| AcpError::new(-32603, format!("Serialize failed: {e}")))
+        }
+
+        "session/resume" => {
+            let req_session_id = params
+                .get("sessionId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| AcpError::new(-32602, "missing sessionId"))?;
+            let cwd = params.get("cwd").and_then(|v| v.as_str()).unwrap_or(".");
+
+            if !sessions.contains_key(req_session_id) {
+                sessions.insert(
+                    req_session_id.to_string(),
+                    SessionState {
+                        session_id: req_session_id.to_string(),
+                        thread_id: req_session_id.to_string(),
+                        cwd: cwd.to_string(),
+                        history: Vec::new(),
+                        cancel_token: None,
+                    },
+                );
+                info!(session_id = %req_session_id, "Session resumed (new)");
+            } else {
+                info!(session_id = %req_session_id, "Session resumed (existing)");
+            }
+
+            let resp = ResumeSessionResponse::new();
+            serde_json::to_value(resp)
+                .map_err(|e| AcpError::new(-32603, format!("Serialize failed: {e}")))
+        }
+
+        "session/fork" => {
+            let source_id = params
+                .get("sessionId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| AcpError::new(-32602, "missing sessionId"))?;
+            let cwd = params.get("cwd").and_then(|v| v.as_str()).unwrap_or(".");
+
+            let source_history = sessions
+                .get(source_id)
+                .map(|s| s.history.clone())
+                .ok_or_else(|| {
+                    AcpError::new(-32602, format!("source session not found: {source_id}"))
+                })?;
+
+            let meta = ThreadMeta::new(cwd);
+            let new_thread_id = cfg
+                .thread_store
+                .create_thread(meta)
+                .await
+                .map_err(|e| AcpError::new(-32603, format!("Thread creation failed: {e}")))?;
+
+            if !source_history.is_empty() {
+                if let Err(e) = cfg
+                    .thread_store
+                    .append_messages(&new_thread_id, &source_history)
+                    .await
+                {
+                    tracing::warn!(error = %e, "session/fork: failed to copy messages to new thread");
+                }
+            }
+
+            let new_session_id = new_thread_id.clone();
+            sessions.insert(
+                new_session_id.clone(),
+                SessionState {
+                    session_id: new_session_id.clone(),
+                    thread_id: new_thread_id.clone(),
+                    cwd: cwd.to_string(),
+                    history: source_history,
+                    cancel_token: None,
+                },
+            );
+
+            info!(source = %source_id, new = %new_session_id, "Session forked");
+            let resp = ForkSessionResponse::new(SessionId::new(new_session_id));
             serde_json::to_value(resp)
                 .map_err(|e| AcpError::new(-32603, format!("Serialize failed: {e}")))
         }
