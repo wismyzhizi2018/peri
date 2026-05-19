@@ -26,13 +26,13 @@ pub use peri_acp::session::state_builders::{
 use peri_acp::transport::types::{AcpError, IncomingMessage};
 use peri_agent::agent::AgentCancellationToken;
 use peri_agent::messages::BaseMessage;
-use peri_agent::thread::ThreadMeta;
+use peri_agent::thread::{ThreadId, ThreadMeta};
 use peri_middlewares::prelude::*;
 
 use agent_client_protocol::schema::{
-    AgentCapabilities, InitializeResponse, NewSessionResponse, PromptResponse, ProtocolVersion,
-    SessionCapabilities, SessionCloseCapabilities, SessionForkCapabilities, SessionId,
-    SessionListCapabilities, SessionResumeCapabilities, SetSessionConfigOptionResponse,
+    AgentCapabilities, InitializeResponse, LoadSessionResponse, NewSessionResponse, PromptResponse,
+    ProtocolVersion, SessionCapabilities, SessionCloseCapabilities, SessionForkCapabilities,
+    SessionId, SessionListCapabilities, SessionResumeCapabilities, SetSessionConfigOptionResponse,
     SetSessionModeResponse, SetSessionModelResponse, StopReason,
 };
 
@@ -318,6 +318,63 @@ async fn handle_request(
                 build_config_options(&c, &p, cfg.permission_mode.load())
             };
             let resp = SetSessionConfigOptionResponse::new(config_options);
+            serde_json::to_value(resp)
+                .map_err(|e| AcpError::new(-32603, format!("Serialize failed: {e}")))
+        }
+
+        "session/load" => {
+            let req_session_id = params
+                .get("sessionId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| AcpError::new(-32602, "missing sessionId"))?;
+            let cwd = params.get("cwd").and_then(|v| v.as_str()).unwrap_or(".");
+
+            // Load history from ThreadStore
+            let history = match cfg
+                .thread_store
+                .load_messages(&ThreadId::from(req_session_id.to_string()))
+                .await
+            {
+                Ok(msgs) => msgs,
+                Err(e) => {
+                    tracing::warn!(session_id = %req_session_id, error = %e, "session/load: thread not found, creating empty session");
+                    Vec::new()
+                }
+            };
+
+            // Insert into sessions if not already present
+            if let Some(state) = sessions.get_mut(req_session_id) {
+                if state.history.is_empty() {
+                    state.history = history;
+                }
+            } else {
+                sessions.insert(
+                    req_session_id.to_string(),
+                    SessionState {
+                        session_id: req_session_id.to_string(),
+                        thread_id: req_session_id.to_string(),
+                        cwd: cwd.to_string(),
+                        history,
+                        cancel_token: None,
+                    },
+                );
+            }
+
+            let modes = build_mode_state(&cfg.permission_mode);
+            let models = {
+                let p = cfg.provider.read();
+                let c = cfg.peri_config.read();
+                build_model_state(&p, &c)
+            };
+            let config_options = {
+                let c = cfg.peri_config.read();
+                let p = cfg.provider.read();
+                build_config_options(&c, &p, cfg.permission_mode.load())
+            };
+            let resp = LoadSessionResponse::new()
+                .modes(modes)
+                .models(models)
+                .config_options(config_options);
             serde_json::to_value(resp)
                 .map_err(|e| AcpError::new(-32603, format!("Serialize failed: {e}")))
         }
