@@ -99,17 +99,97 @@ fn test_session_ended_serde() {
 }
 
 #[test]
-fn test_compact_events_serde() {
-    let ev1 = AgentEvent::CompactStarted;
-    let json1 = serde_json::to_string(&ev1).unwrap();
-    assert!(json1.contains(r#""type":"compact_started""#));
+fn test_compact_started_serde() {
+    let ev = AgentEvent::CompactStarted;
+    let json = serde_json::to_string(&ev).unwrap();
+    assert!(json.contains(r#""type":"compact_started""#));
+    let deserialized: AgentEvent = serde_json::from_str(&json).unwrap();
+    assert!(matches!(deserialized, AgentEvent::CompactStarted));
+}
 
-    let ev2 = AgentEvent::CompactCompleted;
-    let json2 = serde_json::to_string(&ev2).unwrap();
-    assert!(json2.contains(r#""type":"compact_completed""#));
+#[test]
+fn test_compact_completed_serde_roundtrip() {
+    // full compact 场景：summary 非空，micro_cleared 为 0
+    let ev = AgentEvent::CompactCompleted {
+        summary: "对话摘要内容".to_string(),
+        files: vec![
+            CompactFileInfo {
+                path: "src/main.rs".to_string(),
+                lines: 42,
+            },
+            CompactFileInfo {
+                path: "src/lib.rs".to_string(),
+                lines: 15,
+            },
+        ],
+        skills: vec!["code-review".to_string(), "refactor".to_string()],
+        micro_cleared: 0,
+    };
+    let json = serde_json::to_string(&ev).unwrap();
+    assert!(json.contains(r#""type":"compact_completed""#));
+    assert!(json.contains(r#""summary":"对话摘要内容""#));
+    assert!(json.contains(r#""path":"src/main.rs""#));
+    assert!(json.contains(r#""skills":["code-review","refactor"]"#));
+    let deserialized: AgentEvent = serde_json::from_str(&json).unwrap();
+    if let AgentEvent::CompactCompleted {
+        summary,
+        files,
+        skills,
+        micro_cleared,
+    } = deserialized
+    {
+        assert_eq!(summary, "对话摘要内容");
+        assert_eq!(files.len(), 2);
+        assert_eq!(files[0].path, "src/main.rs");
+        assert_eq!(files[0].lines, 42);
+        assert_eq!(files[1].path, "src/lib.rs");
+        assert_eq!(files[1].lines, 15);
+        assert_eq!(skills, vec!["code-review", "refactor"]);
+        assert_eq!(micro_cleared, 0);
+    } else {
+        panic!("Deserialized to wrong variant");
+    }
+}
 
-    let d1: AgentEvent = serde_json::from_str(&json1).unwrap();
-    assert!(matches!(d1, AgentEvent::CompactStarted));
-    let d2: AgentEvent = serde_json::from_str(&json2).unwrap();
-    assert!(matches!(d2, AgentEvent::CompactCompleted));
+#[test]
+fn test_compact_completed_micro_serde() {
+    // micro-compact 场景：summary 为空，micro_cleared > 0
+    let ev = AgentEvent::CompactCompleted {
+        summary: String::new(),
+        files: vec![],
+        skills: vec![],
+        micro_cleared: 8,
+    };
+    let json = serde_json::to_string(&ev).unwrap();
+    let deserialized: AgentEvent = serde_json::from_str(&json).unwrap();
+    if let AgentEvent::CompactCompleted {
+        summary,
+        files,
+        skills,
+        micro_cleared,
+    } = deserialized
+    {
+        assert!(summary.is_empty());
+        assert!(files.is_empty());
+        assert!(skills.is_empty());
+        assert_eq!(micro_cleared, 8);
+    } else {
+        panic!("Deserialized to wrong variant");
+    }
+}
+
+#[test]
+fn test_compact_error_serde_roundtrip() {
+    let ev = AgentEvent::CompactError {
+        message: "LLM 调用超时".to_string(),
+    };
+    let json = serde_json::to_string(&ev).unwrap();
+    assert!(json.contains(r#""type":"compact_error""#));
+    assert!(json.contains(r#""message":"LLM 调用超时""#));
+    let deserialized: AgentEvent = serde_json::from_str(&json).unwrap();
+    if let AgentEvent::CompactError { message } = deserialized {
+        assert_eq!(message, "LLM 调用超时");
+    } else {
+        panic!("Deserialized to wrong variant");
+    }
 }

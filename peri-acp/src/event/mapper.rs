@@ -122,8 +122,29 @@ pub fn map_executor_to_peri_notifications(
         ExecutorEvent::CompactStarted => {
             vec![("notifications/peri/compact/start", json!({}))]
         }
-        ExecutorEvent::CompactCompleted => {
-            vec![("notifications/peri/compact/end", json!({}))]
+        ExecutorEvent::CompactCompleted {
+            summary,
+            files,
+            skills,
+            micro_cleared,
+        } => {
+            vec![(
+                "notifications/peri/compact/end",
+                json!({
+                    "summary": summary,
+                    "files": files,
+                    "skills": skills,
+                    "microCleared": micro_cleared,
+                }),
+            )]
+        }
+        ExecutorEvent::CompactError { message } => {
+            vec![(
+                "notifications/peri/compact/error",
+                json!({
+                    "message": message,
+                }),
+            )]
         }
         ExecutorEvent::SessionEnded => {
             vec![("notifications/peri/session/ended", json!({}))]

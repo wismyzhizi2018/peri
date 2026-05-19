@@ -10,6 +10,13 @@ pub struct BackgroundTaskResult {
     pub duration_ms: u64,
 }
 
+/// Compact 保留的文件信息摘要
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CompactFileInfo {
+    pub path: String,
+    pub lines: usize,
+}
+
 /// Agent 执行过程中的增量事件
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type", content = "value", rename_all = "snake_case")]
@@ -86,7 +93,18 @@ pub enum AgentEvent {
     /// 上下文压缩开始
     CompactStarted,
     /// 上下文压缩完成
-    CompactCompleted,
+    CompactCompleted {
+        /// 摘要文本（full compact 时非空，micro compact 时为空）
+        summary: String,
+        /// 保留的文件摘要列表
+        files: Vec<CompactFileInfo>,
+        /// 保留的 Skill 名称列表
+        skills: Vec<String>,
+        /// micro-compact 清除的工具结果数量（>0 表示 micro-compact）
+        micro_cleared: usize,
+    },
+    /// 上下文压缩失败
+    CompactError { message: String },
     /// LSP 诊断更新
     LspDiagnostics {
         errors: usize,

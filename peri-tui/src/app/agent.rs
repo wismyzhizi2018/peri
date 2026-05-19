@@ -171,7 +171,8 @@ pub(crate) fn map_executor_event(event: ExecutorEvent, cwd: &str) -> Option<Agen
         // Other lifecycle events — not yet handled in TUI, ignore
         ExecutorEvent::SessionEnded
         | ExecutorEvent::CompactStarted
-        | ExecutorEvent::CompactCompleted => return None,
+        | ExecutorEvent::CompactCompleted { .. }
+        | ExecutorEvent::CompactError { .. } => return None,
     })
 }
 

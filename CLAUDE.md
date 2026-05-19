@@ -173,6 +173,8 @@ Stdio 路径:
 
 **[TRAP]** Agent 构建和执行统一通过 `peri_acp::session::executor::execute_prompt()`（内部调用 `peri_acp::agent::builder::build_agent()`）。禁止在 TUI 层直接构建 ReActAgent 或手写事件泵——使用 `EventSink` 实现委托给 executor。
 
+**[TRAP]** Session Config Options 覆盖旧的 Session Modes API。ACP 规范明确指出 `configOptions` 取代 `modes`/`models`，但过渡期内需同时发送两者以兼容旧客户端。IDE 客户端通过 `configOptions` 中条目的 `category` 字段决定渲染哪些 UI 控件：`category: "mode"` → 权限模式选择器，`category: "model"` → 模型下拉，`category: "thought_level"` → 推理强度。`build_config_options()` 必须按优先级顺序返回（mode → model → thinking_effort），`session/set_config_option` 处理器必须处理 `"mode"` 和 `"model"` config ID（除了已有的 `"thinking_effort"`）。仅发送 `modes`/`models` 而缺少对应 `configOptions` 条目的，已迁移到新 API 的 IDE 不会显示任何控件。
+
 ## HITL 审批
 
 默认需审批：`Bash`、`folder_operations`、`Agent`、`Write`、`Edit`、`delete_*`、`rm_*`、`mcp__*`、`WebFetch`、`WebSearch`。
