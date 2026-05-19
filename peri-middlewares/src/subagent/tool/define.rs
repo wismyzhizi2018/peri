@@ -219,6 +219,7 @@ impl SubAgentTool {
         let mut fork_state = AgentState::with_messages(cwd.to_string(), parent_msgs);
         let llm = (self.llm_factory)(None);
         let mut agent_builder = ReActAgent::new(llm).max_iterations(200);
+        let instance_id = format!("sub_{}", &uuid::Uuid::new_v4().to_string()[..8]);
 
         for mw in build_subagent_middlewares(SubAgentMiddlewareConfig::for_fork(cwd)) {
             agent_builder = agent_builder.add_middleware(mw);
@@ -235,11 +236,11 @@ impl SubAgentTool {
         }
 
         if let Some(ref factory) = self.child_handler_factory {
-            agent_builder = agent_builder.with_event_handler(factory("fork".to_string()));
+            agent_builder = agent_builder.with_event_handler(factory(instance_id.clone()));
         } else if let Some(handler) = &self.event_handler {
             let tagged = Arc::new(SourceAgentIdHandler::new(
                 Arc::clone(handler),
-                "fork".to_string(),
+                instance_id.clone(),
             ));
             agent_builder = agent_builder.with_event_handler(tagged);
         }
@@ -247,7 +248,7 @@ impl SubAgentTool {
         if let Some(ref handler) = self.event_handler {
             handler.on_event(AgentEvent::SubagentStarted {
                 agent_name: "fork".to_string(),
-                instance_id: String::new(),
+                instance_id: instance_id.clone(),
             });
         }
         self.fire_subagent_lifecycle_hook(
@@ -281,7 +282,7 @@ impl SubAgentTool {
                 agent_name: "fork".to_string(),
                 result: output_summary.clone(),
                 is_error: stopped_is_error,
-                instance_id: String::new(),
+                instance_id: instance_id.clone(),
             });
         }
         self.fire_subagent_lifecycle_hook(
@@ -700,6 +701,8 @@ impl BaseTool for SubAgentTool {
             }
         };
 
+        let instance_id = format!("sub_{}", &uuid::Uuid::new_v4().to_string()[..8]);
+
         let agent_def = match self.load_agent_def(&agent_id, &cwd) {
             Ok(a) => a,
             Err(e) => return Ok(e),
@@ -747,11 +750,11 @@ impl BaseTool for SubAgentTool {
         }
 
         if let Some(ref factory) = self.child_handler_factory {
-            agent_builder = agent_builder.with_event_handler(factory(agent_id.clone()));
+            agent_builder = agent_builder.with_event_handler(factory(instance_id.clone()));
         } else if let Some(handler) = &self.event_handler {
             let tagged = Arc::new(SourceAgentIdHandler::new(
                 Arc::clone(handler),
-                agent_id.clone(),
+                instance_id.clone(),
             ));
             agent_builder = agent_builder.with_event_handler(tagged);
         }
@@ -761,7 +764,7 @@ impl BaseTool for SubAgentTool {
         if let Some(ref handler) = self.event_handler {
             handler.on_event(AgentEvent::SubagentStarted {
                 agent_name: agent_id.clone(),
-                instance_id: String::new(),
+                instance_id: instance_id.clone(),
             });
         }
         self.fire_subagent_lifecycle_hook(
@@ -803,7 +806,7 @@ impl BaseTool for SubAgentTool {
                 agent_name: agent_id.clone(),
                 result: output_summary.clone(),
                 is_error: stopped_is_error,
-                instance_id: String::new(),
+                instance_id: instance_id.clone(),
             });
         }
         self.fire_subagent_lifecycle_hook(
