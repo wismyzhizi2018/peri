@@ -55,6 +55,11 @@ impl MessagePipeline {
         let mut prev_ai_tool_calls: Vec<(String, String, serde_json::Value)> = Vec::new();
 
         for msg in msgs {
+            // System 消息（system prompt / compact summary）是内部状态，不应渲染
+            if matches!(msg, BaseMessage::System { .. }) {
+                continue;
+            }
+
             if let BaseMessage::Ai { tool_calls, .. } = msg {
                 prev_ai_tool_calls = tool_calls
                     .iter()
