@@ -1,4 +1,8 @@
+pub mod add_marketplace;
 pub mod detail;
+pub mod discover_detail;
+pub mod discover_list;
+pub mod discover_search;
 pub mod list;
 
 use ratatui::text::Line;

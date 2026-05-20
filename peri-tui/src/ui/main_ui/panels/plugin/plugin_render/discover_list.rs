@@ -23,12 +23,7 @@ pub(crate) const DISCOVER_SEARCH_OVERHEAD: u16 = 4;
 pub(crate) const DISCOVER_FIXED_OVERHEAD: u16 = DISCOVER_TAB_OVERHEAD + DISCOVER_SEARCH_OVERHEAD; // 6
 
 /// Discover 视图：Tab 行 -> 搜索框（固定） -> 可滚动插件列表（带跟随）
-pub(crate) fn render_discover_list(
-    f: &mut Frame,
-    panel: &PluginPanel,
-    app: &mut App,
-    area: Rect,
-) {
+pub(crate) fn render_discover_list(f: &mut Frame, panel: &PluginPanel, app: &mut App, area: Rect) {
     // Tab 行 Spans
     let tab_labels: Vec<Span> = PluginPanelView::ALL
         .iter()
