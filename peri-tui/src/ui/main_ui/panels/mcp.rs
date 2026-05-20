@@ -132,7 +132,9 @@ fn render_server_list(f: &mut Frame, panel: &McpPanel, app: &mut App, area: Rect
     apply_panel_selection(app, &mut lines, inner);
 
     let mut scroll_state = ScrollState::with_offset(scroll_offset);
-    ScrollableArea::new(Text::from(lines))
+    app.session_mgr.sessions[app.session_mgr.active]
+        .ui
+        .panel_scrollbar_metrics = ScrollableArea::new(Text::from(lines))
         .scrollbar_style(Style::default().fg(theme::MUTED))
         .render(f, inner, &mut scroll_state);
 }
@@ -424,7 +426,9 @@ fn render_server_detail(f: &mut Frame, panel: &McpPanel, app: &mut App, area: Re
     apply_panel_selection(app, &mut lines, inner);
 
     let mut scroll_state = ScrollState::with_offset(scroll_offset);
-    ScrollableArea::new(Text::from(lines))
+    app.session_mgr.sessions[app.session_mgr.active]
+        .ui
+        .panel_scrollbar_metrics = ScrollableArea::new(Text::from(lines))
         .scrollbar_style(Style::default().fg(theme::MUTED))
         .render(f, inner, &mut scroll_state);
 }

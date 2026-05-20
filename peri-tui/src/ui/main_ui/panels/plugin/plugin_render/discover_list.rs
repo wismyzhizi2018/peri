@@ -230,7 +230,9 @@ pub(crate) fn render_discover_list(f: &mut Frame, panel: &PluginPanel, app: &mut
         .map(|l| l.spans.iter().map(|s| s.content.as_ref()).collect())
         .collect();
 
-    ScrollableArea::new(Text::from(lines))
+    app.session_mgr.sessions[app.session_mgr.active]
+        .ui
+        .panel_scrollbar_metrics = ScrollableArea::new(Text::from(lines))
         .scrollbar_style(Style::default().fg(theme::MUTED))
         .render(f, list_area, &mut scroll_state);
 }

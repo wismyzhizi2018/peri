@@ -409,7 +409,9 @@ pub(crate) fn render_list(f: &mut Frame, panel: &PluginPanel, app: &mut App, are
         p.set_scroll_offset(scroll_state.offset());
     }
 
-    ScrollableArea::new(Text::from(lines))
+    app.session_mgr.sessions[app.session_mgr.active]
+        .ui
+        .panel_scrollbar_metrics = ScrollableArea::new(Text::from(lines))
         .scrollbar_style(Style::default().fg(theme::MUTED))
         .render(f, inner, &mut scroll_state);
 }

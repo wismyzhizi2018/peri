@@ -28,6 +28,24 @@
 
 DeepSeek 通过 Anthropic 兼容端点调用，返回 HTTP 400。
 
+## 根因分析
+
+两个相互叠加的 bug：
+
+### Bug 1（根因）：Compact 后 round_start_vm_idx=0 + LLM 失败 = 视图完全清空
+
+`handle_compact_completed()`（`agent_compact.rs:71`）将 `round_start_vm_idx` 重置为 0。如果 compact 后下一次 LLM 调用在 StateSnapshot 到达之前就失败（如 400 错误），`handle_done()` 触发 `request_rebuild()` 时 `prefix_len=0`，`build_tail_vms()` 因 `has_snapshot_this_round=false` 跳过 reconcile 返回空 tail，`view_messages.drain(0..)` 完全清空。
+
+用户的"闪烁"是 compact 的视觉闪烁（view 被替换为 compact summary），随后的"全清"是 400 错误后 prefix_len=0 的灾难性 drain。
+
+### Bug 2（加剧因素）：Executor 不发送 Error 事件
+
+`executor.rs` 在 `agent.execute()` 返回 Err 时只 log 不通知前端。TUI 只收到 `Done`（通过 `peri/agent_event_done`），`reconcile_already_done` 始终为 false，`handle_done()` 总是调用 `request_rebuild()`，且用户看不到任何错误信息。
+
+### 修复计划
+
+`docs/superpowers/plans/2026-05-20-fix-llm-error-view-clear.md`
+
 ## 复现条件
 
 - **复现频率**：目前仅遇到一次，尚未确认稳定复现条件

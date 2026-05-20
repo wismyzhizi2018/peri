@@ -17,7 +17,7 @@ use crate::ui::theme;
 /// - Tab 栏带 ☐/✔ 状态标记
 /// - 选项编号格式（单选: `❯ 1. label`，多选: `❯ ● 1. label`）
 /// - 自定义输入合并为最后一个编号选项
-pub(crate) fn render_ask_user_popup(f: &mut Frame, app: &App, area: Rect) {
+pub(crate) fn render_ask_user_popup(f: &mut Frame, app: &mut App, area: Rect) {
     let Some(crate::app::InteractionPrompt::Questions(prompt)) = &app.session_mgr.sessions
         [app.session_mgr.active]
         .agent
@@ -171,7 +171,9 @@ pub(crate) fn render_ask_user_popup(f: &mut Frame, app: &App, area: Rect) {
     }
 
     let mut scroll_state = ScrollState::with_offset(prompt.scroll_offset);
-    ScrollableArea::new(Text::from(lines))
+    app.session_mgr.sessions[app.session_mgr.active]
+        .ui
+        .panel_scrollbar_metrics = ScrollableArea::new(Text::from(lines))
         .scrollbar_style(Style::default().fg(theme::MUTED))
         .render(f, content_area, &mut scroll_state);
 }

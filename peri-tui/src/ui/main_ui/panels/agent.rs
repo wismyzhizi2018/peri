@@ -172,7 +172,9 @@ pub(crate) fn render_agent_panel(f: &mut Frame, panel: &AgentPanel, app: &mut Ap
     }
 
     let mut scroll_state = ScrollState::with_offset(scroll_offset);
-    ScrollableArea::new(Text::from(lines))
+    app.session_mgr.sessions[app.session_mgr.active]
+        .ui
+        .panel_scrollbar_metrics = ScrollableArea::new(Text::from(lines))
         .scrollbar_style(Style::default().fg(theme::MUTED))
         .render(f, inner, &mut scroll_state);
 }

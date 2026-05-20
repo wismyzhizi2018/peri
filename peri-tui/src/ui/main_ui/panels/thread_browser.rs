@@ -317,7 +317,9 @@ pub(crate) fn render_thread_browser(
 
     // ── 3. 渲染列表区域（可滚动） ──
     let mut scroll_state = ScrollState::with_offset(browser.scroll_offset);
-    ScrollableArea::new(Text::from(lines))
+    app.session_mgr.sessions[app.session_mgr.active]
+        .ui
+        .panel_scrollbar_metrics = ScrollableArea::new(Text::from(lines))
         .scrollbar_style(Style::default().fg(theme::MUTED))
         .render(f, list_area, &mut scroll_state);
 }
