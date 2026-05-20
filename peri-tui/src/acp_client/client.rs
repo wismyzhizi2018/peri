@@ -208,6 +208,24 @@ impl AcpTuiClient {
         Ok(session_id)
     }
 
+    /// Load an existing session from ThreadStore history.
+    /// Used when restoring a historical thread so the ACP server has the full context.
+    pub async fn load_session(
+        &self,
+        session_id: &str,
+        cwd: &str,
+        model: Option<&str>,
+    ) -> Result<String, String> {
+        let params = json!({ "sessionId": session_id, "cwd": cwd, "model": model });
+        let _ = self
+            .transport
+            .send_request("session/load", params)
+            .await
+            .map_err(|e| e.to_string())?;
+        *self.current_session_id.lock().unwrap() = Some(session_id.to_string());
+        Ok(session_id.to_string())
+    }
+
     /// Submit a user message to the current session.
     /// Note: prompt() is called from the spawned async task that already
     /// has a session via new_session(), so current_session_id is guaranteed Some.

@@ -193,20 +193,40 @@ impl App {
             let model_clone = self.services.model_name.clone();
             let input_clone = input.clone();
             let cwd_clone = cwd.clone();
+            // 恢复的历史 thread_id：存在时用 load_session 加载历史上下文
+            let existing_thread_id = self.session_mgr.sessions[self.session_mgr.active]
+                .current_thread_id
+                .clone();
 
             // Spawn the ACP calls as a background task — NEVER block the TUI event loop.
             // Events will arrive via acp_notification_rx and be processed by poll_agent().
             tokio::spawn(async move {
                 let client = acp_client_clone;
                 if !client.has_session() {
-                    tracing::info!("ACP submit: no session, calling new_session...");
-                    match client.new_session(&cwd_clone, Some(&model_clone)).await {
-                        Ok(sid) => {
-                            tracing::info!(session_id = %sid, "ACP submit: new_session succeeded")
+                    if let Some(ref tid) = existing_thread_id {
+                        tracing::info!(thread_id = %tid, "ACP submit: loading existing session...");
+                        match client
+                            .load_session(tid, &cwd_clone, Some(&model_clone))
+                            .await
+                        {
+                            Ok(sid) => {
+                                tracing::info!(session_id = %sid, "ACP submit: load_session succeeded")
+                            }
+                            Err(e) => {
+                                tracing::error!(error = %e, "ACP submit: load_session FAILED");
+                                return;
+                            }
                         }
-                        Err(e) => {
-                            tracing::error!(error = %e, "ACP submit: new_session FAILED");
-                            return;
+                    } else {
+                        tracing::info!("ACP submit: no session, calling new_session...");
+                        match client.new_session(&cwd_clone, Some(&model_clone)).await {
+                            Ok(sid) => {
+                                tracing::info!(session_id = %sid, "ACP submit: new_session succeeded")
+                            }
+                            Err(e) => {
+                                tracing::error!(error = %e, "ACP submit: new_session FAILED");
+                                return;
+                            }
                         }
                     }
                 }
