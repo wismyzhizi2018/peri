@@ -409,7 +409,8 @@ async fn test_tool_message_id() {
     );
 }
 
-/// 验证 with_system_prompt 注入的 system 消息位于消息列表第一位
+/// 验证 with_system_prompt 注入的 system 消息在 execute 返回后被清理，
+/// 不会累积到 history（回归测试：system 消息累积 bug）
 #[tokio::test]
 async fn test_system_prompt_is_first() {
     struct EchoLLM;
@@ -435,16 +436,12 @@ async fn test_system_prompt_is_first() {
         .await
         .unwrap();
 
+    // execute 返回后，prepend 的 system 消息应被清理
     let messages = state.messages();
-    let first = messages.first().expect("应至少有一条消息");
-    assert!(
-        matches!(first, BaseMessage::System { .. }),
-        "第一条消息应为 System，实际为: {:?}",
-        first
-    );
-    assert!(
-        first.content().contains("system content here"),
-        "system 内容应包含注入文本"
+    let system_count = messages.iter().filter(|m| m.is_system()).count();
+    assert_eq!(
+        system_count, 0,
+        "execute 返回后不应残留 prepend 的 system 消息，实际有 {system_count} 条 system"
     );
 }
 
@@ -491,11 +488,79 @@ async fn test_system_prompt_order_independent() {
         .unwrap();
 
     let messages = state.messages();
-    let first = messages.first().expect("应至少有一条消息");
-    assert!(
-        first.content().contains("top level system"),
-        "with_system_prompt 注入的消息应在最前，实际第一条: {:?}",
-        first.content()
+    // execute() 结束后，prepend 的 system 消息应被清理，不应残留在 state 中
+    let system_count = messages.iter().filter(|m| m.is_system()).count();
+    assert_eq!(
+        system_count, 0,
+        "execute() 结束后 prepend 的 system 消息应被清理，实际残留 {} 条",
+        system_count
+    );
+}
+
+/// 回归测试：多次调用 execute() 时，prepend 的 system 消息不会跨调用累积
+#[tokio::test]
+async fn test_execute_no_system_accumulation_across_calls() {
+    use crate::middleware::r#trait::Middleware;
+
+    struct NoteMiddleware;
+    #[async_trait::async_trait]
+    impl<S: State> Middleware<S> for NoteMiddleware {
+        fn name(&self) -> &str {
+            "Note"
+        }
+        async fn before_agent(&self, state: &mut S) -> AgentResult<()> {
+            state.prepend_message(BaseMessage::system("middleware note"));
+            Ok(())
+        }
+    }
+
+    struct EchoLLM;
+    #[async_trait::async_trait]
+    impl ReactLLM for EchoLLM {
+        async fn generate_reasoning(
+            &self,
+            _messages: &[BaseMessage],
+            _tools: &[&dyn BaseTool],
+            _streaming: Option<crate::llm::types::StreamingContext>,
+        ) -> crate::error::AgentResult<Reasoning> {
+            Ok(Reasoning::with_answer("", "ok"))
+        }
+    }
+
+    let agent = ReActAgent::new(EchoLLM)
+        .with_system_prompt("sys prompt".to_string())
+        .add_middleware(Box::new(NoteMiddleware))
+        .max_iterations(1);
+
+    let mut state = AgentState::new("/tmp");
+
+    // 第一次 execute
+    agent
+        .execute(AgentInput::text("first"), &mut state, None)
+        .await
+        .unwrap();
+    let msgs_after_first = state.messages().len();
+
+    // 第二次 execute
+    agent
+        .execute(AgentInput::text("second"), &mut state, None)
+        .await
+        .unwrap();
+    let msgs_after_second = state.messages().len();
+
+    // 两次 execute 各新增 +2（user + assistant），无 system 消息累积
+    assert_eq!(
+        msgs_after_second - msgs_after_first,
+        2,
+        "第二次 execute 应只增加 2 条消息（user + assistant），实际增加 {} 条",
+        msgs_after_second - msgs_after_first
+    );
+
+    let system_count = state.messages().iter().filter(|m| m.is_system()).count();
+    assert_eq!(
+        system_count, 0,
+        "多次 execute() 后不应有 system 消息累积，实际有 {} 条",
+        system_count
     );
 }
 

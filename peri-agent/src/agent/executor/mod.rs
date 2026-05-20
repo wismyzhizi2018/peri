@@ -231,6 +231,9 @@ impl<L: ReactLLM, S: State> ReActAgent<L, S> {
             "agent: final tool set after collect"
         );
 
+        // 记录 prepend 前的消息数量
+        let len_before_prepend = state.messages().len();
+
         self.chain.run_before_agent(state).await?;
 
         // 固定 system prompt：在所有中间件 before_agent 之后 prepend，无顺序约束
@@ -238,7 +241,17 @@ impl<L: ReactLLM, S: State> ReActAgent<L, S> {
             state.prepend_message(BaseMessage::system(prompt.clone()));
         }
 
+        // 记录被 prepend 的消息 ID（位于 messages 列表头部）
+        let prepended_count = state.messages().len() - len_before_prepend;
+        let prepended_ids: Vec<MessageId> = state
+            .messages()
+            .iter()
+            .take(prepended_count)
+            .map(|m| m.id())
+            .collect();
+
         let mut all_tool_calls: Vec<(ToolCall, ToolResult)> = Vec::new();
+        let mut final_result: Option<AgentOutput> = None;
 
         for step in 0..self.max_iterations {
             state.set_current_step(step);
@@ -271,44 +284,67 @@ impl<L: ReactLLM, S: State> ReActAgent<L, S> {
 
                 // compact 已由 CompactMiddleware（before_model 钩子）在 call_llm 前处理
             } else {
-                // 最终回答
+                // 最终回答（clone all_tool_calls 避免移动，MaxIterationsExceeded 路径仍需借用）
                 let output = self::final_answer::handle_final_answer(
                     self,
                     state,
                     &reasoning,
-                    all_tool_calls,
+                    all_tool_calls.clone(),
                     &mut snapshot_anchor,
                     step,
                 )
                 .await?;
-                return Ok(output);
+                final_result = Some(output);
+                break;
             }
         }
 
-        // 安全网快照：仅覆盖 MaxIterationsExceeded 路径（循环自然耗尽）。
-        // 正常路径（handle_final_answer）已在内部补全所有快照，此处为空操作。
-        // 注意：call_llm/dispatch_tools 的 ? 传播会跳过此处，但这些路径中
-        // call_llm 不向 state 添加消息，dispatch_tools 的 Interrupted 路径
-        // 产生的工具结果会被 TUI 的 Interrupted handler 截断丢弃，无需额外快照。
-        let safety_start = self::final_answer::index_after_id(state.messages(), snapshot_anchor);
-        let safety_msgs: Vec<BaseMessage> = state.messages()[safety_start..]
-            .iter()
-            .filter(|m| !m.is_system())
-            .cloned()
-            .collect();
-        if !safety_msgs.is_empty() {
-            self.emit(AgentEvent::StateSnapshot(safety_msgs));
+        // 清理临时 prepend 的 system 消息（before_agent + with_system_prompt 注入）
+        // compact 可能已替换所有消息（此时 prepended_ids 中的 ID 不存在，retain 无操作）
+        // 未发生 compact 时，移除 prepend 的 system 消息防止累积到 history
+        Self::cleanup_prepended(state, &prepended_ids);
+
+        if let Some(output) = final_result {
+            return Ok(output);
         }
 
-        tracing::warn!(
-            max_iterations = self.max_iterations,
-            tool_call_count = all_tool_calls.len(),
-            last_tools = ?all_tool_calls.iter().rev().take(3)
-                .map(|(_, r)| r.tool_name.as_str())
-                .collect::<Vec<_>>(),
-            "ReAct 循环达到最大迭代次数"
-        );
-        Err(AgentError::MaxIterationsExceeded(self.max_iterations))
+        // MaxIterationsExceeded 路径：循环自然耗尽，all_tool_calls 未被 move
+        {
+            // 安全网快照：仅覆盖 MaxIterationsExceeded 路径（循环自然耗尽）。
+            // 正常路径（handle_final_answer）已在内部补全所有快照，此处为空操作。
+            // 注意：call_llm/dispatch_tools 的 ? 传播会跳过此处，但这些路径中
+            // call_llm 不向 state 添加消息，dispatch_tools 的 Interrupted 路径
+            // 产生的工具结果会被 TUI 的 Interrupted handler 截断丢弃，无需额外快照。
+            let safety_start =
+                self::final_answer::index_after_id(state.messages(), snapshot_anchor);
+            let safety_msgs: Vec<BaseMessage> = state.messages()[safety_start..]
+                .iter()
+                .filter(|m| !m.is_system())
+                .cloned()
+                .collect();
+            if !safety_msgs.is_empty() {
+                self.emit(AgentEvent::StateSnapshot(safety_msgs));
+            }
+
+            tracing::warn!(
+                max_iterations = self.max_iterations,
+                tool_call_count = all_tool_calls.len(),
+                last_tools = ?all_tool_calls.iter().rev().take(3)
+                    .map(|(_, r)| r.tool_name.as_str())
+                    .collect::<Vec<_>>(),
+                "ReAct 循环达到最大迭代次数"
+            );
+            return Err(AgentError::MaxIterationsExceeded(self.max_iterations));
+        }
+    }
+
+    /// 移除 execute() 开头通过 before_agent + with_system_prompt prepend 的临时 system 消息。
+    /// compact 发生时这些 ID 已不存在于 state 中，retain 无操作。
+    fn cleanup_prepended(state: &mut S, ids: &[MessageId]) {
+        if ids.is_empty() {
+            return;
+        }
+        state.messages_mut().retain(|m| !ids.contains(&m.id()));
     }
 }
 
