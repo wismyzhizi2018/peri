@@ -207,3 +207,16 @@ fn test_compact_error_serde_roundtrip() {
         panic!("Deserialized to wrong variant");
     }
 }
+
+#[test]
+fn test_agent_execution_failed_serde_roundtrip() {
+    let event = AgentEvent::AgentExecutionFailed {
+        message: "LLM HTTP 错误 (400): invalid request".to_string(),
+    };
+    let json = serde_json::to_string(&event).unwrap();
+    let de: AgentEvent = serde_json::from_str(&json).unwrap();
+    assert!(
+        matches!(de, AgentEvent::AgentExecutionFailed { ref message } if message == "LLM HTTP 错误 (400): invalid request"),
+        "AgentExecutionFailed serde roundtrip failed"
+    );
+}

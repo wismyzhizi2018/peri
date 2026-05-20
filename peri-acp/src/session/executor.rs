@@ -216,6 +216,11 @@ pub async fn execute_prompt(
     let ok = result.is_ok();
     if let Err(e) = &result {
         error!(session_id = %session_id, error = %e, "Agent execution failed");
+        if let Some(tx) = event_tx.lock().unwrap().as_ref() {
+            let _ = tx.send(ExecutorEvent::AgentExecutionFailed {
+                message: e.to_string(),
+            });
+        }
     }
 
     let stop_reason = if cancel.is_cancelled() {

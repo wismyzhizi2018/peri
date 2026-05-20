@@ -34,3 +34,18 @@ fn test_map_executor_event_todo_update() {
         _ => panic!("Expected TodoUpdate, got a different variant"),
     }
 }
+
+#[test]
+fn test_map_executor_event_execution_failed() {
+    let event = ExecutorEvent::AgentExecutionFailed {
+        message: "LLM HTTP 错误 (400)".to_string(),
+    };
+    let result = map_executor_event(event, "/tmp");
+    assert!(result.is_some(), "AgentExecutionFailed should map to Some");
+    match result.unwrap() {
+        AgentEvent::Error(msg) => {
+            assert_eq!(msg, "LLM HTTP 错误 (400)");
+        }
+        _ => panic!("Expected AgentEvent::Error, got a different variant"),
+    }
+}

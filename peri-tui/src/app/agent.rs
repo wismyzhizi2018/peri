@@ -167,6 +167,7 @@ pub(crate) fn map_executor_event(event: ExecutorEvent, cwd: &str) -> Option<Agen
         },
         ExecutorEvent::CompactError { message } => AgentEvent::CompactError(message),
         ExecutorEvent::SessionEnded => return None,
+        ExecutorEvent::AgentExecutionFailed { message } => AgentEvent::Error(message),
         ExecutorEvent::TodoUpdate(entries) => AgentEvent::TodoUpdate(
             entries
                 .iter()

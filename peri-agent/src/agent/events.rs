@@ -142,6 +142,8 @@ pub enum AgentEvent {
         warnings: usize,
         files_with_errors: usize,
     },
+    /// Agent 执行失败（由 executor 在 agent.execute() 返回 Err 时发送）
+    AgentExecutionFailed { message: String },
 }
 
 /// 事件回调 trait（应用层实现）
