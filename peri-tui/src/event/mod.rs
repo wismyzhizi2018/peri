@@ -240,6 +240,60 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                 if click_consumed {
                     return Ok(Some(Action::Redraw));
                 }
+                // Panel scrollbar: ▲/▼ buttons and bar click/drag
+                {
+                    let session = &mut app.session_mgr.sessions[app.session_mgr.active];
+                    if let Some(ref metrics) = session.ui.panel_scrollbar_metrics {
+                        // ▼ button click (scroll to bottom)
+                        if let Some(btn) = metrics.down_btn_area {
+                            if mouse.column >= btn.x
+                                && mouse.column < btn.x + btn.width
+                                && mouse.row >= btn.y
+                                && mouse.row < btn.y + btn.height
+                            {
+                                session
+                                    .session_panels
+                                    .dispatch_set_scroll_offset(metrics.max_offset);
+                                session.ui.panel_scroll_offset = metrics.max_offset;
+                                return Ok(Some(Action::Redraw));
+                            }
+                        }
+                        // ▲ button click (scroll to top)
+                        if let Some(btn) = metrics.up_btn_area {
+                            if mouse.column >= btn.x
+                                && mouse.column < btn.x + btn.width
+                                && mouse.row >= btn.y
+                                && mouse.row < btn.y + btn.height
+                            {
+                                session.session_panels.dispatch_set_scroll_offset(0);
+                                session.ui.panel_scroll_offset = 0;
+                                return Ok(Some(Action::Redraw));
+                            }
+                        }
+                        // Scrollbar bar click (proportional jump + start drag)
+                        if mouse.column == metrics.bar_area.x
+                            && mouse.row >= metrics.bar_area.y
+                            && mouse.row < metrics.bar_area.bottom()
+                            && metrics.max_offset > 0
+                        {
+                            let bar_inner_height = metrics.bar_area.height.saturating_sub(2);
+                            if bar_inner_height > 0 {
+                                let rel_y = (mouse.row.saturating_sub(metrics.bar_area.y + 1))
+                                    .min(bar_inner_height);
+                                let new_offset = ((rel_y as f64 / bar_inner_height as f64)
+                                    * metrics.max_offset as f64)
+                                    as u16;
+                                let new_offset = new_offset.min(metrics.max_offset);
+                                session
+                                    .session_panels
+                                    .dispatch_set_scroll_offset(new_offset);
+                                session.ui.panel_scroll_offset = new_offset;
+                                session.ui.panel_scrollbar_dragging = true;
+                            }
+                            return Ok(Some(Action::Redraw));
+                        }
+                    }
+                }
                 // Multi-session: clicking a non-active session column switches focus
                 if app.session_mgr.sessions.len() > 1 {
                     for (i, area) in app.session_mgr.session_areas.iter().enumerate() {
@@ -407,6 +461,28 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                         }
                     }
                 }
+                // Panel scrollbar drag: update panel scroll offset from mouse Y
+                {
+                    let session = &mut app.session_mgr.sessions[app.session_mgr.active];
+                    if session.ui.panel_scrollbar_dragging {
+                        if let Some(ref metrics) = session.ui.panel_scrollbar_metrics {
+                            let bar_inner_height = metrics.bar_area.height.saturating_sub(2);
+                            if bar_inner_height > 0 {
+                                let rel_y = (mouse.row.saturating_sub(metrics.bar_area.y + 1))
+                                    .min(bar_inner_height);
+                                let new_offset = ((rel_y as f64 / bar_inner_height as f64)
+                                    * metrics.max_offset as f64)
+                                    as u16;
+                                let new_offset = new_offset.min(metrics.max_offset);
+                                session
+                                    .session_panels
+                                    .dispatch_set_scroll_offset(new_offset);
+                                session.ui.panel_scroll_offset = new_offset;
+                            }
+                        }
+                        return Ok(Some(Action::Redraw));
+                    }
+                }
                 // Panel selection drag
                 if app.session_mgr.sessions[app.session_mgr.active]
                     .ui
@@ -479,6 +555,10 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                 app.session_mgr.sessions[app.session_mgr.active]
                     .ui
                     .scrollbar_dragging = false;
+                // End panel scrollbar drag
+                app.session_mgr.sessions[app.session_mgr.active]
+                    .ui
+                    .panel_scrollbar_dragging = false;
                 // Panel selection released
                 if app.session_mgr.sessions[app.session_mgr.active]
                     .ui
