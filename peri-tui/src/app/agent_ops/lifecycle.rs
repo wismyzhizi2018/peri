@@ -65,7 +65,23 @@ impl App {
             .agent
             .reconcile_already_done
         {
-            self.request_rebuild();
+            let prefix_len = self.session_mgr.sessions[self.session_mgr.active]
+                .messages
+                .round_start_vm_idx;
+            let has_snapshot = self.session_mgr.sessions[self.session_mgr.active]
+                .messages
+                .pipeline
+                .has_snapshot_this_round();
+            // 防御：compact 后 round_start_vm_idx 被设为 0，如果 compact 后
+            // 没有新的 StateSnapshot 到达（agent 在 compact 后立即失败），
+            // build_tail_vms 会返回空 tail，导致 prefix_len=0 的 drain 清空所有视图。
+            if prefix_len == 0 && !has_snapshot {
+                tracing::warn!(
+                    "handle_done: prefix_len=0 with no snapshot, skipping rebuild to preserve view"
+                );
+            } else {
+                self.request_rebuild();
+            }
         } else {
             if let Some(MessageViewModel::AssistantBubble { is_streaming, .. }) =
                 self.session_mgr.sessions[self.session_mgr.active]

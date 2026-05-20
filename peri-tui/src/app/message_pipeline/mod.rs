@@ -663,6 +663,11 @@ impl MessagePipeline {
             .is_some_and(|s| s.is_running && !s.is_background)
     }
 
+    /// 本轮是否已收到过 StateSnapshot
+    pub fn has_snapshot_this_round(&self) -> bool {
+        self.has_snapshot_this_round
+    }
+
     /// 诊断用：返回 frozen_subagent_vms 的数量
     pub fn frozen_subagent_vms_count(&self) -> usize {
         self.frozen_subagent_vms.len()
