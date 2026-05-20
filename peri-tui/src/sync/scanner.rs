@@ -30,7 +30,8 @@ fn scan_dir_recursive(base: &Path, dir: &Path, files: &mut Vec<FileEntry>) {
             };
             match fs::read(&path) {
                 Ok(content) => files.push(FileEntry {
-                    path: rel.to_string_lossy().into_owned(),
+                    // Normalize to forward slashes for cross-platform compatibility
+                    path: rel.to_string_lossy().replace('\\', "/"),
                     content,
                 }),
                 Err(e) => tracing::warn!("无法读取文件 {:?}: {}", path, e),
