@@ -128,7 +128,13 @@ pub(crate) async fn handle_request(
                 .modes(modes)
                 .models(models)
                 .config_options(config_options);
-            send_available_commands_update(transport, &session_id).await;
+            // Scan skills for AvailableCommands
+            let skill_dirs = peri_middlewares::SkillsMiddleware::resolve_dirs_static(
+                &cwd,
+                &cfg.plugin_skill_dirs,
+            );
+            let skills = peri_middlewares::skills::list_skills(&skill_dirs);
+            send_available_commands_update(transport, &session_id, &skills).await;
             serde_json::to_value(resp)
                 .map_err(|e| AcpError::new(-32603, format!("Serialize failed: {e}")))
         }

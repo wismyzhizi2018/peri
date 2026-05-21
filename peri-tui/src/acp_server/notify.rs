@@ -12,6 +12,7 @@ use agent_client_protocol::schema::{
 };
 
 use super::{build_config_options, AcpServerConfig, SessionState};
+use peri_middlewares::skills::SkillMetadata;
 
 // ── Notification dispatch ────────────────────────────────────────────────────
 
@@ -78,11 +79,12 @@ pub(crate) async fn send_config_option_update(
 pub(crate) async fn send_available_commands_update(
     transport: &dyn peri_acp::transport::AcpTransport,
     session_id: &str,
+    skills: &[SkillMetadata],
 ) {
     if session_id.is_empty() {
         return;
     }
-    let commands = build_available_commands();
+    let commands = build_available_commands(skills);
     let update = SessionUpdate::AvailableCommandsUpdate(AvailableCommandsUpdate::new(commands));
     let notif = SessionNotification::new(SessionId::new(session_id.to_string()), update);
     let payload = match serde_json::to_value(&notif) {
@@ -114,9 +116,10 @@ pub(crate) async fn send_session_info_update(
     let _ = transport.send_notification("session/update", payload).await;
 }
 
-/// Build the list of available slash commands for ACP clients.
-fn build_available_commands() -> Vec<AvailableCommand> {
-    vec![
+/// Build the list of available slash commands for ACP clients,
+/// including discovered skills.
+pub(crate) fn build_available_commands(skills: &[SkillMetadata]) -> Vec<AvailableCommand> {
+    let mut commands = vec![
         AvailableCommand::new("help", "Show available commands and their descriptions"),
         AvailableCommand::new("clear", "Clear the current conversation"),
         AvailableCommand::new(
@@ -142,5 +145,12 @@ fn build_available_commands() -> Vec<AvailableCommand> {
         AvailableCommand::new("rename", "Rename the current session"),
         AvailableCommand::new("lang", "Switch display language / locale"),
         AvailableCommand::new("exit", "Exit the application"),
-    ]
+    ];
+    for skill in skills {
+        commands.push(AvailableCommand::new(
+            format!("skill:{}", skill.name),
+            skill.description.clone(),
+        ));
+    }
+    commands
 }

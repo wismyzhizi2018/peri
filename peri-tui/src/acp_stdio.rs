@@ -11,6 +11,16 @@ struct SessionInfo {
     cwd: String,
     history: Vec<peri_agent::messages::BaseMessage>,
     cancel_token: Option<peri_agent::agent::AgentCancellationToken>,
+    /// Frozen system prompt (built at session/new).
+    frozen_system_prompt: Option<String>,
+    /// Frozen CLAUDE.md content.
+    frozen_claude_md: Option<String>,
+    /// Frozen CLAUDE.local.md content.
+    frozen_claude_local_md: Option<String>,
+    /// Frozen skills summary.
+    frozen_skill_summary: Option<String>,
+    /// Session creation date (YYYY-MM-DD).
+    frozen_date: Option<String>,
 }
 
 struct StdioContext {
@@ -76,9 +86,11 @@ impl peri_agent::interaction::UserInteractionBroker for StdioBroker {
 // ─── run_acp_stdio ───────────────────────────────────────────────────────
 
 /// Build the list of available slash commands for ACP stdio clients.
-fn build_stdio_available_commands() -> Vec<agent_client_protocol::schema::AvailableCommand> {
+fn build_stdio_available_commands(
+    skills: &[peri_middlewares::skills::SkillMetadata],
+) -> Vec<agent_client_protocol::schema::AvailableCommand> {
     use agent_client_protocol::schema::AvailableCommand;
-    vec![
+    let mut commands = vec![
         AvailableCommand::new("help", "Show available commands and their descriptions"),
         AvailableCommand::new("clear", "Clear the current conversation"),
         AvailableCommand::new(
@@ -104,7 +116,15 @@ fn build_stdio_available_commands() -> Vec<agent_client_protocol::schema::Availa
         AvailableCommand::new("rename", "Rename the current session"),
         AvailableCommand::new("lang", "Switch display language / locale"),
         AvailableCommand::new("exit", "Exit the application"),
-    ]
+    ];
+    // Append discovered skills as available commands
+    for skill in skills {
+        commands.push(AvailableCommand::new(
+            format!("skill:{}", skill.name),
+            skill.description.clone(),
+        ));
+    }
+    commands
 }
 
 pub async fn run_acp_stdio(cwd: String) -> anyhow::Result<()> {
@@ -182,7 +202,7 @@ pub async fn run_acp_stdio(cwd: String) -> anyhow::Result<()> {
     }
 
     let permission_mode = peri_middlewares::prelude::SharedPermissionMode::new(
-        peri_middlewares::prelude::PermissionMode::AutoMode,
+        peri_middlewares::prelude::PermissionMode::Bypass,
     );
     let tool_search_index = Arc::new(peri_middlewares::tool_search::ToolSearchIndex::new());
     let shared_tools = Arc::new(parking_lot::RwLock::new(std::collections::HashMap::new()));
@@ -270,6 +290,35 @@ pub async fn run_acp_stdio(cwd: String) -> anyhow::Result<()> {
                         }
                     };
                     let sid = thread_id.clone();
+                    // ── Freeze system prompt data at session creation ──
+                    let frozen_date =
+                        chrono::Local::now().format("%Y-%m-%d").to_string();
+
+                    let (frozen_claude_md, frozen_claude_local_md) =
+                        peri_middlewares::AgentsMdMiddleware::read_frozen_content(&cwd_str);
+
+                    let frozen_skill_summary =
+                        peri_middlewares::SkillsMiddleware::build_frozen_summary(
+                            &cwd_str,
+                            &ctx.plugin_skill_dirs,
+                        );
+
+                    let features = peri_acp::prompt::PromptFeatures::detect();
+                    let frozen_system_prompt = peri_acp::prompt::build_system_prompt(
+                        None,
+                        &cwd_str,
+                        features,
+                        &ctx.plugin_agent_dirs,
+                        Some(&frozen_date),
+                    );
+
+                    // Scan skills for AvailableCommands
+                    let skill_dirs = peri_middlewares::SkillsMiddleware::resolve_dirs_static(
+                        &cwd_str,
+                        &ctx.plugin_skill_dirs,
+                    );
+                    let skills = peri_middlewares::skills::list_skills(&skill_dirs);
+
                     {
                         let mut sessions = ctx.sessions.write();
                         sessions.insert(
@@ -280,10 +329,15 @@ pub async fn run_acp_stdio(cwd: String) -> anyhow::Result<()> {
                                 cwd: cwd_str,
                                 history: Vec::new(),
                                 cancel_token: None,
+                                frozen_system_prompt: Some(frozen_system_prompt),
+                                frozen_claude_md,
+                                frozen_claude_local_md,
+                                frozen_skill_summary,
+                                frozen_date: Some(frozen_date),
                             },
                         );
                     }
-                    tracing::info!(session_id = %sid, "ACP session created with ThreadStore");
+                    tracing::info!(session_id = %sid, skill_count = skills.len(), "ACP session created with ThreadStore");
                     let modes = build_mode_state(&ctx.permission_mode);
                     let models = {
                         let p = ctx.provider.read();
@@ -302,7 +356,7 @@ pub async fn run_acp_stdio(cwd: String) -> anyhow::Result<()> {
                             .config_options(config_options),
                     );
                     // Push AvailableCommandsUpdate notification
-                    let cmds = build_stdio_available_commands();
+                    let cmds = build_stdio_available_commands(&skills);
                     let ac_notif = SessionNotification::new(
                         SessionId::new(&*sid),
                         SessionUpdate::AvailableCommandsUpdate(AvailableCommandsUpdate::new(cmds)),
@@ -327,10 +381,30 @@ pub async fn run_acp_stdio(cwd: String) -> anyhow::Result<()> {
                         }
                     }).collect::<Vec<&str>>().join("");
 
-                    let (agent_cwd, history, is_empty_history, thread_id) = {
+                    let (agent_cwd, history, is_empty_history, thread_id, frozen) = {
                         let sessions = ctx.sessions.read();
                         match sessions.get(&sid) {
-                            Some(s) => (s.cwd.clone(), s.history.clone(), s.history.is_empty(), s.thread_id.clone()),
+                            Some(s) => {
+                                let frozen = s.frozen_system_prompt.as_ref().map(|sp| {
+                                    executor::FrozenSessionData {
+                                        system_prompt: sp.clone(),
+                                        claude_md: s.frozen_claude_md.clone(),
+                                        claude_local_md: s.frozen_claude_local_md.clone(),
+                                        skill_summary: s.frozen_skill_summary.clone(),
+                                        date: s.frozen_date.clone().unwrap_or_default(),
+                                        is_git_repo: std::path::Path::new(&s.cwd)
+                                            .join(".git")
+                                            .exists(),
+                                    }
+                                });
+                                (
+                                    s.cwd.clone(),
+                                    s.history.clone(),
+                                    s.history.is_empty(),
+                                    s.thread_id.clone(),
+                                    frozen,
+                                )
+                            }
                             None => {
                                 let _ = responder.respond(PromptResponse::new(StopReason::EndTurn));
                                 return Ok(());
@@ -360,7 +434,7 @@ pub async fn run_acp_stdio(cwd: String) -> anyhow::Result<()> {
                         peri_config_snapshot,
                         &agent_cwd,
                         content,
-                        None,                     // No frozen data for stdio sessions
+                        frozen,
                         history,
                         is_empty_history,
                         ctx.permission_mode.clone(),
