@@ -170,9 +170,18 @@ fn test_extract_commands_frontmatter_description() {
 fn test_extract_skills_paths() {
     let dir = tempdir().unwrap();
     std::fs::create_dir_all(dir.path().join("skills").join("code-review")).unwrap();
+    // 函数要求 SKILL.md 存在于技能目录中
+    std::fs::write(
+        dir.path()
+            .join("skills")
+            .join("code-review")
+            .join("SKILL.md"),
+        "---\n---\n",
+    )
+    .unwrap();
 
     let mut manifest = make_manifest_with_commands(vec![]);
-    manifest.skills = Some(vec!["code-review".into()]);
+    manifest.skills = Some(vec!["skills/code-review".into()]);
 
     let paths = extract_skills_paths(&manifest, dir.path());
     assert_eq!(paths.len(), 1);
@@ -806,8 +815,13 @@ fn test_load_plugin_skill_dirs_aggregated() {
     std::fs::create_dir_all(plugin_dir.join(".claude-plugin")).unwrap();
     std::fs::create_dir_all(plugin_dir.join("skills").join("my-skill")).unwrap();
     std::fs::write(
+        plugin_dir.join("skills").join("my-skill").join("SKILL.md"),
+        "---\n---\n",
+    )
+    .unwrap();
+    std::fs::write(
         plugin_dir.join(".claude-plugin").join("plugin.json"),
-        r#"{"name":"skill-plugin","version":"1.0.0","skills":["my-skill"]}"#,
+        r#"{"name":"skill-plugin","version":"1.0.0","skills":["skills/my-skill"]}"#,
     )
     .unwrap();
 
