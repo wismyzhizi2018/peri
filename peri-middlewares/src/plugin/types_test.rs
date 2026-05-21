@@ -264,11 +264,11 @@ fn test_plugin_manifest_serialization_roundtrip() {
             name: "Author".into(),
             url: Some("https://example.com".into()),
         }),
-        commands: Some(vec![PluginCommand {
+        commands: Some(vec![PluginCommandEntry::Full(PluginCommand {
             path: "/cmd.md".into(),
             name: Some("cmd".into()),
             description: Some("desc".into()),
-        }]),
+        })]),
         agents: Some(vec![PluginAgent {
             path: "/agent.md".into(),
             name: "agent".into(),
@@ -294,4 +294,24 @@ fn test_plugin_manifest_serialization_roundtrip() {
     assert_eq!(deserialized.commands.as_ref().unwrap().len(), 1);
     assert_eq!(deserialized.agents.as_ref().unwrap().len(), 1);
     assert_eq!(deserialized.skills.as_ref().unwrap().len(), 1);
+}
+
+#[test]
+fn test_plugin_manifest_commands_string_array() {
+    // Claude Code 支持 "commands": ["path/to/commands/"] 这种字符串目录路径格式
+    let json = r#"{"name":"ecc","version":"1.0.0","commands":["./commands/", {"path": "./extra/my-cmd.md", "name": "my-cmd"}]}"#;
+    let manifest: PluginManifest = serde_json::from_str(json).unwrap();
+    let cmds = manifest.commands.unwrap();
+    assert_eq!(cmds.len(), 2);
+    match &cmds[0] {
+        PluginCommandEntry::Path(path) => assert_eq!(path, "./commands/"),
+        _ => panic!("expected Path variant"),
+    }
+    match &cmds[1] {
+        PluginCommandEntry::Full(cmd) => {
+            assert_eq!(cmd.path, "./extra/my-cmd.md");
+            assert_eq!(cmd.name.as_deref(), Some("my-cmd"));
+        }
+        _ => panic!("expected Full variant"),
+    }
 }

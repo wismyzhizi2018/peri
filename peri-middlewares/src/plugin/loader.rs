@@ -7,7 +7,7 @@ use crate::plugin::config::{
 };
 use crate::plugin::installer::generate_synthetic_manifest;
 use crate::plugin::marketplace::read_manifest_from_path;
-use crate::plugin::types::{InstalledPlugins, McpServerEntry, PluginManifest};
+use crate::plugin::types::{InstalledPlugins, McpServerEntry, PluginCommandEntry, PluginManifest};
 use gray_matter::{engine::YAML, Matter};
 use peri_lsp::config::LspConfigSource;
 use peri_lsp::config::LspServerConfig;
@@ -161,63 +161,129 @@ pub(crate) fn extract_commands(
     base_dir: &Path,
     plugin_name: &str,
 ) -> Vec<CommandEntry> {
-    let commands = match &manifest.commands {
+    let entries = match &manifest.commands {
         Some(cmds) if !cmds.is_empty() => cmds,
         _ => return Vec::new(),
     };
 
     let mut result = Vec::new();
-    for cmd in commands {
-        let cmd_file_path = base_dir.join(&cmd.path);
-        if !cmd_file_path.exists() {
-            warn!(path = %cmd_file_path.display(), "插件命令文件不存在，跳过");
-            continue;
-        }
-
-        let (fm, _body) = match parse_command_md(&cmd_file_path) {
-            Some(parsed) => parsed,
-            None => {
-                warn!(path = %cmd_file_path.display(), "插件命令文件解析失败，跳过");
-                continue;
+    for entry in entries {
+        match entry {
+            PluginCommandEntry::Path(cmd_path) => {
+                let full_path = base_dir.join(cmd_path);
+                if !full_path.exists() {
+                    warn!(path = %full_path.display(), "插件命令路径不存在，跳过");
+                    continue;
+                }
+                if full_path.is_dir() {
+                    // 目录：扫描所有 .md 文件
+                    match std::fs::read_dir(&full_path) {
+                        Ok(dir_entries) => {
+                            for dir_entry in dir_entries.flatten() {
+                                let p = dir_entry.path();
+                                if p.extension().and_then(|e| e.to_str()) == Some("md") {
+                                    process_command_file(&p, None, None, plugin_name, &mut result);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            warn!(path = %full_path.display(), error = %e, "插件命令目录扫描失败，跳过");
+                        }
+                    }
+                } else {
+                    // 单个文件
+                    process_command_file(&full_path, None, None, plugin_name, &mut result);
+                }
             }
-        };
-
-        let cmd_name = cmd.name.as_deref().unwrap_or_else(|| {
-            cmd_file_path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("unknown")
-        });
-
-        let full_name = format!("{plugin_name}:{cmd_name}");
-        let description = fm
-            .description
-            .or(cmd.description.as_deref().map(String::from))
-            .unwrap_or_default();
-
-        result.push(CommandEntry {
-            name: full_name,
-            description,
-            source: CommandSource::Plugin {
-                path: cmd_file_path,
-            },
-        });
+            PluginCommandEntry::Full(cmd) => {
+                let cmd_file_path = base_dir.join(&cmd.path);
+                if !cmd_file_path.exists() {
+                    warn!(path = %cmd_file_path.display(), "插件命令文件不存在，跳过");
+                    continue;
+                }
+                process_command_file(
+                    &cmd_file_path,
+                    cmd.name.as_deref(),
+                    cmd.description.as_deref(),
+                    plugin_name,
+                    &mut result,
+                );
+            }
+        }
     }
     result
 }
 
+fn process_command_file(
+    cmd_file_path: &Path,
+    explicit_name: Option<&str>,
+    explicit_description: Option<&str>,
+    plugin_name: &str,
+    result: &mut Vec<CommandEntry>,
+) {
+    let (fm, _body) = match parse_command_md(cmd_file_path) {
+        Some(parsed) => parsed,
+        None => {
+            warn!(path = %cmd_file_path.display(), "插件命令文件解析失败，跳过");
+            return;
+        }
+    };
+
+    let cmd_name = explicit_name.unwrap_or_else(|| {
+        cmd_file_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown")
+    });
+
+    let full_name = format!("{plugin_name}:{cmd_name}");
+    let description = fm
+        .description
+        .or(explicit_description.map(String::from))
+        .unwrap_or_default();
+
+    result.push(CommandEntry {
+        name: full_name,
+        description,
+        source: CommandSource::Plugin {
+            path: cmd_file_path.to_path_buf(),
+        },
+    });
+}
+
+/// Extract skill directories from plugin manifest.
+///
+/// Manifest `skills` entries are treated as paths relative to the plugin root
+/// (matching Claude Code convention: `skills: ["./skills/"]` or `skills: ["skills/tdd"]`).
+/// If an entry points to a directory containing `SKILL.md`, it is used directly.
+/// Otherwise the entry is treated as a container directory and scanned for
+/// subdirectories that contain `SKILL.md`.
+///
+/// Falls back to scanning `base_dir/skills/` when no manifest skills are declared.
 pub(crate) fn extract_skills_paths(manifest: &PluginManifest, base_dir: &Path) -> Vec<PathBuf> {
     let mut result = Vec::new();
 
-    // 1. manifest 显式声明
+    // 1. manifest 显式声明（每条 entry 是相对于插件根目录的路径）
     if let Some(skills) = &manifest.skills {
         if !skills.is_empty() {
-            for skill_name in skills {
-                let skill_path = base_dir.join("skills").join(skill_name);
-                if skill_path.is_dir() {
+            for entry in skills {
+                let skill_path = base_dir.join(entry);
+                if !skill_path.is_dir() {
+                    debug!(path = %skill_path.display(), "插件 skill 路径不存在，跳过");
+                    continue;
+                }
+                if skill_path.join("SKILL.md").exists() {
                     result.push(skill_path);
                 } else {
-                    debug!(path = %skill_path.display(), "插件 skill 目录不存在，跳过");
+                    // 容器目录：扫描含 SKILL.md 的子目录
+                    if let Ok(children) = std::fs::read_dir(&skill_path) {
+                        for child in children.flatten() {
+                            let p = child.path();
+                            if p.is_dir() && p.join("SKILL.md").exists() {
+                                result.push(p);
+                            }
+                        }
+                    }
                 }
             }
             return result;
@@ -237,21 +303,45 @@ pub(crate) fn extract_skills_paths(manifest: &PluginManifest, base_dir: &Path) -
     result
 }
 
+/// Extract agent directories from plugin manifest.
+///
+/// When the manifest declares `agents`, uses those paths directly.
+/// Falls back to scanning default directories (`agents/` and `.agents/`)
+/// when no agents are declared — matching Claude Code's behavior where
+/// agents placed in these directories are auto-discovered.
 pub(crate) fn extract_agents_paths(manifest: &PluginManifest, base_dir: &Path) -> Vec<PathBuf> {
-    let agents = match &manifest.agents {
-        Some(a) if !a.is_empty() => a,
-        _ => return Vec::new(),
-    };
-
     let mut result = Vec::new();
-    for agent in agents {
-        let agent_path = base_dir.join(&agent.path);
-        if agent_path.exists() {
-            result.push(agent_path);
-        } else {
-            debug!(path = %agent_path.display(), "插件 agent 路径不存在，跳过");
+
+    // 1. manifest 显式声明
+    if let Some(agents) = &manifest.agents {
+        if !agents.is_empty() {
+            for agent in agents {
+                let agent_path = base_dir.join(&agent.path);
+                if agent_path.exists() {
+                    result.push(agent_path);
+                } else {
+                    debug!(path = %agent_path.display(), "插件 agent 路径不存在，跳过");
+                }
+            }
+            return result;
         }
     }
+
+    // 2. fallback：扫描默认 agent 目录（agents/ 和 .agents/）
+    for dir_name in &["agents", ".agents"] {
+        let agents_dir = base_dir.join(dir_name);
+        if agents_dir.is_dir() {
+            if let Ok(entries) = std::fs::read_dir(&agents_dir) {
+                for entry in entries.flatten() {
+                    let p = entry.path();
+                    if p.is_dir() {
+                        result.push(p);
+                    }
+                }
+            }
+        }
+    }
+
     result
 }
 

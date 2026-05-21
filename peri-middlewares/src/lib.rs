@@ -39,8 +39,8 @@ pub use plugin::{
     InstalledPlugin, InstalledPlugins, KnownMarketplace, LoadedPlugin, LoaderError,
     MarketplaceEntry, MarketplaceError, MarketplaceManager, MarketplaceManifest, MarketplacePlugin,
     MarketplaceRefreshEvent, MarketplaceSource, PluginAgent, PluginAuthor, PluginChannel,
-    PluginCommand, PluginCommandProvider, PluginConfigError, PluginLspServer, PluginManifest,
-    PluginMiddleware, PluginOption,
+    PluginCommand, PluginCommandEntry, PluginCommandProvider, PluginConfigError, PluginLspServer,
+    PluginManifest, PluginMiddleware, PluginOption,
 };
 pub mod skills;
 pub mod tool_search;

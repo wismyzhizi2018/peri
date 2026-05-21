@@ -1,18 +1,20 @@
 use super::*;
 use crate::plugin::types::PluginCommand;
-use crate::plugin::types::{InstallScope, InstalledPlugin, PluginAgent};
+use crate::plugin::types::{InstallScope, InstalledPlugin, PluginAgent, PluginCommandEntry};
 use tempfile::tempdir;
 
 pub(crate) fn make_manifest_with_commands(commands: Vec<PluginCommand>) -> PluginManifest {
+    let entries: Vec<PluginCommandEntry> =
+        commands.into_iter().map(PluginCommandEntry::Full).collect();
     PluginManifest {
         name: "test-plugin".into(),
         version: "1.0.0".into(),
         description: String::new(),
         author: None,
-        commands: if commands.is_empty() {
+        commands: if entries.is_empty() {
             None
         } else {
-            Some(commands)
+            Some(entries)
         },
         agents: None,
         skills: None,
@@ -835,4 +837,58 @@ fn test_load_plugin_skill_dirs_aggregated() {
     let result = load_enabled_plugins_aggregated(dir.path());
     assert_eq!(result.all_skill_dirs.len(), 1);
     assert!(result.all_skill_dirs[0].ends_with("my-skill"));
+}
+
+#[test]
+fn test_extract_commands_string_directory() {
+    // 测试 "commands": ["./commands/"] 字符串目录路径格式
+    let dir = tempdir().unwrap();
+    let cmd_dir = dir.path().join("commands");
+    std::fs::create_dir_all(&cmd_dir).unwrap();
+    std::fs::write(
+        cmd_dir.join("deploy.md"),
+        "---\ndescription: Deploy to production\n---\nDeploy",
+    )
+    .unwrap();
+    std::fs::write(cmd_dir.join("rollback.md"), "---\n---\nRollback").unwrap();
+
+    // 直接构造 PluginCommandEntry::Path 来测试目录扫描
+    let direct_manifest = PluginManifest {
+        commands: Some(vec![PluginCommandEntry::Path("commands".into())]),
+        ..make_manifest_with_commands(vec![])
+    };
+
+    let entries = extract_commands(&direct_manifest, dir.path(), "ecc");
+    assert_eq!(entries.len(), 2);
+    let mut names: Vec<_> = entries.iter().map(|e| e.name.clone()).collect();
+    names.sort();
+    assert_eq!(names, vec!["ecc:deploy", "ecc:rollback"]);
+    let deploy = entries.iter().find(|e| e.name == "ecc:deploy").unwrap();
+    assert_eq!(deploy.description, "Deploy to production");
+}
+
+#[test]
+fn test_extract_commands_string_directory_nonexistent() {
+    let manifest = PluginManifest {
+        commands: Some(vec![PluginCommandEntry::Path("nonexistent_dir".into())]),
+        ..make_manifest_with_commands(vec![])
+    };
+    let entries = extract_commands(&manifest, Path::new("/tmp"), "p");
+    assert!(entries.is_empty());
+}
+
+#[test]
+fn test_extract_commands_string_single_file() {
+    // 字符串也可以是指向单个 .md 文件的路径
+    let dir = tempdir().unwrap();
+    std::fs::write(dir.path().join("standalone.md"), "---\n---\nContent").unwrap();
+
+    let manifest = PluginManifest {
+        commands: Some(vec![PluginCommandEntry::Path("standalone.md".into())]),
+        ..make_manifest_with_commands(vec![])
+    };
+
+    let entries = extract_commands(&manifest, dir.path(), "p");
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].name, "p:standalone");
 }

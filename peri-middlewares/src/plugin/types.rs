@@ -58,6 +58,35 @@ pub struct PluginCommand {
     pub description: Option<String>,
 }
 
+/// plugin.json 中 commands 字段的元素：字符串路径或完整 PluginCommand 对象
+#[derive(Debug, Clone)]
+pub enum PluginCommandEntry {
+    /// 字符串路径（目录或文件路径）
+    Path(String),
+    /// 完整 PluginCommand 对象
+    Full(PluginCommand),
+}
+
+impl Serialize for PluginCommandEntry {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            PluginCommandEntry::Path(path) => serializer.serialize_str(path),
+            PluginCommandEntry::Full(cmd) => cmd.serialize(serializer),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for PluginCommandEntry {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        if let Some(s) = value.as_str() {
+            return Ok(PluginCommandEntry::Path(s.to_string()));
+        }
+        let cmd: PluginCommand = serde_json::from_value(value).map_err(serde::de::Error::custom)?;
+        Ok(PluginCommandEntry::Full(cmd))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginAgent {
     pub path: String,
@@ -101,7 +130,7 @@ pub struct PluginManifest {
     #[serde(default)]
     pub description: String,
     pub author: Option<PluginAuthor>,
-    pub commands: Option<Vec<PluginCommand>>,
+    pub commands: Option<Vec<PluginCommandEntry>>,
     pub agents: Option<Vec<PluginAgent>>,
     pub skills: Option<Vec<String>>,
     /// 插件 hooks 配置

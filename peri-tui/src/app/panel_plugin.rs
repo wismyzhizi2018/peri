@@ -101,12 +101,19 @@ impl App {
                         .as_ref()
                         .map(|c| {
                             c.iter()
-                                .filter_map(|cmd| {
-                                    cmd.name.clone().or_else(|| {
-                                        std::path::Path::new(&cmd.path)
+                                .filter_map(|cmd| match cmd {
+                                    peri_middlewares::plugin::PluginCommandEntry::Full(fc) => {
+                                        fc.name.clone().or_else(|| {
+                                            std::path::Path::new(&fc.path)
+                                                .file_stem()
+                                                .and_then(|s| s.to_str().map(String::from))
+                                        })
+                                    }
+                                    peri_middlewares::plugin::PluginCommandEntry::Path(p) => {
+                                        std::path::Path::new(p)
                                             .file_stem()
                                             .and_then(|s| s.to_str().map(String::from))
-                                    })
+                                    }
                                 })
                                 .collect()
                         })
