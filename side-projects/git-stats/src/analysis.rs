@@ -73,6 +73,10 @@ pub fn aggregate(commits: &[ParsedCommit]) -> Vec<PersonStats> {
             people.push((ca.name.clone(), ca.email.clone()));
         }
 
+        // Deduplicate by email (same email can appear as both author and co-author)
+        people.sort_by(|a, b| a.1.cmp(&b.1));
+        people.dedup_by(|a, b| a.1 == b.1);
+
         // Each person gets full credit
         for (name, email) in &people {
             let entry = map
@@ -97,8 +101,12 @@ pub fn aggregate(commits: &[ParsedCommit]) -> Vec<PersonStats> {
     }
 
     let mut stats: Vec<PersonStats> = map.into_values().collect();
-    // Sort by commits descending
-    stats.sort_by_key(|b| std::cmp::Reverse(b.commits));
+    // Sort by commits descending, then by email ascending for deterministic ties
+    stats.sort_by(|a, b| {
+        b.commits
+            .cmp(&a.commits)
+            .then_with(|| a.email.cmp(&b.email))
+    });
     stats
 }
 
@@ -179,6 +187,23 @@ mod tests {
         let stats = aggregate(&commits);
         assert_eq!(stats[0].email, "bob@x.com");
         assert_eq!(stats[1].email, "alice@x.com");
+    }
+
+    #[test]
+    fn test_co_author_same_email_as_author_not_double_counted() {
+        let commits = vec![make_commit(
+            "Alice",
+            "alice@x.com",
+            "feat: a",
+            vec![CoAuthor {
+                name: "Alice".into(),
+                email: "alice@x.com".into(),
+            }],
+        )];
+        let stats = aggregate(&commits);
+        assert_eq!(stats.len(), 1, "Same email should not create duplicate entry");
+        assert_eq!(stats[0].commits, 1, "Should only count once");
+        assert_eq!(stats[0].added_lines, 5, "Lines should only count once");
     }
 
     #[test]
