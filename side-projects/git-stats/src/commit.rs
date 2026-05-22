@@ -1,4 +1,15 @@
 use std::fmt;
+use std::sync::OnceLock;
+
+fn commit_type_re() -> &'static regex::Regex {
+    static RE: OnceLock<regex::Regex> = OnceLock::new();
+    RE.get_or_init(|| regex::Regex::new(r"^(\w+)(\([^)]*\))?!?:\s").unwrap())
+}
+
+fn co_author_re() -> &'static regex::Regex {
+    static RE: OnceLock<regex::Regex> = OnceLock::new();
+    RE.get_or_init(|| regex::Regex::new(r"(?i)^Co-Authored-By:\s*(.+?)\s*<([^>]+)>").unwrap())
+}
 
 /// Parsed conventional commit type
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -15,8 +26,7 @@ pub enum CommitType {
 impl CommitType {
     pub fn from_subject(subject: &str) -> Self {
         // Match "type(scope): ..." or "type: ..."
-        let re = regex::Regex::new(r"^(\w+)(\([^)]*\))?!?:\s").unwrap();
-        if let Some(caps) = re.captures(subject) {
+        if let Some(caps) = commit_type_re().captures(subject) {
             match caps.get(1).unwrap().as_str() {
                 "feat" => CommitType::Feat,
                 "fix" => CommitType::Fix,
@@ -75,7 +85,7 @@ pub struct ParsedCommit {
 /// Extract all Co-Authored-By lines from commit body.
 /// Matches: "Co-Authored-By: Name <email>" (case-insensitive)
 pub fn parse_co_authors(body: &str) -> Vec<CoAuthor> {
-    let re = regex::Regex::new(r"(?i)^Co-Authored-By:\s*(.+?)\s*<([^>]+)>").unwrap();
+    let re = co_author_re();
     body.lines()
         .filter_map(|line| {
             re.captures(line).map(|caps| CoAuthor {
@@ -138,5 +148,53 @@ mod tests {
         let body = "Just a normal commit\nNo co-authors here";
         let result = parse_co_authors(body);
         assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_commit_type_refactor() {
+        assert_eq!(
+            CommitType::from_subject("refactor(db): simplify"),
+            CommitType::Refactor
+        );
+    }
+
+    #[test]
+    fn test_commit_type_chore() {
+        assert_eq!(
+            CommitType::from_subject("chore: update deps"),
+            CommitType::Chore
+        );
+    }
+
+    #[test]
+    fn test_commit_type_docs() {
+        assert_eq!(
+            CommitType::from_subject("docs(readme): clarify"),
+            CommitType::Docs
+        );
+    }
+
+    #[test]
+    fn test_commit_type_test() {
+        assert_eq!(
+            CommitType::from_subject("test(auth): add coverage"),
+            CommitType::Test
+        );
+    }
+
+    #[test]
+    fn test_breaking_change() {
+        assert_eq!(
+            CommitType::from_subject("feat!: breaking API"),
+            CommitType::Feat
+        );
+    }
+
+    #[test]
+    fn test_co_author_spaces_in_name() {
+        let body = "Co-Authored-By: Mary Jane <mj@test.com>";
+        let result = parse_co_authors(body);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].name, "Mary Jane");
     }
 }
