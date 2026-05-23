@@ -3,6 +3,7 @@ use super::*;
 /// 通知 jemalloc 将空闲内存页归还给 OS。
 /// 在 `/clear`、`/compact`、切换会话等大块内存释放后调用。
 /// 注：仅释放 jemalloc 管理的 Rust 堆内存，SQLite/tokio 等非 Rust 分配不受影响。
+#[cfg(not(target_os = "windows"))]
 pub(crate) fn jemalloc_decay() {
     // Advance epoch to refresh internal stats
     if let Err(e) = tikv_jemalloc_ctl::epoch::advance() {
@@ -27,6 +28,9 @@ pub(crate) fn jemalloc_decay() {
         }
     }
 }
+
+#[cfg(target_os = "windows")]
+pub(crate) fn jemalloc_decay() {}
 
 impl App {
     /// 获取或新建当前 thread id（同步，block_in_place）
