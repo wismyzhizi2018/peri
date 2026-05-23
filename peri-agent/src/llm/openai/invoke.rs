@@ -58,7 +58,27 @@ pub(super) fn content_to_openai(
                 Value::Array(parts)
             }
         }
-        MessageContent::Raw(values) => Value::Array(values.clone()),
+        MessageContent::Raw(values) => {
+            if supports_thinking_content {
+                // 仅在 provider 明确支持时透传原始数据
+                Value::Array(values.clone())
+            } else {
+                // 过滤掉 thinking/reasoning 块（DeepSeek 等 OpenAI 兼容 API 不接受 content 中的 thinking 块）
+                let filtered: Vec<Value> = values
+                    .iter()
+                    .filter(|v| {
+                        let t = v["type"].as_str().unwrap_or("");
+                        t != "thinking" && t != "reasoning"
+                    })
+                    .cloned()
+                    .collect();
+                if filtered.is_empty() {
+                    json!("")
+                } else {
+                    Value::Array(filtered)
+                }
+            }
+        }
     }
 }
 

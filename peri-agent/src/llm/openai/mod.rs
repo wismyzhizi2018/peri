@@ -75,10 +75,14 @@ impl ChatOpenAI {
     }
 
     /// 根据模型名检测是否支持 content 中的 `thinking` 类型
+    ///
+    /// DeepSeek V4 的 OpenAI API 格式不支持 content 数组中的 `{"type": "thinking"}` 块，
+    /// reasoning 内容应通过顶层 `reasoning_content` 字段回传（在 messages_to_json 中处理）。
+    /// Anthropic 兼容端点支持 thinking 块，但那走 AnthropicAdapter 路径。
+    /// 目前没有已知的 OpenAI 兼容 API 支持 content 数组中的 thinking 块作为输入。
     fn detect_thinking_content_support(model: &str) -> bool {
-        let m = model.to_lowercase();
-        // deepseek-v4-pro 等要求回传 thinking content
-        m.contains("deepseek-v4")
+        let _ = model;
+        false
     }
 
     pub fn from_env() -> Option<Self> {

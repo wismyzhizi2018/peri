@@ -22,7 +22,22 @@ impl OpenAiAdapter {
                     Value::Array(parts)
                 }
             }
-            MessageContent::Raw(values) => Value::Array(values.clone()),
+            MessageContent::Raw(values) => {
+                // 过滤掉 thinking/reasoning 块（OpenAI 兼容 API 不接受 content 中的 thinking 块）
+                let filtered: Vec<Value> = values
+                    .iter()
+                    .filter(|v| {
+                        let t = v["type"].as_str().unwrap_or("");
+                        t != "thinking" && t != "reasoning"
+                    })
+                    .cloned()
+                    .collect();
+                if filtered.is_empty() {
+                    json!("")
+                } else {
+                    Value::Array(filtered)
+                }
+            }
         }
     }
 

@@ -63,11 +63,15 @@ fn test_messages_to_json_with_reasoning_filtered() {
     assert_eq!(assistant["reasoning_content"], "r1");
 }
 
-/// messages_to_json：deepseek-v4-pro 支持 thinking，content 中保留且同时回传 reasoning_content
+/// messages_to_json：deepseek-v4-pro 不支持 content 中的 thinking 块，
+/// reasoning 仅通过 reasoning_content 顶层字段回传
 #[test]
 fn test_messages_to_json_with_reasoning_included_for_deepseek_v4() {
     let llm = ChatOpenAI::new("sk-test", "deepseek-v4-pro");
-    assert!(llm.supports_thinking_content);
+    assert!(
+        !llm.supports_thinking_content,
+        "DeepSeek V4 OpenAI API 不支持 content 数组中的 thinking 块"
+    );
     let msgs = vec![BaseMessage::ai_from_blocks(vec![
         ContentBlock::reasoning("r1"),
         ContentBlock::text("t1"),
@@ -75,12 +79,12 @@ fn test_messages_to_json_with_reasoning_included_for_deepseek_v4() {
     let vals = llm.messages_to_json(&msgs);
     assert_eq!(vals.len(), 1);
     let assistant = &vals[0];
+    // content 中 reasoning 被过滤，只剩 text
     let content = assistant["content"].as_array().expect("content 应为 array");
-    assert_eq!(content.len(), 2);
-    assert_eq!(content[0]["type"], "thinking");
-    assert_eq!(content[0]["thinking"], "r1");
-    assert_eq!(content[1]["type"], "text");
-    // reasoning_content 顶层字段也回传
+    assert_eq!(content.len(), 1);
+    assert_eq!(content[0]["type"], "text");
+    assert_eq!(content[0]["text"], "t1");
+    // reasoning_content 顶层字段回传
     assert_eq!(assistant["reasoning_content"], "r1");
 }
 
@@ -187,10 +191,11 @@ fn test_with_thinking_content() {
 fn test_with_thinking_enabled() {
     let llm = ChatOpenAI::new("key", "deepseek-v4-pro").with_thinking_enabled();
     assert!(llm.thinking_enabled, "thinking_enabled 应为 true");
-    // deepseek-v4-pro 的 supports_thinking_content 由构造函数自动检测开启
+    // DeepSeek V4 OpenAI API 不支持 content 数��中的 thinking 块，
+    // supports_thinking_content 应为 false，reasoning 仅通过顶层 reasoning_content 回传
     assert!(
-        llm.supports_thinking_content,
-        "deepseek-v4-pro 应自动检测 supports_thinking_content"
+        !llm.supports_thinking_content,
+        "deepseek-v4-pro 的 OpenAI API 不支持 content 中的 thinking 块，应通过 reasoning_content 顶层字段回传"
     );
 }
 
@@ -205,13 +210,20 @@ fn test_with_thinking_enabled_non_v4() {
         );
 }
 
+/// detect_thinking_content_support: 目前所有模型都返回 false
+///
+/// DeepSeek V4 的 OpenAI API 格式不支持 content 数组中的 `{"type": "thinking"}` 块，
+/// reasoning 内容应通过顶层 `reasoning_content` 字段回传。
 #[test]
 fn test_detect_thinking_content_deepseek_v4() {
-    assert!(ChatOpenAI::detect_thinking_content_support(
+    assert!(!ChatOpenAI::detect_thinking_content_support(
         "deepseek-v4-pro"
     ));
-    assert!(ChatOpenAI::detect_thinking_content_support(
+    assert!(!ChatOpenAI::detect_thinking_content_support(
         "DeepSeek-V4-Pro"
+    ));
+    assert!(!ChatOpenAI::detect_thinking_content_support(
+        "deepseek-v4-flash"
     ));
     assert!(!ChatOpenAI::detect_thinking_content_support("deepseek-r1"));
     assert!(!ChatOpenAI::detect_thinking_content_support("gpt-4o"));
@@ -316,6 +328,8 @@ fn test_messages_to_json_after_micro_compact() {
 /// 端到端验证 deepseek-v4-pro：模拟 API 响应 → parse_assistant_message → 序列化回传
 ///
 /// 验证 thinking 内容在完整链路中不丢失。
+/// DeepSeek V4 OpenAI API 不接受 content 数组中的 thinking 块，
+/// reasoning 仅通过顶层 reasoning_content 字段回传。
 #[test]
 fn test_deepseek_v4_pro_thinking_roundtrip() {
     // 模拟 deepseek-v4-pro API 响应（含 reasoning_content + tool_calls）
@@ -378,16 +392,21 @@ fn test_deepseek_v4_pro_thinking_roundtrip() {
         "reasoning_content 顶层字段必须回传，否则 deepseek 返回 400"
     );
 
-    // 验证 content 中也包含 thinking block（deepseek-v4-pro supports_thinking_content=true）
+    // 验证 content 中不包含 thinking block
+    // DeepSeek V4 OpenAI API 不接受 content 数组中的 {"type": "thinking"} 块
     let content = assistant["content"].as_array().expect("content 应为数组");
     let thinking_block = content.iter().find(|b| b["type"] == "thinking");
     assert!(
-        thinking_block.is_some(),
-        "deepseek-v4-pro content 中应包含 thinking block"
+        thinking_block.is_none(),
+        "deepseek-v4-pro content 中不应包含 thinking block（API 不接受），应通过 reasoning_content 顶层字段回传"
     );
+
+    // 验证 content 包含 text block
+    let text_block = content.iter().find(|b| b["type"] == "text");
+    assert!(text_block.is_some(), "content 中应包含 text block");
     assert_eq!(
-        thinking_block.unwrap()["thinking"],
-        "I need to first get the current date, then check the weather."
+        text_block.unwrap()["text"],
+        "Let me check the weather for you."
     );
 
     // 验证 tool_calls 正确序列化
