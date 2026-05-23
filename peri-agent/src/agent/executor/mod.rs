@@ -39,7 +39,7 @@ where
     /// 上下文窗口预算配置（用于监控 token 用量和触发 compact 建议）
     pub(crate) context_budget: Option<crate::agent::token::ContextBudget>,
     /// 后台任务通知接收端：后台 agent 完成时推送结果
-    pub(crate) notification_rx:
+    pub notification_rx:
         Option<tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<BackgroundTaskResult>>>,
     /// 工具过滤器：返回 true 的工具从 LLM 可见列表中移除（None = 不过滤，向后兼容）
     pub(crate) tool_filter: Option<fn(&str) -> bool>,

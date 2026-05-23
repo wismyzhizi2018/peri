@@ -26,25 +26,9 @@ async fn drain_notifications<L: ReactLLM, S: State>(agent: &ReActAgent<L, S>, st
     if let Some(ref rx) = agent.notification_rx {
         let mut rx_lock = rx.lock().await;
         while let Ok(result) = rx_lock.try_recv() {
-            let notification = if result.success {
-                format!(
-                    "[后台任务 {} 已完成] Agent: {} | 工具调用: {} | 耗时: {}ms\n结果:\n{}",
-                    &result.task_id[..8.min(result.task_id.len())],
-                    result.agent_name,
-                    result.tool_calls_count,
-                    result.duration_ms,
-                    result.output,
-                )
-            } else {
-                format!(
-                    "[后台任务 {} 执行失败] Agent: {}\n错误:\n{}",
-                    &result.task_id[..8.min(result.task_id.len())],
-                    result.agent_name,
-                    result.output,
-                )
-            };
-            let msg = BaseMessage::human(notification);
+            let msg = BaseMessage::human(result.to_notification());
             state.add_message(msg);
+            agent.emit(AgentEvent::BackgroundTaskCompleted(result));
         }
     }
 }

@@ -251,8 +251,14 @@ fn inject_settings_override(source: &str) {
 // ─── 入口 ──────────────────────────────────────────────────────────────────
 
 fn main() -> Result<()> {
-    // Configure jemalloc before any significant allocation.
-    // Must precede tokio runtime creation and the first LLM call.
+    // Set MALLOC_CONF env var BEFORE jemalloc initializes.
+    // jemalloc reads this during its one-time init (triggered by the first
+    // allocation through #[global_allocator]). This is the only reliable way
+    // to enable background_thread — runtime raw::write fails once arenas exist.
+    peri_tui::jemalloc_config::init_malloc_conf();
+
+    // Runtime mallctl writes as fallback/diagnostics (may not fully take effect
+    // if arenas already exist, but harmless to call).
     peri_tui::jemalloc_config::configure_jemalloc();
 
     // 最先注入环境变量（进程环境变量优先）
@@ -263,6 +269,7 @@ fn main() -> Result<()> {
     // -p/--print 模式（优先级高于子命令）
     if cli.print.is_some() {
         let rt = tokio::runtime::Builder::new_multi_thread()
+            .thread_stack_size(4 * 1024 * 1024) // 4 MB (default: 8 MB) — saves ~32 MB RSS on 8-core
             .enable_all()
             .build()?;
         return rt.block_on(cli_print::run_print(
@@ -302,12 +309,14 @@ fn main() -> Result<()> {
             agent: _,
         }) => {
             let rt = tokio::runtime::Builder::new_multi_thread()
+                .thread_stack_size(4 * 1024 * 1024) // 4 MB (default: 8 MB) — saves ~32 MB RSS on 8-core
                 .enable_all()
                 .build()?;
             rt.block_on(acp_stdio::run_acp_stdio(cwd))
         }
         Some(Commands::Update) => {
             let rt = tokio::runtime::Builder::new_multi_thread()
+                .thread_stack_size(4 * 1024 * 1024) // 4 MB (default: 8 MB) — saves ~32 MB RSS on 8-core
                 .enable_all()
                 .build()?;
             rt.block_on(async {
@@ -323,6 +332,7 @@ fn main() -> Result<()> {
         }
         Some(Commands::Sync { action, server }) => {
             let rt = tokio::runtime::Builder::new_multi_thread()
+                .thread_stack_size(4 * 1024 * 1024) // 4 MB (default: 8 MB) — saves ~32 MB RSS on 8-core
                 .enable_all()
                 .build()?;
             rt.block_on(async {
@@ -339,6 +349,7 @@ fn main() -> Result<()> {
         }
         Some(Commands::Plugin { action }) => {
             let rt = tokio::runtime::Builder::new_multi_thread()
+                .thread_stack_size(4 * 1024 * 1024) // 4 MB (default: 8 MB) — saves ~32 MB RSS on 8-core
                 .enable_all()
                 .build()?;
             rt.block_on(async {
@@ -394,6 +405,7 @@ fn run_tui(opts: TuiOptions) -> Result<()> {
     let _telemetry = peri_agent::telemetry::init_tracing("agent-tui");
 
     let rt = tokio::runtime::Builder::new_multi_thread()
+        .thread_stack_size(4 * 1024 * 1024) // 4 MB (default: 8 MB) — saves ~32 MB RSS on 8-core
         .enable_all()
         .build()?;
 

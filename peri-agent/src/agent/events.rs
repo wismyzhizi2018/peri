@@ -10,6 +10,24 @@ pub struct BackgroundTaskResult {
     pub duration_ms: u64,
 }
 
+impl BackgroundTaskResult {
+    /// 格式化为注入到 LLM 消息流的通知文本
+    pub fn to_notification(&self) -> String {
+        let short_id = &self.task_id[..8.min(self.task_id.len())];
+        if self.success {
+            format!(
+                "[后台任务 {} 已完成] Agent: {} | 工具调用: {} | 耗时: {}ms\n结果:\n{}",
+                short_id, self.agent_name, self.tool_calls_count, self.duration_ms, self.output,
+            )
+        } else {
+            format!(
+                "[后台任务 {} 执行失败] Agent: {}\n错误:\n{}",
+                short_id, self.agent_name, self.output,
+            )
+        }
+    }
+}
+
 /// Compact 保留的文件信息摘要
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CompactFileInfo {

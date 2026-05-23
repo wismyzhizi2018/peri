@@ -402,7 +402,6 @@ impl SubAgentTool {
         let spawn_task_id = task_id.clone();
         let spawn_agent_name = agent_name.clone();
         let spawn_prompt_summary = prompt_summary.clone();
-        let event_handler = self.event_handler.clone();
         let spawn_registry = Arc::clone(registry);
         let spawn_hooks = Arc::clone(&self.registered_hooks);
 
@@ -459,10 +458,6 @@ impl SubAgentTool {
                 Some(&result.output),
             )
             .await;
-
-            if let Some(ref handler) = event_handler {
-                handler.on_event(AgentEvent::BackgroundTaskCompleted(result));
-            }
         });
 
         registry.register(BackgroundTask {
@@ -516,7 +511,6 @@ impl SubAgentTool {
         }
 
         let cancel_token = self.cancel.clone();
-        let event_handler = self.event_handler.clone();
         let spawn_registry = Arc::clone(registry);
         let spawn_hooks = Arc::clone(&self.registered_hooks);
         let spawn_task_id = task_id.clone();
@@ -580,10 +574,6 @@ impl SubAgentTool {
                 Some(&result.output),
             )
             .await;
-
-            if let Some(ref handler) = event_handler {
-                handler.on_event(AgentEvent::BackgroundTaskCompleted(result));
-            }
         });
 
         registry.register(BackgroundTask {

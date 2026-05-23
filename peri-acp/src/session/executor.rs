@@ -352,6 +352,19 @@ pub async fn execute_prompt(
         .executor
         .execute(agent_input.clone(), &mut agent_state, Some(cancel.clone()))
         .await;
+    // Drain remaining background task notifications that arrived after
+    // the final answer but before the executor is dropped.
+    // Also adds the notification to agent_state so it's included in
+    // result.messages → state.history → the next prompt's context.
+    if let Some(ref rx) = agent_output.executor.notification_rx {
+        let mut rx_lock = rx.lock().await;
+        while let Ok(bg_result) = rx_lock.try_recv() {
+            agent_state.add_message(BaseMessage::human(bg_result.to_notification()));
+            if let Some(tx) = event_tx.lock().unwrap().as_ref() {
+                let _ = tx.send(ExecutorEvent::BackgroundTaskCompleted(bg_result));
+            }
+        }
+    }
     drop(agent_output.executor);
 
     let ok = result.is_ok();
