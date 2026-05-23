@@ -278,8 +278,15 @@ impl ToolSearchIndex {
             return String::new();
         }
 
-        let mut entries: Vec<_> = tools.iter().collect();
+        let mut entries: Vec<_> = tools
+            .iter()
+            .filter(|(name, _)| !name.starts_with("mcp__"))
+            .collect();
         entries.sort_by_key(|(name, _)| *name);
+
+        if entries.is_empty() {
+            return String::new();
+        }
 
         let mut lines = String::from("## Deferred Tools\n\n");
         lines.push_str("The following tools are not in your direct tool list. Use `SearchExtraTools` to search for them, then `ExecuteExtraTool` to invoke.\n\n");

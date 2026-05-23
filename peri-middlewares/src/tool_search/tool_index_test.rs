@@ -116,7 +116,9 @@ fn test_format_deferred_list() {
 
     let list = index.format_deferred_list();
     assert!(list.contains("CronRegister"));
-    assert!(list.contains("mcp__slack__send_message"));
+    // MCP 工具不出现在 Deferred Tools 段（避免 system prompt 不稳定导致缓存失效）
+    assert!(!list.contains("mcp__slack__send_message"));
+    assert!(!list.contains("mcp__github__create_issue"));
 }
 
 #[test]
