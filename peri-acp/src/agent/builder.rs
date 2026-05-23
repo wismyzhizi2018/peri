@@ -83,10 +83,6 @@ pub struct AcpAgentConfig {
 pub struct AcpAgentOutput {
     pub executor: ReActAgent<peri_agent::llm::RetryableLLM<BaseModelReactLLM>, AgentState>,
     pub todo_rx: tokio::sync::mpsc::Receiver<Vec<TodoItem>>,
-    /// 独立通道的接收端：background agent 完成事件通过此通道发送
-    /// （不受 executor close_channel 影响）
-    pub bg_event_rx:
-        Option<tokio::sync::mpsc::UnboundedReceiver<peri_agent::agent::events::AgentEvent>>,
     #[allow(dead_code)]
     pub context_window: u32,
 }
@@ -246,9 +242,6 @@ pub fn build_agent(cfg: AcpAgentConfig) -> AcpAgentOutput {
         .clone()
         .unwrap_or_default();
 
-    // 后台任务完成事件的独立通道（不受 close_channel 影响）
-    let (bg_event_tx, bg_event_rx) = tokio::sync::mpsc::unbounded_channel();
-
     // SubAgent middleware
     let mut subagent = SubAgentMiddleware::new(
         parent_tools,
@@ -259,7 +252,6 @@ pub fn build_agent(cfg: AcpAgentConfig) -> AcpAgentOutput {
     .with_cancel(cancel.clone())
     .with_parent_messages(parent_messages)
     .with_background_registry(Arc::clone(&background_registry))
-    .with_bg_event_sender(bg_event_tx)
     .with_registered_hooks(vec![]);
     if let Some(factory) = child_handler_factory {
         subagent = subagent.with_child_handler_factory(factory);
@@ -420,7 +412,6 @@ pub fn build_agent(cfg: AcpAgentConfig) -> AcpAgentOutput {
     AcpAgentOutput {
         executor,
         todo_rx,
-        bg_event_rx: Some(bg_event_rx),
         context_window,
     }
 }

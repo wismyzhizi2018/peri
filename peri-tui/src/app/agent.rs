@@ -134,12 +134,11 @@ pub(crate) fn map_executor_event(event: ExecutorEvent, cwd: &str) -> Option<Agen
         ExecutorEvent::SubagentStarted {
             agent_name,
             instance_id,
-            is_background,
         } => AgentEvent::SubAgentStart {
             agent_id: agent_name.clone(),
             instance_id,
             task_preview: String::new(),
-            is_background,
+            is_background: false,
         },
         ExecutorEvent::SubagentStopped {
             agent_name,
