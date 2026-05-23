@@ -138,6 +138,58 @@ Returns matching documents with URLs, titles, and excerpts. Also indexes GitHub 
 2. **Fetch specific pages** when identified
 3. Fall back to **search** when topic is unclear
 
+## 4. 上下文 Diff 诊断（对比两次 LLM 调用的完整输入）
+
+当不同 trace/session 的 input tokens 存在无法解释的差异时，下载完整 input 做 diff 是最直接的定位手段。
+
+### 步骤
+
+**1. 找到差异 trace 的 generation observation ID**
+
+```bash
+# 列出 session 的所有 trace
+bunx langfuse-cli api traces list --session-id <session_id> --json | jq '.body.data[].id'
+
+# 列出 trace 下所有 GENERATION observation
+curl -s -u "$LANGFUSE_PUBLIC_KEY:$LANGFUSE_SECRET_KEY" \
+  "$LANGFUSE_HOST/api/public/observations?traceId=<trace_id>&limit=100" \
+  | jq '[.data[] | select(.type == "GENERATION") | {id, inputTokens: .usageDetails.input}]'
+```
+
+**2. 下载完整 input 并保存**
+
+```bash
+curl -s -u "$LANGFUSE_PUBLIC_KEY:$LANGFUSE_SECRET_KEY" \
+  "$LANGFUSE_HOST/api/public/observations/<obs_id>" \
+  | jq '.input' > /tmp/input_a.json
+
+curl -s -u "$LANGFUSE_PUBLIC_KEY:$LANGFUSE_SECRET_KEY" \
+  "$LANGFUSE_HOST/api/public/observations/<obs_id>" \
+  | jq '.input' > /tmp/input_b.json
+```
+
+**3. Diff**
+
+```bash
+diff /tmp/input_a.json /tmp/input_b.json
+```
+
+### 典型场景
+
+| 场景 | 表现 | Diff 会发现 |
+|------|------|------------|
+| System prompt 不稳定 | 同模型同会话类型但 input tokens 差异大 | `messages[0].content`（system prompt）中某段内容不同 |
+| Tools 数组变化 | input tokens 差异 ~数 K | `tools` 数组长度或内容不同 |
+| Deferred Tools / MCP 描述 | 跨会话缓存命中率为 0% | system prompt 中 `Deferred Tools` 段多了/少了 MCP 工具描述文本 |
+| 消息历史差异 | 上下文增长异常 | `messages` 数组长度不同，某条消息缺失或重复 |
+
+### 注意
+
+- `.input` 是完整请求体（包含 `messages`、`tools`、`model` 等字段），diff 能精确定位任何差异
+- 如果只需要比 system prompt：`jq '.input.messages[0].content' -r`
+- 如果只需要比 tools：`jq '.input.tools'`
+- Generation observation 的 `usageDetails` 包含 `cache_read_input_tokens` 和 `cache_creation_input_tokens`，是缓存诊断的关键数据
+
 ## Use Case References
 
 - instrumenting an application: references/instrumentation.md

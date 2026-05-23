@@ -1,6 +1,6 @@
 # Deferred Tools 段（MCP 描述）注入 system prompt 动态区域导致跨会话 Cache 部分失效
 
-**状态**：Open
+**状态**：Fixed（bc98baa）
 **优先级**：中
 **创建日期**：2026-05-23
 

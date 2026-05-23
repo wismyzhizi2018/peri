@@ -13,6 +13,7 @@ use peri_agent::agent::events::{AgentEvent as ExecutorEvent, AgentEventHandler};
 use peri_agent::agent::state::AgentState;
 use peri_agent::agent::token::ContextBudget;
 use peri_agent::agent::AgentCancellationToken;
+use peri_agent::agent::State;
 use peri_agent::error::AgentError;
 use peri_agent::interaction::UserInteractionBroker;
 use peri_agent::messages::BaseMessage;
@@ -44,6 +45,8 @@ pub struct PromptResult {
     pub ok: bool,
     /// Why the prompt execution stopped.
     pub stop_reason: PromptStopReason,
+    /// Recall items collected during execution (for next turn injection).
+    pub recall_items: Vec<String>,
 }
 
 /// Session-scoped frozen data that locks system prompt stability.
@@ -90,6 +93,7 @@ pub async fn execute_prompt(
     content: String,
     frozen: Option<FrozenSessionData>,
     history: Vec<BaseMessage>,
+    incoming_recalls: Vec<String>,
     is_empty_history: bool,
     permission_mode: Arc<peri_middlewares::prelude::SharedPermissionMode>,
     event_sink: Arc<dyn EventSink>,
@@ -111,7 +115,19 @@ pub async fn execute_prompt(
     langfuse_session: Option<Arc<LangfuseSession>>,
 ) -> PromptResult {
     let trace_input = content.clone();
-    let agent_input = peri_agent::agent::react::AgentInput::text(content);
+    let agent_input = if incoming_recalls.is_empty() {
+        peri_agent::agent::react::AgentInput::text(content)
+    } else {
+        use peri_agent::messages::{ContentBlock, MessageContent};
+        let reminder_text = format!(
+            "<system-reminder>\n{}\n</system-reminder>",
+            incoming_recalls.join("\n")
+        );
+        peri_agent::agent::react::AgentInput::blocks(MessageContent::blocks(vec![
+            ContentBlock::text(content),
+            ContentBlock::text(reminder_text),
+        ]))
+    };
 
     // Compact config and context budget (computed once)
     let mut compact_config = peri_config.config.compact.clone().unwrap_or_default();
@@ -362,10 +378,12 @@ pub async fn execute_prompt(
     close_channel(&event_tx);
     wait_for_pump(pump_done_rx, &session_id).await;
 
+    let recall_items = agent_state.drain_recall();
     PromptResult {
         messages: agent_state.into_messages(),
         ok,
         stop_reason,
+        recall_items,
     }
 }
 

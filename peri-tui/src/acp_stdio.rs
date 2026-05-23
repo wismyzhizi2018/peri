@@ -446,6 +446,7 @@ pub async fn run_acp_stdio(cwd: String) -> anyhow::Result<()> {
                             content,
                             frozen,
                             history,
+                            vec![], // incoming_recalls
                             is_empty_history,
                             ctx_for_task.permission_mode.clone(),
                             event_sink,

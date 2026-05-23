@@ -64,7 +64,15 @@ impl<S: State> Middleware<S> for ToolSearchMiddleware {
                     .map(|(_, tool)| Arc::clone(tool))
                     .collect();
                 if !deferred_arcs.is_empty() {
+                    let old_count = self.tool_search_index.total_count();
                     self.tool_search_index.build(deferred_arcs);
+                    let new_count = self.tool_search_index.total_count();
+                    if old_count > 0 && new_count != old_count {
+                        state.push_recall(format!(
+                            "[ToolSearch] Deferred tools updated: {} tools available (was {})",
+                            new_count, old_count
+                        ));
+                    }
                 }
             }
             let list = self.tool_search_index.format_deferred_list();

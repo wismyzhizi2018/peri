@@ -190,6 +190,7 @@ pub async fn run_print(
         prompt_text,
         None, // no frozen data
         vec![],
+        vec![], // incoming_recalls
         true,
         shared_permission,
         event_sink,

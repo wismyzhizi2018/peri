@@ -123,6 +123,7 @@ pub(crate) async fn execute_prompt(
         content,
         frozen,
         history,
+        vec![], // incoming_recalls
         is_empty,
         permission_mode.clone(),
         event_sink,
