@@ -96,6 +96,7 @@ pub fn build_system_prompt(
         include_str!("../prompts/sections/04_actions.md"),
         include_str!("../prompts/sections/05_using_tools.md"),
         include_str!("../prompts/sections/06_tone_style.md"),
+        include_str!("../prompts/sections/14_system_reminder.md"),
     ];
 
     // 动态段落（含环境变量占位符、feature-gated 段落）—— 边界标记之后，不参与缓存
