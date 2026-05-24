@@ -109,6 +109,18 @@ build_system_prompt(overrides, cwd, features)
 **涉及文件:** peri-acp/src/session/executor.rs, peri-tui/src/acp_server/prompt.rs, peri-tui/src/acp_server/requests.rs
 **CLAUDE.md 链接:** true
 
+### issue_2026-05-23-mcp-tools-instability-breaks-anthropic-cache
+
+**摘要:** Deferred Tools 段注入 system prompt 动态区域导致跨会话 Cache 部分失效
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** Deferred Tools, Prompt Cache, cache_control断点, 动态区域
+**问题本质:** MCP 连接状态不同 → Deferred Tools 内容不同 → 动态 system block 变化 → 第二个 cache breakpoint（`i == last_idx` fallback）失效，浪费缓存
+**通用模式:** 动态区域的 cache_control 断点是不必要的——只有静态区域需要缓存；`i == last_idx` 的 fallback 逻辑会在动态 block 上加断点，应该去掉
+**技术决策:** 动态 block 不加 cache_control 断点，确保静态段的缓存前缀
+**涉及文件:** peri-middlewares/src/tool_search/tool_index.rs:284, peri-middlewares/src/tool_search/middleware.rs:79, peri-agent/src/llm/anthropic/invoke.rs:202-222, peri-agent/src/llm/anthropic/invoke.rs:331-334
+**CLAUDE.md 链接:** true
+
 ---
 
 ## 相关 Feature

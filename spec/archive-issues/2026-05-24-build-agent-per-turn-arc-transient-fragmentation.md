@@ -1,3 +1,5 @@
+> 归档于 2026-05-24，原路径 spec/issues/2026-05-24-build-agent-per-turn-arc-transient-fragmentation.md
+
 # build_agent 每轮重建大对象产生瞬态分配碎片
 
 **状态**：Fixed

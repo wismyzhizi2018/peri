@@ -87,6 +87,51 @@ ACP Client (IDE) → stdio → handle_initialize/session/new/load...
 **涉及文件:** peri-tui/src/acp_server.rs, peri-tui/src/acp_stdio.rs, peri-acp/src/event/mapper.rs, peri-acp/src/session/event_sink.rs
 **CLAUDE.md 链接:** false
 
+### issue_2026-05-23-tui-image-sent-as-text
+
+**摘要:** TUI 粘贴图片后 LLM 仅收到文本而非图片内容
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** 图片粘贴, MessageContent, 多模态数据流, Base64 Image
+**问题本质:** TUI → ACP → Executor 整条链路的 content 参数类型是 String，图片在 submit_message 阶段被丢弃
+**通用模式:** 新增多模态支持时，数据链路必须从输入端到消费端全链路升级（String → MessageContent），任何一环用 String 都会丢失非文本数据
+**架构影响:** ACP 协议层的 content 类型从 String 升级为 MessageContent（支持 blocks 数组）
+**涉及文件:** peri-acp/src/session/executor.rs, peri-tui/src/acp_server/prompt.rs, peri-tui/src/acp_client/client.rs, peri-tui/src/app/agent_submit.rs, peri-tui/src/acp_stdio.rs, peri-tui/src/cli_print.rs
+**CLAUDE.md 链接:** false
+
+### issue_2026-05-21-acp-stdio-missing-session-capabilities
+
+**摘要:** ACP Stdio InitializeResponse 缺少 session 能力声明，Zed 客户端报错
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** ACP InitializeResponse, session_capabilities, load_session, session/list
+**问题本质:** ACP stdio 路径的 initialize 响应只声明了 promptCapabilities，遗漏了 load_session 和 session_capabilities
+**通用模式:** 两条 ACP 路径（stdio/TUI）的能力声明必须统一；提取到 dispatch 模块共享，避免重复维护
+**涉及文件:** peri-acp/src/dispatch/init.rs, peri-acp/src/dispatch/list_sessions.rs, peri-acp/src/dispatch/mod.rs, peri-tui/src/acp_stdio.rs, peri-tui/src/acp_server/requests.rs
+**CLAUDE.md 链接:** false
+
+### issue_2026-05-21-acp-stdio-default-permission-should-be-bypass
+
+**摘要:** ACP stdio 默认权限模式为 AutoMode，与 TUI/-p 模式不一致
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** ACP stdio权限, PermissionMode, 默认Bypass, 行为一致性
+**问题本质:** acp_stdio.rs 硬编码 AutoMode，未考虑与其他模式（TUI Bypass、-p Bypass）的一致性
+**通用模式:** 多入口系统的默认行为必须统一；硬编码默认值应提取为共享常量
+**涉及文件:** peri-tui/src/acp_stdio.rs:184-185, peri-tui/src/main.rs:441-467, peri-tui/src/cli_print.rs:96-109
+**CLAUDE.md 链接:** false
+
+### issue_2026-05-21-skills-not-passed-as-acp-commands
+
+**摘要:** Skills 未作为 ACP AvailableCommands 传递给 IDE 客户端
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** AvailableCommands, Skills命令, FrozenSessionData, skill_summary
+**问题本质:** ACP 协议的 AvailableCommands 通知只返回硬编码静态命令，未包含动态发现的 Skills
+**通用模式:** 动态内容（Skills、插件命令）必须在 session/new 时冻结并注入协议通知，与系统提示词的 frozen 模式对齐
+**涉及文件:** peri-tui/src/acp_stdio.rs:79-108, peri-tui/src/acp_server/notify.rs:118-146, peri-tui/src/acp_stdio.rs:362-363, peri-middlewares/src/skills/mod.rs:115-122
+**CLAUDE.md 链接:** false
+
 ---
 
 ## 相关 Feature

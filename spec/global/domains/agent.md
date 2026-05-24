@@ -524,6 +524,28 @@ launch_agent 工具调用
 **涉及文件:** peri-middlewares/src/subagent/tool/define.rs, peri-middlewares/src/subagent/tool/mod.rs, peri-tui/src/app/agent.rs, peri-tui/src/app/events.rs, peri-tui/src/app/message_pipeline/mod.rs
 **CLAUDE.md 链接:** true
 
+### issue_2026-05-24-build-agent-per-turn-arc-transient-fragmentation
+**摘要:** build_agent 每轮重建大对象产生瞬态分配碎片
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** AgentPool, LLM实例复用, jemalloc碎片, reqwest Client缓存
+**问题本质:** 每轮 prompt 都全量重建 ReActAgent + 16 个 middleware + LLM 实例，drop 时产生大量瞬态 malloc/free 导致 jemalloc arena 碎片化
+**通用模式:** 高频创建/销毁的重对象（LLM 实例含 reqwest Client + TLS）必须 session 级缓存；用 provider fingerprint 做惰性 invalidation 替代显式 invalidate
+**架构影响:** 引入 AgentPool session 级缓存模式，跨 prompt 复用 LLM 实例；为 stateful middleware 添加 reset() 方法支持跨 turn 复用准备
+**技术决策:** 惰性 invalidation（fingerprint 检测）优于显式 invalidate（需遍历所有修改路径）
+**涉及文件:** peri-acp/src/session/agent_pool.rs, peri-acp/src/session/executor.rs:278, peri-acp/src/agent/builder.rs:94-417, peri-agent/src/agent/executor/mod.rs
+**CLAUDE.md 链接:** true
+
+### issue_2026-05-23-background-agent-card-disappears-no-result
+**摘要:** Background Agent 完成后 SubAgent 卡片消失且无数据回传
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** Background Agent, SubagentStarted, bg_event_sender, 独立通道
+**问题本质:** 三层叠加——SubagentStarted 缺 is_background 字段、事件通道随 executor 生命周期销毁、双路径交付导致 revert 后功能退化
+**通用模式:** Background task 的生命周期必须独立于发起它的 executor；事件通道需要独立于 executor 存活（unbounded channel）；单路径交付消除重复根因
+**涉及文件:** peri-agent/src/agent/events.rs, peri-middlewares/src/subagent/tool/define.rs, peri-acp/src/agent/builder.rs, peri-acp/src/session/executor.rs, peri-tui/src/app/agent.rs
+**CLAUDE.md 链接:** false
+
 ---
 
 ## 相关 Feature

@@ -771,6 +771,52 @@ submit_message(text)
 **涉及文件:** peri-tui/src/event/keyboard.rs
 **CLAUDE.md 链接:** false
 
+### issue_2026-05-23-ask-user-overflow-and-description-missing
+
+**摘要:** AskUser 弹窗内容溢出不可滚动且选项描述丢失
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** AskUser弹窗, Elicitation description, ScrollableArea, 面板高度
+**问题本质:** TUI 弹窗组件（AskUser）的高度计算逻辑与内容实际渲染行数不匹配；ACP Elicitation JSON 中注入的 description 字段被反序列化时丢弃
+**通用模式:** 弹窗/面板高度计算必须考虑动态内容（文本换行、选项描述），不能假设固定行高；跨层数据传递（JSON → struct）时枚举变体可能丢弃未知字段，需要专门的提取逻辑
+**架构影响:** ScrollableArea 组件只有渲染没有交互是设计缺陷，需要 option_row_map 追踪真实渲染行号而非逻辑选项索引
+**涉及文件:** peri-tui/src/ui/main_ui/mod.rs:310-376, peri-tui/src/ui/main_ui/popups/ask_user.rs:176-181, peri-tui/src/app/agent_ops_interaction.rs:86-104, peri-acp/src/broker/transport_broker.rs:258-299
+**CLAUDE.md 链接:** false
+
+### issue_2026-05-21-setup-wizard-settings-not-reloaded
+
+**摘要:** Setup 向导完成后 ACP Server 配置未刷新，API key 未生效
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** Setup向导, Arc共享配置, RwLock同步, ACP Server
+**问题本质:** App 层与 ACP Server 层持有独立的 Arc<RwLock<Config>>，Setup 只更新了 App 侧的 Arc，ACP Server 侧的 Arc 未同步
+**通用模式:** 多个组件共享配置时，必须共享同一个 Arc 引用而非各自 clone；配置更新时必须遍历所有消费者确保同步
+**架构影响:** 引入 ServiceRegistry 持有 ACP 共享 Arc 的模式，所有配置修改路径（8 条）统一调用 sync_peri_config_to_acp()
+**涉及文件:** peri-tui/src/app/mod.rs:535-542, peri-tui/src/main.rs:601-617, peri-tui/src/event/keyboard.rs:91-98, peri-tui/src/acp_server/mod.rs:96-97
+**CLAUDE.md 链接:** false
+
+### issue_2026-05-24-cancel-ineffective-during-streaming-and-tool-execution
+
+**摘要:** Ctrl+C 在流式输出和工具执行中 UI 中断但底层请求未停止
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** Ctrl+C取消, cancel_sent_at, 流式中断, 事件竞态
+**问题本质:** interrupt() 同时执行异步 cancel 和同步 UI 清理两条路径，UI 清理先于 cancel 生效导致用户以为已停止但实际未停止
+**通用模式:** 异步系统中 UI 层中断应延迟到确认事件到达后再清理，不应立即强制清理；需要 timeout fallback 防止事件丢失导致永久 loading
+**涉及文件:** peri-tui/src/app/mod.rs, peri-tui/src/app/agent_comm.rs, peri-tui/src/app/agent_ops/polling.rs, peri-tui/src/app/agent_ops/lifecycle.rs
+**CLAUDE.md 链接:** false
+
+### issue_2026-05-21-clear-command-doesnt-clear-live-context
+
+**摘要:** /clear 命令只清 TUI 界面，不清 ACP Server 上下文
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** /clear命令, ACP session/clear, 历史消息清理, SessionState
+**问题本质:** TUI 层和 ACP Server 层有独立的会话状态（view_messages vs SessionState.history），/clear 只清了 TUI 侧
+**通用模式:** 跨层状态清理必须通过协议请求（如 session/clear）而非仅清本地；所有层的状态重置必须在同一个请求中完成
+**涉及文件:** peri-tui/src/command/core/clear.rs:19-21, peri-tui/src/app/thread_ops.rs:259-335, peri-tui/src/acp_server/mod.rs:39-52, peri-tui/src/acp_server/prompt.rs:88-155
+**CLAUDE.md 链接:** false
+
 ---
 
 ## 相关 Feature

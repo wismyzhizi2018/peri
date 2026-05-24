@@ -110,7 +110,7 @@ scripts/start-relay.sh               # 启动 Relay Server（端口 8080）
 - （c）动态占位符（日期、cwd、环境变量）放在边界标记之后
 - （d）middleware 注入的 System 消息天然在边界标记之后（非缓存块）
 
-三个已踩坑的违反模式：（1）HashMap 迭代顺序不确定导致序列化内容跨进程变化；（2）`prepend_message` 向消息头部插入内容改变了 `cache_control` 标记的第一条 user 消息位置；（3）system prompt 内动态占位符（`{{date}}` 每日变化、`{{cwd}}` 跨项目变化）导致整个缓存段失效。（详见 spec/global/domains/message-pipeline.md，spec/global/domains/message-pipeline.md#issue_2026-05-14-cache-breakpoint-structural-inefficiency）
+三个已踩坑的违反模式：（1）HashMap 迭代顺序不确定导致序列化内容跨进程变化；（2）`prepend_message` 向消息头部插入内容改变了 `cache_control` 标记的第一条 user 消息位置；（3）system prompt 内动态占位符（`{{date}}` 每日变化、`{{cwd}}` 跨项目变化）导致整个缓存段失效；（4）动态 block 的 `i == last_idx` fallback 断点导致 Deferred Tools 内容变化时静态缓存前缀失效。（详见 spec/global/domains/message-pipeline.md，spec/global/domains/message-pipeline.md#issue_2026-05-14-cache-breakpoint-structural-inefficiency，spec/global/domains/system-prompt.md#issue_2026-05-23-mcp-tools-instability-breaks-anthropic-cache）
 
 **[TRAP]** `prepend_message` 的 `insert(0)` 右移导致 StateSnapshot 快照范围扩大，泄露 System 消息到 `agent_state_messages`。StateSnapshot 应始终 `.filter(|m| !m.is_system())`，`agent_state_messages` 不应包含 System 变体。（详见 spec/global/domains/system-prompt.md#issue_2026-05-13-system-prompt-dynamic-parts-duplicated-in-consecutive-calls，spec/global/domains/agent.md#issue_2026-05-14-deepseek-multi-turn-tool-result-duplication，spec/global/domains/system-prompt.md#issue_2026-05-20-rapid-context-expansion）
 
@@ -222,7 +222,7 @@ session/new → chrono::Local::now() → frozen_date
 
 **依赖关系说明**：TUI 保留 `AgentEvent` 枚举和 `handle_agent_event()` 处理器（`agent_ops/mod.rs:handle_agent_event`）以复用 UI 逻辑。Config/LlmProvider 类型已统一（TUI re-export `peri-acp` 的定义）。Agent 执行逻辑通过 `EventSink` trait + `executor::execute_prompt()` 统一在 `peri-acp`，TUI 和 stdio 各自提供 EventSink 实现。`peri-tui/Cargo.toml` 保留 `peri-agent`/`peri-middlewares` 作为**类型依赖**（UI 渲染所需的 `BaseMessage`/`ContentBlock` 等类型），运行时通信仅通过 `peri-acp`。
 
-**[TRAP]** Agent 构建和执行统一通过 `peri_acp::session::executor::execute_prompt()`（内部调用 `peri_acp::agent::builder::build_agent()`）。禁止在 TUI 层直接构建 ReActAgent 或手写事件泵——使用 `EventSink` 实现委托给 executor。
+**[TRAP]** Agent 构建和执行统一通过 `peri_acp::session::executor::execute_prompt()`（内部调用 `peri_acp::agent::builder::build_agent()`）。禁止在 TUI 层直接构建 ReActAgent 或手写事件泵——使用 `EventSink` 实现委托给 executor。`build_agent()` 每轮重建的大对象（LLM 实例、middleware）已通过 `AgentPool` session 级缓存复用，避免 jemalloc arena 碎片化。（详见 spec/global/domains/agent.md#issue_2026-05-24-build-agent-per-turn-arc-transient-fragmentation）
 
 **[TRAP]** Session Config Options 覆盖旧的 Session Modes API。ACP 规范明确指出 `configOptions` 取代 `modes`/`models`，但过渡期内需同时发送两者以兼容旧客户端。IDE 客户端通过 `configOptions` 中条目的 `category` 字段决定渲染哪些 UI 控件：`category: "mode"` → 权限模式选择器，`category: "model"` → 模型下拉，`category: "thought_level"` → 推理强度。`build_config_options()` 必须按优先级顺序返回（mode → model → thinking_effort），`session/set_config_option` 处理器必须处理 `"mode"` 和 `"model"` config ID（除了已有的 `"thinking_effort"`）。仅发送 `modes`/`models` 而缺少对应 `configOptions` 条目的，已迁移到新 API 的 IDE 不会显示任何控件。
 

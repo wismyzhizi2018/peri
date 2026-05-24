@@ -862,6 +862,90 @@
 ### TERM_PROGRAM
 - [Mac Option+Backspace 在 VS Code 终端被映射为 PageUp 导致滚动而非删除](domains/tui.md#issue_2026-05-12-macos-option-backspace-scrolls-when-content-present) — tui
 
+### AskUser弹窗
+- [AskUser 弹窗内容溢出不可滚动且选项描述丢失](domains/tui.md#issue_2026-05-23-ask-user-overflow-and-description-missing) — tui
+
+### Elicitation description
+- [AskUser 弹窗内容溢出不可滚动且选项描述丢失](domains/tui.md#issue_2026-05-23-ask-user-overflow-and-description-missing) — tui
+
+### Arc共享配置
+- [Setup 向导完成后 ACP Server 配置未刷新，API key 未生效](domains/tui.md#issue_2026-05-21-setup-wizard-settings-not-reloaded) — tui
+
+### Ctrl+C取消
+- [Ctrl+C 在流式输出和工具执行中 UI 中断但底层请求未停止](domains/tui.md#issue_2026-05-24-cancel-ineffective-during-streaming-and-tool-execution) — tui
+
+### /clear命令
+- [/clear 命令只清 TUI 界面，不清 ACP Server 上下文](domains/tui.md#issue_2026-05-21-clear-command-doesnt-clear-live-context) — tui
+
+### 历史消息清理
+- [/clear 命令只清 TUI 界面，不清 ACP Server 上下文](domains/tui.md#issue_2026-05-21-clear-command-doesnt-clear-live-context) — tui
+
+### AgentPool
+- [build_agent 每轮重建大对象产生瞬态分配碎片](domains/agent.md#issue_2026-05-24-build-agent-per-turn-arc-transient-fragmentation) — agent
+
+### LLM实例复用
+- [build_agent 每轮重建大对象产生瞬态分配碎片](domains/agent.md#issue_2026-05-24-build-agent-per-turn-arc-transient-fragmentation) — agent
+
+### jemalloc碎片
+- [build_agent 每轮重建大对象产生瞬态分配碎片](domains/agent.md#issue_2026-05-24-build-agent-per-turn-arc-transient-fragmentation) — agent
+
+### bg_event_sender
+- [Background Agent 完成后 SubAgent 卡片消失且无数据回传](domains/agent.md#issue_2026-05-23-background-agent-card-disappears-no-result) — agent
+
+### Compact后系统提示词
+- [Compact 后 Langfuse 遥测丢失系统提示词](domains/langfuse.md#issue_2026-05-23-langfuse-missing-system-prompt-after-compact) — langfuse
+
+### System消息前缀
+- [Compact 后 Langfuse 遥测丢失系统提示词](domains/langfuse.md#issue_2026-05-23-langfuse-missing-system-prompt-after-compact) — langfuse
+
+### Langfuse OTLP
+- [Langfuse agent-run 根节点缺失（native ingestion 迁移后回归）](domains/langfuse.md#issue_2026-05-23-langfuse-agent-run-root-missing) — langfuse
+
+### native ingestion
+- [Langfuse agent-run 根节点缺失（native ingestion 迁移后回归）](domains/langfuse.md#issue_2026-05-23-langfuse-agent-run-root-missing) — langfuse
+
+### skip_serializing_if
+- [Langfuse agent-run 根节点缺失（native ingestion 迁移后回归）](domains/langfuse.md#issue_2026-05-23-langfuse-agent-run-root-missing) — langfuse
+
+### Deferred Tools
+- [Deferred Tools 段注入 system prompt 动态区域导致跨会话 Cache 部分失效](domains/system-prompt.md#issue_2026-05-23-mcp-tools-instability-breaks-anthropic-cache) — system-prompt
+
+### -c/--continue
+- [-c/--continue 未实现：启动后显示空会话](domains/cli.md#issue_2026-05-23-continue-flag-not-implemented) — cli
+
+### 会话恢复
+- [-c/--continue 未实现：启动后显示空会话](domains/cli.md#issue_2026-05-23-continue-flag-not-implemented) — cli
+
+### 图片粘贴
+- [TUI 粘贴图片后 LLM 仅收到文本而非图片内容](domains/acp.md#issue_2026-05-23-tui-image-sent-as-text) — acp
+
+### MessageContent
+- [TUI 粘贴图片后 LLM 仅收到文本而非图片内容](domains/acp.md#issue_2026-05-23-tui-image-sent-as-text) — acp
+
+### 多模态数据流
+- [TUI 粘贴图片后 LLM 仅收到文本而非图片内容](domains/acp.md#issue_2026-05-23-tui-image-sent-as-text) — acp
+
+### ACP InitializeResponse
+- [ACP Stdio InitializeResponse 缺少 session 能力声明，Zed 客户端报错](domains/acp.md#issue_2026-05-21-acp-stdio-missing-session-capabilities) — acp
+
+### session_capabilities
+- [ACP Stdio InitializeResponse 缺少 session 能力声明，Zed 客户端报错](domains/acp.md#issue_2026-05-21-acp-stdio-missing-session-capabilities) — acp
+
+### ACP stdio权限
+- [ACP stdio 默认权限模式为 AutoMode，与 TUI/-p 模式不一致](domains/acp.md#issue_2026-05-21-acp-stdio-default-permission-should-be-bypass) — acp
+
+### 默认Bypass
+- [ACP stdio 默认权限模式为 AutoMode，与 TUI/-p 模式不一致](domains/acp.md#issue_2026-05-21-acp-stdio-default-permission-should-be-bypass) — acp
+
+### AvailableCommands
+- [Skills 未作为 ACP AvailableCommands 传递给 IDE 客户端](domains/acp.md#issue_2026-05-21-skills-not-passed-as-acp-commands) — acp
+
+### FrozenSessionData
+- [Skills 未作为 ACP AvailableCommands 传递给 IDE 客户端](domains/acp.md#issue_2026-05-21-skills-not-passed-as-acp-commands) — acp
+
+### include!宏分组
+- [TUI app/ 目录模块化拆分——48 个子模块、多个 1000+ 行文件](domains/code-architecture.md#issue_2026-05-14-tui-app-mod-decomposition) — code-architecture
+
 ## 更新记录
 
 - 2026-05-13: 首次创建，归档 22 个 issue，提取 14 条领域认知
@@ -876,3 +960,4 @@
 - 2026-05-20: 归档 7 个 issue，新增 27 个关键词索引
 - 2026-05-20: 归档 1 个 issue，新增 4 个关键词索引（session恢复/System消息过滤/messages_to_view_models/SystemNote泄漏）
 - 2026-05-20: 归档 5 个 issue（compact 2, message-pipeline 1, system-prompt 1, tui 1），新增 24 个关键词索引
+- 2026-05-24: 归档 15 个 issue（tui 4 + agent 2 + langfuse 2 + system-prompt 1 + cli 1 + acp 4 + code-architecture 1），新增 29 个关键词索引

@@ -1,3 +1,5 @@
+> 归档于 2026-05-24，原路径 spec/issues/2026-05-24-cancel-ineffective-during-streaming-and-tool-execution.md
+
 # Cancel（Ctrl+C）在流式输出和工具执行中失效——UI 中断但底层请求未停止
 
 **状态**：Fixed

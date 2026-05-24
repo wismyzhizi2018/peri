@@ -1,3 +1,5 @@
+> 归档于 2026-05-24，原路径 spec/issues/2026-05-14-tui-app-mod-decomposition.md
+
 # TUI app/ 目录模块化：app/mod.rs 48 个子模块、plugin_panel.rs 2017 行
 
 **状态**：Resolved (基本完成)

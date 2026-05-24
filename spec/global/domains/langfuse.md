@@ -143,6 +143,30 @@ new_thread() / open_thread():
 **涉及文件:** langfuse-client/src/types.rs, langfuse-client/src/lib.rs
 **说明:** 纯代码组织优化，无领域认知提炼。
 
+### issue_2026-05-23-langfuse-missing-system-prompt-after-compact
+
+**摘要:** Compact 后 Langfuse 遥测丢失系统提示词（实际 LLM 调用也缺失）
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** Compact后系统提示词, System消息前缀, do_full_compact, re_inject
+**问题本质:** do_full_compact() 用 `*state.messages_mut() = new_messages` 整体替换，丢弃了头部的 System 消息（含系统提示词、CLAUDE.md、skills 摘要）
+**通用模式:** 整体替换消息数组前必须提取并保留 System 前缀（`take_while(|m| m.is_system())`），compact 只替换 User/Assistant/Tool 部分
+**架构影响:** BaseModelReactLLM.system 从未设置，系统提示词完全通过 state.messages() 的 System 消息传递
+**涉及文件:** peri-acp/src/langfuse/tracer.rs:206-292, peri-agent/src/agent/executor/llm_step.rs:22-27, peri-agent/src/agent/executor/mod.rs:240-241, peri-middlewares/src/compact_middleware.rs:228-248
+**CLAUDE.md 链接:** false
+
+### issue_2026-05-23-langfuse-agent-run-root-missing
+
+**摘要:** Langfuse agent-run 根节点缺失（native ingestion 迁移后回归）
+**状态:** Fixed
+**归档日期:** 2026-05-24
+**关键词:** Langfuse OTLP, ObservationType, native ingestion, skip_serializing_if
+**问题本质:** Native ingestion API 严格校验 ObservationType（只接受 GENERATION/SPAN/EVENT），Agent/Tool 被拒绝；同时 ObservationUpdate 的 null 字段清空已有数据
+**通用模式:** 外部 API 端点迁移时必须验证所有自定义枚举值的兼容性；Option 字段必须添加 skip_serializing_if 防止序列化为 null 清空已有数据
+**技术决策:** OTLP 端点（宽松校验）优于 native ingestion（严格校验），配合 x-langfuse-ingestion-version header 确保实时可见
+**涉及文件:** langfuse-client/src/batcher.rs, langfuse-client/src/client.rs, langfuse-client/src/types/mod.rs, peri-acp/src/langfuse/tracer.rs
+**CLAUDE.md 链接:** false
+
 ---
 
 ## 相关 Feature

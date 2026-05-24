@@ -111,6 +111,18 @@
 **涉及文件:** peri-tui/src/event.rs, peri-tui/src/app/agent_ops.rs, peri-tui/src/app/panel_ops.rs, peri-agent/src/llm/anthropic.rs, peri-tui/src/app/agent.rs
 **CLAUDE.md 链接:** false
 
+### issue_2026-05-14-tui-app-mod-decomposition
+
+**摘要:** TUI app/ 目录模块化拆分——48 个子模块、多个 1000+ 行文件
+**状态:** Resolved (基本完成)
+**归档日期:** 2026-05-24
+**关键词:** 模块化拆分, include!宏分组, plugin_panel拆分, agent_ops拆分
+**问题本质:** app/mod.rs 单文件声明 48 个子模块，多个文件超 1000 行混合多职责
+**通用模式:** 大型模块按 include! 宏分组（panels/state/agent/system）；子模块按职责拆分（handlers/component/ops/types）；panel API 面用 pub(crate) 收窄
+**技术决策:** include! 宏分组优于手动声明（可按类别维护）；子模块拆分为 handlers/ 子目录优于单文件内部模块
+**涉及文件:** peri-tui/src/app/mod.rs, peri-tui/src/app/modules_*.inc, peri-tui/src/app/plugin_panel/, peri-tui/src/app/agent_ops/, peri-tui/src/app/mcp_panel/, peri-tui/src/app/message_pipeline/
+**CLAUDE.md 链接:** false
+
 ---
 
 ## 相关 Feature
