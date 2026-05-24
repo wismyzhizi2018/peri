@@ -90,6 +90,11 @@ pub struct SubAgentTool {
     thread_store: Option<Arc<dyn ThreadStore>>,
     /// Parent thread ID for child thread hierarchy
     parent_thread_id: Option<String>,
+    /// Register callback: (thread_id, cancel_token, cancel_policy_str) → inserts into active_agents map
+    #[allow(clippy::type_complexity)]
+    register_runtime: Option<Arc<dyn Fn(String, AgentCancellationToken, String) + Send + Sync>>,
+    /// Deregister callback: removes from active_agents map by thread_id
+    deregister_runtime: Option<Arc<dyn Fn(&str) + Send + Sync>>,
 }
 
 impl SubAgentTool {
@@ -114,6 +119,8 @@ impl SubAgentTool {
             bg_event_sender: None,
             thread_store: None,
             parent_thread_id: None,
+            register_runtime: None,
+            deregister_runtime: None,
         }
     }
 
@@ -170,6 +177,20 @@ impl SubAgentTool {
 
     pub fn with_parent_thread_id(mut self, id: String) -> Self {
         self.parent_thread_id = Some(id);
+        self
+    }
+
+    #[allow(clippy::type_complexity)]
+    pub fn with_register_runtime(
+        mut self,
+        cb: Arc<dyn Fn(String, AgentCancellationToken, String) + Send + Sync>,
+    ) -> Self {
+        self.register_runtime = Some(cb);
+        self
+    }
+
+    pub fn with_deregister_runtime(mut self, cb: Arc<dyn Fn(&str) + Send + Sync>) -> Self {
+        self.deregister_runtime = Some(cb);
         self
     }
 
@@ -274,7 +295,8 @@ impl SubAgentTool {
         }
         let llm = (self.llm_factory)(None);
         let mut agent_builder = ReActAgent::new(llm).max_iterations(200);
-        let instance_id = format!("sub_{}", &uuid::Uuid::new_v4().to_string()[..8]);
+        // instance_id 统一使用 child_thread_id（UUID v7，持久化线程标识）
+        let instance_id = child_thread_id.clone();
 
         for mw in build_subagent_middlewares(SubAgentMiddlewareConfig::for_fork(cwd)) {
             agent_builder = agent_builder.add_middleware(mw);
@@ -315,6 +337,14 @@ impl SubAgentTool {
         )
         .await;
 
+        // Register AgentRuntime: only when thread_store is present (non-legacy path)
+        if let Some(ref register) = self.register_runtime {
+            if self.thread_store.is_some() {
+                let child_cancel = AgentCancellationToken::new();
+                register(child_thread_id.clone(), child_cancel, "cascade".to_string());
+            }
+        }
+
         let fork_result = agent_builder
             .execute(
                 AgentInput::text(fork_directive),
@@ -354,6 +384,11 @@ impl SubAgentTool {
                 if let Some(ref store) = self.thread_store {
                     let _ = store.update_thread_status(&child_thread_id, "done").await;
                 }
+                if let Some(ref deregister) = self.deregister_runtime {
+                    if self.thread_store.is_some() {
+                        deregister(&child_thread_id);
+                    }
+                }
                 let result_text = format_subagent_result(&output);
                 if self.thread_store.is_some() {
                     Ok(format!(
@@ -370,11 +405,21 @@ impl SubAgentTool {
                         .update_thread_status(&child_thread_id, "cancelled")
                         .await;
                 }
+                if let Some(ref deregister) = self.deregister_runtime {
+                    if self.thread_store.is_some() {
+                        deregister(&child_thread_id);
+                    }
+                }
                 Ok("Fork sub-agent execution was interrupted".to_string())
             }
             Err(e) => {
                 if let Some(ref store) = self.thread_store {
                     let _ = store.update_thread_status(&child_thread_id, "error").await;
+                }
+                if let Some(ref deregister) = self.deregister_runtime {
+                    if self.thread_store.is_some() {
+                        deregister(&child_thread_id);
+                    }
                 }
                 let msg = format!("Fork sub-agent execution failed: {}", e);
                 Err(msg.into())
@@ -499,6 +544,21 @@ impl SubAgentTool {
         }
         let spawn_thread_store = self.thread_store.clone();
         let spawn_child_thread_id = bg_child_thread_id.clone();
+        let _spawn_register_runtime = self.register_runtime.clone();
+        let spawn_deregister_runtime = self.deregister_runtime.clone();
+        let has_thread_store = self.thread_store.is_some();
+
+        // Register AgentRuntime before spawning
+        if let Some(ref register) = self.register_runtime {
+            if self.thread_store.is_some() {
+                let child_cancel = AgentCancellationToken::new();
+                register(
+                    bg_child_thread_id.clone(),
+                    child_cancel,
+                    "independent".to_string(),
+                );
+            }
+        }
 
         self.fire_subagent_lifecycle_hook(
             crate::hooks::types::HookEvent::SubagentStart,
@@ -582,6 +642,13 @@ impl SubAgentTool {
                     agent_name = %spawn_agent_name,
                     "[bg-diag] bg-task spawn_bg_sender is None — NOT sent"
                 );
+            }
+
+            // Deregister AgentRuntime after execution completes
+            if let Some(ref deregister) = spawn_deregister_runtime {
+                if has_thread_store {
+                    deregister(&spawn_child_thread_id);
+                }
             }
         });
 
@@ -677,6 +744,21 @@ impl SubAgentTool {
         let spawn_prompt_summary = prompt_summary.clone();
         let spawn_thread_store = self.thread_store.clone();
         let spawn_child_thread_id = bg_fork_child_thread_id.clone();
+        let _spawn_register_runtime = self.register_runtime.clone();
+        let spawn_deregister_runtime = self.deregister_runtime.clone();
+        let has_thread_store = self.thread_store.is_some();
+
+        // Register AgentRuntime before spawning
+        if let Some(ref register) = self.register_runtime {
+            if self.thread_store.is_some() {
+                let child_cancel = AgentCancellationToken::new();
+                register(
+                    bg_fork_child_thread_id.clone(),
+                    child_cancel,
+                    "independent".to_string(),
+                );
+            }
+        }
 
         self.fire_subagent_lifecycle_hook(
             crate::hooks::types::HookEvent::SubagentStart,
@@ -769,6 +851,13 @@ impl SubAgentTool {
                     "[bg-diag] bg-task spawn_bg_sender is None — NOT sent"
                 );
             }
+
+            // Deregister AgentRuntime after execution completes
+            if let Some(ref deregister) = spawn_deregister_runtime {
+                if has_thread_store {
+                    deregister(&spawn_child_thread_id);
+                }
+            }
         });
 
         registry.register(BackgroundTask {
@@ -781,7 +870,7 @@ impl SubAgentTool {
         })?;
 
         // 通知 TUI background agent 启动（递增 background_task_count）。
-        // 必须在 registry.register() 成功之后发送，防止注册��败��下幽灵计数。
+        // 必须在 registry.register() 成功之后发送，防止注册失败留下幽灵计数。
         if let Some(ref handler) = self.event_handler {
             handler.on_event(AgentEvent::SubagentStarted {
                 agent_name: agent_name.clone(),
@@ -902,10 +991,10 @@ impl BaseTool for SubAgentTool {
             }
         };
 
-        let instance_id = format!("sub_{}", &uuid::Uuid::new_v4().to_string()[..8]);
-
         // Create child thread for normal (non-fork, non-background) mode
+        // instance_id 统一使用 child_thread_id（UUID v7，持久化线程标识）
         let child_thread_id = uuid::Uuid::now_v7().to_string();
+        let instance_id = child_thread_id.clone();
         if let Some(ref store) = self.thread_store {
             let mut child_meta = ThreadMeta::new(&cwd);
             child_meta.id = child_thread_id.clone();
@@ -998,6 +1087,14 @@ impl BaseTool for SubAgentTool {
         )
         .await;
 
+        // Register AgentRuntime: only when thread_store is present (non-legacy path)
+        if let Some(ref register) = self.register_runtime {
+            if self.thread_store.is_some() {
+                let child_cancel = AgentCancellationToken::new();
+                register(child_thread_id.clone(), child_cancel, "cascade".to_string());
+            }
+        }
+
         tracing::info!(
             "[DEADLOCK] SubAgentTool: START child execute, agent_id={}, prompt_len={}",
             agent_id,
@@ -1045,6 +1142,11 @@ impl BaseTool for SubAgentTool {
                 if let Some(ref store) = self.thread_store {
                     let _ = store.update_thread_status(&child_thread_id, "done").await;
                 }
+                if let Some(ref deregister) = self.deregister_runtime {
+                    if self.thread_store.is_some() {
+                        deregister(&child_thread_id);
+                    }
+                }
                 let result_text = format_subagent_result(&output);
                 if self.thread_store.is_some() {
                     Ok(format!(
@@ -1062,11 +1164,21 @@ impl BaseTool for SubAgentTool {
                         .update_thread_status(&child_thread_id, "cancelled")
                         .await;
                 }
+                if let Some(ref deregister) = self.deregister_runtime {
+                    if self.thread_store.is_some() {
+                        deregister(&child_thread_id);
+                    }
+                }
                 Ok("Sub-agent execution was interrupted".to_string())
             }
             Err(e) => {
                 if let Some(ref store) = self.thread_store {
                     let _ = store.update_thread_status(&child_thread_id, "error").await;
+                }
+                if let Some(ref deregister) = self.deregister_runtime {
+                    if self.thread_store.is_some() {
+                        deregister(&child_thread_id);
+                    }
                 }
                 let msg = format!("Sub-agent execution failed: {}", e);
                 Err(msg.into())

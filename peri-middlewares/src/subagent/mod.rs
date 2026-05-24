@@ -113,6 +113,11 @@ pub struct SubAgentMiddleware {
     thread_store: Option<Arc<dyn ThreadStore>>,
     /// Parent thread ID for child thread hierarchy
     parent_thread_id: Option<String>,
+    /// Register callback: (thread_id, cancel_token, cancel_policy_str) → inserts into active_agents map
+    #[allow(clippy::type_complexity)]
+    register_runtime: Option<Arc<dyn Fn(String, AgentCancellationToken, String) + Send + Sync>>,
+    /// Deregister callback: removes from active_agents map by thread_id
+    deregister_runtime: Option<Arc<dyn Fn(&str) + Send + Sync>>,
 }
 
 impl SubAgentMiddleware {
@@ -139,6 +144,8 @@ impl SubAgentMiddleware {
             bg_event_sender: None,
             thread_store: None,
             parent_thread_id: None,
+            register_runtime: None,
+            deregister_runtime: None,
         }
     }
 
@@ -215,6 +222,24 @@ impl SubAgentMiddleware {
         self
     }
 
+    /// Set register callback: called when a child agent thread starts executing.
+    /// Parameters: (thread_id, cancel_token, cancel_policy_str)
+    #[allow(clippy::type_complexity)]
+    pub fn with_register_runtime(
+        mut self,
+        cb: Arc<dyn Fn(String, AgentCancellationToken, String) + Send + Sync>,
+    ) -> Self {
+        self.register_runtime = Some(cb);
+        self
+    }
+
+    /// Set deregister callback: called when a child agent thread finishes (ok/error/cancel).
+    /// Parameters: &str (thread_id)
+    pub fn with_deregister_runtime(mut self, cb: Arc<dyn Fn(&str) + Send + Sync>) -> Self {
+        self.deregister_runtime = Some(cb);
+        self
+    }
+
     /// Build SubAgentTool instance (clone Arc fields, do not transfer ownership)
     pub fn build_tool(&self, cwd: &str) -> SubAgentTool {
         let mut tool = SubAgentTool::new(
@@ -249,6 +274,12 @@ impl SubAgentMiddleware {
         }
         if let Some(ref id) = self.parent_thread_id {
             tool = tool.with_parent_thread_id(id.clone());
+        }
+        if let Some(ref register) = self.register_runtime {
+            tool = tool.with_register_runtime(Arc::clone(register));
+        }
+        if let Some(ref deregister) = self.deregister_runtime {
+            tool = tool.with_deregister_runtime(Arc::clone(deregister));
         }
         tool
     }
