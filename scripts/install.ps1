@@ -160,17 +160,17 @@ function Main {
     }
     Remove-Item -Force $ZipPath -ErrorAction SilentlyContinue
 
-    # Zip contains peri-windows-x86_64/ directory (or similar), find the exe
+    # Zip structure: either peri-*/peri.exe or flat peri.exe
     $ExtractedDir = Get-ChildItem -Path $VersionDir -Directory | Where-Object { $_.Name -like "peri-*" } | Select-Object -First 1
-    $SourceExe = Join-Path $ExtractedDir.FullName $ExeName
-    if (-not (Test-Path $SourceExe)) {
-        # Try flat structure
+    $SourceExe = if ($ExtractedDir) { Join-Path $ExtractedDir.FullName $ExeName } else { $null }
+    if (-not $SourceExe -or -not (Test-Path $SourceExe)) {
+        # Try flat structure (exe directly in $VersionDir)
         $SourceExe = Join-Path $VersionDir $ExeName
-        if (-not (Test-Path $SourceExe)) {
-            error "No $ExeName found in extracted archive."
-            Get-ChildItem -Path $VersionDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
-            exit 1
-        }
+    }
+    if (-not (Test-Path $SourceExe)) {
+        error "No $ExeName found in extracted archive."
+        Get-ChildItem -Path $VersionDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+        exit 1
     }
 
     $TargetExe = Join-Path $VersionDir $ExeName
