@@ -1,25 +1,6 @@
 use super::message_pipeline::PipelineAction;
 use super::*;
 
-/// 从用户输入中提取 /skill-name 模式的 skill 名称
-///
-/// 支持格式：
-/// - `/skill-name` — 单个 skill
-/// - `/skill-a /skill-b` — 多个 skill（空格分隔）
-/// - 消息中任意位置出现即可（不限于行首）
-#[allow(dead_code)]
-fn parse_skill_names_from_input(input: &str) -> Vec<String> {
-    let mut names = Vec::new();
-    for word in input.split_whitespace() {
-        if let Some(name) = word.strip_prefix('/') {
-            if !name.is_empty() {
-                names.push(name.to_string());
-            }
-        }
-    }
-    names
-}
-
 impl App {
     pub fn submit_message(&mut self, input: String) {
         if input.trim().is_empty() {
