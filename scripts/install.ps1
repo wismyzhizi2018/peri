@@ -160,22 +160,17 @@ function Main {
     }
     Remove-Item -Force $ZipPath -ErrorAction SilentlyContinue
 
-    # Zip structure: either peri-*/peri.exe or flat peri.exe
-    $ExtractedDir = Get-ChildItem -Path $VersionDir -Directory | Where-Object { $_.Name -like "peri-*" } | Select-Object -First 1
-    $SourceExe = if ($ExtractedDir) { Join-Path $ExtractedDir.FullName $ExeName } else { $null }
-    if (-not $SourceExe -or -not (Test-Path $SourceExe)) {
-        # Try flat structure (exe directly in $VersionDir)
-        $SourceExe = Join-Path $VersionDir $ExeName
-    }
-    if (-not (Test-Path $SourceExe)) {
-        error "No $ExeName found in extracted archive."
+    # Zip contains peri-<platform>.exe (e.g. peri-windows-x86_64.exe), find and rename to peri.exe
+    $SourceExe = Get-ChildItem -Path $VersionDir -Recurse -Filter "*.exe" | Where-Object { $_.Name -notlike "unins*" } | Select-Object -First 1
+    if (-not $SourceExe) {
+        error "No .exe found in extracted archive."
         Get-ChildItem -Path $VersionDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
         exit 1
     }
 
     $TargetExe = Join-Path $VersionDir $ExeName
-    if ($SourceExe -ne $TargetExe) {
-        Move-Item -Force $SourceExe $TargetExe
+    if ($SourceExe.FullName -ne $TargetExe) {
+        Move-Item -Force $SourceExe.FullName $TargetExe
     }
 
     info "Installed to: $TargetExe"
