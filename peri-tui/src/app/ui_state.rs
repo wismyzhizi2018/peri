@@ -35,7 +35,8 @@ pub struct UiState {
 
 impl UiState {
     pub fn new(textarea: TextArea<'static>, cwd: &str) -> Self {
-        let input_history = super::history_persistence::load_input_history(cwd);
+        let _ = cwd; // 历史路径已迁移至 ~/.peri/，cwd 保留用于未来扩展
+        let input_history = super::history_persistence::load_input_history();
         Self {
             textarea,
             loading: false,
