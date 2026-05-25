@@ -1,9 +1,20 @@
 use super::*;
 
-/// mimalloc automatically returns freed pages to the OS — no manual
-/// decay/purge needed. Kept as a no-op placeholder for call-sites that
-/// previously triggered jemalloc arena decay.
-pub(crate) fn allocator_decay() {}
+/// 通知分配器将空闲内存页归还给 OS。
+/// 在 `/clear`、`/compact`、切换会话等大块内存释放后调用。
+/// 注意：仅释放 mimalloc 管理的 Rust 堆内存，SQLite/tokio 等非 Rust 分配不受影响。
+#[cfg(not(target_os = "windows"))]
+pub(crate) fn alloc_collect() {
+    // mimalloc: force=true triggers aggressive collection, immediately
+    // returning all freeable segments to the OS. This replaces the old
+    // jemalloc per-arena decay+purge cycle with a single call.
+    unsafe {
+        libmimalloc_sys::mi_collect(true);
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn alloc_collect() {}
 
 impl App {
     /// 获取或新建当前 thread id（同步，block_in_place）
@@ -256,7 +267,7 @@ impl App {
             ));
 
         // 切换会话时旧数据已释放，归还内存页给 OS
-        allocator_decay();
+        alloc_collect();
     }
 
     pub fn open_thread_with_feedback(&mut self, thread_id: ThreadId) {
@@ -363,8 +374,8 @@ impl App {
             });
         }
 
-        // 归还已释放内存页给 OS（mimalloc 自动回收，无需手动触发）
-        allocator_decay();
+        // 归还已释放内存页给 OS
+        alloc_collect();
     }
 
     /// 打开 thread 浏览面板（通过命令触发）
