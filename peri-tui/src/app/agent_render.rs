@@ -77,12 +77,15 @@ impl App {
                     prefix_len
                 };
 
-                // 保存 ephemeral_notes 中锚点在 tail 范围内的（锚点 < prefix_len 的已过期，丢弃）
+                // 保存 ephemeral_notes 中锚点在 tail 范围内的（锚点 < prefix_len 的已过期，丢弃）。
+                // 注意：UserBubble 也通过 AddMessage 进入了 ephemeral_notes，但 UserBubble
+                // 不应被视为 ephemeral——RebuildAll 应能彻底移除它们。
                 let mut saved_notes: Vec<(usize, MessageViewModel)> = session
                     .messages
                     .ephemeral_notes
                     .drain(..)
                     .filter(|(anchor, _)| *anchor >= prefix_len)
+                    .filter(|(_, vm)| !matches!(vm, MessageViewModel::UserBubble { .. }))
                     .collect();
 
                 // drain 尾部
