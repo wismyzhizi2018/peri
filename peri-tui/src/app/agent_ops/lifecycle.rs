@@ -163,16 +163,19 @@ impl App {
             self.apply_pipeline_action(action);
         }
 
-        // 检测本轮是否已有工具调用：有工具调用时只中断执行，不撤回历史
-        let round_start = self.session_mgr.sessions[self.session_mgr.active]
+        // 在 view_messages 中定位最后一个 UserBubble 的索引，
+        // 而非依赖 round_start_vm_idx（Pipeline rebuild 会使 VM 索引偏移）。
+        let user_msg_idx = self.session_mgr.sessions[self.session_mgr.active]
             .messages
-            .round_start_vm_idx;
-        let prefix = round_start.saturating_sub(1);
+            .view_messages
+            .iter()
+            .rposition(|vm| matches!(vm, MessageViewModel::UserBubble { .. }))
+            .unwrap_or(0);
         let has_tool_calls = self.session_mgr.sessions[self.session_mgr.active]
             .messages
             .view_messages
             .iter()
-            .skip(prefix)
+            .skip(user_msg_idx + 1) // UserBubble 之后的消息
             .any(|vm| {
                 matches!(
                     vm,
@@ -197,10 +200,9 @@ impl App {
             .last_submitted_text
             .take()
         {
-            // 截断 view_messages（移除本轮 Human 消息 + Agent 响应）
-            // prefix 已在上面计算为 round_start.saturating_sub(1)
+            // 截断 view_messages（移除 UserBubble + 本轮所有 Agent 响应）
             self.apply_pipeline_action(PipelineAction::RebuildAll {
-                prefix_len: prefix,
+                prefix_len: user_msg_idx,
                 tail_vms: vec![],
             });
             // 截断 agent_state_messages（回滚 StateSnapshot 扩展的内容）
