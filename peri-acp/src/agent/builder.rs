@@ -350,6 +350,9 @@ pub fn build_agent(
             mw
         }))
         .add_middleware(Box::new(SkillPreloadMiddleware::new(preload_skills, &cwd)))
+        .add_middleware(Box::new(peri_middlewares::AtMentionMiddleware::new(
+            cwd.clone().into(),
+        )))
         .add_middleware(Box::new(FilesystemMiddleware::new()))
         .add_middleware(Box::new(peri_middlewares::GitAttributionMiddleware::new(
             &model_name,
