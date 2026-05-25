@@ -353,10 +353,21 @@ impl SubAgentTool {
 
         // Register AgentRuntime: only when thread_store is present (non-legacy path)
         // Panic-safe: DeregisterGuard ensures deregister runs on drop (panic or early return)
+        //
+        // child_cancel is linked to parent via child_token(): parent cancel → child_cancel fires.
+        // The same child_cancel is passed to execute(), so cascade cancel works correctly.
+        let child_cancel = self
+            .cancel
+            .as_ref()
+            .map(|t| t.child_token())
+            .unwrap_or_default();
         let _deregister_guard = if self.thread_store.is_some() {
             if let Some(ref register) = self.register_runtime {
-                let child_cancel = AgentCancellationToken::new();
-                register(child_thread_id.clone(), child_cancel, "cascade".to_string());
+                register(
+                    child_thread_id.clone(),
+                    child_cancel.clone(),
+                    "cascade".to_string(),
+                );
             }
             DeregisterGuard {
                 thread_id: child_thread_id.clone(),
@@ -373,7 +384,7 @@ impl SubAgentTool {
             .execute(
                 AgentInput::text(fork_directive),
                 &mut fork_state,
-                self.cancel.clone(),
+                Some(child_cancel),
             )
             .await;
 
@@ -529,7 +540,6 @@ impl SubAgentTool {
             agent_builder = agent_builder.register_tool(tool);
         }
 
-        let cancel_token = self.cancel.clone();
         let spawn_task_id = task_id.clone();
         let spawn_agent_name = agent_name.clone();
         let spawn_prompt_summary = prompt_summary.clone();
@@ -553,21 +563,28 @@ impl SubAgentTool {
         }
         let spawn_thread_store = self.thread_store.clone();
         let spawn_child_thread_id = bg_child_thread_id.clone();
-        let _spawn_register_runtime = self.register_runtime.clone();
         let spawn_deregister_runtime = self.deregister_runtime.clone();
         let has_thread_store = self.thread_store.is_some();
 
         // Register AgentRuntime before spawning
-        if let Some(ref register) = self.register_runtime {
-            if self.thread_store.is_some() {
-                let child_cancel = AgentCancellationToken::new();
+        // Independent: child_cancel is NOT linked to parent. Only session-level cancel_all_agents cancels it.
+        // The same child_cancel is passed to execute() so cancel via active_agents map works.
+        let child_cancel = if has_thread_store {
+            if let Some(ref register) = self.register_runtime {
+                let cc = AgentCancellationToken::new();
                 register(
                     bg_child_thread_id.clone(),
-                    child_cancel,
+                    cc.clone(),
                     "independent".to_string(),
                 );
+                Some(cc)
+            } else {
+                None
             }
-        }
+        } else {
+            None
+        };
+        let cancel_token = child_cancel.or(self.cancel.clone());
 
         self.fire_subagent_lifecycle_hook(
             crate::hooks::types::HookEvent::SubagentStart,
@@ -744,7 +761,6 @@ impl SubAgentTool {
             agent_builder = agent_builder.register_tool(Box::new(ArcToolWrapper(Arc::clone(tool))));
         }
 
-        let cancel_token = self.cancel.clone();
         let spawn_registry = Arc::clone(registry);
         let spawn_hooks = Arc::clone(&self.registered_hooks);
         let spawn_bg_sender = self.bg_event_sender.clone();
@@ -753,21 +769,28 @@ impl SubAgentTool {
         let spawn_prompt_summary = prompt_summary.clone();
         let spawn_thread_store = self.thread_store.clone();
         let spawn_child_thread_id = bg_fork_child_thread_id.clone();
-        let _spawn_register_runtime = self.register_runtime.clone();
         let spawn_deregister_runtime = self.deregister_runtime.clone();
         let has_thread_store = self.thread_store.is_some();
 
         // Register AgentRuntime before spawning
-        if let Some(ref register) = self.register_runtime {
-            if self.thread_store.is_some() {
-                let child_cancel = AgentCancellationToken::new();
+        // Independent: child_cancel is NOT linked to parent. Only session-level cancel_all_agents cancels it.
+        // The same child_cancel is passed to execute() so cancel via active_agents map works.
+        let child_cancel = if has_thread_store {
+            if let Some(ref register) = self.register_runtime {
+                let cc = AgentCancellationToken::new();
                 register(
                     bg_fork_child_thread_id.clone(),
-                    child_cancel,
+                    cc.clone(),
                     "independent".to_string(),
                 );
+                Some(cc)
+            } else {
+                None
             }
-        }
+        } else {
+            None
+        };
+        let cancel_token = child_cancel.or(self.cancel.clone());
 
         self.fire_subagent_lifecycle_hook(
             crate::hooks::types::HookEvent::SubagentStart,
@@ -1098,10 +1121,21 @@ impl BaseTool for SubAgentTool {
 
         // Register AgentRuntime: only when thread_store is present (non-legacy path)
         // Panic-safe: DeregisterGuard ensures deregister runs on drop (panic or early return)
+        //
+        // child_cancel is linked to parent via child_token(): parent cancel → child_cancel fires.
+        // The same child_cancel is passed to execute(), so cascade cancel works correctly.
+        let child_cancel = self
+            .cancel
+            .as_ref()
+            .map(|t| t.child_token())
+            .unwrap_or_default();
         let _deregister_guard = if self.thread_store.is_some() {
             if let Some(ref register) = self.register_runtime {
-                let child_cancel = AgentCancellationToken::new();
-                register(child_thread_id.clone(), child_cancel, "cascade".to_string());
+                register(
+                    child_thread_id.clone(),
+                    child_cancel.clone(),
+                    "cascade".to_string(),
+                );
             }
             DeregisterGuard {
                 thread_id: child_thread_id.clone(),
@@ -1121,7 +1155,7 @@ impl BaseTool for SubAgentTool {
         );
         let exec_start = std::time::Instant::now();
         let exec_result = agent_builder
-            .execute(AgentInput::text(prompt), &mut state, self.cancel.clone())
+            .execute(AgentInput::text(prompt), &mut state, Some(child_cancel))
             .await;
         tracing::info!(
             "[DEADLOCK] SubAgentTool: END child execute ({:.1?}), agent_id={}, is_ok={}",
