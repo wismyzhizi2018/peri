@@ -273,13 +273,6 @@ impl SessionManager {
     pub fn agent_overrides(&self) -> Option<&AgentOverrides> {
         self.inner.agent_overrides.as_ref()
     }
-
-    pub async fn load_thread_messages(
-        &self,
-        thread_id: &ThreadId,
-    ) -> anyhow::Result<Vec<BaseMessage>> {
-        self.inner.thread_store.load_messages(thread_id).await
-    }
 }
 
 impl AcpSession {

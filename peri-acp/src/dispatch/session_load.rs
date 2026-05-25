@@ -1,17 +1,19 @@
-//! Load session messages from ThreadStore.
+//! Load session context from ThreadStore (includes ancestor chain snapshots).
 
 use peri_agent::messages::BaseMessage;
 use peri_agent::thread::{ThreadId, ThreadStore};
 
-/// Load message history for a session thread.
+/// Load complete context for a session thread including ancestor snapshots.
 ///
+/// Uses [`ThreadStore::load_context`] which assembles the full message chain
+/// (ancestor snapshots + own messages) with materialized caching.
 /// Returns an empty `Vec` if the thread does not exist (with a warning log).
 pub async fn load_session_messages(
     thread_store: &dyn ThreadStore,
     thread_id: &str,
 ) -> Vec<BaseMessage> {
     match thread_store
-        .load_messages(&ThreadId::from(thread_id.to_string()))
+        .load_context(&ThreadId::from(thread_id.to_string()))
         .await
     {
         Ok(msgs) => msgs,
