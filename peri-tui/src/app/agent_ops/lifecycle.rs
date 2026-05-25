@@ -173,8 +173,11 @@ impl App {
                 .messages
                 .round_start_vm_idx;
             // 截断 view_messages（移除本轮 Human 消息 + Agent 响应）
+            // round_start_vm_idx 指向 UserBubble 之后的位置，saturating_sub(1)
+            // 确保 UserBubble 也被移除
+            let prefix_len = round_start.saturating_sub(1);
             self.apply_pipeline_action(PipelineAction::RebuildAll {
-                prefix_len: round_start,
+                prefix_len,
                 tail_vms: vec![],
             });
             // 截断 agent_state_messages（回滚 StateSnapshot 扩展的内容）

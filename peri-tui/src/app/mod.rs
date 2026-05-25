@@ -404,14 +404,16 @@ impl App {
                 let round_start = self.session_mgr.sessions[self.session_mgr.active]
                     .messages
                     .round_start_vm_idx;
+                // round_start_vm_idx 指向 UserBubble 之后，saturating_sub(1) 确保 UserBubble 也被移除
+                let prefix = round_start.saturating_sub(1);
                 self.session_mgr.sessions[self.session_mgr.active]
                     .messages
                     .view_messages
-                    .truncate(round_start);
+                    .truncate(prefix);
                 self.session_mgr.sessions[self.session_mgr.active]
                     .messages
                     .ephemeral_notes
-                    .retain(|(a, _)| *a < round_start);
+                    .retain(|(a, _)| *a < prefix);
                 {
                     let remaining = self.session_mgr.sessions[self.session_mgr.active]
                         .messages
