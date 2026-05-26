@@ -14,6 +14,7 @@ use crate::ui::theme;
 
 /// /login 面板渲染（底部展开区）
 pub(crate) fn render_login_panel(f: &mut Frame, panel: &LoginPanel, app: &mut App, area: Rect) {
+    let lc = &app.services.lc;
     let border_color = match panel.mode {
         LoginPanelMode::Browse => theme::BORDER,
         LoginPanelMode::Edit => theme::WARNING,
@@ -22,10 +23,10 @@ pub(crate) fn render_login_panel(f: &mut Frame, panel: &LoginPanel, app: &mut Ap
     };
 
     let title = match panel.mode {
-        LoginPanelMode::Browse => " /login — Provider 管理 ",
-        LoginPanelMode::Edit => " /login — 编辑 Provider ",
-        LoginPanelMode::New => " /login — 新建 Provider ",
-        LoginPanelMode::ConfirmDelete => " /login — 确认删除 ",
+        LoginPanelMode::Browse => lc.tr("login-panel-title-browse"),
+        LoginPanelMode::Edit => lc.tr("login-panel-title-edit"),
+        LoginPanelMode::New => lc.tr("login-panel-title-new"),
+        LoginPanelMode::ConfirmDelete => lc.tr("login-panel-title-confirm-delete"),
     };
 
     let inner = BorderedPanel::new(Span::styled(
@@ -79,7 +80,7 @@ pub(crate) fn render_login_panel(f: &mut Frame, panel: &LoginPanel, app: &mut Ap
                 let m = &p.models;
                 let fmt_model = |v: &str| -> String {
                     if v.is_empty() {
-                        "（未设置）".to_string()
+                        lc.tr("login-no-model")
                     } else {
                         v.to_string()
                     }
@@ -111,7 +112,7 @@ pub(crate) fn render_login_panel(f: &mut Frame, panel: &LoginPanel, app: &mut Ap
             }
             if panel.providers.is_empty() {
                 lines.push(Line::from(Span::styled(
-                    "  （无 provider，按 Ctrl+N 新建）",
+                    lc.tr("login-empty-hint"),
                     Style::default().fg(theme::MUTED),
                 )));
             }
@@ -246,14 +247,20 @@ pub(crate) fn render_login_panel(f: &mut Frame, panel: &LoginPanel, app: &mut Ap
                 let confirm_lines = vec![
                     Line::from(""),
                     Line::from(vec![
-                        Span::styled("  确认删除 ", Style::default().fg(theme::TEXT)),
+                        Span::styled(
+                            lc.tr("login-confirm-delete-label"),
+                            Style::default().fg(theme::TEXT),
+                        ),
                         Span::styled(
                             p.display_name().to_string(),
                             Style::default()
                                 .fg(theme::ERROR)
                                 .add_modifier(Modifier::BOLD),
                         ),
-                        Span::styled(" ？", Style::default().fg(theme::TEXT)),
+                        Span::styled(
+                            lc.tr("login-confirm-delete-question"),
+                            Style::default().fg(theme::TEXT),
+                        ),
                     ]),
                 ];
                 f.render_widget(Paragraph::new(Text::from(confirm_lines)), confirm_area);

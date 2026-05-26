@@ -333,35 +333,35 @@ impl PanelComponent for LoginPanel {
         self
     }
 
-    fn status_bar_hints(&self, _lc: &LcRegistry) -> Vec<(String, String)> {
+    fn status_bar_hints(&self, lc: &LcRegistry) -> Vec<(String, String)> {
         match self.mode {
             LoginPanelMode::Browse => vec![
                 (
                     "\u{2191}\u{2193}".to_string(),
-                    "\u{5bfc}\u{822a}".to_string(),
+                    lc.tr("hint-login-browse"),
                 ),
-                ("Enter".to_string(), "\u{6fc0}\u{6d3b}".to_string()),
-                ("Tab".to_string(), "\u{7f16}\u{8f91}".to_string()),
-                ("Ctrl+N".to_string(), "\u{65b0}\u{5efa}".to_string()),
-                ("Ctrl+D".to_string(), "\u{5220}\u{9664}".to_string()),
-                ("Esc".to_string(), "\u{5173}\u{95ed}".to_string()),
+                ("Enter".to_string(), lc.tr("hint-login-activate")),
+                ("Tab".to_string(), lc.tr("hint-login-edit")),
+                ("Ctrl+N".to_string(), lc.tr("hint-login-new")),
+                ("Ctrl+D".to_string(), lc.tr("hint-login-delete")),
+                ("Esc".to_string(), lc.tr("hint-login-close")),
             ],
             LoginPanelMode::Edit | LoginPanelMode::New => vec![
                 (
                     "\u{2191}\u{2193}".to_string(),
-                    "\u{5b57}\u{6bb5}".to_string(),
+                    lc.tr("hint-login-field"),
                 ),
-                ("Enter".to_string(), "\u{4fdd}\u{5b58}".to_string()),
-                ("Ctrl+V".to_string(), "\u{7c98}\u{8d34}".to_string()),
-                ("Space".to_string(), "\u{5207}\u{6362}".to_string()),
-                ("Esc".to_string(), "\u{8fd4}\u{56de}".to_string()),
+                ("Enter".to_string(), lc.tr("hint-login-save")),
+                ("Ctrl+V".to_string(), lc.tr("hint-login-paste")),
+                ("Space".to_string(), lc.tr("hint-login-toggle")),
+                ("Esc".to_string(), lc.tr("hint-login-back")),
             ],
             LoginPanelMode::ConfirmDelete => vec![
                 (
                     "Enter".to_string(),
-                    "\u{786e}\u{8ba4}\u{5220}\u{9664}".to_string(),
+                    lc.tr("login-confirm-delete"),
                 ),
-                ("Esc".to_string(), "\u{53d6}\u{6d88}".to_string()),
+                ("Esc".to_string(), lc.tr("key-cancel")),
             ],
         }
     }
