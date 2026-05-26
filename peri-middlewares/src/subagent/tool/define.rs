@@ -691,6 +691,12 @@ impl SubAgentTool {
 
         // 通知 TUI background agent 启动（递增 background_task_count）。
         // 必须在 registry.register() 成功之后发送，防止注册失败留下幽灵计数。
+        tracing::info!(
+            task_id = %task_id,
+            child_thread_id = %bg_child_thread_id,
+            agent_name = %agent_name,
+            "[bg-diag] background agent started"
+        );
         if let Some(ref handler) = self.event_handler {
             handler.on_event(AgentEvent::SubagentStarted {
                 agent_name: agent_name.clone(),
@@ -907,6 +913,12 @@ impl SubAgentTool {
 
         // 通知 TUI background agent 启动（递增 background_task_count）。
         // 必须在 registry.register() 成功之后发送，防止注册失败留下幽灵计数。
+        tracing::info!(
+            task_id = %task_id,
+            child_thread_id = %bg_fork_child_thread_id,
+            agent_name = %agent_name,
+            "[bg-diag] background agent started"
+        );
         if let Some(ref handler) = self.event_handler {
             handler.on_event(AgentEvent::SubagentStarted {
                 agent_name: agent_name.clone(),
