@@ -621,6 +621,7 @@ impl SubAgentTool {
                         output: output.text,
                         tool_calls_count,
                         duration_ms: start.elapsed().as_millis() as u64,
+                        child_thread_id: Some(spawn_child_thread_id.clone()),
                     }
                 }
                 Err(e) => BackgroundTaskResult {
@@ -631,6 +632,7 @@ impl SubAgentTool {
                     output: e.to_string(),
                     tool_calls_count: 0,
                     duration_ms: start.elapsed().as_millis() as u64,
+                    child_thread_id: Some(spawn_child_thread_id.clone()),
                 },
             };
 
@@ -692,7 +694,7 @@ impl SubAgentTool {
         if let Some(ref handler) = self.event_handler {
             handler.on_event(AgentEvent::SubagentStarted {
                 agent_name: agent_name.clone(),
-                instance_id: task_id.clone(),
+                instance_id: bg_child_thread_id.clone(),
                 is_background: true,
             });
         }
@@ -835,6 +837,7 @@ impl SubAgentTool {
                         output: output.text,
                         tool_calls_count,
                         duration_ms: start.elapsed().as_millis() as u64,
+                        child_thread_id: Some(spawn_child_thread_id.clone()),
                     }
                 }
                 Err(e) => BackgroundTaskResult {
@@ -845,6 +848,7 @@ impl SubAgentTool {
                     output: e.to_string(),
                     tool_calls_count: 0,
                     duration_ms: start.elapsed().as_millis() as u64,
+                    child_thread_id: Some(spawn_child_thread_id.clone()),
                 },
             };
 
@@ -906,7 +910,7 @@ impl SubAgentTool {
         if let Some(ref handler) = self.event_handler {
             handler.on_event(AgentEvent::SubagentStarted {
                 agent_name: agent_name.clone(),
-                instance_id: task_id.clone(),
+                instance_id: bg_fork_child_thread_id.clone(),
                 is_background: true,
             });
         }
