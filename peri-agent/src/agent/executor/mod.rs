@@ -249,9 +249,6 @@ impl<L: ReactLLM, S: State> ReActAgent<L, S> {
             "agent: final tool set after collect"
         );
 
-        // 记录 prepend 前的消息数量
-        let len_before_prepend = state.messages().len();
-
         self.chain.run_before_agent(state).await?;
 
         // 固定 system prompt：在所有中间件 before_agent 之后 prepend，无顺序约束
@@ -259,12 +256,20 @@ impl<L: ReactLLM, S: State> ReActAgent<L, S> {
             state.prepend_message(BaseMessage::system(prompt.clone()));
         }
 
-        // 记录被 prepend 的消息 ID（位于 messages 列表头部）
-        let prepended_count = state.messages().len() - len_before_prepend;
+        // 收集所有 prepend 的消息 ID 用于 execute 结束时清理。
+        // before_agent 中的中间件通过 prepend_message(insert(0)) 注入 System 消息，
+        // 它们全部集中在 messages 头部、连续排列、均为 System 类型。
+        // before_agent 中的 add_message(push) 注入的消息在尾部（如 SkillPreload 的
+        // Ai[ToolUse]+Tool[ToolResult]），不属于 prepend，不应被 cleanup。
+        //
+        // 用 take_while(System) 收集头部连续 System 消息是安全的，因为：
+        // 1. 所有 prepend 都只插入 System 消息
+        // 2. 原始消息的头部不应有 System（compact 注入的 System 用 add_message 追加到尾部）
+        // 3. SkillPreload 的 add_message(Ai/Tool) 不在头部
         let prepended_ids: Vec<MessageId> = state
             .messages()
             .iter()
-            .take(prepended_count)
+            .take_while(|m| m.is_system())
             .map(|m| m.id())
             .collect();
 
