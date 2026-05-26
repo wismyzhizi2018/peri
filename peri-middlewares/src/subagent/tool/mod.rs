@@ -161,7 +161,10 @@ fn format_subagent_result(output: &peri_agent::agent::react::AgentOutput) -> Str
     )
 }
 
+mod build_agent;
 mod define;
+mod execute_bg;
+mod execute_fork;
 pub use define::SubAgentTool;
 
 #[cfg(test)]
