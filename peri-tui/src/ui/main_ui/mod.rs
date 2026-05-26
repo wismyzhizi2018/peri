@@ -1,4 +1,5 @@
 mod attachment;
+pub(crate) mod bg_agent_bar;
 pub(crate) mod message_area;
 pub(crate) mod panels;
 mod popups;
@@ -29,11 +30,13 @@ pub fn render(f: &mut Frame, app: &mut App) {
     if app.session_mgr.sessions.len() > 1 {
         // ── 多 Session 分栏布局 ──
         // 外层：水平切分（各 session 列）+ 底部共享状态栏
+        let bg_bar_h = bg_agent_bar::bg_bar_height(app);
+
         let outer = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(1),    // session 列区域
-                Constraint::Length(3), // 共享状态栏
+                Constraint::Min(1),               // session 列区域
+                Constraint::Length(3 + bg_bar_h), // 共享状态栏 + bg agent bar
             ])
             .split(area);
 
@@ -62,7 +65,16 @@ pub fn render(f: &mut Frame, app: &mut App) {
             true,
         );
 
-        status_bar::render_status_bar(f, app, outer[1]);
+        if bg_bar_h > 0 {
+            let bottom_chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(3), Constraint::Length(bg_bar_h)])
+                .split(outer[1]);
+            status_bar::render_status_bar(f, app, bottom_chunks[0]);
+            bg_agent_bar::render_bg_agent_bar(f, app, bottom_chunks[1]);
+        } else {
+            status_bar::render_status_bar(f, app, outer[1]);
+        }
     } else {
         // ── 单 Session 布局（原有行为）──
         render_session_column(f, app, 0, area, true);
@@ -150,6 +162,8 @@ fn render_session_column(
         3
     };
 
+    let bg_bar_height_val = bg_agent_bar::bg_bar_height(app);
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -160,6 +174,7 @@ fn render_session_column(
             Constraint::Length(queued_height),
             Constraint::Length(input_height),
             Constraint::Length(status_bar_height),
+            Constraint::Length(bg_bar_height_val),
         ])
         .split(area);
 
@@ -308,6 +323,9 @@ fn render_session_column(
     // 单 session 模式下渲染状态栏
     if app.session_mgr.sessions.len() == 1 {
         status_bar::render_status_bar(f, app, chunks[6]);
+        if bg_bar_height_val > 0 {
+            bg_agent_bar::render_bg_agent_bar(f, app, chunks[7]);
+        }
     }
 
     // 恢复原始 active
