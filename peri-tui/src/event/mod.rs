@@ -22,50 +22,6 @@ use tui_textarea::{Input, Key};
 use crate::app::panel_manager::{EventResult, PanelKind};
 use crate::app::App;
 
-// ── Scrollbar helpers ─────────────────────────────────────────────────────────
-
-/// 计算 ratatui Scrollbar thumb 的 start（行号）和 length（行数）
-///
-/// 复刻 ratatui `Scrollbar::part_lengths()` 的核心计算:
-///   thumb_start = round(position * track / (content_length - 1 + viewport))
-///   thumb_end   = round((position + viewport) * track / (content_length - 1 + viewport))
-///   thumb_len   = max(1, thumb_end - thumb_start)
-///
-/// 消息区域参数对应: content_length = max_scroll, viewport = track_length (默认值)
-fn scrollbar_thumb_geometry(offset: u16, track_length: u16, max_scroll: u16) -> (usize, usize) {
-    if max_scroll == 0 || track_length == 0 {
-        return (0, track_length as usize);
-    }
-    let track = track_length as f64;
-    let content = max_scroll as f64;
-    let viewport = track; // viewport_content_length 默认值 = area.height
-    let max_vp_pos = (content - 1.0 + viewport).max(1.0);
-    let start_pos = (offset as f64).clamp(0.0, content - 1.0);
-    let end_pos = start_pos + viewport;
-    let thumb_start = (start_pos * track / max_vp_pos)
-        .round()
-        .clamp(0.0, track - 1.0) as usize;
-    let thumb_end = (end_pos * track / max_vp_pos).round().clamp(0.0, track) as usize;
-    let thumb_len = thumb_end.saturating_sub(thumb_start).max(1);
-    (thumb_start, thumb_len)
-}
-
-/// 从期望的 thumb_start 位置反算 scroll offset（ratatui 公式逆运算）
-fn scrollbar_thumb_start_to_offset(
-    desired_thumb_start: f64,
-    track_length: u16,
-    max_scroll: u16,
-) -> u16 {
-    if max_scroll == 0 || track_length == 0 {
-        return 0;
-    }
-    let track = track_length as f64;
-    let content = max_scroll as f64;
-    let viewport = track;
-    let max_vp_pos = (content - 1.0 + viewport).max(1.0);
-    (desired_thumb_start * max_vp_pos / track).clamp(0.0, max_scroll as f64) as u16
-}
-
 // ── Action ──────────────────────────────────────────────────────────────────
 
 pub enum Action {
@@ -640,6 +596,7 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
 
                     // Scrollbar drag: click on the rightmost scrollbar column
                     // (▲/▼ buttons already handled above, so this catches the track area)
+                    // 记录起始位置，拖拽时用相对位移计算 offset，无需匹配 thumb 几何
                     let scrollbar_col = area.right().saturating_sub(1);
                     if mouse.column == scrollbar_col
                         && mouse.row >= area.y
@@ -647,32 +604,18 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                     {
                         let track = area.height;
                         if track > 0 {
-                            let rel_y = mouse.row.saturating_sub(area.y) as usize;
                             let max_scroll = app.session_mgr.sessions[app.session_mgr.active]
                                 .ui
                                 .scrollbar_max_offset;
-                            let current_offset = app.session_mgr.sessions[app.session_mgr.active]
-                                .ui
-                                .scroll_offset;
-                            let (thumb_start, thumb_len) =
-                                scrollbar_thumb_geometry(current_offset, track, max_scroll);
-
-                            let (new_offset, drag_y_offset) =
-                                if rel_y >= thumb_start && rel_y < thumb_start + thumb_len {
-                                    // 点击在 thumb 上 → 保持 thumb 不跳动
-                                    (current_offset, (rel_y - thumb_start) as u16)
-                                } else {
-                                    // 点击在 track 上 → thumb 中心跳到点击位置
-                                    let desired_start = rel_y as f64 - thumb_len as f64 / 2.0;
-                                    (
-                                        scrollbar_thumb_start_to_offset(
-                                            desired_start,
-                                            track,
-                                            max_scroll,
-                                        ),
-                                        0,
-                                    )
-                                };
+                            // 首次点击：按比例跳到点击位置
+                            let rel_y = mouse.row.saturating_sub(area.y);
+                            let new_offset = if max_scroll > 0 {
+                                ((rel_y as f64 / track as f64) * max_scroll as f64)
+                                    .clamp(0.0, max_scroll as f64)
+                                    as u16
+                            } else {
+                                0
+                            };
                             app.session_mgr.sessions[app.session_mgr.active]
                                 .ui
                                 .scroll_offset = new_offset;
@@ -684,7 +627,10 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                                 .scrollbar_dragging = true;
                             app.session_mgr.sessions[app.session_mgr.active]
                                 .ui
-                                .scrollbar_drag_y_offset = drag_y_offset;
+                                .scrollbar_drag_start_y = mouse.row;
+                            app.session_mgr.sessions[app.session_mgr.active]
+                                .ui
+                                .scrollbar_drag_start_offset = new_offset;
                         }
                         return Ok(Some(Action::Redraw));
                     }
@@ -730,7 +676,7 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                 }
             }
             MouseEventKind::Drag(MouseButton::Left) => {
-                // Scrollbar drag: update scroll offset from mouse Y
+                // Scrollbar drag: 用相对位移计算 offset，无需匹配 thumb 几何
                 if app.session_mgr.sessions[app.session_mgr.active]
                     .ui
                     .scrollbar_dragging
@@ -741,25 +687,30 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                     {
                         let track = area.height;
                         if track > 0 {
-                            let rel_y = mouse.row.saturating_sub(area.y);
                             let max_scroll = app.session_mgr.sessions[app.session_mgr.active]
                                 .ui
                                 .scrollbar_max_offset;
-                            let drag_y_offset = app.session_mgr.sessions[app.session_mgr.active]
+                            let start_y = app.session_mgr.sessions[app.session_mgr.active]
                                 .ui
-                                .scrollbar_drag_y_offset;
-                            let desired_thumb_start = rel_y as f64 - drag_y_offset as f64;
-                            let new_offset = scrollbar_thumb_start_to_offset(
-                                desired_thumb_start,
-                                track,
-                                max_scroll,
-                            );
-                            app.session_mgr.sessions[app.session_mgr.active]
+                                .scrollbar_drag_start_y;
+                            let start_offset = app.session_mgr.sessions[app.session_mgr.active]
                                 .ui
-                                .scroll_offset = new_offset;
-                            app.session_mgr.sessions[app.session_mgr.active]
-                                .ui
-                                .scroll_follow = false;
+                                .scrollbar_drag_start_offset;
+                            if max_scroll > 0 {
+                                let delta_y = mouse.row as i32 - start_y as i32;
+                                // 每移动 1 行 track = 移动 max_scroll / track 的 offset
+                                let delta_offset =
+                                    (delta_y as f64 * (max_scroll as f64 / track as f64)) as i32;
+                                let new_offset = (start_offset as i32 + delta_offset)
+                                    .clamp(0, max_scroll as i32)
+                                    as u16;
+                                app.session_mgr.sessions[app.session_mgr.active]
+                                    .ui
+                                    .scroll_offset = new_offset;
+                                app.session_mgr.sessions[app.session_mgr.active]
+                                    .ui
+                                    .scroll_follow = false;
+                            }
                         }
                     }
                 }
