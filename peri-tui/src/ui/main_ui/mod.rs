@@ -325,12 +325,7 @@ fn render_session_column(
             .set_style(ratatui::style::Style::default().fg(ratatui::style::Color::DarkGray));
     } else {
         // 正常模式：恢复与 build_textarea 一致的边框样式
-        let loading = app.session_mgr.sessions[session_idx].ui.loading;
-        let border_color = if loading {
-            theme::MUTED
-        } else {
-            theme::BORDER_DIM
-        };
+        let border_color = theme::MUTED;
         let block = ratatui::widgets::Block::default()
             .borders(ratatui::widgets::Borders::TOP | ratatui::widgets::Borders::BOTTOM)
             .border_style(ratatui::style::Style::default().fg(border_color))
