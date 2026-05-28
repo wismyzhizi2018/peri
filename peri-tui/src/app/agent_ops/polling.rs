@@ -14,9 +14,13 @@ impl App {
             .cancel_sent_at
         {
             if cancel_at.elapsed() > std::time::Duration::from_secs(5)
-                && self.session_mgr.sessions[self.session_mgr.active].ui.loading
+                && self.session_mgr.sessions[self.session_mgr.active]
+                    .ui
+                    .loading
             {
-                tracing::warn!("cancel timeout: 5s elapsed without Interrupted/Done, force cleanup");
+                tracing::warn!(
+                    "cancel timeout: 5s elapsed without Interrupted/Done, force cleanup"
+                );
                 self.session_mgr.sessions[self.session_mgr.active]
                     .agent
                     .cancel_sent_at = None;
