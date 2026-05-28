@@ -5,6 +5,7 @@ pub mod client;
 pub mod client_oauth;
 pub mod config;
 pub mod initialize;
+pub mod mcp_notify;
 pub mod middleware;
 pub mod oauth_flow;
 pub mod reconnect;

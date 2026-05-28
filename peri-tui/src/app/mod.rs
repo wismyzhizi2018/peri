@@ -411,6 +411,7 @@ impl App {
                 &claude_home,
                 init_tx,
                 Some(oauth_cb),
+                None,
             )
             .await;
         });

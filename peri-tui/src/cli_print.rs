@@ -136,6 +136,7 @@ pub async fn run_print(
                 &claude_home,
                 init_tx,
                 None,
+                None,
             )
             .await;
         });

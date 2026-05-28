@@ -139,6 +139,7 @@ pub async fn run_acp_stdio(cwd: String) -> anyhow::Result<()> {
                 &claude_home,
                 init_tx,
                 None,
+                None,
             )
             .await;
         });

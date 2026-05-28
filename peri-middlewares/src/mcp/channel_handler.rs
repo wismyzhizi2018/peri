@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use peri_agent::interaction::channel_types::{ChannelNotification, PermissionResponse};
 use peri_agent::interaction::ChannelState;
+use rmcp::handler::client::ClientHandler;
 use rmcp::model::{
-    ClientCapabilities, ClientResult, CustomNotification, ErrorCode, ErrorData, Implementation,
-    InitializeRequestParams, ServerNotification, ServerRequest,
+    ClientCapabilities, CustomNotification, Implementation, InitializeRequestParams,
 };
-use rmcp::service::{NotificationContext, RequestContext, RoleClient, Service};
+use rmcp::service::{NotificationContext, RoleClient};
 
-/// MCP 自定义通知处理器，实现 `Service<RoleClient>` trait
+/// MCP 自定义通知处理器，实现 `ClientHandler` trait
 ///
 /// 作为 MCP client 角色，接收来自 Channel Server 的自定义通知，
 /// 根据 `method` 字段路由到 channel 消息推送或权限响应处理。
@@ -24,15 +24,15 @@ impl ChannelHandler {
 
 impl ChannelHandler {
     /// 处理 `notifications/claude/channel` — 频道消息推送
-    fn handle_channel_notification(&self, notif: &CustomNotification) -> Result<(), ErrorData> {
+    fn handle_channel_notification(&self, notif: &CustomNotification) {
         let Some(params) = &notif.params else {
             tracing::warn!("channel notification params missing");
-            return Ok(());
+            return;
         };
 
         let Ok(msg) = serde_json::from_value::<ChannelNotification>(params.clone()) else {
             tracing::warn!("channel notification params parse failed");
-            return Ok(());
+            return;
         };
 
         let server_name = extract_server_name(&msg.source);
@@ -40,7 +40,7 @@ impl ChannelHandler {
         let authorized = self.state.authorized.read().contains_key(&server_name);
         if !authorized {
             tracing::warn!(source = %msg.source, "unauthorized channel, ignoring notification");
-            return Ok(());
+            return;
         }
 
         let txs: Vec<_> = self
@@ -52,26 +52,25 @@ impl ChannelHandler {
             .collect();
         if txs.is_empty() {
             tracing::warn!("no active sessions to receive channel notification");
-            return Ok(());
+            return;
         }
 
         tracing::info!(source = %msg.source, chat_id = %msg.chat_id, "received channel notification");
         for tx in &txs {
             let _ = tx.send(msg.clone());
         }
-        Ok(())
     }
 
     /// 处理 `notifications/claude/permission` — 权限响应
-    fn handle_permission_response(&self, notif: &CustomNotification) -> Result<(), ErrorData> {
+    fn handle_permission_response(&self, notif: &CustomNotification) {
         let Some(params) = &notif.params else {
             tracing::warn!("permission response params missing");
-            return Ok(());
+            return;
         };
 
         let Ok(resp) = serde_json::from_value::<PermissionResponse>(params.clone()) else {
             tracing::warn!("permission response params parse failed");
-            return Ok(());
+            return;
         };
 
         let sender = {
@@ -88,54 +87,36 @@ impl ChannelHandler {
                 tracing::warn!(request_id = %resp.request_id, "no pending permission request found");
             }
         }
-        Ok(())
     }
 }
 
-impl Service<RoleClient> for ChannelHandler {
-    fn handle_request(
-        &self,
-        _request: ServerRequest,
-        _context: RequestContext<RoleClient>,
-    ) -> impl std::future::Future<Output = Result<ClientResult, ErrorData>> + Send + '_ {
-        // Channel handler 不处理 tool calls — 返回 METHOD_NOT_FOUND
-        async {
-            Err(ErrorData::new(
-                ErrorCode::METHOD_NOT_FOUND,
-                "channel handler does not handle requests",
-                None,
-            ))
-        }
-    }
-
-    fn handle_notification(
-        &self,
-        notification: ServerNotification,
-        _context: NotificationContext<RoleClient>,
-    ) -> impl std::future::Future<Output = Result<(), ErrorData>> + Send + '_ {
-        async move {
-            match notification {
-                ServerNotification::CustomNotification(notif) => match notif.method.as_str() {
-                    "notifications/claude/channel" => self.handle_channel_notification(&notif),
-                    "notifications/claude/permission" => self.handle_permission_response(&notif),
-                    _ => {
-                        tracing::debug!(method = %notif.method, "unhandled custom notification");
-                        Ok(())
-                    }
-                },
-                _ => {
-                    // 标准通知 (logging, progress 等) 静默忽略
-                    Ok(())
-                }
-            }
-        }
-    }
-
+impl ClientHandler for ChannelHandler {
     fn get_info(&self) -> InitializeRequestParams {
         InitializeRequestParams::new(
             ClientCapabilities::default(),
             Implementation::from_build_env(),
         )
+    }
+
+    fn on_custom_notification(
+        &self,
+        notification: CustomNotification,
+        context: NotificationContext<RoleClient>,
+    ) -> impl std::future::Future<Output = ()> + Send + '_ {
+        async move {
+            match notification.method.as_str() {
+                "notifications/claude/channel" => {
+                    self.handle_channel_notification(&notification);
+                }
+                "notifications/claude/permission" => {
+                    self.handle_permission_response(&notification);
+                }
+                _ => {
+                    let _ = (notification, context);
+                    tracing::debug!("unhandled custom notification");
+                }
+            }
+        }
     }
 }
 
