@@ -139,6 +139,14 @@ async function initSandbox(gitUrl: string, config: PeriConfig): Promise<void> {
  */
 async function askPeri(inputPrompt: string): Promise<string> {
     const sandbox = await daytona.get(SANDBOX_NAME);
+    console.log(
+        `[askPeri] Found sandbox: ${sandbox.id} ${sandbox.state}, executing command...`,
+    );
+    // 重启容器， 如果不在了
+    if (sandbox.state === "stopped") {
+        await sandbox.start();
+        console.log(`[askPeri] Sandbox started: ${sandbox.id}`);
+    }
     const results = await executeCommandList(
         sandbox,
         [`/home/daytona/.peri/peri -p ${shellEscape(inputPrompt)}`],
