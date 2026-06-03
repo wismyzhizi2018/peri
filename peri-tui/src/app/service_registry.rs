@@ -83,6 +83,8 @@ pub struct ServiceRegistry {
     pub channel_state: Option<Arc<ChannelState>>,
     /// Git 分支缓存（5s 刷新）
     pub git_branch_cache: parking_lot::Mutex<GitBranchCache>,
+    /// panic hook 通知 receiver（TUI 模式专用，由 main.rs init_panic_notify 初始化）
+    pub panic_notify_rx: Option<tokio::sync::mpsc::UnboundedReceiver<String>>,
 }
 
 /// Git 分支名缓存，避免每帧都 spawn 子进程

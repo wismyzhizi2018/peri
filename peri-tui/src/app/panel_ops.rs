@@ -136,6 +136,7 @@ impl App {
                 git_branch_cache: parking_lot::Mutex::new(
                     super::service_registry::GitBranchCache::new(),
                 ),
+                panic_notify_rx: None,
             },
             global_panels: PanelManager::new(),
             global_ui: super::GlobalUiState::new(),

@@ -285,6 +285,7 @@ impl App {
             git_branch_cache: parking_lot::Mutex::new(
                 service_registry::GitBranchCache::new(),
             ),
+            panic_notify_rx: None,
         };
 
         Self {
