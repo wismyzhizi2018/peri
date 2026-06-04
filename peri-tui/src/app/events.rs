@@ -151,4 +151,12 @@ pub enum AgentEvent {
         warnings: usize,
         files_with_errors: usize,
     },
+    /// 缓存诊断（前缀变化或命中率低时触发）
+    CacheDiagnostics {
+        prefix_changed: bool,
+        change_reasons: Vec<String>,
+        hit_rate: f64,
+        cache_hit_tokens: u32,
+        cache_miss_tokens: u32,
+    },
 }

@@ -55,7 +55,15 @@ impl ReactLLM for BaseModelReactLLM {
         tools: &[&dyn BaseTool],
         streaming: Option<StreamingContext>,
     ) -> AgentResult<Reasoning> {
-        let tool_defs = tools.iter().map(|t| t.definition()).collect();
+        let tool_defs: Vec<crate::tools::ToolDefinition> =
+            tools.iter().map(|t| t.definition()).collect();
+
+        // 捕获前缀快照（Provider 无关），用于跨轮缓存诊断
+        let prefix_shape = Some(super::cache_diagnostics::capture_shape(
+            self.system.as_deref().unwrap_or(""),
+            &tool_defs,
+            messages.len() as u64,
+        ));
 
         let mut request = LlmRequest::new(messages.to_vec()).with_tools(tool_defs);
 
@@ -137,6 +145,7 @@ impl ReactLLM for BaseModelReactLLM {
                 r.usage = usage;
                 r.model = model_name;
                 r.streamed = streamed;
+                r.prefix_shape = prefix_shape.clone();
                 return Ok(r);
             }
 
@@ -160,6 +169,7 @@ impl ReactLLM for BaseModelReactLLM {
                 r.usage = usage;
                 r.model = model_name;
                 r.streamed = streamed;
+                r.prefix_shape = prefix_shape.clone();
                 return Ok(r);
             }
             let mut r = Reasoning::with_tools(thought, calls);
@@ -168,6 +178,7 @@ impl ReactLLM for BaseModelReactLLM {
             r.usage = usage;
             r.model = model_name;
             r.streamed = streamed;
+            r.prefix_shape = prefix_shape.clone();
             Ok(r)
         } else if response.message.has_tool_calls() {
             // 防御：某些 provider（如 DeepSeek）可能返回 stop_reason != ToolUse
@@ -191,6 +202,7 @@ impl ReactLLM for BaseModelReactLLM {
             r.usage = usage;
             r.model = model_name;
             r.streamed = streamed;
+            r.prefix_shape = prefix_shape.clone();
             Ok(r)
         } else {
             // 最终答案：text_content() 提取所有文字（跳过 reasoning block）
@@ -205,6 +217,7 @@ impl ReactLLM for BaseModelReactLLM {
             r.usage = usage;
             r.model = model_name;
             r.streamed = streamed;
+            r.prefix_shape = prefix_shape.clone();
             Ok(r)
         }
     }

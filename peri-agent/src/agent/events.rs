@@ -108,6 +108,14 @@ pub enum AgentEvent {
         /// LLM 响应停止原因（None 表示 LLM 调用失败/异常）
         stop_reason: Option<crate::llm::types::StopReason>,
     },
+    /// 缓存诊断（每轮 LLM 调用后，仅在前缀变化或命中率低时发出）
+    CacheDiagnostics {
+        prefix_changed: bool,
+        change_reasons: Vec<String>,
+        hit_rate: f64,
+        cache_hit_tokens: u32,
+        cache_miss_tokens: u32,
+    },
     /// 上下文窗口使用警告（阈值触发时发出）
     ContextWarning {
         used_tokens: u64,

@@ -1,3 +1,4 @@
+use crate::llm::cache_diagnostics::{CacheDiagnosticsResult, PrefixShape};
 use crate::llm::types::TokenUsage;
 
 /// 会话级 token 用量追踪器
@@ -20,6 +21,12 @@ pub struct TokenTracker {
     /// 每次 LLM 请求的 token 用量历史（仅内存，不持久化）
     #[serde(skip)]
     pub request_history: Vec<RequestRecord>,
+    /// 最近一轮的前缀快照（用于跨轮缓存诊断）
+    #[serde(skip)]
+    pub last_prefix_shape: Option<PrefixShape>,
+    /// 最近一轮的缓存诊断结果
+    #[serde(skip)]
+    pub last_diagnostics: Option<CacheDiagnosticsResult>,
 }
 
 impl TokenTracker {

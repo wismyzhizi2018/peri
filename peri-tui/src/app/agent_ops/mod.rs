@@ -341,6 +341,29 @@ impl App {
                 self.session_mgr.current_mut().agent.lsp_files_with_errors = files_with_errors;
                 (true, false, false)
             }
+            AgentEvent::CacheDiagnostics {
+                prefix_changed,
+                change_reasons,
+                hit_rate,
+                cache_hit_tokens: _,
+                cache_miss_tokens: _,
+            } => {
+                // 格式化缓存诊断为可读警告
+                let pct = (hit_rate * 100.0) as u32;
+                let reason_str = if prefix_changed && !change_reasons.is_empty() {
+                    format!(" — 前缀变化: {}", change_reasons.join(", "))
+                } else {
+                    String::new()
+                };
+                let content = format!("缓存命中率 {}%{}", pct, reason_str);
+                let session = self.session_mgr.current_mut();
+                let anchor = session.messages.view_messages.len();
+                let vm = crate::ui::message_view::MessageViewModel::cache_warning(content);
+                session.messages.ephemeral_notes.push((anchor, vm.clone()));
+                session.messages.view_messages.push(vm);
+                self.request_rebuild();
+                (true, false, false)
+            }
         }
     }
 

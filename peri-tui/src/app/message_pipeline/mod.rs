@@ -553,7 +553,8 @@ impl MessagePipeline {
             | AgentEvent::BackgroundTaskCompleted { .. }
             | AgentEvent::McpActionCompleted { .. }
             | AgentEvent::PluginActionCompleted { .. }
-            | AgentEvent::LspDiagnostics { .. } => {
+            | AgentEvent::LspDiagnostics { .. }
+            | AgentEvent::CacheDiagnostics { .. } => {
                 vec![PipelineAction::None]
             }
         }

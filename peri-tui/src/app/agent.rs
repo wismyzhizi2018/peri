@@ -81,6 +81,19 @@ pub(crate) fn map_executor_event(event: ExecutorEvent, _cwd: &str) -> Option<Age
         }
 
         // ── 类别②：SessionUpdate 丢失信息的增强事件 ──
+        ExecutorEvent::CacheDiagnostics {
+            prefix_changed,
+            change_reasons,
+            hit_rate,
+            cache_hit_tokens,
+            cache_miss_tokens,
+        } => AgentEvent::CacheDiagnostics {
+            prefix_changed,
+            change_reasons,
+            hit_rate,
+            cache_hit_tokens,
+            cache_miss_tokens,
+        },
         ExecutorEvent::ContextWarning {
             used_tokens,
             total_tokens,

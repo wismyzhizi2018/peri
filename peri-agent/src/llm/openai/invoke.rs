@@ -425,8 +425,11 @@ pub(super) fn extract_openai_usage(
 ) -> Option<crate::llm::types::TokenUsage> {
     let input = usage_val["prompt_tokens"].as_u64().map(|v| v as u32);
     let output = usage_val["completion_tokens"].as_u64().map(|v| v as u32);
+    // 标准 OpenAI: prompt_tokens_details.cached_tokens
+    // DeepSeek: prompt_cache_hit_tokens（非标准字段名）
     let cache_read = usage_val["prompt_tokens_details"]["cached_tokens"]
         .as_u64()
+        .or_else(|| usage_val["prompt_cache_hit_tokens"].as_u64())
         .map(|v| v as u32);
     match (input, output) {
         (Some(i), Some(o)) => Some(crate::llm::types::TokenUsage {
