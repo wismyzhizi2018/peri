@@ -24,14 +24,10 @@ pub struct UiState {
     pub panel_area: Option<ratatui::layout::Rect>,
     pub panel_plain_lines: Vec<String>,
     pub panel_scroll_offset: u16,
-    /// 用户是否正在拖拽消息区域右侧滚动条
-    pub scrollbar_dragging: bool,
+    /// 消息区域最小偏移量；小于该值的历史已交给终端原生 scrollback。
+    pub scrollbar_min_offset: u16,
     /// 消息区域滚动条的最大偏移量（内容高度 - 可见高度）
     pub scrollbar_max_offset: u16,
-    /// 滚动条拖拽起始时的鼠标 Y 坐标
-    pub scrollbar_drag_start_y: u16,
-    /// 滚动条拖拽起始时的 scroll offset
-    pub scrollbar_drag_start_offset: u16,
     /// Panel scrollbar geometry for mouse interaction
     pub panel_scrollbar_metrics: Option<ScrollbarMetrics>,
     /// Whether user is currently dragging the panel scrollbar
@@ -69,10 +65,8 @@ impl UiState {
             panel_area: None,
             panel_plain_lines: Vec::new(),
             panel_scroll_offset: 0,
-            scrollbar_dragging: false,
+            scrollbar_min_offset: 0,
             scrollbar_max_offset: 0,
-            scrollbar_drag_start_y: 0,
-            scrollbar_drag_start_offset: 0,
             panel_scrollbar_metrics: None,
             panel_scrollbar_dragging: false,
             at_mention: AtMentionState::new(),

@@ -4,13 +4,15 @@ use clap::{Parser, Subcommand};
 use ratatui::{
     crossterm::{
         event::{
-            DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-            EnableFocusChange, EnableMouseCapture,
+            DisableBracketedPaste, DisableFocusChange, EnableBracketedPaste, EnableFocusChange,
         },
         execute,
-        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+        terminal::{disable_raw_mode, enable_raw_mode, size as terminal_size},
     },
     prelude::*,
+    text::Text,
+    widgets::{Paragraph, Widget, Wrap},
+    TerminalOptions, Viewport,
 };
 use std::io;
 use std::time::{Duration, Instant};
@@ -432,15 +434,15 @@ fn run_tui(opts: TuiOptions) -> Result<()> {
         // 初始化终端
         enable_raw_mode()?;
         let mut stdout = io::stdout();
-        execute!(
-            stdout,
-            EnterAlternateScreen,
-            EnableMouseCapture,
-            EnableBracketedPaste,
-            EnableFocusChange
-        )?;
+        execute!(stdout, EnableBracketedPaste, EnableFocusChange)?;
         let backend = CrosstermBackend::new(stdout);
-        let mut terminal = Terminal::new(backend)?;
+        let (_, terminal_rows) = terminal_size()?;
+        let mut terminal = Terminal::with_options(
+            backend,
+            TerminalOptions {
+                viewport: Viewport::Inline(inline_viewport_height(terminal_rows)),
+            },
+        )?;
 
         // 运行应用
         let result = run_app(&mut terminal, &opts).await;
@@ -449,8 +451,6 @@ fn run_tui(opts: TuiOptions) -> Result<()> {
         disable_raw_mode()?;
         execute!(
             terminal.backend_mut(),
-            LeaveAlternateScreen,
-            DisableMouseCapture,
             DisableBracketedPaste,
             DisableFocusChange
         )?;
@@ -468,6 +468,10 @@ fn run_tui(opts: TuiOptions) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn inline_viewport_height(terminal_rows: u16) -> u16 {
+    terminal_rows.saturating_sub(1).max(1)
 }
 
 async fn run_app(
@@ -705,7 +709,7 @@ async fn run_app(
     app.session_mgr.current_mut().spinner_state.advance_tick();
 
     // 初始全量绘制一次
-    terminal.draw(|f| ui::main_ui::render(f, &mut app))?;
+    draw_app(terminal, &mut app)?;
     let mut last_render = Instant::now();
 
     /// loading 动画帧率限制间隔（约 30 FPS）。
@@ -730,12 +734,12 @@ async fn run_app(
                 event::Action::Quit => break 'event_loop,
                 event::Action::Submit(input) => {
                     app.submit_message(input);
-                    terminal.draw(|f| ui::main_ui::render(f, &mut app))?;
+                    draw_app(terminal, &mut app)?;
                     last_render = Instant::now();
                 }
                 event::Action::Redraw => {
                     // 有用户交互（键盘/鼠标/resize）→ 始终重绘
-                    terminal.draw(|f| ui::main_ui::render(f, &mut app))?;
+                    draw_app(terminal, &mut app)?;
                     last_render = Instant::now();
                 }
             },
@@ -758,7 +762,7 @@ async fn run_app(
                     // loading 路径：限制帧率到 TARGET_FRAME_INTERVAL，降低 CPU 开销
                     // 非 loading 路径（cache_updated/agent_updated/bg_updated）始终立即渲染
                     if !loading || now.duration_since(last_render) >= TARGET_FRAME_INTERVAL {
-                        terminal.draw(|f| ui::main_ui::render(f, &mut app))?;
+                        draw_app(terminal, &mut app)?;
                         last_render = now;
                     }
                 }
@@ -823,12 +827,124 @@ async fn run_app(
     Ok(())
 }
 
+fn draw_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App) -> Result<()> {
+    flush_scrollback_history(terminal, app)?;
+    terminal.draw(|f| ui::main_ui::render(f, app))?;
+    Ok(())
+}
+
+fn flush_scrollback_history(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    app: &mut App,
+) -> Result<()> {
+    let session = app.session_mgr.current();
+    if session.ui.loading {
+        return Ok(());
+    }
+    let Some(messages_area) = session.ui.messages_area else {
+        return Ok(());
+    };
+    if messages_area.width == 0 || messages_area.height == 0 {
+        return Ok(());
+    }
+
+    let (end, height, lines) = {
+        let messages = &session.messages;
+        let cache = messages.render_cache.read();
+        if cache.width != messages_area.width {
+            return Ok(());
+        }
+        let start = messages.scrollback_committed_lines.min(cache.lines.len());
+        let target_end =
+            scrollback_commit_end(cache.total_lines, messages_area.height, &cache.wrap_map);
+        let end = target_end.min(cache.lines.len());
+        if start >= end {
+            return Ok(());
+        }
+
+        let start_visual =
+            committed_visual_start(start, cache.lines.len(), cache.total_lines, &cache.wrap_map);
+        let mut capped_end = start;
+        let mut capped_height = 0usize;
+        for info in &cache.wrap_map[start..end] {
+            let next_height = (info.visual_row_end as usize).saturating_sub(start_visual);
+            if next_height > u16::MAX as usize {
+                break;
+            }
+            capped_end = info.line_idx + 1;
+            capped_height = next_height;
+        }
+        if capped_end <= start || capped_height == 0 {
+            return Ok(());
+        }
+
+        (
+            capped_end,
+            capped_height as u16,
+            cache.lines[start..capped_end].to_vec(),
+        )
+    };
+
+    terminal.insert_before(height, move |buf| {
+        Paragraph::new(Text::from(lines))
+            .wrap(Wrap { trim: false })
+            .render(buf.area, buf);
+    })?;
+    app.session_mgr
+        .current_mut()
+        .messages
+        .scrollback_committed_lines = end;
+    Ok(())
+}
+
+fn scrollback_commit_end(
+    total_visual_rows: usize,
+    retained_height: u16,
+    wrap_map: &[peri_tui::ui::render_thread::WrappedLineInfo],
+) -> usize {
+    let retained_height = retained_height as usize;
+    if retained_height == 0 || total_visual_rows <= retained_height {
+        return 0;
+    }
+    let retain_from_visual = total_visual_rows - retained_height;
+    wrap_map.partition_point(|info| info.visual_row_end as usize <= retain_from_visual)
+}
+
+fn committed_visual_start(
+    committed_lines: usize,
+    line_count: usize,
+    total_visual_rows: usize,
+    wrap_map: &[peri_tui::ui::render_thread::WrappedLineInfo],
+) -> usize {
+    if committed_lines == 0 {
+        return 0;
+    }
+    if committed_lines >= line_count {
+        return total_visual_rows;
+    }
+    wrap_map
+        .get(committed_lines)
+        .map(|info| info.visual_row_start as usize)
+        .unwrap_or(total_visual_rows)
+}
+
 #[cfg(test)]
 mod cli_integration_test;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use peri_tui::ui::render_thread::WrappedLineInfo;
+
+    fn wrapped_line(line_idx: usize, start: u16, end: u16) -> WrappedLineInfo {
+        WrappedLineInfo {
+            line_idx,
+            visual_row_start: start,
+            visual_row_end: end,
+            plain_text: String::new(),
+            char_widths: Vec::new(),
+        }
+    }
 
     #[test]
     fn test_env_priority_process_over_settings() {
@@ -847,6 +963,42 @@ mod tests {
 
         // 清理
         std::env::remove_var("TEST_ENV_PRIORITY_VAR");
+    }
+
+    #[test]
+    fn test_inline_viewport_height_leaves_native_scrollback_row() {
+        assert_eq!(inline_viewport_height(24), 23);
+        assert_eq!(inline_viewport_height(1), 1);
+    }
+
+    #[test]
+    fn test_scrollback_commit_end_retains_last_viewport() {
+        let wrap_map = (0..10)
+            .map(|idx| wrapped_line(idx, idx as u16, idx as u16 + 1))
+            .collect::<Vec<_>>();
+        let result = scrollback_commit_end(10, 4, &wrap_map);
+        assert_eq!(result, 6);
+    }
+
+    #[test]
+    fn test_scrollback_commit_end_does_not_commit_when_content_fits() {
+        let wrap_map = (0..4)
+            .map(|idx| wrapped_line(idx, idx as u16, idx as u16 + 1))
+            .collect::<Vec<_>>();
+        let result = scrollback_commit_end(4, 4, &wrap_map);
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn test_scrollback_commit_end_respects_wrapped_visual_rows() {
+        let wrap_map = vec![
+            wrapped_line(0, 0, 1),
+            wrapped_line(1, 1, 4),
+            wrapped_line(2, 4, 5),
+            wrapped_line(3, 5, 7),
+        ];
+        let result = scrollback_commit_end(7, 3, &wrap_map);
+        assert_eq!(result, 2);
     }
 }
 // test
