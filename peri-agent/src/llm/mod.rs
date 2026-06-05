@@ -1,4 +1,5 @@
 pub mod anthropic;
+pub mod cache_diagnostics;
 pub mod openai;
 pub mod retry;
 pub mod sse;

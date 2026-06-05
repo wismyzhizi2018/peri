@@ -83,6 +83,38 @@ pub(crate) async fn call_llm<L: ReactLLM, S: State>(
         // 自动累积 token 用量到 state
         if let Some(ref usage) = reasoning.usage {
             state.token_tracker_mut().accumulate(usage);
+
+            // 缓存诊断：对比前轮 shape，产出变化原因
+            if let Some(ref cur_shape) = reasoning.prefix_shape {
+                let tracker = state.token_tracker();
+                let prev_shape = tracker.last_prefix_shape.clone();
+                let cache_hit = usage.cache_read_input_tokens.unwrap_or(0);
+                let diag = crate::llm::cache_diagnostics::build_diagnostics(
+                    prev_shape.as_ref(),
+                    cur_shape,
+                    cache_hit,
+                    usage.input_tokens,
+                );
+                let should_emit = diag.prefix_changed || diag.hit_rate < 0.5;
+                if should_emit {
+                    let reason_strs: Vec<String> = diag
+                        .change_reasons
+                        .iter()
+                        .map(|r| crate::llm::cache_diagnostics::format_change_reasons(std::slice::from_ref(r)))
+                        .collect();
+                    agent.emit(AgentEvent::CacheDiagnostics {
+                        prefix_changed: diag.prefix_changed,
+                        change_reasons: reason_strs,
+                        hit_rate: diag.hit_rate,
+                        cache_hit_tokens: diag.cache_hit_tokens,
+                        cache_miss_tokens: diag.cache_miss_tokens,
+                    });
+                }
+                let tracker = state.token_tracker_mut();
+                tracker.last_diagnostics = Some(diag);
+                tracker.last_prefix_shape = Some(cur_shape.clone());
+            }
+
             // 使用 ContextBudget（若已设置）进行上下文用量监控
             if let Some(ref budget) = agent.context_budget {
                 let tracker = state.token_tracker();

@@ -131,6 +131,8 @@ pub struct Reasoning {
     pub source_message: Option<BaseMessage>,
     /// Token 使用量（来自 LLM 响应，用于 Langfuse Generation 追踪）
     pub usage: Option<crate::llm::types::TokenUsage>,
+    /// 前缀快照（用于缓存诊断，Provider 无关）
+    pub prefix_shape: Option<crate::llm::cache_diagnostics::PrefixShape>,
     /// 生成此推理的模型名称
     pub model: String,
     /// 标记是否已通过事件流式发射过文本（由流式 LLM 适配器设为 true）
@@ -147,6 +149,7 @@ impl Reasoning {
             final_answer: None,
             source_message: None,
             usage: None,
+            prefix_shape: None,
             model: String::new(),
             streamed: false,
             stop_reason: crate::llm::types::StopReason::ToolUse,
@@ -160,6 +163,7 @@ impl Reasoning {
             final_answer: Some(answer.into()),
             source_message: None,
             usage: None,
+            prefix_shape: None,
             model: String::new(),
             streamed: false,
             stop_reason: crate::llm::types::StopReason::EndTurn,
