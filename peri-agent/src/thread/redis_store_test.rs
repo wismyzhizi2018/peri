@@ -6,8 +6,8 @@
 //
 // cargo test -p peri-agent --lib -- thread::redis_store::tests
 
-use super::*;
 use crate::messages::{MessageContent, MessageId};
+use crate::thread::{RedisThreadStore, ThreadMeta};
 
 /// 创建测试用 Redis 连接（使用随机前缀隔离）
 async fn make_store() -> RedisThreadStore {
@@ -86,7 +86,7 @@ async fn test_append_messages_idempotent() {
 
     let msg = make_text_msg("duplicate test");
 
-    store.append_messages(&id, &[msg.clone()]).await.unwrap();
+    store.append_messages(&id, std::slice::from_ref(&msg)).await.unwrap();
     store.append_messages(&id, &[msg]).await.unwrap();
 
     let loaded = store.load_messages(&id).await.unwrap();
@@ -186,12 +186,12 @@ async fn test_list_child_threads() {
 
     let mut child1 = make_meta("/tmp");
     child1.parent_thread_id = Some(parent_id.clone());
-    let c1_id = child1.id.clone();
+    let _c1_id = child1.id.clone();
     store.create_thread(child1).await.unwrap();
 
     let mut child2 = make_meta("/tmp");
     child2.parent_thread_id = Some(parent_id.clone());
-    let c2_id = child2.id.clone();
+    let _c2_id = child2.id.clone();
     store.create_thread(child2).await.unwrap();
 
     let children = store.list_child_threads(&parent_id).await.unwrap();
