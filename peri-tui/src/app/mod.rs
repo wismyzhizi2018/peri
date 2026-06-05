@@ -106,7 +106,7 @@ use peri_middlewares::prelude::HitlDecision;
 
 use crate::{
     config::PeriConfig,
-    thread::{SqliteThreadStore, ThreadBrowser, ThreadId, ThreadStore},
+    thread::{RedisThreadStore, SqliteThreadStore, ThreadBrowser, ThreadId, ThreadStore},
 };
 
 // Re-export MessageViewModel from ui::message_view
@@ -193,15 +193,23 @@ impl App {
                 ),
             };
 
-        // 初始化 thread 存储（失败时 fallback 到临时目录）
-        let thread_store: Arc<dyn ThreadStore> = match SqliteThreadStore::default_path().await {
-            Ok(store) => Arc::new(store),
-            Err(_) => Arc::new(
-                SqliteThreadStore::new(std::env::temp_dir().join("zen-threads.db"))
-                    .await
-                    .expect("无法创建临时 SQLite 数据库"),
-            ),
-        };
+        // 初始化 thread 存储：REDIS_URL 优先，否则 SQLite
+        let thread_store: Arc<dyn ThreadStore> =
+            if let Ok(redis_url) = std::env::var("REDIS_URL") {
+                match RedisThreadStore::new(&redis_url).await {
+                    Ok(store) => Arc::new(store),
+                    Err(e) => panic!("REDIS_URL 已配置但 Redis 连接失败: {e}"),
+                }
+            } else {
+                match SqliteThreadStore::default_path().await {
+                    Ok(store) => Arc::new(store),
+                    Err(_) => Arc::new(
+                        SqliteThreadStore::new(std::env::temp_dir().join("zen-threads.db"))
+                            .await
+                            .expect("无法创建临时 SQLite 数据库"),
+                    ),
+                }
+            };
 
         // 预计算命令帮助列表
         let command_registry = crate::command::default_registry();
