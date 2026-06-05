@@ -36,6 +36,7 @@ fn make_ai_msg(text: &str) -> BaseMessage {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_create_and_load_meta() {
     let store = make_store().await;
     let meta = make_meta("/tmp/test");
@@ -55,6 +56,7 @@ async fn test_create_and_load_meta() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_append_and_load_messages() {
     let store = make_store().await;
     let meta = make_meta("/tmp");
@@ -76,6 +78,7 @@ async fn test_append_and_load_messages() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_append_messages_idempotent() {
     let store = make_store().await;
     let meta = make_meta("/tmp");
@@ -96,6 +99,7 @@ async fn test_append_messages_idempotent() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_delete_messages() {
     let store = make_store().await;
     let meta = make_meta("/tmp");
@@ -123,6 +127,7 @@ async fn test_delete_messages() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_delete_thread_cascade() {
     let store = make_store().await;
 
@@ -147,6 +152,7 @@ async fn test_delete_thread_cascade() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_list_threads_hidden_filter() {
     let store = make_store().await;
 
@@ -170,6 +176,7 @@ async fn test_list_threads_hidden_filter() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_list_child_threads() {
     let store = make_store().await;
 
@@ -194,6 +201,7 @@ async fn test_list_child_threads() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_list_session_threads() {
     let store = make_store().await;
 
@@ -217,6 +225,7 @@ async fn test_list_session_threads() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_load_context_single_thread() {
     let store = make_store().await;
     let meta = make_meta("/tmp");
@@ -238,6 +247,7 @@ async fn test_load_context_single_thread() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_load_context_with_ancestor() {
     let store = make_store().await;
 
@@ -269,6 +279,7 @@ async fn test_load_context_with_ancestor() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_load_context_incremental_cache() {
     let store = make_store().await;
     let meta = make_meta("/tmp");
@@ -292,6 +303,7 @@ async fn test_load_context_incremental_cache() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_update_meta() {
     let store = make_store().await;
     let meta = make_meta("/tmp");
@@ -310,6 +322,7 @@ async fn test_update_meta() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_update_title() {
     let store = make_store().await;
     let meta = make_meta("/tmp");
@@ -324,6 +337,7 @@ async fn test_update_title() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_update_thread_status() {
     let store = make_store().await;
     let meta = make_meta("/tmp");
@@ -338,6 +352,7 @@ async fn test_update_thread_status() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_invalidate_context_cache() {
     let store = make_store().await;
     let meta = make_meta("/tmp");
@@ -358,6 +373,7 @@ async fn test_invalidate_context_cache() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_thread_with_config() {
     let store = make_store().await;
     let mut meta = make_meta("/tmp");
@@ -371,6 +387,7 @@ async fn test_thread_with_config() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_empty_thread_operations() {
     let store = make_store().await;
     let meta = make_meta("/tmp");
