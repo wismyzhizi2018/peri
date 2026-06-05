@@ -113,7 +113,7 @@ fn test_compare_shape_tools_removed() {
 fn test_compare_shape_both_changed() {
     let tools = vec![make_tool("read", "read")];
     let s1 = capture_shape("system v1", &tools, 1);
-    let s2 = capture_shape("system v2", &vec![make_tool("write", "write")], 2);
+    let s2 = capture_shape("system v2", &[make_tool("write", "write")], 2);
     let reasons = compare_shape(&s1, &s2);
     assert_eq!(reasons.len(), 2);
 }
