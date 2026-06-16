@@ -7,4 +7,5 @@ pub mod message_view;
 pub mod render_thread;
 pub mod theme;
 pub mod tips;
+#[rustfmt::skip]
 pub mod welcome;
