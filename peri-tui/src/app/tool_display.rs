@@ -41,10 +41,13 @@ pub fn format_tool_args(
 ) -> Option<String> {
     match tool {
         "Bash" => input["command"].as_str().map(|s| truncate(s, 400)),
-        "Read" | "Write" | "Edit" => input["file_path"].as_str().map(|p| strip_cwd(p, cwd)),
-        "Glob" => input["pattern"]
-            .as_str()
-            .map(|p| truncate(&strip_cwd(p, cwd), 200)),
+        "Read" | "Write" | "Edit" => {
+            let path = input["file_path"]
+                .as_str()
+                .or_else(|| input["path"].as_str());
+            path.map(|p| strip_cwd(p, cwd))
+        }
+        "Glob" => input["pattern"].as_str().map(|p| truncate(p, 200)),
         "Grep" => input["pattern"].as_str().map(|s| truncate(s, 200)),
         "FolderOperations" => {
             let op = input["operation"].as_str().unwrap_or("?");

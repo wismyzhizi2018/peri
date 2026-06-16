@@ -12,6 +12,14 @@
         }
     }
 
+    fn rendered_text(lines: &[Line<'static>]) -> String {
+        lines
+            .iter()
+            .flat_map(|line| line.spans.iter().map(|span| span.content.as_ref()))
+            .collect::<Vec<_>>()
+            .join("")
+    }
+
     #[test]
     fn test_render_batch_summary_collapsed() {
         let agents = vec![
@@ -277,7 +285,7 @@
     }
 
     #[test]
-    fn test_tool_block_success_no_summary_when_collapsed() {
+    fn test_tool_block_read_collapsed_shows_summary() {
         use crate::app::MessageViewModel;
         let vm = MessageViewModel::ToolBlock {
             tool_name: "Read".to_string(),
@@ -292,11 +300,9 @@
             content_hash: 0,
         };
         let lines = render_view_model(&vm, Some(1), 80, false, 0);
-        assert_eq!(
-            lines.len(),
-            1,
-            "successful collapsed ToolBlock should have only header"
-        );
+        let text = rendered_text(&lines);
+        assert!(text.contains("Read(file.txt)"), "Read header 应显示参数: {text}");
+        assert!(text.contains("Read 1 lines"), "Read 折叠态应显示行数摘要: {text}");
     }
 
     #[test]
@@ -459,6 +465,68 @@
         assert!(
             detail_text.contains("tail-marker"),
             "聚合工具组详细模式应显示完整内容"
+        );
+    }
+
+    #[test]
+    fn test_tool_call_group_detail_mode_shows_read_args_and_summary() {
+        use crate::app::MessageViewModel;
+        use crate::ui::message_view::{ToolCategory, ToolEntry};
+        let vm = MessageViewModel::ToolCallGroup {
+            category: ToolCategory::Read,
+            tools: vec![ToolEntry {
+                tool_name: "Read".to_string(),
+                display_name: "Read".to_string(),
+                args_display: Some("D:\\code\\smart-select-product-php\\public\\index.php".to_string()),
+                content: "Read 61 lines".to_string(),
+                is_error: false,
+            }],
+            collapsed: true,
+            content_hash: 0,
+        };
+
+        let detail_text = rendered_text(&render_view_model(&vm, Some(1), 80, true, 0));
+
+        assert!(
+            detail_text.contains("Read(D:\\code\\smart-select-product-php\\public\\index.php)"),
+            "Read 详细模式标题应显示文件路径: {detail_text}"
+        );
+        assert!(
+            detail_text.contains("Read 61 lines"),
+            "Read 详细模式应沿用工具摘要，不应误算成内容行数: {detail_text}"
+        );
+    }
+
+    #[test]
+    fn test_tool_call_group_detail_mode_shows_glob_args_and_found_summary() {
+        use crate::app::MessageViewModel;
+        use crate::ui::message_view::{ToolCategory, ToolEntry};
+        let vm = MessageViewModel::ToolCallGroup {
+            category: ToolCategory::Glob,
+            tools: vec![ToolEntry {
+                tool_name: "Glob".to_string(),
+                display_name: "Glob".to_string(),
+                args_display: Some("app/admin/controller/**/*.php".to_string()),
+                content: "app\\admin\\control2\napp\\admin\\control3\napp\\admin\\control4".to_string(),
+                is_error: false,
+            }],
+            collapsed: true,
+            content_hash: 0,
+        };
+
+        let detail_text = rendered_text(&render_view_model(&vm, Some(1), 80, true, 0));
+
+        assert!(
+            detail_text.contains("Glob(pattern: \"app/admin/controller/**/*.php\")"),
+            "Glob 详细模式标题应显示 pattern 参数: {detail_text}"
+        );
+        assert!(
+            detail_text.contains("Found 3 files"),
+            "Glob 详细模式应显示结果数量摘要: {detail_text}"
+        );
+        assert!(
+            detail_text.contains("app\\admin\\control2"),
+            "Glob 详细模式仍应显示匹配文件: {detail_text}"
         );
     }
 

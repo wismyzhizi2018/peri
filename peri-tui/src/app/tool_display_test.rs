@@ -89,6 +89,42 @@ fn test_glob_truncates_at_200() {
 }
 
 #[test]
+fn test_read_fallback_to_path_alias() {
+    // LLM 有时发 path 而非 file_path，应回退读取
+    let input = serde_json::json!({"path": "/home/user/project/src/main.rs"});
+    let result = format_tool_args("Read", &input, Some("/home/user/project/"));
+    assert_eq!(result.as_deref(), Some("src/main.rs"), "应回退到 path 字段");
+
+    let input = serde_json::json!({"path": "/tmp/test.txt"});
+    let result = format_tool_args("Write", &input, None);
+    assert_eq!(result.as_deref(), Some("test.txt"), "Write 也应回退到 path");
+
+    let input = serde_json::json!({"path": "/tmp/edit.rs"});
+    let result = format_tool_args("Edit", &input, None);
+    assert_eq!(result.as_deref(), Some("edit.rs"), "Edit 也应回退到 path");
+}
+
+#[test]
+fn test_read_file_path_takes_priority_over_path() {
+    // file_path 存在时优先使用 file_path
+    let input = serde_json::json!({"file_path": "/a/real.rs", "path": "/b/alias.rs"});
+    let result = format_tool_args("Read", &input, None);
+    assert_eq!(result.as_deref(), Some("real.rs"), "file_path 应优先于 path");
+}
+
+#[test]
+fn test_glob_pattern_not_path_stripped() {
+    // Glob pattern 不应走 strip_cwd（pattern 不是文件路径）
+    let input = serde_json::json!({"pattern": "app/admin/**/*.php"});
+    let result = format_tool_args("Glob", &input, Some("/home/user/project/"));
+    assert_eq!(
+        result.as_deref(),
+        Some("app/admin/**/*.php"),
+        "Glob pattern 不应被路径剥离"
+    );
+}
+
+#[test]
 fn test_grep_truncates_at_200() {
     let pattern = "r".repeat(300);
     let input = serde_json::json!({"pattern": pattern});
