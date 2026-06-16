@@ -499,27 +499,39 @@ fn handle_down(app: &mut App) {
 }
 
 fn handle_ctrl_v(app: &mut App) {
-    if let Ok(mut clipboard) = arboard::Clipboard::new() {
-        if let Ok(img) = clipboard.get_image() {
-            let (w, h) = (img.width as u32, img.height as u32);
-            if let Ok((b64, sz)) = super::super::mouse::rgba_to_png_base64(w, h, &img.bytes) {
-                let n = app
-                    .session_mgr
-                    .current_mut()
-                    .metadata
-                    .pending_attachments
-                    .len()
-                    + 1;
-                app.add_pending_attachment(PendingAttachment {
-                    label: format!("clipboard_{}.png", n),
-                    media_type: "image/png".to_string(),
-                    base64_data: b64,
-                    size_bytes: sz,
-                });
+    // 优先尝试图片粘贴（file_list / get_image / WSL PowerShell fallback），
+    // 失败时再退回文本粘贴。
+    match crate::clipboard::paste::paste_image_as_png_base64() {
+        Ok((b64, sz, _w, _h)) => {
+            let metadata = &mut app.session_mgr.current_mut().metadata;
+            let image_id = metadata.alloc_image_id();
+            let n = metadata.pending_attachments.len() + 1;
+            metadata.pending_attachments.push(PendingAttachment {
+                label: format!("clipboard_{}.png", n),
+                media_type: "image/png".to_string(),
+                base64_data: b64,
+                size_bytes: sz,
+                image_id,
+            });
+
+            // 在 textarea 当前光标位置插入 `[Image #N]` 占位符，让用户能在文本中混排图片
+            let placeholder = crate::clipboard::image_placeholder::format_placeholder(image_id);
+            app.session_mgr
+                .current_mut()
+                .ui
+                .textarea
+                .insert_str(&placeholder);
+        }
+        Err(img_err) => {
+            tracing::debug!("paste_image_as_png_base64 failed: {img_err}; fallback to text");
+            // 不是图片或剪贴板不可用，退回文本粘贴；macOS 下抑制 stderr 污染
+            let _guard = crate::clipboard::SuppressStderr::new();
+            if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                if let Ok(text) = clipboard.get_text() {
+                    let text = text.replace('\r', "\n");
+                    app.session_mgr.current_mut().ui.textarea.insert_str(&text);
+                }
             }
-        } else if let Ok(text) = clipboard.get_text() {
-            let text = text.replace('\r', "\n");
-            app.session_mgr.current_mut().ui.textarea.insert_str(&text);
         }
     }
 }

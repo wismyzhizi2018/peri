@@ -12,6 +12,9 @@ pub struct PendingAttachment {
     pub base64_data: String,
     /// PNG 文件大小（字节，用于显示）
     pub size_bytes: usize,
+    /// textarea 内嵌占位符 `[Image #N]` 中的稳定 ID，用于提交时映射。
+    /// SessionMetadata.next_image_id 单调递增分配。
+    pub image_id: usize,
 }
 
 // ─── HitlBatchPrompt ──────────────────────────────────────────────────────────

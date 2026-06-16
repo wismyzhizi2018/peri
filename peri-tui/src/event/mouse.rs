@@ -128,8 +128,9 @@ pub fn copy_selection_to_clipboard(app: &mut App) -> bool {
         .take()
     {
         let char_count = text.chars().count();
-        if let Err(err) = crate::clipboard::copy::copy_to_clipboard(&text) {
-            tracing::warn!("copy_selection_to_clipboard failed: {err}");
+        match crate::clipboard::copy::copy_to_clipboard(&text) {
+            Ok(lease) => app.global_ui.clipboard_lease = lease,
+            Err(err) => tracing::warn!("copy_selection_to_clipboard failed: {err}"),
         }
         app.session_mgr.current_mut().ui.copy_char_count = char_count;
         app.session_mgr.current_mut().ui.copy_message_until =
@@ -152,8 +153,9 @@ pub fn copy_panel_selection_to_clipboard(app: &mut App) -> bool {
         .take()
     {
         let char_count = text.chars().count();
-        if let Err(err) = crate::clipboard::copy::copy_to_clipboard(&text) {
-            tracing::warn!("copy_panel_selection_to_clipboard failed: {err}");
+        match crate::clipboard::copy::copy_to_clipboard(&text) {
+            Ok(lease) => app.global_ui.clipboard_lease = lease,
+            Err(err) => tracing::warn!("copy_panel_selection_to_clipboard failed: {err}"),
         }
         app.session_mgr.current_mut().ui.copy_char_count = char_count;
         app.session_mgr.current_mut().ui.copy_message_until =

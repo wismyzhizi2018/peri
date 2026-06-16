@@ -30,15 +30,23 @@ impl App {
         let attachments =
             std::mem::take(&mut self.session_mgr.current_mut().metadata.pending_attachments);
 
+        // 按 textarea 中仍存在的 `[Image #N]` 占位符过滤附件；
+        // 用户在 textarea 中删掉的占位符对应附件不发送
+        let active_attachments: Vec<&_> = crate::clipboard::image_placeholder::filter_by_placeholders(
+            &expanded_input,
+            &attachments,
+            |att| att.image_id,
+        );
+
         // 构建用于显示的文字（附件摘要追加在末尾）
-        let display = if attachments.is_empty() {
+        let display = if active_attachments.is_empty() {
             display_input.clone()
         } else {
             self.services.lc.tr_args(
                 "app-submit-attachments",
                 &[
                     ("input".into(), display_input.clone().into()),
-                    ("count".into(), (attachments.len() as i64).into()),
+                    ("count".into(), (active_attachments.len() as i64).into()),
                 ],
             )
         };
@@ -51,13 +59,13 @@ impl App {
         };
 
         // 构建发送给 LLM 的 MessageContent（含附件图片 blocks）
-        let message_content = if attachments.is_empty() {
+        let message_content = if active_attachments.is_empty() {
             peri_agent::messages::MessageContent::text(expanded_input.clone())
         } else {
             let mut blocks = vec![peri_agent::messages::ContentBlock::text(
                 expanded_input.clone(),
             )];
-            for att in attachments {
+            for att in active_attachments {
                 blocks.push(peri_agent::messages::ContentBlock::image_base64(
                     &att.media_type,
                     &att.base64_data,

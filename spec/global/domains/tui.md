@@ -147,7 +147,7 @@ submit_message(text)
 **关键决策:**
 
 - 依赖: arboard 3 + png 0.17 + base64 0.22
-- 数据结构: `PendingAttachment { label, media_type, base64_data, size_bytes }`
+- 数据结构: `PendingAttachment { label, media_type, base64_data, size_bytes, image_id }`
 - run_universal_agent 签名变更: `input: String` → `input: AgentInput`
 - 附件栏 Layout: 6-slot，新增 `Constraint::Length(attachment_height)`
 **归档:** [链接](../../archive/feature_20260324_F001_tui-clipboard-image-paste/)

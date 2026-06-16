@@ -17,9 +17,12 @@ const OSC52_MAX_RAW_BYTES: usize = 100_000;
 
 /// 把文本复制到系统剪贴板。
 ///
-/// 返回 `Ok(())` 表示至少有一条路径成功；返回 `Err(String)` 时字符串聚合了
-/// 所有尝试的错误信息，便于上层向用户展示。
-pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
+/// 返回 `Ok(lease)` 表示至少有一条路径成功；`lease` 在 Linux X11/Wayland 下
+/// 持有 arboard handle，调用方必须保存到 TUI 生命周期级别（如 GlobalUiState），
+/// 否则剪贴板内容会随 lease drop 而消失。其他平台 lease 为 None。
+///
+/// 返回 `Err(String)` 时字符串聚合了所有尝试的错误信息，便于上层向用户展示。
+pub fn copy_to_clipboard(text: &str) -> Result<Option<crate::clipboard::ClipboardLease>, String> {
     copy_to_clipboard_with(
         text,
         CopyEnvironment {
@@ -48,17 +51,18 @@ fn copy_to_clipboard_with(
     environment: CopyEnvironment,
     tmux_copy_fn: impl Fn(&str) -> Result<(), String>,
     osc52_copy_fn: impl Fn(&str) -> Result<(), String>,
-    arboard_copy_fn: impl Fn(&str) -> Result<(), String>,
+    arboard_copy_fn: impl Fn(&str) -> Result<Option<crate::clipboard::ClipboardLease>, String>,
     wsl_copy_fn: impl Fn(&str) -> Result<(), String>,
-) -> Result<(), String> {
+) -> Result<Option<crate::clipboard::ClipboardLease>, String> {
     if environment.ssh_session {
-        // SSH 下 native clipboard 写到远端机器，没用；走终端转义。
+        // SSH 下 native clipboard 写到远端机器，没用；走终端转义。lease 不适用。
         return terminal_clipboard_copy_with(
             text,
             environment.tmux_session,
             &tmux_copy_fn,
             &osc52_copy_fn,
         )
+        .map(|()| None)
         .map_err(|terminal_err| {
             tracing::warn!("terminal clipboard copy failed over SSH: {terminal_err}");
             if environment.tmux_session {
@@ -70,14 +74,14 @@ fn copy_to_clipboard_with(
     }
 
     match arboard_copy_fn(text) {
-        Ok(()) => Ok(()),
+        Ok(lease) => Ok(lease),
         Err(native_err) => {
             if environment.wsl_session {
                 tracing::warn!(
                     "native clipboard copy failed: {native_err}, falling back to WSL PowerShell"
                 );
                 match wsl_copy_fn(text) {
-                    Ok(()) => return Ok(()),
+                    Ok(()) => return Ok(None),
                     Err(wsl_err) => {
                         tracing::warn!(
                             "WSL PowerShell clipboard copy failed: {wsl_err}, falling back to terminal clipboard"
@@ -88,6 +92,7 @@ fn copy_to_clipboard_with(
                             &tmux_copy_fn,
                             &osc52_copy_fn,
                         )
+                        .map(|()| None)
                         .map_err(|terminal_err| {
                             if environment.tmux_session {
                                 format!(
@@ -111,6 +116,7 @@ fn copy_to_clipboard_with(
                 &tmux_copy_fn,
                 &osc52_copy_fn,
             )
+            .map(|()| None)
             .map_err(|terminal_err| {
                 if environment.tmux_session {
                     format!("native clipboard: {native_err}; terminal fallback: {terminal_err}")
@@ -169,12 +175,26 @@ fn is_wsl_session() -> bool {
     false
 }
 
-/// 调 arboard 写入本地剪贴板。
-fn arboard_copy(text: &str) -> Result<(), String> {
+/// 调 arboard 写入本地剪贴板。macOS 下用 SuppressStderr 抑制 NSPasteboard 污染。
+///
+/// Linux X11/Wayland 需要持有 arboard handle 否则内容消失，返回 ClipboardLease
+/// 让调用方保存到 TUI 生命周期。其他平台 lease 为 None。
+fn arboard_copy(text: &str) -> Result<Option<crate::clipboard::ClipboardLease>, String> {
+    let _guard = crate::clipboard::SuppressStderr::new();
     let mut clipboard = arboard::Clipboard::new().map_err(|e| format!("clipboard unavailable: {e}"))?;
     clipboard
         .set_text(text)
-        .map_err(|e| format!("failed to set clipboard text: {e}"))
+        .map_err(|e| format!("failed to set clipboard text: {e}"))?;
+    #[cfg(target_os = "linux")]
+    {
+        Ok(Some(crate::clipboard::ClipboardLease::native_linux(clipboard)))
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        // macOS / Windows：arboard 不需要进程持有，handle 可立即 drop
+        drop(clipboard);
+        Ok(None)
+    }
 }
 
 /// WSL 下通过 powershell.exe 写 Windows 剪贴板。
@@ -459,7 +479,7 @@ mod tests {
             },
             |_| {
                 native_calls.set(native_calls.get() + 1);
-                Ok(())
+                Ok(None)
             },
             |_| {
                 wsl_calls.set(wsl_calls.get() + 1);
@@ -481,7 +501,7 @@ mod tests {
             remote_environment(),
             |_| Ok(()),
             |_| Err("blocked".into()),
-            |_| Ok(()),
+            |_| Ok(None),
             |_| Ok(()),
         );
 
@@ -506,7 +526,7 @@ mod tests {
                 osc_calls.set(osc_calls.get() + 1);
                 Ok(())
             },
-            |_| Ok(()),
+            |_| Ok(None),
             |_| Ok(()),
         );
 
@@ -530,7 +550,7 @@ mod tests {
                 osc_calls.set(osc_calls.get() + 1);
                 Ok(())
             },
-            |_| Ok(()),
+            |_| Ok(None),
             |_| Ok(()),
         );
 
@@ -554,7 +574,7 @@ mod tests {
             },
             |_| {
                 native_calls.set(native_calls.get() + 1);
-                Ok(())
+                Ok(None)
             },
             |_| {
                 wsl_calls.set(wsl_calls.get() + 1);
