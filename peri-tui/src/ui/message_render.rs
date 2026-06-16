@@ -665,6 +665,16 @@ pub fn render_view_model(
             } else if *is_error && !content.is_empty() {
                 lines.extend(error_summary_lines(content));
             }
+            // Read 工具折叠态：显示行数摘要
+            if state.collapsed && tool_name == "Read" && !result_lines.is_empty() {
+                lines.push(Line::from(vec![
+                    Span::styled("  ⎿ ", Style::default().fg(theme::DIM)),
+                    Span::styled(
+                        format!("Read {} lines", result_lines.len()),
+                        Style::default().fg(theme::MUTED),
+                    ),
+                ]));
+            }
             if detail_mode {
                 if let Some(ref cached_lines) = diff_lines {
                     for (i, line) in cached_lines.iter().enumerate() {
@@ -948,6 +958,7 @@ pub fn render_view_model(
                 }
             } else if detail_mode {
                 // 详细模式：显示每条工具的名称和结果
+                // Read 工具只显示行数摘要，不展开文件内容
                 for entry in tools {
                     let entry_color = if entry.is_error {
                         theme::ERROR
@@ -965,7 +976,19 @@ pub fn render_view_model(
                                 .add_modifier(Modifier::BOLD),
                         ),
                     ]));
-                    if !entry.content.is_empty() {
+                    if entry.tool_name == "Read" {
+                        // Read 工具：只显示行数摘要
+                        if !entry.content.is_empty() {
+                            let line_count = entry.content.lines().count();
+                            lines.push(Line::from(vec![
+                                Span::styled("  ⎿ ", Style::default().fg(theme::DIM)),
+                                Span::styled(
+                                    format!("Read {} lines", line_count),
+                                    Style::default().fg(theme::MUTED),
+                                ),
+                            ]));
+                        }
+                    } else if !entry.content.is_empty() {
                         for (i, line) in entry.content.lines().enumerate() {
                             let prefix = if i == 0 { "  ⎿ " } else { "    " };
                             lines.push(Line::from(vec![
