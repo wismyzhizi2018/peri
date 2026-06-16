@@ -56,6 +56,38 @@ fn error_summary_lines(content: &str) -> Vec<Line<'static>> {
         .collect()
 }
 
+fn tool_args_header(tool_name: &str, args: &str) -> String {
+    let summary = peri_widgets::tool_call::display::format_args_summary(args, 400);
+    if tool_name == "Glob" {
+        format!("pattern: \"{}\"", summary)
+    } else {
+        summary
+    }
+}
+
+fn read_summary(content: &str) -> Option<String> {
+    if content.is_empty() {
+        return None;
+    }
+    if let Some(first_line) = content.lines().next() {
+        if first_line.starts_with("Read ") && first_line.ends_with(" lines") {
+            return Some(first_line.to_string());
+        }
+    }
+    Some(format!("Read {} lines", content.lines().count()))
+}
+
+fn glob_summary(content: &str) -> Option<String> {
+    if content.is_empty() {
+        return None;
+    }
+    let count = content
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .count();
+    Some(format!("Found {} files", count))
+}
+
 /// 批次汇总树形渲染：折叠态显示 header + 每行摘要，展开态显示各 agent 详情。
 fn render_batch_summary(agents: &[AgentSummary], collapsed: &bool) -> Vec<Line<'static>> {
     let mut lines: Vec<Line<'static>> = Vec::new();
@@ -327,7 +359,10 @@ fn render_shell_command(
     };
     let cwd_label: String = cwd.chars().take(80).collect();
     lines.push(Line::from(vec![
-        Span::styled(indicator_ch.to_string(), Style::default().fg(indicator_color)),
+        Span::styled(
+            indicator_ch.to_string(),
+            Style::default().fg(indicator_color),
+        ),
         Span::raw(" "),
         Span::styled("> ", Style::default().fg(theme::DIM)),
         Span::styled(
@@ -517,7 +552,11 @@ pub fn render_view_model(
                         ..
                     } => {
                         // Thought 标题：缩进 2 列对齐
-                        let hint = if detail_mode { "" } else { " (ctrl+o to expand)" };
+                        let hint = if detail_mode {
+                            ""
+                        } else {
+                            " (ctrl+o to expand)"
+                        };
                         lines.push(Line::from(vec![
                             Span::styled("∴ ", Style::default().fg(theme::DIM)),
                             Span::styled(
@@ -623,8 +662,7 @@ pub fn render_view_model(
                 Span::styled(state.tool_name.clone(), name_style),
             ];
             if !state.args_summary.is_empty() {
-                let summary =
-                    peri_widgets::tool_call::display::format_args_summary(&state.args_summary, 400);
+                let summary = tool_args_header(tool_name, &state.args_summary);
                 header_spans.push(Span::styled(
                     format!("({})", summary),
                     Style::default().fg(theme::DIM),
@@ -645,6 +683,14 @@ pub fn render_view_model(
                 let border_color = if *is_error { theme::ERROR } else { theme::DIM };
                 // 详细模式显示完整内容，否则截断
                 let max_lines = if detail_mode { usize::MAX } else { 20 };
+                if tool_name == "Glob" && !*is_error {
+                    if let Some(summary) = glob_summary(content) {
+                        lines.push(Line::from(vec![
+                            Span::styled("  ⎿ ", Style::default().fg(border_color)),
+                            Span::styled(summary, Style::default().fg(result_color)),
+                        ]));
+                    }
+                }
                 for (i, line) in result_lines.iter().enumerate() {
                     if i >= max_lines {
                         lines.push(Line::from(vec![
@@ -656,7 +702,11 @@ pub fn render_view_model(
                         ]));
                         break;
                     }
-                    let prefix = if i == 0 { "  ⎿ " } else { "    " };
+                    let prefix = if i == 0 && tool_name != "Glob" {
+                        "  ⎿ "
+                    } else {
+                        "    "
+                    };
                     lines.push(Line::from(vec![
                         Span::styled(prefix, Style::default().fg(border_color)),
                         Span::styled((*line).to_string(), Style::default().fg(result_color)),
@@ -667,13 +717,12 @@ pub fn render_view_model(
             }
             // Read 工具折叠态：显示行数摘要
             if state.collapsed && tool_name == "Read" && !result_lines.is_empty() {
-                lines.push(Line::from(vec![
-                    Span::styled("  ⎿ ", Style::default().fg(theme::DIM)),
-                    Span::styled(
-                        format!("Read {} lines", result_lines.len()),
-                        Style::default().fg(theme::MUTED),
-                    ),
-                ]));
+                if let Some(summary) = read_summary(content) {
+                    lines.push(Line::from(vec![
+                        Span::styled("  ⎿ ", Style::default().fg(theme::DIM)),
+                        Span::styled(summary, Style::default().fg(theme::MUTED)),
+                    ]));
+                }
             }
             if detail_mode {
                 if let Some(ref cached_lines) = diff_lines {
@@ -684,7 +733,11 @@ pub fn render_view_model(
                             0,
                             Span::styled(
                                 prefix,
-                                Style::default().fg(if *is_error { theme::ERROR } else { theme::DIM }),
+                                Style::default().fg(if *is_error {
+                                    theme::ERROR
+                                } else {
+                                    theme::DIM
+                                }),
                             ),
                         );
                         lines.push(prefixed);
@@ -701,7 +754,16 @@ pub fn render_view_model(
             stderr,
             exit_code,
             ..
-        } => render_shell_command(command, cwd, stdin, stdout, stderr, *exit_code, detail_mode, tick),
+        } => render_shell_command(
+            command,
+            cwd,
+            stdin,
+            stdout,
+            stderr,
+            *exit_code,
+            detail_mode,
+            tick,
+        ),
         MessageViewModel::SubAgentGroup {
             batch_agents,
             collapsed,
@@ -976,16 +1038,39 @@ pub fn render_view_model(
                                 .add_modifier(Modifier::BOLD),
                         ),
                     ]));
+                    if let Some(args) = &entry.args_display {
+                        if !args.is_empty() {
+                            let summary = tool_args_header(&entry.tool_name, args);
+                            if let Some(last_line) = lines.last_mut() {
+                                last_line.spans.push(Span::styled(
+                                    format!("({})", summary),
+                                    Style::default().fg(theme::DIM),
+                                ));
+                            }
+                        }
+                    }
                     if entry.tool_name == "Read" {
                         // Read 工具：只显示行数摘要
-                        if !entry.content.is_empty() {
-                            let line_count = entry.content.lines().count();
+                        if let Some(summary) = read_summary(&entry.content) {
                             lines.push(Line::from(vec![
                                 Span::styled("  ⎿ ", Style::default().fg(theme::DIM)),
-                                Span::styled(
-                                    format!("Read {} lines", line_count),
-                                    Style::default().fg(theme::MUTED),
-                                ),
+                                Span::styled(summary, Style::default().fg(theme::MUTED)),
+                            ]));
+                        }
+                    } else if entry.tool_name == "Glob"
+                        && !entry.content.is_empty()
+                        && !entry.is_error
+                    {
+                        if let Some(summary) = glob_summary(&entry.content) {
+                            lines.push(Line::from(vec![
+                                Span::styled("  ⎿ ", Style::default().fg(theme::DIM)),
+                                Span::styled(summary, Style::default().fg(theme::MUTED)),
+                            ]));
+                        }
+                        for line in entry.content.lines() {
+                            lines.push(Line::from(vec![
+                                Span::styled("    ", Style::default().fg(theme::DIM)),
+                                Span::styled(line.to_string(), Style::default().fg(theme::MUTED)),
                             ]));
                         }
                     } else if !entry.content.is_empty() {
