@@ -2,6 +2,8 @@
 
 use std::{cell::Cell, time::Instant};
 
+use crate::clipboard::ClipboardLease;
+
 use super::{oauth_prompt::OAuthPrompt, setup_wizard::SetupWizardPanel};
 
 /// App 级 UI 状态：跨 session 共享的全局 UI 临时状态。
@@ -22,6 +24,10 @@ pub struct GlobalUiState {
     pub rewind_busy_hint_until: Option<Instant>,
     pub quit_requested: bool,
     pub mouse_available: Option<bool>,
+    /// Linux X11/Wayland 剪贴板所有权持有。剪贴板内容必须由写入它的进程持有，
+    /// 否则 TUI 退出后内容就消失。每次复制都更新这个 lease，让最新内容存活到
+    /// TUI 退出。其他平台（macOS/Windows）lease 为 None。
+    pub clipboard_lease: Option<ClipboardLease>,
 }
 
 impl Default for GlobalUiState {
@@ -43,6 +49,7 @@ impl GlobalUiState {
             rewind_busy_hint_until: None,
             quit_requested: false,
             mouse_available: None,
+            clipboard_lease: None,
         }
     }
 }

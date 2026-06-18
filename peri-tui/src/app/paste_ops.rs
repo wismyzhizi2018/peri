@@ -3,8 +3,14 @@ use super::{App, PastedTextBlock};
 impl App {
     pub(crate) fn paste_text_into_textarea(&mut self, text: &str) {
         let text = normalize_paste_text(text);
+
+        // 单行粘贴：尝试识别为路径并归一化（file:// / UNC / Windows drive / shell 转义）
+        // 多行文本直接走多行粘贴流程
         if paste_line_count(&text) <= 1 {
-            self.session_mgr.current_mut().ui.textarea.insert_str(&text);
+            let normalized = crate::clipboard::path_normalize::normalize_pasted_path(&text)
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or(text);
+            self.session_mgr.current_mut().ui.textarea.insert_str(&normalized);
             return;
         }
 

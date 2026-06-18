@@ -63,6 +63,7 @@ thiserror.workspace = true
 futures-util = "0.3"
 walkdir = "2.5"
 fuzzy-matcher = "0.3"
+url = { workspace = true }
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
 mimalloc.workspace = true
@@ -70,6 +71,9 @@ libmimalloc-sys.workspace = true
 tikv-jemallocator.workspace = true
 tikv-jemalloc-ctl.workspace = true
 tikv-jemalloc-sys.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_System_Console", "Win32_System_ProcessStatus", "Win32_System_Threading"] }
