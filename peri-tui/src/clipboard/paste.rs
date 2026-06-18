@@ -11,6 +11,7 @@
 //!    通过 powershell.exe Get-Clipboard -Format Image 把图保存到临时 PNG，
 //!    再把 Windows 路径转 WSL 路径读取。
 
+#[cfg(target_os = "linux")]
 use std::path::PathBuf;
 
 use anyhow::Result;
