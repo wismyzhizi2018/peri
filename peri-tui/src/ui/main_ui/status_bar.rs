@@ -37,9 +37,28 @@ fn render_first_row(f: &mut Frame, app: &App, area: Rect) {
         if is_highlight {
             style = style.add_modifier(Modifier::BOLD | Modifier::SLOW_BLINK);
         }
+        spans.push(Span::styled(format!(" {}", app.services.model_name), style));
+    }
+
+    // 进程资源监控
+    {
+        let mut monitor = app.services.resource_monitor.lock();
+        monitor.refresh_if_needed();
+        let mem = monitor.memory_mb();
+        drop(monitor); // 释放锁后再渲染
+
+        let mem_color = if mem > 1024 {
+            theme::ERROR
+        } else if mem > 512 {
+            theme::WARNING
+        } else {
+            theme::SAGE
+        };
+
+        spans.push(Span::styled(" · ", Style::default().fg(theme::MUTED)));
         spans.push(Span::styled(
-            format!(" [{}]", app.services.model_name),
-            style,
+            format!("MEM {}MB", mem),
+            Style::default().fg(mem_color),
         ));
     }
 
