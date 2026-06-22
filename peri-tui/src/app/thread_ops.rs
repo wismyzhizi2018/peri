@@ -153,6 +153,12 @@ impl App {
             .messages
             .scrollback_committed_lines = 0;
         self.session_mgr.current_mut().ui.scrollbar_min_offset = 0;
+        // Phase 5-7 scrollbar interaction state（避免跨 session 残留）
+        self.session_mgr.current_mut().ui.last_message_at = None;
+        self.session_mgr.current_mut().ui.last_bar_click_at = None;
+        self.session_mgr.current_mut().ui.last_bar_click_y = None;
+        self.session_mgr.current_mut().ui.messages_scrollbar_dragging = false;
+        self.session_mgr.current_mut().ui.messages_scrollbar_metrics = None;
 
         // 使用统一管线转换：与流式路径共享同一个 messages_to_view_models()
         let mut view_msgs = message_pipeline::MessagePipeline::messages_to_view_models(
@@ -299,6 +305,12 @@ impl App {
             .messages
             .scrollback_committed_lines = 0;
         self.session_mgr.current_mut().ui.scrollbar_min_offset = 0;
+        // Phase 5-7 scrollbar interaction state（避免跨 session 残留）
+        self.session_mgr.current_mut().ui.last_message_at = None;
+        self.session_mgr.current_mut().ui.last_bar_click_at = None;
+        self.session_mgr.current_mut().ui.last_bar_click_y = None;
+        self.session_mgr.current_mut().ui.messages_scrollbar_dragging = false;
+        self.session_mgr.current_mut().ui.messages_scrollbar_metrics = None;
         self.session_mgr
             .current_mut()
             .agent
