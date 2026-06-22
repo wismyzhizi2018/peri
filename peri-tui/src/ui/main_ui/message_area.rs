@@ -198,7 +198,7 @@ pub(crate) fn render_messages(
     // Phase 4：渲染 ▲/▼ 按钮（与 panel scrollbar 体验一致），点击滚动一屏。
     // Phase 5：follow=false 时若最近 500ms 内有新内容到达，thumb 切到 ACCENT
     //          形成"闪烁"反馈（MUTED → ACCENT 视觉跳变）。
-    if max_scroll > min_scroll && inner.height > 0 {
+    if max_scroll > min_scroll && inner.height > 0 && inner.width > 0 {
         let scroll_range = max_scroll.saturating_sub(min_scroll);
         let position = offset.saturating_sub(min_scroll).min(scroll_range);
         let mut scrollbar_state = ScrollbarState::new(scroll_range)
