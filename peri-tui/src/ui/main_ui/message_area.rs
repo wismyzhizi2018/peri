@@ -280,30 +280,21 @@ pub(crate) fn render_messages(
         if app.session_mgr.current().ui.messages_scrollbar_dragging {
             let total = max_scroll;
             let current = offset.min(total);
-            let label = format!(" {}/{} ", current, total);
+            let label = format!("{}/{}", current, total);
             let label_width = label.chars().count() as u16;
-            let popover_x = bar_area.x.saturating_sub(label_width);
             let popover_y = bar_area.y + bar_area.height / 2;
-            // 浮层宽度钳位：label_width 但不超过 bar 左侧可用空间
-            let actual_width = label_width.min(bar_area.x);
-            if actual_width > 0 {
+            // 窄终端保护：bar 左侧可用空间不足 label 宽度 + 至少 1 列空隙时
+            // 不渲染浮层（避免截断后 `1234` 这种无 `/` 的无意义显示）
+            if bar_area.x > label_width {
+                let popover_x = bar_area.x - label_width - 1;
                 let popover_area = Rect {
                     x: popover_x,
                     y: popover_y,
-                    width: actual_width,
+                    width: label_width,
                     height: 1,
                 };
-                // 截取 label 右侧 actual_width 个字符（保持 [N/M] 结构）
-                let visible_label: String = label
-                    .chars()
-                    .rev()
-                    .take(actual_width as usize)
-                    .collect::<Vec<_>>()
-                    .into_iter()
-                    .rev()
-                    .collect();
                 let popover = Paragraph::new(Text::from(Span::styled(
-                    visible_label,
+                    label,
                     Style::default()
                         .fg(theme::TEXT)
                         .bg(theme::CURSOR_BG)
