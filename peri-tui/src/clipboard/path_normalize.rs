@@ -184,7 +184,27 @@ fn looks_like_path(s: &str) -> bool {
 }
 
 fn contains_shell_metacharacters(s: &str) -> bool {
-    s.chars().any(|c| matches!(c, '$' | '`' | '|' | '>' | '<' | ';' | '&' | '*' | '?' | '(' | ')' | '[' | ']' | '{' | '}' | '!' | '~'))
+    s.chars().any(|c| {
+        matches!(
+            c,
+            '$' | '`'
+                | '|'
+                | '>'
+                | '<'
+                | ';'
+                | '&'
+                | '*'
+                | '?'
+                | '('
+                | ')'
+                | '['
+                | ']'
+                | '{'
+                | '}'
+                | '!'
+                | '~'
+        )
+    })
 }
 
 #[cfg(test)]

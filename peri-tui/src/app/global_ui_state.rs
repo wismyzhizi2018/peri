@@ -23,7 +23,6 @@ pub struct GlobalUiState {
     /// 运行中按 ESC 的 rewind 提示截止时间
     pub rewind_busy_hint_until: Option<Instant>,
     pub quit_requested: bool,
-    pub mouse_available: Option<bool>,
     /// Linux X11/Wayland 剪贴板所有权持有。剪贴板内容必须由写入它的进程持有，
     /// 否则 TUI 退出后内容就消失。每次复制都更新这个 lease，让最新内容存活到
     /// TUI 退出。其他平台（macOS/Windows）lease 为 None。
@@ -48,7 +47,6 @@ impl GlobalUiState {
             rewind_pending_since: None,
             rewind_busy_hint_until: None,
             quit_requested: false,
-            mouse_available: None,
             clipboard_lease: None,
         }
     }

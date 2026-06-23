@@ -33,8 +33,11 @@ async fn measure_headless_app_30_rounds_rss() {
 
     let baseline = current_rss_kb();
     println!("\n=== Headless App 30 轮真实 RSS 增长 ===");
-    println!("基线 RSS（含 App + 渲染线程）: {} KB ({:.2} MB)",
-        baseline, baseline as f64 / 1024.0);
+    println!(
+        "基线 RSS（含 App + 渲染线程）: {} KB ({:.2} MB)",
+        baseline,
+        baseline as f64 / 1024.0
+    );
     println!("| 轮 | RSS (KB) | 本轮+ (KB) | 累计+ (KB) | view_messages |");
     println!("|----|----------|------------|------------|---------------|");
 
@@ -100,8 +103,14 @@ fn optimized(data: &[u8]) -> Option<usize> {{
         let total = rss.saturating_sub(baseline);
         let vm_len = app.session_mgr.current().messages.view_messages.len();
         if i == 0 || (i + 1) % 3 == 0 {
-            println!("| {:2} | {:8} | {:10} | {:10} | {:13} |",
-                i + 1, rss, delta, total, vm_len);
+            println!(
+                "| {:2} | {:8} | {:10} | {:10} | {:13} |",
+                i + 1,
+                rss,
+                delta,
+                total,
+                vm_len
+            );
             prev = rss;
         }
     }
@@ -111,11 +120,21 @@ fn optimized(data: &[u8]) -> Option<usize> {{
     let final_rss = current_rss_kb();
     let total = final_rss.saturating_sub(baseline);
     println!("\n=== 完成 30 轮 ===");
-    println!("最终 RSS: {} KB ({:.2} MB)", final_rss, final_rss as f64 / 1024.0);
+    println!(
+        "最终 RSS: {} KB ({:.2} MB)",
+        final_rss,
+        final_rss as f64 / 1024.0
+    );
     println!("累计增长: {} KB ({:.2} MB)", total, total as f64 / 1024.0);
     println!("平均每轮: {:.2} KB", total as f64 / 30.0);
-    println!("view_messages len: {}", app.session_mgr.current().messages.view_messages.len());
-    println!("origin_messages len: {}", app.session_mgr.current().agent.origin_messages.len());
+    println!(
+        "view_messages len: {}",
+        app.session_mgr.current().messages.view_messages.len()
+    );
+    println!(
+        "origin_messages len: {}",
+        app.session_mgr.current().agent.origin_messages.len()
+    );
 
     // 最终一次绘制 + 测量
     let _ = handle.terminal.draw(|f| main_ui::render(f, &mut app));
@@ -136,7 +155,11 @@ async fn measure_headless_app_with_tool_calls() {
 
     let baseline = current_rss_kb();
     println!("\n=== Headless App 含工具调用 30 轮 ===");
-    println!("基线 RSS: {} KB ({:.2} MB)", baseline, baseline as f64 / 1024.0);
+    println!(
+        "基线 RSS: {} KB ({:.2} MB)",
+        baseline,
+        baseline as f64 / 1024.0
+    );
     println!("| 轮 | RSS (KB) | 累计+ (KB) |");
     println!("|----|----------|------------|");
 
@@ -193,7 +216,11 @@ async fn measure_headless_app_with_tool_calls() {
     let final_rss = current_rss_kb();
     let total = final_rss.saturating_sub(baseline);
     println!("\n=== 完成 30 轮（含工具调用） ===");
-    println!("最终 RSS: {} KB ({:.2} MB)", final_rss, final_rss as f64 / 1024.0);
+    println!(
+        "最终 RSS: {} KB ({:.2} MB)",
+        final_rss,
+        final_rss as f64 / 1024.0
+    );
     println!("累计增长: {} KB ({:.2} MB)", total, total as f64 / 1024.0);
     println!("平均每轮: {:.2} KB", total as f64 / 30.0);
 

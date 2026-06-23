@@ -543,7 +543,9 @@ fn try_delete_image_placeholder_backspace(app: &mut App) -> bool {
     // 整体删除：先把光标移到占位符开头，再删 placeholder_len 个字符
     let metadata = &mut app.session_mgr.current_mut().metadata;
     let before_len = metadata.pending_attachments.len();
-    metadata.pending_attachments.retain(|a| a.image_id != image_id);
+    metadata
+        .pending_attachments
+        .retain(|a| a.image_id != image_id);
     let attachment_removed = metadata.pending_attachments.len() < before_len;
 
     let textarea = &mut app.session_mgr.current_mut().ui.textarea;
@@ -554,14 +556,13 @@ fn try_delete_image_placeholder_backspace(app: &mut App) -> bool {
     let deleted = textarea.delete_str(placeholder_len);
 
     if !attachment_removed && !deleted {
-        tracing::debug!(
-            "Backspace 拦截占位符 image_id={image_id} 但未找到对应附件/未删除文本"
-        );
+        tracing::debug!("Backspace 拦截占位符 image_id={image_id} 但未找到对应附件/未删除文本");
     }
     true
 }
 
-fn handle_ctrl_v(app: &mut App) {    // 优先尝试图片粘贴（file_list / get_image / WSL PowerShell fallback），
+fn handle_ctrl_v(app: &mut App) {
+    // 优先尝试图片粘贴（file_list / get_image / WSL PowerShell fallback），
     // 失败时再退回文本粘贴。
     match crate::clipboard::paste::paste_image_as_png_base64() {
         Ok((b64, sz, _w, _h)) => {

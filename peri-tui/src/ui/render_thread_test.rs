@@ -369,7 +369,8 @@ async fn test_resize_coalesce_under_pressure() {
 fn full_wrap(vms: &[MessageViewModel], width: u16) -> (usize, Vec<super::WrappedLineInfo>) {
     let mut all_lines: Vec<Line<'static>> = Vec::new();
     for vm in vms {
-        let mut lines = super::RenderTask::render_one(&mut vm.clone(), 0, width as usize, false, false);
+        let mut lines =
+            super::RenderTask::render_one(&mut vm.clone(), 0, width as usize, false, false);
         all_lines.append(&mut lines);
     }
     // dedup 连续空行
@@ -585,9 +586,7 @@ async fn test_toggle_detail_preserves_assistant_text() {
     );
 
     // 步骤 3：ToggleDetail(true)
-    tx.send(RenderEvent::ToggleDetail(true))
-        .await
-        .unwrap();
+    tx.send(RenderEvent::ToggleDetail(true)).await.unwrap();
     wait_render().await;
 
     {
@@ -608,9 +607,7 @@ async fn test_toggle_detail_preserves_assistant_text() {
     }
 
     // 步骤 4：ToggleDetail(false)
-    tx.send(RenderEvent::ToggleDetail(false))
-        .await
-        .unwrap();
+    tx.send(RenderEvent::ToggleDetail(false)).await.unwrap();
     wait_render().await;
 
     {
@@ -652,11 +649,7 @@ async fn test_toggle_detail_reconcile_path_preserves_content() {
 
     // 通过 reconcile 路径（from_base_message_with_cwd）创建 VM
     let vm_user1 = MessageViewModel::from_base_message_with_cwd(&user1, &[], None);
-    let vm_ai1 = MessageViewModel::from_base_message_with_cwd(
-        &ai1,
-        &[],
-        None,
-    );
+    let vm_ai1 = MessageViewModel::from_base_message_with_cwd(&ai1, &[], None);
 
     // 步骤 1：初始 Rebuild（模拟 agent 完成后的 render_rebuild）
     tx.send(RenderEvent::Rebuild(vec![vm_user1.clone(), vm_ai1]))
@@ -686,9 +679,13 @@ async fn test_toggle_detail_reconcile_path_preserves_content() {
 
     // 模拟第二轮 RebuildAll：第一轮保留为 prefix，第二轮追加
     let vm_ai1_clone = MessageViewModel::from_base_message_with_cwd(&ai1, &[], None);
-    tx.send(RenderEvent::Rebuild(vec![vm_user1.clone(), vm_ai1_clone, vm_user2]))
-        .await
-        .unwrap();
+    tx.send(RenderEvent::Rebuild(vec![
+        vm_user1.clone(),
+        vm_ai1_clone,
+        vm_user2,
+    ]))
+    .await
+    .unwrap();
     wait_render().await;
 
     let round2_text_count = {
@@ -708,9 +705,7 @@ async fn test_toggle_detail_reconcile_path_preserves_content() {
     );
 
     // 步骤 3：ToggleDetail(true) — 切到详细模式
-    tx.send(RenderEvent::ToggleDetail(true))
-        .await
-        .unwrap();
+    tx.send(RenderEvent::ToggleDetail(true)).await.unwrap();
     wait_render().await;
 
     let detail_text_count = {
@@ -737,11 +732,7 @@ async fn test_toggle_detail_reconcile_path_preserves_content() {
         let c = cache.read();
         c.lines
             .iter()
-            .filter(|l| {
-                l.spans
-                    .iter()
-                    .any(|s| s.content.contains("思考过程"))
-            })
+            .filter(|l| l.spans.iter().any(|s| s.content.contains("思考过程")))
             .count()
     };
     assert!(
@@ -750,9 +741,7 @@ async fn test_toggle_detail_reconcile_path_preserves_content() {
     );
 
     // 步骤 4：ToggleDetail(false) — 切回普通模式
-    tx.send(RenderEvent::ToggleDetail(false))
-        .await
-        .unwrap();
+    tx.send(RenderEvent::ToggleDetail(false)).await.unwrap();
     wait_render().await;
 
     // ★ 核心断言：切回普通模式后，第一轮的 Text 内容必须保留
@@ -792,11 +781,7 @@ async fn test_toggle_detail_reconcile_path_preserves_content() {
         let c = cache.read();
         c.lines
             .iter()
-            .filter(|l| {
-                l.spans
-                    .iter()
-                    .any(|s| s.content.contains("思考过程"))
-            })
+            .filter(|l| l.spans.iter().any(|s| s.content.contains("思考过程")))
             .count()
     };
     // 普通模式下 reasoning 折叠，不应显示完整内容（但摘要行 "Thought for X chars" 应存在）
@@ -804,11 +789,7 @@ async fn test_toggle_detail_reconcile_path_preserves_content() {
         let c = cache.read();
         c.lines
             .iter()
-            .filter(|l| {
-                l.spans
-                    .iter()
-                    .any(|s| s.content.contains("Thought for"))
-            })
+            .filter(|l| l.spans.iter().any(|s| s.content.contains("Thought for")))
             .count()
     };
     assert!(

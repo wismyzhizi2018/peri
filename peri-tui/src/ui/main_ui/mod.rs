@@ -267,7 +267,14 @@ fn render_session_column(f: &mut Frame, app: &mut App, area: Rect) {
     // 输入框渲染
     let cursor_visible = app.session_mgr.current().ui.cursor_visible;
     let textarea_ref = &app.session_mgr.current_mut().ui.textarea;
-    render_textarea(f, textarea_ref, chunks[5], shell_mode, app.focused, cursor_visible);
+    render_textarea(
+        f,
+        textarea_ref,
+        chunks[5],
+        shell_mode,
+        app.focused,
+        cursor_visible,
+    );
     app.session_mgr.current_mut().ui.textarea_area = Some(chunks[5]);
 
     // 输入提示符
@@ -350,10 +357,7 @@ fn textarea_prompt(mode: TextareaShellMode, _loading: bool) -> (&'static str, St
                 .add_modifier(Modifier::BOLD),
         ),
         TextareaShellMode::Stdin | TextareaShellMode::None => {
-            (
-                "❯",
-                Style::default().fg(theme::MUTED),
-            )
+            ("❯", Style::default().fg(theme::MUTED))
         }
     }
 }
@@ -383,7 +387,12 @@ fn render_textarea(
 
 /// 在 buffer 中绘制 │ 细线光标
 /// 始终右移 cells（防止抖动），仅 cursor_visible 时画 │，否则留空格
-fn draw_bar_cursor(buf: &mut Buffer, textarea: &TextArea<'static>, area: Rect, cursor_visible: bool) {
+fn draw_bar_cursor(
+    buf: &mut Buffer,
+    textarea: &TextArea<'static>,
+    area: Rect,
+    cursor_visible: bool,
+) {
     let (data_row, data_col) = textarea.cursor();
 
     let inner_x = area.x + 2;
@@ -395,7 +404,11 @@ fn draw_bar_cursor(buf: &mut Buffer, textarea: &TextArea<'static>, area: Rect, c
         return;
     }
 
-    let line = textarea.lines().get(data_row).map(|s| s.as_str()).unwrap_or("");
+    let line = textarea
+        .lines()
+        .get(data_row)
+        .map(|s| s.as_str())
+        .unwrap_or("");
     // data_col 是字符索引，需转换为显示列（累加 unicode-width）
     let display_col: usize = line
         .chars()

@@ -22,7 +22,9 @@ fn build_text_only_session(rounds: usize) -> Vec<BaseMessage> {
 fn build_small_tool_session(rounds: usize) -> Vec<BaseMessage> {
     let mut msgs = Vec::new();
     for i in 0..rounds {
-        msgs.push(BaseMessage::human(format!("用户问题 {i}：读取 config.json 并告诉我里面的字段")));
+        msgs.push(BaseMessage::human(format!(
+            "用户问题 {i}：读取 config.json 并告诉我里面的字段"
+        )));
         msgs.push(BaseMessage::ai_from_blocks(vec![
             ContentBlock::text("我来读取文件。"),
             ContentBlock::ToolUse {
@@ -38,7 +40,9 @@ fn build_small_tool_session(rounds: usize) -> Vec<BaseMessage> {
             format!("toolu_{i}"),
             MessageContent::text(body),
         ));
-        msgs.push(BaseMessage::ai(format!("读取完成，第 {i} 个配置文件包含字段 name/version/dependencies/timeout_ms。")));
+        msgs.push(BaseMessage::ai(format!(
+            "读取完成，第 {i} 个配置文件包含字段 name/version/dependencies/timeout_ms。"
+        )));
     }
     msgs
 }
@@ -47,7 +51,9 @@ fn build_small_tool_session(rounds: usize) -> Vec<BaseMessage> {
 fn build_large_tool_session(rounds: usize) -> Vec<BaseMessage> {
     let mut msgs = Vec::new();
     for i in 0..rounds {
-        msgs.push(BaseMessage::human(format!("用户问题 {i}：阅读这个大文件并总结")));
+        msgs.push(BaseMessage::human(format!(
+            "用户问题 {i}：阅读这个大文件并总结"
+        )));
         msgs.push(BaseMessage::ai_from_blocks(vec![
             ContentBlock::text("开始处理。"),
             ContentBlock::ToolUse {
@@ -57,14 +63,19 @@ fn build_large_tool_session(rounds: usize) -> Vec<BaseMessage> {
             },
         ]));
         // 50KB 大文件内容
-        let big_body: String = std::iter::repeat_n("// 这是模拟的大文件内容行，用于测大 ToolResult 内存占用。\n", 1000)
-            .map(|line| format!("{line}# round {i}"))
-            .collect();
+        let big_body: String = std::iter::repeat_n(
+            "// 这是模拟的大文件内容行，用于测大 ToolResult 内存占用。\n",
+            1000,
+        )
+        .map(|line| format!("{line}# round {i}"))
+        .collect();
         msgs.push(BaseMessage::tool_result(
             format!("toolu_{i}"),
             MessageContent::text(big_body),
         ));
-        msgs.push(BaseMessage::ai(format!("第 {i} 个大文件总结：包含约 1000 行注释，主题是 Rust 内存管理。")));
+        msgs.push(BaseMessage::ai(format!(
+            "第 {i} 个大文件总结：包含约 1000 行注释，主题是 Rust 内存管理。"
+        )));
     }
     msgs
 }
@@ -195,16 +206,17 @@ fn measure_llm_client_creation_cost() {
 
     let rss_before = current_rss_kb();
     println!("\n=== LLM Client 创建代价 ===");
-    println!("基线 RSS: {} KB ({:.2} MB)", rss_before, rss_before as f64 / 1024.0);
+    println!(
+        "基线 RSS: {} KB ({:.2} MB)",
+        rss_before,
+        rss_before as f64 / 1024.0
+    );
 
     // 创建 10 个 ChatAnthropic（模拟 10 轮 prompt 各创建一个 model）
     let mut anthropic_clients = Vec::new();
     let rss_after_1 = {
         for i in 0..10 {
-            anthropic_clients.push(ChatAnthropic::new(
-                format!("sk-test-{i}"),
-                "claude-test",
-            ));
+            anthropic_clients.push(ChatAnthropic::new(format!("sk-test-{i}"), "claude-test"));
         }
         current_rss_kb()
     };
@@ -220,10 +232,7 @@ fn measure_llm_client_creation_cost() {
     let mut openai_clients = Vec::new();
     let rss_after_2 = {
         for i in 0..10 {
-            openai_clients.push(ChatOpenAI::new(
-                format!("sk-openai-{i}"),
-                "gpt-test",
-            ));
+            openai_clients.push(ChatOpenAI::new(format!("sk-openai-{i}"), "gpt-test"));
         }
         current_rss_kb()
     };
@@ -255,8 +264,8 @@ fn measure_llm_client_creation_cost() {
 fn measure_ratatui_text_render_cost() {
     // 测真实 ratatui Text<'static> 渲染占用
     // 模拟 50 条消息，每条都构造完整的 Text<'static> 含 Spans/Style/Line
-    use ratatui::text::{Line, Span, Text};
     use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::{Line, Span, Text};
 
     let baseline = current_rss_kb();
     println!("\n=== ratatui Text<'static> 真实渲染占用 ===");
@@ -267,12 +276,12 @@ fn measure_ratatui_text_render_cost() {
     for i in 0..50 {
         let mut lines: Vec<Line<'static>> = Vec::new();
         // 标题行（粗体 + 颜色）
-        lines.push(Line::from(vec![
-            Span::styled(
-                format!("## 第 {i} 轮分析结果"),
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-            ),
-        ]));
+        lines.push(Line::from(vec![Span::styled(
+            format!("## 第 {i} 轮分析结果"),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )]));
         // 5 行正文
         for j in 0..5 {
             lines.push(Line::from(vec![Span::raw(format!(
@@ -296,18 +305,21 @@ fn measure_ratatui_text_render_cost() {
     let delta_50 = after_50.saturating_sub(baseline);
     println!(
         "50 条 Text<'static> 后: RSS = {} KB (+{} KB = {:.2} MB, 即 {:.2} KB/条)",
-        after_50, delta_50, delta_50 as f64 / 1024.0, delta_50 as f64 / 50.0,
+        after_50,
+        delta_50,
+        delta_50 as f64 / 1024.0,
+        delta_50 as f64 / 50.0,
     );
 
     // 翻倍：100 条
     for i in 50..100 {
         let mut lines: Vec<Line<'static>> = Vec::new();
-        lines.push(Line::from(vec![
-            Span::styled(
-                format!("## 第 {i} 轮分析结果"),
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-            ),
-        ]));
+        lines.push(Line::from(vec![Span::styled(
+            format!("## 第 {i} 轮分析结果"),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )]));
         for j in 0..5 {
             lines.push(Line::from(vec![Span::raw(format!(
                 "  这是第 {j} 行内容，包含一些技术细节和说明文字，长度大约 80-120 字符。"
@@ -320,7 +332,10 @@ fn measure_ratatui_text_render_cost() {
     let delta_100 = after_100.saturating_sub(after_50);
     println!(
         "再加 50 条（共 100）: RSS = {} KB (+{} KB = {:.2} MB, 即 {:.2} KB/条)",
-        after_100, delta_100, delta_100 as f64 / 1024.0, delta_100 as f64 / 50.0,
+        after_100,
+        delta_100,
+        delta_100 as f64 / 1024.0,
+        delta_100 as f64 / 50.0,
     );
 
     drop(all_texts);
@@ -349,7 +364,11 @@ fn measure_50_rounds_real_rss_growth() {
 
     let baseline = current_rss_kb();
     println!("\n=== 50 轮累积测试（真实 RSS）===");
-    println!("轮 0（基线）: RSS = {} KB ({:.2} MB)", baseline, baseline as f64 / 1024.0);
+    println!(
+        "轮 0（基线）: RSS = {} KB ({:.2} MB)",
+        baseline,
+        baseline as f64 / 1024.0
+    );
 
     let mut prev_rss = baseline;
     for round in 1..=50 {
@@ -360,13 +379,11 @@ fn measure_50_rounds_real_rss_growth() {
         let ai_thinking = BaseMessage::ai(format!(
             "分析第 {round} 轮的问题，主要瓶颈在以下几个方面..."
         ));
-        let tool_use = BaseMessage::ai_from_blocks(vec![
-            ContentBlock::ToolUse {
-                id: format!("toolu_{round}"),
-                name: "Read".to_string(),
-                input: serde_json::json!({ "file_path": format!("/tmp/file_{round}.rs") }),
-            },
-        ]);
+        let tool_use = BaseMessage::ai_from_blocks(vec![ContentBlock::ToolUse {
+            id: format!("toolu_{round}"),
+            name: "Read".to_string(),
+            input: serde_json::json!({ "file_path": format!("/tmp/file_{round}.rs") }),
+        }]);
         let tool_result = BaseMessage::tool_result(
             format!("toolu_{round}"),
             MessageContent::text(
@@ -376,7 +393,13 @@ fn measure_50_rounds_real_rss_growth() {
         let ai_summary = BaseMessage::ai(format!("第 {round} 轮分析完成，建议改用迭代器链。"));
 
         // 双存储：两边都 extend（clone 一份）
-        let batch = vec![human.clone(), ai_thinking.clone(), tool_use.clone(), tool_result.clone(), ai_summary.clone()];
+        let batch = vec![
+            human.clone(),
+            ai_thinking.clone(),
+            tool_use.clone(),
+            tool_result.clone(),
+            ai_summary.clone(),
+        ];
         origin_messages.extend(batch.clone());
         completed.extend(batch.clone());
 
@@ -395,7 +418,11 @@ fn measure_50_rounds_real_rss_growth() {
             let total = rss.saturating_sub(baseline);
             println!(
                 "轮 {round:>2}: RSS = {} KB ({:>6.2} MB)  +{} KB（本轮）累计 +{} KB ({:.2} MB)",
-                rss, rss as f64 / 1024.0, delta, total, total as f64 / 1024.0,
+                rss,
+                rss as f64 / 1024.0,
+                delta,
+                total,
+                total as f64 / 1024.0,
             );
             prev_rss = rss;
         }
@@ -421,7 +448,10 @@ fn measure_50_rounds_real_rss_growth() {
 fn measure_system_prompt_build_cost() {
     // 测量 build_system_prompt 的内存代价（frozen 但每轮可能重算）
     let rss_before = current_rss_kb();
-    println!("\n=== System Prompt 构建代价 ===\n基线 RSS: {} KB", rss_before);
+    println!(
+        "\n=== System Prompt 构建代价 ===\n基线 RSS: {} KB",
+        rss_before
+    );
 
     // 强制分配 ~1MB 字符串模拟 system prompt
     let mut prompts = Vec::new();

@@ -42,9 +42,11 @@ fn feed_one_round(
 
     // 模拟流式 chunk（每 100 字节一个 chunk，共 10 个）
     let chunk_size = 100;
-    let chunks: Vec<&str> = ai_text.as_bytes().chunks(chunk_size).map(|b| {
-        std::str::from_utf8(b).unwrap_or("")
-    }).collect();
+    let chunks: Vec<&str> = ai_text
+        .as_bytes()
+        .chunks(chunk_size)
+        .map(|b| std::str::from_utf8(b).unwrap_or(""))
+        .collect();
     for chunk in chunks {
         if chunk.is_empty() {
             continue;
@@ -74,7 +76,11 @@ fn measure_pipeline_50_rounds_rss() {
     let baseline = current_rss_kb();
 
     println!("\n=== TUI MessagePipeline 50 轮真实 RSS 增长 ===");
-    println!("基线 RSS: {} KB ({:.2} MB)", baseline, baseline as f64 / 1024.0);
+    println!(
+        "基线 RSS: {} KB ({:.2} MB)",
+        baseline,
+        baseline as f64 / 1024.0
+    );
     println!("| 轮 | RSS (KB) | 本轮+ (KB) | 累计+ (KB) | actions 总数 |");
     println!("|----|----------|------------|------------|--------------|");
 
@@ -124,8 +130,14 @@ fn optimized(data: &[u8]) -> Option<usize> {{
         let delta = rss.saturating_sub(prev);
         let total = rss.saturating_sub(baseline);
         if i == 0 || (i + 1) % 5 == 0 {
-            println!("| {:2} | {:8} | {:10} | {:10} | {:12} |",
-                i + 1, rss, delta, total, action_count);
+            println!(
+                "| {:2} | {:8} | {:10} | {:10} | {:12} |",
+                i + 1,
+                rss,
+                delta,
+                total,
+                action_count
+            );
             prev = rss;
         }
         // 模拟 view_messages 累积：保留 actions
@@ -140,7 +152,10 @@ fn optimized(data: &[u8]) -> Option<usize> {{
     println!("平均每轮: {:.2} KB", total as f64 / 50.0);
     println!("最大单轮 actions 数: {}", max_actions);
     let (completed_count, completed_bytes) = pipeline.completed_stats();
-    println!("pipeline.completed: {} 条, {} bytes", completed_count, completed_bytes);
+    println!(
+        "pipeline.completed: {} 条, {} bytes",
+        completed_count, completed_bytes
+    );
 }
 
 #[test]
@@ -151,7 +166,11 @@ fn measure_pipeline_with_view_messages_50_rounds() {
     let baseline = current_rss_kb();
 
     println!("\n=== MessagePipeline + view_messages 累积（真实 TUI 模式） ===");
-    println!("基线 RSS: {} KB ({:.2} MB)", baseline, baseline as f64 / 1024.0);
+    println!(
+        "基线 RSS: {} KB ({:.2} MB)",
+        baseline,
+        baseline as f64 / 1024.0
+    );
     println!("| 轮 | RSS (KB) | 累计+ (KB) | view_messages len |");
     println!("|----|----------|------------|-------------------|");
 
@@ -187,7 +206,10 @@ fn optimized(data: &[u8]) -> Option<usize> {{
                 PipelineAction::AddMessage(vm) => {
                     view_messages.push(vm);
                 }
-                PipelineAction::RebuildAll { prefix_len, tail_vms } => {
+                PipelineAction::RebuildAll {
+                    prefix_len,
+                    tail_vms,
+                } => {
                     // 重建：保留前缀，替换尾部
                     view_messages.truncate(prefix_len);
                     view_messages.extend(tail_vms);
@@ -199,8 +221,13 @@ fn optimized(data: &[u8]) -> Option<usize> {{
         let rss = current_rss_kb();
         let total = rss.saturating_sub(baseline);
         if i == 0 || (i + 1) % 5 == 0 {
-            println!("| {:2} | {:8} | {:10} | {:17} |",
-                i + 1, rss, total, view_messages.len());
+            println!(
+                "| {:2} | {:8} | {:10} | {:17} |",
+                i + 1,
+                rss,
+                total,
+                view_messages.len()
+            );
         }
     }
 
@@ -212,7 +239,10 @@ fn optimized(data: &[u8]) -> Option<usize> {{
     println!("平均每轮: {:.2} KB", total as f64 / 50.0);
     println!("view_messages len: {}", view_messages.len());
     let (completed_count, completed_bytes) = pipeline.completed_stats();
-    println!("pipeline.completed: {} 条, {} bytes", completed_count, completed_bytes);
+    println!(
+        "pipeline.completed: {} 条, {} bytes",
+        completed_count, completed_bytes
+    );
 
     // 持有 view_messages 防止 drop
     std::mem::forget(view_messages);

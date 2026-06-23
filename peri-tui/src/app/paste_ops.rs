@@ -10,7 +10,11 @@ impl App {
             let normalized = crate::clipboard::path_normalize::normalize_pasted_path(&text)
                 .map(|p| p.to_string_lossy().into_owned())
                 .unwrap_or(text);
-            self.session_mgr.current_mut().ui.textarea.insert_str(&normalized);
+            self.session_mgr
+                .current_mut()
+                .ui
+                .textarea
+                .insert_str(&normalized);
             return;
         }
 

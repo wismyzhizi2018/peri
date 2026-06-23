@@ -148,10 +148,6 @@ impl App {
             .ephemeral_notes
             .clear();
         self.session_mgr.current_mut().agent.origin_messages = base_msgs.clone();
-        self.session_mgr
-            .current_mut()
-            .messages
-            .scrollback_committed_lines = 0;
         self.session_mgr.current_mut().ui.scrollbar_min_offset = 0;
 
         // 使用统一管线转换：与流式路径共享同一个 messages_to_view_models()
@@ -294,10 +290,6 @@ impl App {
             .ephemeral_notes
             .clear();
         self.session_mgr.current_mut().agent.origin_messages.clear();
-        self.session_mgr
-            .current_mut()
-            .messages
-            .scrollback_committed_lines = 0;
         self.session_mgr.current_mut().ui.scrollbar_min_offset = 0;
         self.session_mgr
             .current_mut()

@@ -69,15 +69,13 @@ async fn test_cancel_shell_command_aborts_task_and_replaces_pending_vm() {
     let abort_handle = task.abort_handle();
 
     app.session_mgr.current_mut().current_thread_id = Some(thread_id.clone());
-    app.session_mgr
-        .current_mut()
-        .messages
-        .view_messages
-        .push(MessageViewModel::shell_command_pending(
+    app.session_mgr.current_mut().messages.view_messages.push(
+        MessageViewModel::shell_command_pending(
             record_id.clone(),
             "sleep 60".to_string(),
             ".".to_string(),
-        ));
+        ),
+    );
     app.session_mgr.current_mut().shell_command = ShellCommandRuntime {
         stdin_tx: None,
         running_record_id: Some(record_id.clone()),
@@ -101,7 +99,10 @@ async fn test_cancel_shell_command_aborts_task_and_replaces_pending_vm() {
         !app.session_mgr.current().shell_command.is_running(),
         "取消后应清理 ShellCommandRuntime"
     );
-    assert!(!app.session_mgr.current().ui.loading, "取消后应退出 loading");
+    assert!(
+        !app.session_mgr.current().ui.loading,
+        "取消后应退出 loading"
+    );
     assert!(
         matches!(
             app.session_mgr.current().messages.view_messages.last(),

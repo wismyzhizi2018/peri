@@ -32,8 +32,8 @@ async fn measure_50_real_https_requests() {
         .unwrap_or_default();
     let base_url = std::env::var("ANTHROPIC_BASE_URL")
         .unwrap_or_else(|_| "https://api.anthropic.com".to_string());
-    let model = std::env::var("ANTHROPIC_MODEL")
-        .unwrap_or_else(|_| "claude-sonnet-4-6".to_string());
+    let model =
+        std::env::var("ANTHROPIC_MODEL").unwrap_or_else(|_| "claude-sonnet-4-6".to_string());
 
     if api_key.is_empty() {
         eprintln!("\n[SKIP] 未设置 ANTHROPIC_API_KEY/AUTH_TOKEN，跳过 50 轮真实 HTTPS 测试");
@@ -49,7 +49,11 @@ async fn measure_50_real_https_requests() {
 
     let baseline = current_rss_kb();
     println!("\n=== 50 轮真实 HTTPS 请求累积 ===");
-    println!("基线 RSS: {} KB ({:.2} MB)", baseline, baseline as f64 / 1024.0);
+    println!(
+        "基线 RSS: {} KB ({:.2} MB)",
+        baseline,
+        baseline as f64 / 1024.0
+    );
     println!("endpoint: {}", base_url);
     println!("model: {}", model);
 

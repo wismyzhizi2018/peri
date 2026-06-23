@@ -452,7 +452,7 @@ fn render_shell_command(
 pub fn render_view_model(
     vm: &MessageViewModel,
     _index: Option<usize>,
-    _width: usize,
+    width: usize,
     detail_mode: bool,
     tick: u64,
 ) -> Vec<Line<'static>> {
@@ -572,7 +572,9 @@ pub fn render_view_model(
                             tail_lines.as_deref()
                         };
                         if let Some(content_text) = content {
-                            let parsed = super::markdown::parse_markdown_default(content_text);
+                            // 减去前缀宽度（"  ⎿ " 或 "    " = 4 字符）
+                            let content_width = width.saturating_sub(4).max(20);
+                            let parsed = super::markdown::parse_markdown(content_text, content_width);
                             let dimmed = dim_markdown_lines(parsed);
                             for (i, mut line) in dimmed.into_iter().enumerate() {
                                 let prefix = if i == 0 { "  ⎿ " } else { "    " };
@@ -888,7 +890,7 @@ pub fn render_view_model(
                     if matches!(inner_vm, MessageViewModel::AssistantBubble { .. }) {
                         continue;
                     }
-                    let inner_lines = render_view_model(inner_vm, None, _width, detail_mode, tick);
+                    let inner_lines = render_view_model(inner_vm, None, width, detail_mode, tick);
                     if inner_lines.is_empty() {
                         continue;
                     }

@@ -29,8 +29,13 @@ fn current_rss_kb() -> usize {
 fn print_rss_delta(label: &str, baseline: &mut usize) {
     let now = current_rss_kb();
     let delta = now.saturating_sub(*baseline);
-    println!("    {:40} | RSS = {:7} KB | +{:6} KB ({:+.2} MB)",
-        label, now, delta, delta as f64 / 1024.0);
+    println!(
+        "    {:40} | RSS = {:7} KB | +{:6} KB ({:+.2} MB)",
+        label,
+        now,
+        delta,
+        delta as f64 / 1024.0
+    );
     *baseline = now;
 }
 
@@ -39,7 +44,11 @@ async fn stage_breakdown_first_round() {
     println!("\n=== TUI 首轮各阶段 RSS 精细分割 ===\n");
 
     let mut baseline = current_rss_kb();
-    println!("初始 RSS: {} KB ({:.2} MB)", baseline, baseline as f64 / 1024.0);
+    println!(
+        "初始 RSS: {} KB ({:.2} MB)",
+        baseline,
+        baseline as f64 / 1024.0
+    );
 
     // ── 阶段 1：创建 headless App ──
     println!("\n[阶段 1] 创建 App::new_headless");
@@ -72,7 +81,8 @@ async fn stage_breakdown_first_round() {
 
     // ── 阶段 3：含代码块的 chunk（触发 syntect 加载）──
     println!("\n[阶段 3] 含代码块的 chunk（应触发 syntect 懒加载）");
-    let code_chunk = "查看这段代码：\n\n```rust\nfn example() -> i32 {\n    let x = 42;\n    x * 2\n}\n```\n";
+    let code_chunk =
+        "查看这段代码：\n\n```rust\nfn example() -> i32 {\n    let x = 42;\n    x * 2\n}\n```\n";
     app.push_agent_event(AgentEvent::AssistantChunk {
         chunk: code_chunk.to_string(),
         source_agent_id: None,
@@ -95,7 +105,9 @@ async fn stage_breakdown_first_round() {
     // ── 阶段 4：StateSnapshot + Done ──
     println!("\n[阶段 4] StateSnapshot + Done");
     let user_msg = BaseMessage::human("用户问题");
-    let ai_msg = BaseMessage::ai("## 分析\n\n```rust\nfn example() -> i32 {\n    let x = 42;\n    x * 2\n}\n```\n");
+    let ai_msg = BaseMessage::ai(
+        "## 分析\n\n```rust\nfn example() -> i32 {\n    let x = 42;\n    x * 2\n}\n```\n",
+    );
     app.push_agent_event(AgentEvent::StateSnapshot(vec![user_msg, ai_msg]));
     print_rss_delta("push StateSnapshot", &mut baseline);
 
@@ -137,8 +149,12 @@ async fn stage_breakdown_first_round() {
     println!("\n=== 总结 ===");
     let final_rss = current_rss_kb();
     let initial = baseline;
-    println!("本轮测试从 {} KB 涨到 {} KB（{:.2} MB）",
-        initial, final_rss, (final_rss.saturating_sub(initial)) as f64 / 1024.0);
+    println!(
+        "本轮测试从 {} KB 涨到 {} KB（{:.2} MB）",
+        initial,
+        final_rss,
+        (final_rss.saturating_sub(initial)) as f64 / 1024.0
+    );
 
     std::mem::forget(app);
     std::mem::forget(handle);
@@ -152,7 +168,11 @@ async fn isolate_syntect_load_via_markdown() {
 
     println!("\n=== 反证：直接调 parse_markdown 测 syntect 加载 ===\n");
     let mut baseline = current_rss_kb();
-    println!("初始 RSS: {} KB ({:.2} MB)", baseline, baseline as f64 / 1024.0);
+    println!(
+        "初始 RSS: {} KB ({:.2} MB)",
+        baseline,
+        baseline as f64 / 1024.0
+    );
 
     let theme = DefaultMarkdownTheme;
     let md_simple = "# 简单标题\n\n这是纯文本，无代码块。\n";
@@ -172,8 +192,10 @@ async fn isolate_syntect_load_via_markdown() {
     print_rss_delta("parse_markdown（多语言代码块）", &mut baseline);
 
     println!("\n=== 总结 ===");
-    println!("纯文本 markdown 解析: {:.2} MB",
-        (current_rss_kb().saturating_sub(baseline)) as f64 / 1024.0);
+    println!(
+        "纯文本 markdown 解析: {:.2} MB",
+        (current_rss_kb().saturating_sub(baseline)) as f64 / 1024.0
+    );
     println!("首次代码块触发 syntect 加载: 见上方 +delta");
 
     std::mem::forget(_text1);

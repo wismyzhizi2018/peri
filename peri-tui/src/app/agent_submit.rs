@@ -32,11 +32,12 @@ impl App {
 
         // 按 textarea 中仍存在的 `[Image #N]` 占位符过滤附件；
         // 用户在 textarea 中删掉的占位符对应附件不发送
-        let active_attachments: Vec<&_> = crate::clipboard::image_placeholder::filter_by_placeholders(
-            &expanded_input,
-            &attachments,
-            |att| att.image_id,
-        );
+        let active_attachments: Vec<&_> =
+            crate::clipboard::image_placeholder::filter_by_placeholders(
+                &expanded_input,
+                &attachments,
+                |att| att.image_id,
+            );
 
         // 构建用于显示的文字（附件摘要追加在末尾）
         let display = if active_attachments.is_empty() {

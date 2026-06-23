@@ -6,10 +6,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::{
-    app::App,
-    ui::theme,
-};
+use crate::{app::App, ui::theme};
 
 pub(crate) fn render_status_bar(f: &mut Frame, app: &App, area: Rect) {
     let rows = Layout::default()
@@ -40,7 +37,10 @@ fn render_first_row(f: &mut Frame, app: &App, area: Rect) {
         if is_highlight {
             style = style.add_modifier(Modifier::BOLD | Modifier::SLOW_BLINK);
         }
-        spans.push(Span::styled(format!(" [{}]", app.services.model_name), style));
+        spans.push(Span::styled(
+            format!(" [{}]", app.services.model_name),
+            style,
+        ));
     }
 
     // 上下文进度条
@@ -77,7 +77,10 @@ fn render_first_row(f: &mut Frame, app: &App, area: Rect) {
         let mut cache = app.services.git_branch_cache.lock();
         if let Some(branch) = cache.get_or_refresh(&app.services.cwd) {
             spans.push(Span::styled(" git:(", Style::default().fg(theme::MAGENTA)));
-            spans.push(Span::styled(branch.to_string(), Style::default().fg(theme::CYAN)));
+            spans.push(Span::styled(
+                branch.to_string(),
+                Style::default().fg(theme::CYAN),
+            ));
             spans.push(Span::styled(")", Style::default().fg(theme::MAGENTA)));
         }
     }
@@ -163,7 +166,10 @@ fn render_second_row(f: &mut Frame, app: &App, area: Rect) {
         let agent = &app.session_mgr.current().agent;
         if let Some(ref active) = agent.active_tool {
             left_spans.push(Span::styled(" ◐ ", Style::default().fg(theme::YELLOW)));
-            left_spans.push(Span::styled(active.display.clone(), Style::default().fg(theme::CYAN)));
+            left_spans.push(Span::styled(
+                active.display.clone(),
+                Style::default().fg(theme::CYAN),
+            ));
             if active.args_summary.is_empty() {
                 left_spans.push(Span::styled("…", Style::default().fg(theme::DIM)));
             } else {
@@ -190,10 +196,7 @@ fn render_second_row(f: &mut Frame, app: &App, area: Rect) {
             }
         } else {
             // 默认占位：还没有执行过工具时显示
-            left_spans.push(Span::styled(
-                " ◐ Tool",
-                Style::default().fg(theme::DIM),
-            ));
+            left_spans.push(Span::styled(" ◐ Tool", Style::default().fg(theme::DIM)));
             has_content = true;
         }
     }
@@ -213,10 +216,7 @@ fn render_second_row(f: &mut Frame, app: &App, area: Rect) {
                 }
                 let display = format_tool_display_name(name);
                 left_spans.push(Span::styled("✓", Style::default().fg(theme::SAGE)));
-                left_spans.push(Span::styled(
-                    format!(" {}", display),
-                    Style::default(),
-                ));
+                left_spans.push(Span::styled(format!(" {}", display), Style::default()));
                 left_spans.push(Span::styled(
                     format!(" ×{}", count),
                     Style::default().fg(theme::DIM),
@@ -355,8 +355,7 @@ fn render_third_row(f: &mut Frame, app: &App, area: Rect) {
                 if let Some(until) = app.global_ui.mcp_ready_shown_until.get() {
                     if std::time::Instant::now() < until {
                         if has_content {
-                            left_spans
-                                .push(Span::styled(" · ", Style::default().fg(theme::MUTED)));
+                            left_spans.push(Span::styled(" · ", Style::default().fg(theme::MUTED)));
                         }
                         left_spans.push(Span::styled(
                             lc.tr_args(
@@ -375,10 +374,7 @@ fn render_third_row(f: &mut Frame, app: &App, area: Rect) {
                 // 截断过长的错误信息，移除内部技术细节
                 let simplified = simplify_mcp_error(msg);
                 left_spans.push(Span::styled(
-                    lc.tr_args(
-                        "statusbar-mcp-failed",
-                        &[("msg".into(), simplified.into())],
-                    ),
+                    lc.tr_args("statusbar-mcp-failed", &[("msg".into(), simplified.into())]),
                     Style::default().fg(theme::ERROR),
                 ));
             }
@@ -519,7 +515,6 @@ fn render_third_row(f: &mut Frame, app: &App, area: Rect) {
             }
         }
         None => {
-            let no_mouse = app.global_ui.mouse_available == Some(false);
             let lc = &app.services.lc;
             let hints = if app.session_mgr.current().session_panels.is_any_open() {
                 app.session_mgr
@@ -540,18 +535,12 @@ fn render_third_row(f: &mut Frame, app: &App, area: Rect) {
                     ("Home/End".to_string(), lc.tr("key-jump")),
                     ("PgUp/PgDn".to_string(), lc.tr("key-scroll")),
                 ]
-            } else if no_mouse {
-                vec![
-                    ("/".to_string(), lc.tr("key-command")),
-                    ("Shift+Enter".to_string(), lc.tr("key-newline")),
-                    ("Ctrl+T".to_string(), lc.tr("key-switch-model")),
-                    ("Ctrl+U/D".to_string(), lc.tr("key-scroll")),
-                ]
             } else {
                 vec![
                     ("/".to_string(), lc.tr("key-command")),
                     ("Shift+Enter".to_string(), lc.tr("key-newline")),
                     ("Ctrl+T".to_string(), lc.tr("key-switch-model")),
+                    ("Ctrl+U/D".to_string(), lc.tr("key-scroll")),
                 ]
             };
             format_hints(&hints, key_style, desc_style)
@@ -632,12 +621,7 @@ fn format_hints(
 }
 
 /// 渲染一行 spans，左侧左对齐，右侧右对齐，中间填充空格
-fn render_truncated_line(
-    f: &mut Frame,
-    left_spans: Vec<Span>,
-    right_spans: Vec<Span>,
-    area: Rect,
-) {
+fn render_truncated_line(f: &mut Frame, left_spans: Vec<Span>, right_spans: Vec<Span>, area: Rect) {
     let left_width: usize = left_spans.iter().map(|s| s.width()).sum();
     let right_width: usize = right_spans.iter().map(|s| s.width()).sum();
 

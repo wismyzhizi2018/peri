@@ -216,8 +216,13 @@ impl App {
                         .agent
                         .session_tool_stats
                         .entry(name.clone())
-                        .or_insert(0) + 1;
-                    self.session_mgr.current_mut().agent.session_tool_stats.insert(name.clone(), count);
+                        .or_insert(0)
+                        + 1;
+                    self.session_mgr
+                        .current_mut()
+                        .agent
+                        .session_tool_stats
+                        .insert(name.clone(), count);
                     tracing::debug!(tool = %name, count, "session_tool_stats updated");
                 }
                 let actions = self

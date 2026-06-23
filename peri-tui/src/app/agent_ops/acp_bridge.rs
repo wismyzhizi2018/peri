@@ -16,8 +16,7 @@ impl App {
                 // session_id == thread_id，但 submit_message 的异步任务无法直接写回 App 状态）
                 if self.session_mgr.current().current_thread_id.is_none() && !session_id.is_empty()
                 {
-                    self.session_mgr.current_mut().current_thread_id =
-                        Some(session_id.clone());
+                    self.session_mgr.current_mut().current_thread_id = Some(session_id.clone());
                 }
                 // Convert peri-agent ExecutorEvent → TUI AgentEvent via map_executor_event
                 if let Some(agent_event) =
