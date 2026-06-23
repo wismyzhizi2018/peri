@@ -1,8 +1,9 @@
 # ConPTY 下鼠标滚轮滚动 textarea 而非消息区 — crossterm EnableMouseCapture 不发送 ANSI 序列
 
-**状态**：Fixed
+**状态**：Reopen
 **优先级**：高
 **创建日期**：2026-06-23
+**Reopen 日期**：2026-06-23
 
 ## 问题描述
 
@@ -30,7 +31,131 @@ Windows Terminal 下，用户滚动鼠标滚轮想查看历史消息，但消息
   3. 鼠标滚轮向上滚动
   4. 观察：消息区不动，textarea 内容在滚动
 
-## 根因分析
+## 根因分析（v2 — 2026-06-23 Reopen 后修正）
+
+### 前一版因果链的问题
+
+v1 文档断言"crossterm `EnableMouseCapture` 不发送 ANSI → WT 不知道 mouse tracking"，得出"手动发送 `?1000h` 即可修复"的结论。修复 commit `82db370f` + `2adad3df` 已合并，但用户报告 bug 仍然存在，证明 v1 因果链**有遗漏**。
+
+### v2 关键新发现（源码级确认）
+
+#### 真相 A：ConPTY 本应自动通知 WT，但被一个状态差量逻辑吞掉了
+
+```cpp
+// microsoft/terminal src/host/getset.cpp:334-411 — SetConsoleInputModeImpl
+[[nodiscard]] HRESULT ApiRoutines::SetConsoleInputModeImpl(InputBuffer& context, const ULONG mode) noexcept
+{
+    // ...
+    if (auto writer = gci.GetVtWriter())
+    {
+        auto oldMode = context.InputMode;
+        auto newMode = mode;
+
+        const auto newQuickEditMode{ WI_IsFlagSet(gci.Flags, CONSOLE_QUICK_EDIT_MODE) };
+        WI_ClearFlagIf(oldMode, ENABLE_MOUSE_INPUT, oldQuickEditMode);
+        WI_ClearFlagIf(newMode, ENABLE_MOUSE_INPUT, newQuickEditMode);
+
+        if (const auto diff = oldMode ^ newMode)
+        {
+            if (WI_IsFlagSet(diff, ENABLE_MOUSE_INPUT))
+            {
+                writer.WriteSGR1006(WI_IsFlagSet(newMode, ENABLE_MOUSE_INPUT));
+            }
+        }
+        writer.Submit();
+    }
+    // ...
+}
+```
+
+```cpp
+// microsoft/terminal src/host/VtIo.cpp:712-718 — WriteSGR1006
+void VtIo::Writer::WriteSGR1006(bool enabled) const
+{
+    char buf[] = "\x1b[?1003;1006h";  // 注意：实际同时发送 1003 + 1006
+    buf[std::size(buf) - 2] = enabled ? 'h' : 'l';
+    _io->_back.append(&buf[0], std::size(buf) - 1);
+}
+```
+
+**关键条件**：ConPTY 仅在 `oldMode ^ newMode` 的 diff 包含 `ENABLE_MOUSE_INPUT` 位时才向 WT 转发 mouse mode 序列。
+
+#### 真相 B：crossterm 的调用顺序使 diff 永远不含 ENABLE_MOUSE_INPUT
+
+peri-tui `main.rs:493-501` 的初始化顺序：
+1. `enable_raw_mode()` → `ConsoleMode::set_mode(default & !0x07)`
+   - Windows 默认 input mode 是 `0x1F`（LINE|ECHO|PROCESSED|WINDOW|MOUSE）
+   - 清掉 LINE/ECHO/PROCESSED 后 = `0x18`（WINDOW|MOUSE）
+   - **ENABLE_MOUSE_INPUT (0x10) 依然 ON**
+2. `EnableMouseCapture` → `ConsoleMode::set_mode(0x0098)`（EXTENDED|WINDOW|MOUSE）
+   - oldMode = `0x18`，newMode = `0x98`
+   - diff = `0x80`（仅 EXTENDED_FLAGS）
+   - **ENABLE_MOUSE_INPUT 不在 diff 中** → `WriteSGR1006` 不调用
+
+**所以 WT 从未收到 ConPTY 自动转发的 `\x1b[?1003;1006h`。** WT 不知道 mouse tracking 已开启，`?1007`（默认 ON）+ alt screen 把滚轮转成方向键 → textarea 滚动。
+
+这印证了 v1 的结论方向（WT 不知道 mouse tracking），但**根因机制更深一层**：不是"crossterm 不发 ANSI"，而是"crossterm enable_raw_mode 已经把 ENABLE_MOUSE_INPUT 留在 ON，导致 enable_mouse_capture 时 diff 为空，ConPTY 自动通知被跳过"。
+
+#### 真相 C：v1 因果链忽略的 SCROLL_DELTA 符号问题（已验证为非问题）
+
+crossterm_winapi 0.9.1 `ButtonState` 用 i32 符号判断滚动方向：
+```rust
+pub fn scroll_down(&self) -> bool { self.state < 0 }
+pub fn scroll_up(&self) -> bool { self.state > 0 }
+```
+
+ConPTY InputStateMachineEngine 用的常量（`microsoft/terminal src/terminal/parser/InputStateMachineEngine.hpp`）：
+```cpp
+constexpr DWORD SCROLL_DELTA_BACKWARD = 0xFF800000;  // i32 重解释 = -8388608 ✓
+constexpr DWORD SCROLL_DELTA_FORWARD = 0x00800000;   // i32 重解释 = +8388608 ✓
+```
+
+**常量设计正确**，重解释为 i32 后符号方向也对得上。这一环不是 bug 源。
+
+### 修复后 bug 仍然存在的可能原因（按可能性排序）
+
+#### 假设 1（最可能）：用户跑的是修复前的旧 binary
+
+`b8514d50` 是 merge commit，但本地 `cargo run` 用的可能是更早编译的产物。**必须在 Windows 上重新 `cargo build -p peri-tui && cargo run -p peri-tui`**，确认 binary 时间戳晚于 `2adad3df`。
+
+#### 假设 2：修复的 ANSI 序列没真正到达 WT
+
+修复在 `execute!(..., EnableMouseCapture)` 之后手动写 `\x1b[?1000h...?1006h`，路径是：
+- TUI stdout → `WriteConsoleW` → conhost `DoWriteConsole` → `WriteCharsVT`
+- `WriteCharsVT` 把原 bytes 转发到 ConPTY output pipe → WT 接收
+
+理论上会到达 WT。但若 stdout 缓冲未及时 flush，或 ConPTY writer 在初始化阶段被锁，序列可能丢失。`main.rs:511` 显式 `flush()`，但**实际是否到达 WT 需要 Windows 端运行时验证**。
+
+#### 假设 3：ConPTY 版本差异
+
+`WriteSGR1006` 的双序列 `\x1b[?1003;1006h` 是相对新版本的实现。旧版 ConPTY（如 Windows 10 1809 之前）可能没有这个自动转发逻辑，行为不同。
+
+### 100% 确认的环节（源码验证）
+
+| 环节 | 状态 | 证据 |
+|------|------|------|
+| crossterm `EnableMouseCapture::is_ansi_code_supported()` = false | ✓ 确认 | `crossterm-0.29.0/src/event.rs:343` |
+| `enable_raw_mode` 不清 `ENABLE_MOUSE_INPUT` | ✓ 确认 | `crossterm-0.29.0/src/terminal/sys/windows.rs:18` `NOT_RAW_MODE_MASK = LINE\|ECHO\|PROCESSED` |
+| ConPTY `WriteSGR1006` 仅在 diff 含 MOUSE_INPUT 时调用 | ✓ 确认 | `microsoft/terminal src/host/getset.cpp:379-385` |
+| `WriteSGR1006` 实际发送 `?1003;1006h`（含 tracking + encoding） | ✓ 确认 | `microsoft/terminal src/host/VtIo.cpp:713-718` |
+| ConPTY 启动注入 `?9001h`（Win32 Input Mode）到 WT | ✓ 确认 | `microsoft/terminal src/host/VtIo.cpp:200-204` |
+| `SCROLL_DELTA_BACKWARD/FORWARD` 符号正确 | ✓ 确认 | `InputStateMachineEngine.hpp`（值 = `0xFF800000 / 0x00800000`） |
+| `crossterm_winapi::ButtonState` 用 i32 符号判断滚动方向 | ✓ 确认 | docs.rs crossterm_winapi 0.9.1 |
+| WT `IsTrackingMouseInput()` 仅在 `?1000h/?1002h/?1003h` 设置后为 true | ✓ 确认 | `microsoft/terminal src/terminal/input/mouseInput.cpp:277-280` |
+| WT `ShouldSendAlternateScroll()` 需要 alt buffer + `?1007h` + wheel | ✓ 确认 | `mouseInput.cpp:488-494` |
+
+### 100% **未**确认的环节（需 Windows 实测）
+
+| 环节 | 状态 | 验证方法 |
+|------|------|---------|
+| 手动发送的 `\x1b[?1000h...?1006h` 是否真正到达 WT | ✗ 未确认 | WT 开 verbose log，或用 `sysdig`/`ProcessMonitor` 抓 ConPTY output pipe |
+| WT 收到后是否真的启用了 mouse tracking | ✗ 未确认 | 在 WT 内同时运行 `cat -v` 等命令观察是否有 SGR 序列返回 |
+| crossterm 在 ConPTY 下是否收到 `MouseEventKind::ScrollUp/Down` | ✗ 未确认 | TUI 加临时日志，记录 `Event::Mouse` 收到时的 kind |
+| 用户测试的是否是修复后的 binary | ✗ 未确认 | `cargo clean && cargo build`，对比 binary mtime 与 commit 时间 |
+
+---
+
+## 根因分析（v1 — 原始版本，已被 v2 修正但保留作为参考）
 
 ### 因果链（全部基于源码确认，零猜测）
 
@@ -273,8 +398,9 @@ std::io::Write::flush(terminal.backend_mut())?;
 
 | 日期 | 从 | 到 | 操作人 | 说明 |
 |------|-----|-----|--------|------|
-| 2026-06-23 | — | Open | agent | 根因分析完成，源码级证据链 100% 确认 |
+| 2026-06-23 | — | Open | agent | v1 根因分析完成 |
 | 2026-06-23 | Open | Fixed | agent | commit 82db370f：手动发送 ?1000h ?1006h |
+| 2026-06-23 | Fixed | Reopen | agent | 用户报告 bug 仍存在。复盘后发现 v1 因果链有遗漏：忽略了 ConPTY 自身有 SetConsoleMode → WriteSGR1006 自动通知机制。v2 根因已写入。需 Windows 端实测 4 项确认。 |
 
 ## 修复记录
 
@@ -282,6 +408,43 @@ std::io::Write::flush(terminal.backend_mut())?;
 
 - **操作人**：agent
 - **修复内容**：在 `EnableMouseCapture` 之后手动发送 `\x1b[?1000h\x1b[?1006h`，退出/挂起时发送 `\x1b[?1006l\x1b[?1000l` 清理
-- **涉及 commit**：`82db370f`
+- **涉及 commit**：`82db370f`、`2adad3df`
 - **涉及文件**：`peri-tui/src/main.rs`（终端初始化 + 退出）、`peri-tui/src/app/panel_memory.rs`（外部编辑器挂起 + 恢复）
-- **验证状态**：待用户运行时验证（cargo check 通过）
+- **验证状态**：Reopen（待 Windows 实测）
+
+## 验证 #1（2026-06-23）—— Reopen
+
+用户报告：修复 commit 已合并到 main，但运行时滚轮仍然滚动 textarea 而非消息区。
+
+复盘后确认 v1 因果链遗漏了 ConPTY 的 `WriteSGR1006` 自动通知机制（src/host/getset.cpp:379-385 + src/host/VtIo.cpp:713-718）。v1 说"crossterm 不发 ANSI 所以 WT 不知道"，但真相是"crossterm enable_raw_mode 保留了 ENABLE_MOUSE_INPUT，导致 enable_mouse_capture 时 diff 为空，ConPTY 自动通知被跳过"——结论方向相同但根因机制更深一层。
+
+修复理论上仍应有效（手动发送 `?1000h...?1006h` 直接到 stdout，ConPTY 通过 WriteCharsVT 转发到 WT）。但 4 项关键环节未在 Windows 实测：
+
+1. 用户测试的是修复后的 binary 吗？（可能跑的是旧产物）
+2. 手动发送的 `\x1b[?1000h...?1006h` 真的到达 WT 了吗？
+3. WT 收到后真的启用了 mouse tracking 吗？
+4. crossterm 真的收到了 `ScrollUp/Down` 而非 `Key(Up/Down)` 吗？
+
+**Windows 实测方案**（任选其一即可 100% 确认）：
+
+方案 A：在 TUI 加临时日志，记录每次 `Event::Mouse` 和 `Event::Key(Up/Down)` 的接收
+```rust
+// peri-tui/src/event/mod.rs handle_event 入口
+tracing::info!(?ev, "TUI received event");
+```
+跑 TUI、滚动鼠标、查看日志。若日志显示 `Key(Up/Down)`，证明修复未生效；若显示 `Mouse(ScrollUp/Down)`，证明修复生效但 TUI 路由有问题。
+
+方案 B：用 microsoft/terminal 的 VT 输入记录功能
+WT 设置里开 `"debugFeatures": true`，或用 `tracevt` 工具抓 ConPTY 双向流量，直接看 `\x1b[?1000h` 是否到达 WT、WT 是否回送 SGR 鼠标序列。
+
+方案 C：用 powershell 验证 ConPTY 自动通知机制
+```powershell
+# 简单脚本：直接调用 SetConsoleMode 改变 ENABLE_MOUSE_INPUT，观察 WT 是否收到 ?1003;1006h
+$mode = 0x18  # 先设为不含 MOUSE_INPUT
+[Console]::SetConsoleMode([Console]::OpenStandardInput().SafeFileHandle, $mode)
+$mode = 0x98  # 再加上 MOUSE_INPUT
+[Console]::SetConsoleMode([Console]::OpenStandardInput().SafeFileHandle, $mode)
+# 此时 WT 应收到 \x1b[?1003;1006h
+```
+
+确认假设 1（用户跑旧 binary）优先级最高：先 `cargo clean && cargo build -p peri-tui`，再测。
