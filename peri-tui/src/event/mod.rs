@@ -72,9 +72,9 @@ pub async fn next_event(app: &mut App) -> Result<Option<Action>> {
 
     let ev = event::read()?;
 
-    // Scroll/Drag event coalescing: drain queued mouse events to avoid
-    // redundant redraws during rapid scrolling or scrollbar dragging.
-    let ev = coalesce_mouse_events(ev);
+    // Drag event coalescing: keep scrollbar/text-selection dragging responsive
+    // without discarding mouse wheel distance.
+    let ev = coalesce_drag_events(ev);
 
     // Simulated-paste detection: on terminals without bracketed paste support
     // (Windows), multi-line paste arrives as a rapid burst of key events.
@@ -85,25 +85,19 @@ pub async fn next_event(app: &mut App) -> Result<Option<Action>> {
     handle_event(app, ev).await
 }
 
-// ── Mouse event coalescing ───────────────────────────────────────────────
+// ── Mouse drag coalescing ────────────────────────────────────────────────
 
-/// Coalesces rapid-fire mouse scroll/drag events from the crossterm queue.
+/// Coalesces rapid-fire left-drag events from the crossterm queue.
 ///
-/// When a Scroll or Drag(Left) mouse event is the initial event, drains any
-/// additional queued events using a non-blocking poll, keeping only the last
-/// coalesceable event. This trades scroll precision for CPU: N scroll events
-/// within one poll cycle (~50ms) result in only ±3 lines moved instead of N×3.
-/// Drag(Left) is unaffected since only the final position matters.
-///
-/// Non-coalesceable events (click, keypress, etc.) terminate the drain and
-/// replace the pending scroll as the returned event (not dropped).
-fn coalesce_mouse_events(ev: Event) -> Event {
-    // Only activate coalescing for scroll and drag mouse events
+/// Mouse wheel events intentionally bypass this path: a crossterm
+/// `ScrollUp`/`ScrollDown` event does not carry a repeat count, so draining
+/// several wheel events into one event makes fast scrolling move only one
+/// three-line step.
+fn coalesce_drag_events(ev: Event) -> Event {
+    // Only activate coalescing for left-drag mouse events.
     match &ev {
         Event::Mouse(m) => match m.kind {
-            MouseEventKind::ScrollUp
-            | MouseEventKind::ScrollDown
-            | MouseEventKind::Drag(MouseButton::Left) => {}
+            MouseEventKind::Drag(MouseButton::Left) => {}
             _ => return ev,
         },
         _ => return ev,
@@ -111,8 +105,8 @@ fn coalesce_mouse_events(ev: Event) -> Event {
 
     let mut last_ev = ev;
 
-    // Drain all queued scroll/drag events, keeping only the last one.
-    // Non-scroll/drag events terminate the drain and become the result
+    // Drain all queued drag events, keeping only the last one.
+    // Non-drag events terminate the drain and become the result
     // so they are not lost.
     while event::poll(Duration::ZERO).unwrap_or(false) {
         let next = match event::read() {
@@ -121,13 +115,11 @@ fn coalesce_mouse_events(ev: Event) -> Event {
         };
         match &next {
             Event::Mouse(m) => match m.kind {
-                MouseEventKind::ScrollUp
-                | MouseEventKind::ScrollDown
-                | MouseEventKind::Drag(MouseButton::Left) => {
+                MouseEventKind::Drag(MouseButton::Left) => {
                     last_ev = next;
                 }
                 // Other mouse events (click, release, move): stop draining,
-                // return this event instead so it's handled normally
+                // return this event instead so it's handled normally.
                 _ => {
                     last_ev = next;
                     break;

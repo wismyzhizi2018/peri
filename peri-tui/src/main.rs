@@ -975,15 +975,11 @@ async fn run_app(
 }
 
 fn draw_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App) -> Result<()> {
-    // [临时验证-控制变量] 禁用 scrollback flush（terminal.insert_before）。
-    // 目的：若禁用后渲染残留消失 → 根因确认在 insert_before/inline viewport；
-    //       若残留仍在 → 根因在 viewport_clip 等其他路径。验证后必须回退此注释。
-    // flush_scrollback_history(terminal, app)?;
+    flush_scrollback_history(terminal, app)?;
     terminal.draw(|f| ui::main_ui::render(f, app))?;
     Ok(())
 }
 
-#[allow(dead_code)]
 fn flush_scrollback_history(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
@@ -1048,7 +1044,6 @@ fn flush_scrollback_history(
     Ok(())
 }
 
-#[allow(dead_code)]
 fn scrollback_commit_end(
     total_visual_rows: usize,
     retained_height: u16,
@@ -1062,7 +1057,6 @@ fn scrollback_commit_end(
     wrap_map.partition_point(|info| info.visual_row_end <= retain_from_visual)
 }
 
-#[allow(dead_code)]
 fn committed_visual_start(
     committed_lines: usize,
     line_count: usize,
