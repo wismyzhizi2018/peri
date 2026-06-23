@@ -51,7 +51,10 @@ impl App {
             ratatui::crossterm::terminal::LeaveAlternateScreen
         )?;
         // ConPTY: 通知 Windows Terminal 关闭 mouse tracking
-        let _ = std::io::Write::write_all(&mut std::io::stdout(), b"\x1b[?1006l\x1b[?1000l");
+        let _ = std::io::Write::write_all(
+            &mut std::io::stdout(),
+            b"\x1b[?1006l\x1b[?1015l\x1b[?1003l\x1b[?1002l\x1b[?1000l",
+        );
         let _ = std::io::Write::flush(&mut std::io::stdout());
         ratatui::crossterm::terminal::disable_raw_mode()?;
 
@@ -67,8 +70,11 @@ impl App {
             ratatui::crossterm::terminal::EnterAlternateScreen,
             ratatui::crossterm::event::EnableMouseCapture
         )?;
-        // ConPTY workaround: 手动发送 ?1000h 确保终端前端启用 mouse tracking
-        let _ = std::io::Write::write_all(&mut std::io::stdout(), b"\x1b[?1000h\x1b[?1006h");
+        // ConPTY workaround: 手动发送完整 mouse tracking 序列，保持拖拽事件可用。
+        let _ = std::io::Write::write_all(
+            &mut std::io::stdout(),
+            b"\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1015h\x1b[?1006h",
+        );
         let _ = std::io::Write::flush(&mut std::io::stdout());
 
         match status {
