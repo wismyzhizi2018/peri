@@ -70,7 +70,11 @@ pub fn paste_image_as_png_base64() -> Result<(String, usize, u32, u32), PasteIma
     encode_base64(&png_bytes, w, h)
 }
 
-fn encode_base64(png_bytes: &[u8], w: u32, h: u32) -> Result<(String, usize, u32, u32), PasteImageError> {
+fn encode_base64(
+    png_bytes: &[u8],
+    w: u32,
+    h: u32,
+) -> Result<(String, usize, u32, u32), PasteImageError> {
     let size = png_bytes.len();
     let b64 = base64::engine::general_purpose::STANDARD.encode(png_bytes);
     Ok((b64, size, w, h))
@@ -116,9 +120,9 @@ fn decode_png_file(path: &std::path::Path) -> Result<(Vec<u8>, u32, u32), PasteI
         .map_err(|e| PasteImageError::IoError(format!("open {}: {e}", path.display())))?;
     let reader = std::io::BufReader::new(file);
     let decoder = png::Decoder::new(reader);
-    let mut reader = decoder
-        .read_info()
-        .map_err(|e| PasteImageError::DecodeFailed(format!("png decode {}: {e}", path.display())))?;
+    let mut reader = decoder.read_info().map_err(|e| {
+        PasteImageError::DecodeFailed(format!("png decode {}: {e}", path.display()))
+    })?;
 
     let (w, h) = (reader.info().width, reader.info().height);
     // Allocate buffer based on output buffer size hint
@@ -284,7 +288,10 @@ mod tests {
     #[test]
     #[cfg(target_os = "linux")]
     fn wsl_路径转换_拒绝_unc() {
-        assert_eq!(convert_windows_path_to_wsl(r"\\server\share\file.png"), None);
+        assert_eq!(
+            convert_windows_path_to_wsl(r"\\server\share\file.png"),
+            None
+        );
     }
 
     #[test]
@@ -295,7 +302,9 @@ mod tests {
 
     #[test]
     fn encode_rgba_输出有效_png_头部() {
-        let rgba = vec![255u8, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 0, 0, 0, 255];
+        let rgba = vec![
+            255u8, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 0, 0, 0, 255,
+        ];
         let png = encode_rgba_to_png(2, 2, &rgba).unwrap();
         // PNG magic number
         assert_eq!(&png[..8], &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]);
@@ -316,7 +325,9 @@ mod tests {
         assert_eq!(w, 1);
         assert_eq!(h, 1);
         // base64 decode → 原始字节
-        let decoded = base64::engine::general_purpose::STANDARD.decode(&b64).unwrap();
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(&b64)
+            .unwrap();
         assert_eq!(decoded, png);
     }
 }

@@ -159,7 +159,9 @@ pub fn query_stats() -> Option<AllocStats> {
 #[cfg(target_os = "windows")]
 pub fn query_breakdown() -> Option<JemallocBreakdown> {
     // No jemalloc on Windows, but report OS-level memory info via GetProcessMemoryInfo
-    use windows_sys::Win32::System::ProcessStatus::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
+    use windows_sys::Win32::System::ProcessStatus::{
+        GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS,
+    };
     let mut counters: PROCESS_MEMORY_COUNTERS = unsafe { std::mem::zeroed() };
     let handle = unsafe { windows_sys::Win32::System::Threading::GetCurrentProcess() };
     let ok = unsafe {

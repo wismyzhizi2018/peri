@@ -46,9 +46,12 @@ fn large_toolresult_full_path_attribution() {
     // === 5MB 大文件内容（模拟 Read 了一个 5MB 文件）===
     let large_content: String = std::iter::repeat_n("X", 5 * 1024 * 1024).collect();
     let base_with_string = current_rss_kb();
-    println!("[第 0 步：构造 5MB 原始字符串] RSS = {} KB (+{} KB = +{:.2} MB)",
-        base_with_string, base_with_string.saturating_sub(base),
-        mb(base_with_string.saturating_sub(base)));
+    println!(
+        "[第 0 步：构造 5MB 原始字符串] RSS = {} KB (+{} KB = +{:.2} MB)",
+        base_with_string,
+        base_with_string.saturating_sub(base),
+        mb(base_with_string.saturating_sub(base))
+    );
     base = base_with_string;
 
     // === 第 1 份：写入 BaseMessage（ContentBlock::ToolResult）===
@@ -57,8 +60,12 @@ fn large_toolresult_full_path_attribution() {
         MessageContent::text(large_content.clone()),
     );
     let after_msg1 = current_rss_kb();
-    println!("[第 1 步：BaseMessage::tool_result（AgentState 写入）] RSS = {} KB (+{} KB = +{:.2} MB)",
-        after_msg1, after_msg1.saturating_sub(base), mb(after_msg1.saturating_sub(base)));
+    println!(
+        "[第 1 步：BaseMessage::tool_result（AgentState 写入）] RSS = {} KB (+{} KB = +{:.2} MB)",
+        after_msg1,
+        after_msg1.saturating_sub(base),
+        mb(after_msg1.saturating_sub(base))
+    );
     base = after_msg1;
 
     // === 第 2 份：StateSnapshot → origin_messages extend（agent_ops/mod.rs:287）===
@@ -79,12 +86,14 @@ fn large_toolresult_full_path_attribution() {
     base = after_completed;
 
     // === 第 4 份：view_messages 渲染（Text<'static>，含字符串 clone）===
-    let view_strings: Vec<String> = completed.iter()
-        .map(|m| m.content().to_string())
-        .collect();
+    let view_strings: Vec<String> = completed.iter().map(|m| m.content().to_string()).collect();
     let after_view = current_rss_kb();
-    println!("[第 4 步：view_messages content() clone → 字符串] RSS = {} KB (+{} KB = +{:.2} MB)",
-        after_view, after_view.saturating_sub(base), mb(after_view.saturating_sub(base)));
+    println!(
+        "[第 4 步：view_messages content() clone → 字符串] RSS = {} KB (+{} KB = +{:.2} MB)",
+        after_view,
+        after_view.saturating_sub(base),
+        mb(after_view.saturating_sub(base))
+    );
     base = after_view;
 
     // === 第 5 份：RenderCache 缓存（预渲染 ratatui Text<'static>）===
@@ -95,13 +104,20 @@ fn large_toolresult_full_path_attribution() {
         rendered_texts.push(s.clone()); // 第二份表示 paragraph + line 内部各自一份
     }
     let after_cache = current_rss_kb();
-    println!("[第 5 步：RenderCache 渲染 ×2（paragraph + line）] RSS = {} KB (+{} KB = +{:.2} MB)",
-        after_cache, after_cache.saturating_sub(base), mb(after_cache.saturating_sub(base)));
+    println!(
+        "[第 5 步：RenderCache 渲染 ×2（paragraph + line）] RSS = {} KB (+{} KB = +{:.2} MB)",
+        after_cache,
+        after_cache.saturating_sub(base),
+        mb(after_cache.saturating_sub(base))
+    );
 
     let total_delta = after_cache.saturating_sub(baseline);
 
     println!("\n=== 结论 ===");
-    println!("5MB 单次工具结果经过完整存储路径后，总 RSS 增长 = {:.2} MB", mb(total_delta));
+    println!(
+        "5MB 单次工具结果经过完整存储路径后，总 RSS 增长 = {:.2} MB",
+        mb(total_delta)
+    );
 
     drop(msg1);
     drop(snapshot_msgs);
@@ -146,7 +162,10 @@ fn varying_toolresult_size_scan() {
         let s4 = current_rss_kb().saturating_sub(base);
         base = current_rss_kb();
 
-        let cache: Vec<String> = view.iter().flat_map(|s| vec![s.clone(), s.clone()]).collect();
+        let cache: Vec<String> = view
+            .iter()
+            .flat_map(|s| vec![s.clone(), s.clone()])
+            .collect();
         let s5 = current_rss_kb().saturating_sub(base);
         base = current_rss_kb();
 
@@ -187,18 +206,18 @@ fn real_world_conversation_simulation() {
         // 第 3 轮和第 7 轮：包含 3MB 大工具结果
         if round == 3 || round == 7 {
             let large_content: String = std::iter::repeat_n("X", 3 * 1024 * 1024).collect();
-            round_msgs.push(BaseMessage::ai_from_blocks(vec![
-                ContentBlock::ToolUse {
-                    id: format!("toolu_big_{round}"),
-                    name: "Read".to_string(),
-                    input: serde_json::json!({ "file_path": format!("/tmp/big_{round}.log") }),
-                },
-            ]));
+            round_msgs.push(BaseMessage::ai_from_blocks(vec![ContentBlock::ToolUse {
+                id: format!("toolu_big_{round}"),
+                name: "Read".to_string(),
+                input: serde_json::json!({ "file_path": format!("/tmp/big_{round}.log") }),
+            }]));
             round_msgs.push(BaseMessage::tool_result(
                 format!("toolu_big_{round}"),
                 MessageContent::text(large_content),
             ));
-            round_msgs.push(BaseMessage::ai(format!("第 {round} 轮分析完成，文件很大。")));
+            round_msgs.push(BaseMessage::ai(format!(
+                "第 {round} 轮分析完成，文件很大。"
+            )));
         }
 
         // 模拟双存储 extend
@@ -207,9 +226,18 @@ fn real_world_conversation_simulation() {
 
         let rss = current_rss_kb();
         let delta = rss.saturating_sub(base);
-        println!("轮 {round:>2}: RSS = {} KB ({:>6.2} MB)  累计 +{} KB ({:.2} MB){}",
-            rss, mb(rss), delta, mb(delta),
-            if round == 3 || round == 7 { " ← 含 3MB 大文件" } else { "" });
+        println!(
+            "轮 {round:>2}: RSS = {} KB ({:>6.2} MB)  累计 +{} KB ({:.2} MB){}",
+            rss,
+            mb(rss),
+            delta,
+            mb(delta),
+            if round == 3 || round == 7 {
+                " ← 含 3MB 大文件"
+            } else {
+                ""
+            }
+        );
         base = rss;
     }
 

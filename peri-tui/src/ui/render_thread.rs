@@ -409,7 +409,8 @@ impl RenderTask {
                 self.message_lines[i] = std::mem::take(&mut old_message_lines[i]);
                 continue;
             }
-            self.message_lines[i] = Self::render_one(&mut vm, i + 1, width, self.diff_visible, self.detail_mode);
+            self.message_lines[i] =
+                Self::render_one(&mut vm, i + 1, width, self.diff_visible, self.detail_mode);
         }
 
         self.message_hashes = new_hashes;
@@ -533,18 +534,18 @@ impl RenderTask {
             } => {
                 self.rebuild_safe(messages);
                 // 计算锚点消息在新布局中的视觉行起始位置
-                let anchor_visual_row = if anchor_message_idx < self.cache.read().message_offsets.len()
-                {
-                    let cache = self.cache.read();
-                    let line_idx = cache.message_offsets[anchor_message_idx];
-                    if line_idx < cache.wrap_map.len() {
-                        Some(cache.wrap_map[line_idx].visual_row_start)
+                let anchor_visual_row =
+                    if anchor_message_idx < self.cache.read().message_offsets.len() {
+                        let cache = self.cache.read();
+                        let line_idx = cache.message_offsets[anchor_message_idx];
+                        if line_idx < cache.wrap_map.len() {
+                            Some(cache.wrap_map[line_idx].visual_row_start)
+                        } else {
+                            None
+                        }
                     } else {
                         None
-                    }
-                } else {
-                    None
-                };
+                    };
                 if let Some(row) = anchor_visual_row {
                     self.cache.write().scroll_anchor = Some(row);
                 }

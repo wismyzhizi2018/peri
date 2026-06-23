@@ -321,9 +321,7 @@ async fn test_tool_call_message_visible_when_toggled() {
 
     let snap = handle.snapshot();
     // ToolStart 创建的 ToolBlock，display_name 为 format_tool_name 的结果
-    let has_tool_call_text = snap
-        .iter()
-        .any(|l| l.contains("Bash"));
+    let has_tool_call_text = snap.iter().any(|l| l.contains("Bash"));
     assert!(
         has_tool_call_text,
         "ToolCall 创建的 ToolBlock 应在快照中可见，但实际内容为:\n{}",

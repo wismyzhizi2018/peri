@@ -21,8 +21,14 @@ fn current_rss_kb() -> usize {
 fn print_rss(label: &str, baseline: &mut usize) {
     let rss = current_rss_kb();
     let delta = rss.saturating_sub(*baseline);
-    println!("[{:40}] RSS = {:>8} KB ({:6.2} MB) | +{:>6} KB ({:+.2} MB)",
-        label, rss, rss as f64 / 1024.0, delta, delta as f64 / 1024.0);
+    println!(
+        "[{:40}] RSS = {:>8} KB ({:6.2} MB) | +{:>6} KB ({:+.2} MB)",
+        label,
+        rss,
+        rss as f64 / 1024.0,
+        delta,
+        delta as f64 / 1024.0
+    );
     *baseline = rss;
 }
 
@@ -68,10 +74,12 @@ async fn measure_https_first_call_real_provider() {
     // === 阶段 6：测试真实 Anthropic 兼容 endpoint（POST /api/anthropic/v1/messages） ===
     // 不带有效 body，预期 4xx，但能测出实际握手 + TLS 协商成本
     println!("\n--- 阶段 6: 模拟真实 API 调用（POST messages endpoint） ---");
-    let result3 = client.post("https://open.bigmodel.cn/api/anthropic/v1/messages")
+    let result3 = client
+        .post("https://open.bigmodel.cn/api/anthropic/v1/messages")
         .header("content-type", "application/json")
         .body(r#"{"model":"glm-5.2","messages":[],"max_tokens":1}"#)
-        .send().await;
+        .send()
+        .await;
     if let Ok(resp) = result3 {
         println!("  HTTP status: {}", resp.status());
         let _ = resp.bytes().await;
@@ -98,10 +106,7 @@ async fn measure_https_to_other_domains() {
     let mut base = current_rss_kb();
     print_rss("基线", &mut base);
 
-    let client = reqwest::Client::builder()
-        .use_rustls_tls()
-        .build()
-        .unwrap();
+    let client = reqwest::Client::builder().use_rustls_tls().build().unwrap();
     print_rss("Client 构造", &mut base);
 
     for domain in &[

@@ -39,8 +39,14 @@ fn mb(kb: usize) -> f64 {
 fn print_rss(label: &str, baseline: &mut usize) {
     let rss = current_rss_kb();
     let delta = rss.saturating_sub(*baseline);
-    println!("[{:50}] RSS = {:>8} KB ({:6.2} MB) | +{:>6} KB ({:+.2} MB)",
-        label, rss, mb(rss), delta, mb(delta));
+    println!(
+        "[{:50}] RSS = {:>8} KB ({:6.2} MB) | +{:>6} KB ({:+.2} MB)",
+        label,
+        rss,
+        mb(rss),
+        delta,
+        mb(delta)
+    );
     *baseline = rss;
 }
 
@@ -110,7 +116,13 @@ async fn large_toolresult_full_e2e_real_app() {
     println!("\n--- 阶段 5: 检查实际状态 ---");
     let view_count = app.session_mgr.current().messages.view_messages.len();
     let origin_count = app.session_mgr.current().agent.origin_messages.len();
-    let completed_count = app.session_mgr.current().messages.pipeline.completed_messages().len();
+    let completed_count = app
+        .session_mgr
+        .current()
+        .messages
+        .pipeline
+        .completed_messages()
+        .len();
     println!("view_messages:     {} 条 VM", view_count);
     println!("origin_messages:   {} 条 BaseMessage", origin_count);
     println!("pipeline.completed:{} 条 BaseMessage", completed_count);
@@ -172,11 +184,21 @@ async fn varying_toolresult_size_real_app() {
         app.flush_rebuild();
         tokio::task::yield_now().await;
         tokio::task::yield_now().await;
-        let s4 = current_rss_kb().saturating_sub(base).saturating_sub(s1).saturating_sub(s3);
+        let s4 = current_rss_kb()
+            .saturating_sub(base)
+            .saturating_sub(s1)
+            .saturating_sub(s3);
 
         let total = s1 + s3 + s4;
-        println!("| {} MB | {:>5} KB | {:>7} KB | {:>10} KB | {:>5} KB ({:.2} MB) |",
-            size_mb, s1, s3, s4, total, mb(total));
+        println!(
+            "| {} MB | {:>5} KB | {:>7} KB | {:>10} KB | {:>5} KB ({:.2} MB) |",
+            size_mb,
+            s1,
+            s3,
+            s4,
+            total,
+            mb(total)
+        );
 
         drop(app);
         drop(large_content);
@@ -239,9 +261,19 @@ async fn multi_round_accumulation_real_app() {
         let rss = current_rss_kb();
         let delta = rss.saturating_sub(prev);
         let total = rss.saturating_sub(base);
-        let note = if round == 3 || round == 7 { "← 含 3MB 大文件" } else { "" };
-        println!("| {:>4} | {:>6.2} MB | +{:>5.2} MB (累计 +{:.2} MB) | {} |",
-            round, mb(rss), mb(delta), mb(total), note);
+        let note = if round == 3 || round == 7 {
+            "← 含 3MB 大文件"
+        } else {
+            ""
+        };
+        println!(
+            "| {:>4} | {:>6.2} MB | +{:>5.2} MB (累计 +{:.2} MB) | {} |",
+            round,
+            mb(rss),
+            mb(delta),
+            mb(total),
+            note
+        );
         prev = rss;
     }
 
@@ -249,5 +281,9 @@ async fn multi_round_accumulation_real_app() {
     drop(app);
     std::thread::sleep(std::time::Duration::from_millis(500));
     let after_drop = current_rss_kb();
-    println!("\n| drop 后 | {:.2} MB | 持有未归还: {:.2} MB |", mb(after_drop), mb(after_drop.saturating_sub(base)));
+    println!(
+        "\n| drop 后 | {:.2} MB | 持有未归还: {:.2} MB |",
+        mb(after_drop),
+        mb(after_drop.saturating_sub(base))
+    );
 }

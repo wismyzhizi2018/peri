@@ -140,8 +140,9 @@ fn terminal_clipboard_copy_with(
             Ok(()) => return Ok(()),
             Err(tmux_err) => {
                 tracing::warn!("tmux clipboard copy failed: {tmux_err}, falling back to OSC 52");
-                return osc52_copy_fn(text)
-                    .map_err(|osc_err| format!("tmux clipboard: {tmux_err}; OSC 52 fallback: {osc_err}"));
+                return osc52_copy_fn(text).map_err(|osc_err| {
+                    format!("tmux clipboard: {tmux_err}; OSC 52 fallback: {osc_err}")
+                });
             }
         }
     }
@@ -181,13 +182,16 @@ fn is_wsl_session() -> bool {
 /// 让调用方保存到 TUI 生命周期。其他平台 lease 为 None。
 fn arboard_copy(text: &str) -> Result<Option<crate::clipboard::ClipboardLease>, String> {
     let _guard = crate::clipboard::SuppressStderr::new();
-    let mut clipboard = arboard::Clipboard::new().map_err(|e| format!("clipboard unavailable: {e}"))?;
+    let mut clipboard =
+        arboard::Clipboard::new().map_err(|e| format!("clipboard unavailable: {e}"))?;
     clipboard
         .set_text(text)
         .map_err(|e| format!("failed to set clipboard text: {e}"))?;
     #[cfg(target_os = "linux")]
     {
-        Ok(Some(crate::clipboard::ClipboardLease::native_linux(clipboard)))
+        Ok(Some(crate::clipboard::ClipboardLease::native_linux(
+            clipboard,
+        )))
     }
     #[cfg(not(target_os = "linux"))]
     {

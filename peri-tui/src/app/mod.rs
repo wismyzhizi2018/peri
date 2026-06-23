@@ -35,8 +35,8 @@ mod session_manager;
 pub use session_manager::SessionManager;
 
 mod ui_state;
-pub use ui_state::UiState;
 pub use ui_state::PastedTextBlock;
+pub use ui_state::UiState;
 
 pub(crate) mod at_mention;
 pub use at_mention::AtMentionState;
@@ -282,9 +282,7 @@ impl App {
             ),
             lc,
             channel_state: Some(channel_state.clone()),
-            git_branch_cache: parking_lot::Mutex::new(
-                service_registry::GitBranchCache::new(),
-            ),
+            git_branch_cache: parking_lot::Mutex::new(service_registry::GitBranchCache::new()),
             panic_notify_rx: None,
         };
 

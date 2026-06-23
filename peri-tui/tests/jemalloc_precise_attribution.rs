@@ -55,18 +55,40 @@ fn print_stats(label: &str, baseline_rss: &mut usize, baseline_alloc: &mut usize
     let rss_delta = rss.saturating_sub(*baseline_rss);
     let alloc_delta = alloc.saturating_sub(*baseline_alloc);
     println!("\n[{}]", label);
-    println!("  VmRSS:        {:>8} KB ({:6.2} MB) | +{:6} KB ({:+.2} MB)",
-        rss, rss as f64 / 1024.0, rss_delta, rss_delta as f64 / 1024.0);
-    println!("  VmSize:       {:>8} KB ({:6.2} MB)", vsz, vsz as f64 / 1024.0);
-    println!("  jemalloc allocated: {:>8} KB ({:6.2} MB) | +{:6} KB ({:+.2} MB)",
-        alloc / 1024, alloc as f64 / 1024.0 / 1024.0,
-        alloc_delta / 1024, alloc_delta as f64 / 1024.0 / 1024.0);
-    println!("  jemalloc active:    {:>8} KB ({:6.2} MB)",
-        active / 1024, active as f64 / 1024.0 / 1024.0);
-    println!("  jemalloc resident:  {:>8} KB ({:6.2} MB)",
-        resident / 1024, resident as f64 / 1024.0 / 1024.0);
-    println!("  jemalloc metadata:  {:>8} KB ({:6.2} MB)",
-        metadata / 1024, metadata as f64 / 1024.0 / 1024.0);
+    println!(
+        "  VmRSS:        {:>8} KB ({:6.2} MB) | +{:6} KB ({:+.2} MB)",
+        rss,
+        rss as f64 / 1024.0,
+        rss_delta,
+        rss_delta as f64 / 1024.0
+    );
+    println!(
+        "  VmSize:       {:>8} KB ({:6.2} MB)",
+        vsz,
+        vsz as f64 / 1024.0
+    );
+    println!(
+        "  jemalloc allocated: {:>8} KB ({:6.2} MB) | +{:6} KB ({:+.2} MB)",
+        alloc / 1024,
+        alloc as f64 / 1024.0 / 1024.0,
+        alloc_delta / 1024,
+        alloc_delta as f64 / 1024.0 / 1024.0
+    );
+    println!(
+        "  jemalloc active:    {:>8} KB ({:6.2} MB)",
+        active / 1024,
+        active as f64 / 1024.0 / 1024.0
+    );
+    println!(
+        "  jemalloc resident:  {:>8} KB ({:6.2} MB)",
+        resident / 1024,
+        resident as f64 / 1024.0 / 1024.0
+    );
+    println!(
+        "  jemalloc metadata:  {:>8} KB ({:6.2} MB)",
+        metadata / 1024,
+        metadata as f64 / 1024.0 / 1024.0
+    );
     *baseline_rss = rss;
     *baseline_alloc = alloc;
 }
@@ -82,22 +104,40 @@ fn measure_syntect_with_jemalloc_precise() {
     if let Some((a, _, _, _)) = jemalloc_stats() {
         alloc_base = a;
     }
-    print_stats("基线（test 进程已加载 tokio runtime）", &mut rss_base, &mut alloc_base);
+    print_stats(
+        "基线（test 进程已加载 tokio runtime）",
+        &mut rss_base,
+        &mut alloc_base,
+    );
 
     let theme = DefaultMarkdownTheme;
     let _t1 = parse_markdown(
         "# 简单\n\n纯文本，无代码块。",
-        &theme as &dyn MarkdownTheme, 120);
-    print_stats("纯文本 markdown（无代码块）", &mut rss_base, &mut alloc_base);
+        &theme as &dyn MarkdownTheme,
+        120,
+    );
+    print_stats(
+        "纯文本 markdown（无代码块）",
+        &mut rss_base,
+        &mut alloc_base,
+    );
 
     let _t2 = parse_markdown(
         "# 含代码\n\n```rust\nfn hello() {\n    println!(\"hi\");\n}\n```\n",
-        &theme as &dyn MarkdownTheme, 120);
-    print_stats("含 ```rust 代码块（syntect 已加载）", &mut rss_base, &mut alloc_base);
+        &theme as &dyn MarkdownTheme,
+        120,
+    );
+    print_stats(
+        "含 ```rust 代码块（syntect 已加载）",
+        &mut rss_base,
+        &mut alloc_base,
+    );
 
     let _t3 = parse_markdown(
         "# 多语言\n\n```python\nprint('a')\n```\n```go\nfunc main() {{}}\n```\n",
-        &theme as &dyn MarkdownTheme, 120);
+        &theme as &dyn MarkdownTheme,
+        120,
+    );
     print_stats("更多代码块（验证稳定）", &mut rss_base, &mut alloc_base);
 
     println!("\n=== 结论 ===");
@@ -130,8 +170,11 @@ fn verify_jemalloc_is_global_allocator() {
 
     if let (Some(s1), Some(s2)) = (stats1, stats2) {
         let delta = s2.0.saturating_sub(s1.0);
-        println!("\n分配 10MB 后 allocated 增量: {} KB ({:.2} MB)",
-            delta / 1024, delta as f64 / 1024.0 / 1024.0);
+        println!(
+            "\n分配 10MB 后 allocated 增量: {} KB ({:.2} MB)",
+            delta / 1024,
+            delta as f64 / 1024.0 / 1024.0
+        );
         if delta > 5 * 1024 * 1024 {
             println!("✓ jemalloc 是全局 allocator（增量 > 5MB）");
         } else if delta > 0 {
