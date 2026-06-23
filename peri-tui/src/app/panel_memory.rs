@@ -43,9 +43,11 @@ impl App {
         let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
         tracing::info!("Opening memory file with {}: {:?}", editor, entry.path);
 
-        // 挂起 TUI: 离开 alternate screen + 恢复 raw mode
+        // 挂起 TUI: 关闭鼠标捕获 + 离开 alternate screen + 恢复 raw mode，
+        // 让外部编辑器独占终端。
         ratatui::crossterm::execute!(
             std::io::stdout(),
+            ratatui::crossterm::event::DisableMouseCapture,
             ratatui::crossterm::terminal::LeaveAlternateScreen
         )?;
         ratatui::crossterm::terminal::disable_raw_mode()?;
@@ -55,11 +57,12 @@ impl App {
             .arg(&entry.path)
             .status();
 
-        // 恢复 TUI: 重新进入 alternate screen + raw mode
+        // 恢复 TUI: 重新进入 alternate screen + raw mode + 鼠标捕获
         ratatui::crossterm::terminal::enable_raw_mode()?;
         ratatui::crossterm::execute!(
             std::io::stdout(),
-            ratatui::crossterm::terminal::EnterAlternateScreen
+            ratatui::crossterm::terminal::EnterAlternateScreen,
+            ratatui::crossterm::event::EnableMouseCapture
         )?;
 
         match status {

@@ -4,6 +4,14 @@ use tui_textarea::TextArea;
 use super::at_mention::AtMentionState;
 use crate::app::text_selection::{PanelTextSelection, TextSelection};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MessageScrollbarMetrics {
+    pub bar_area: ratatui::layout::Rect,
+    pub max_offset: usize,
+    pub up_btn_area: Option<ratatui::layout::Rect>,
+    pub down_btn_area: Option<ratatui::layout::Rect>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PastedTextBlock {
     pub placeholder: String,
@@ -23,6 +31,8 @@ pub struct UiState {
     pub draft_input: Option<String>,
     pub text_selection: TextSelection,
     pub messages_area: Option<ratatui::layout::Rect>,
+    pub message_scrollbar_metrics: Option<MessageScrollbarMetrics>,
+    pub message_scrollbar_dragging: bool,
     pub textarea_area: Option<ratatui::layout::Rect>,
     pub copy_message_until: Option<std::time::Instant>,
     pub copy_char_count: usize,
@@ -79,6 +89,8 @@ impl UiState {
             draft_input: None,
             text_selection: TextSelection::new(),
             messages_area: None,
+            message_scrollbar_metrics: None,
+            message_scrollbar_dragging: false,
             textarea_area: None,
             copy_message_until: None,
             copy_char_count: 0,

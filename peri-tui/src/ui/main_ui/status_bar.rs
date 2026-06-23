@@ -515,7 +515,6 @@ fn render_third_row(f: &mut Frame, app: &App, area: Rect) {
             }
         }
         None => {
-            let no_mouse = app.global_ui.mouse_available == Some(false);
             let lc = &app.services.lc;
             let hints = if app.session_mgr.current().session_panels.is_any_open() {
                 app.session_mgr
@@ -536,18 +535,12 @@ fn render_third_row(f: &mut Frame, app: &App, area: Rect) {
                     ("Home/End".to_string(), lc.tr("key-jump")),
                     ("PgUp/PgDn".to_string(), lc.tr("key-scroll")),
                 ]
-            } else if no_mouse {
-                vec![
-                    ("/".to_string(), lc.tr("key-command")),
-                    ("Shift+Enter".to_string(), lc.tr("key-newline")),
-                    ("Ctrl+T".to_string(), lc.tr("key-switch-model")),
-                    ("Ctrl+U/D".to_string(), lc.tr("key-scroll")),
-                ]
             } else {
                 vec![
                     ("/".to_string(), lc.tr("key-command")),
                     ("Shift+Enter".to_string(), lc.tr("key-newline")),
                     ("Ctrl+T".to_string(), lc.tr("key-switch-model")),
+                    ("Ctrl+U/D".to_string(), lc.tr("key-scroll")),
                 ]
             };
             format_hints(&hints, key_style, desc_style)

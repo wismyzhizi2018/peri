@@ -20,7 +20,7 @@ use tui_textarea::{Input, Key};
 
 use crate::app::{
     panel_manager::{EventResult, PanelKind},
-    App,
+    App, MessageScrollbarMetrics,
 };
 
 // ── Action ──────────────────────────────────────────────────────────────────
@@ -44,28 +44,7 @@ pub async fn next_event(app: &mut App) -> Result<Option<Action>> {
         }
     }
 
-    // Mouse-availability probe: on first user input after startup, determine
-    // whether the terminal supports mouse events.
-    if app.global_ui.mouse_available.is_none() {
-        // Wait for the first event (up to 1 s); this is not counted as normal poll timeout
-        if event::poll(Duration::from_secs(1))? {
-            let ev = event::read()?;
-            if matches!(ev, Event::Mouse(_)) {
-                app.global_ui.mouse_available = Some(true);
-            } else {
-                // Received keyboard/resize etc. but not mouse → terminal likely
-                // does not support mice (mouse-capable terminals almost always trigger
-                // scroll/move within 1 s)
-                app.global_ui.mouse_available = Some(false);
-            }
-            return handle_event(app, ev).await;
-        } else {
-            // No event within 1 s → no mouse
-            app.global_ui.mouse_available = Some(false);
-            return Ok(None);
-        }
-    }
-
+    // 全屏 alternate screen + EnableMouseCapture 后鼠标必然可用，无需探测。
     if !event::poll(Duration::from_millis(50))? {
         return Ok(None);
     }
@@ -249,6 +228,76 @@ fn key_event_to_text(ev: Event, text: &mut String) -> bool {
 }
 
 // ── Event dispatcher ────────────────────────────────────────────────────────
+
+fn point_in_rect(column: u16, row: u16, area: ratatui::layout::Rect) -> bool {
+    column >= area.x && column < area.x + area.width && row >= area.y && row < area.y + area.height
+}
+
+fn handle_message_scrollbar_down(app: &mut App, row: u16, column: u16) -> bool {
+    let Some(metrics) = app.session_mgr.current().ui.message_scrollbar_metrics else {
+        return false;
+    };
+
+    if let Some(btn) = metrics.up_btn_area {
+        if point_in_rect(column, row, btn) {
+            set_message_scroll_offset(app, 0);
+            return true;
+        }
+    }
+
+    if let Some(btn) = metrics.down_btn_area {
+        if point_in_rect(column, row, btn) {
+            set_message_scroll_offset(app, metrics.max_offset);
+            return true;
+        }
+    }
+
+    if point_in_rect(column, row, metrics.bar_area) && metrics.max_offset > 0 {
+        let new_offset = message_scrollbar_offset_for_row(metrics, row);
+        set_message_scroll_offset(app, new_offset);
+        app.session_mgr.current_mut().ui.message_scrollbar_dragging = true;
+        return true;
+    }
+
+    false
+}
+
+fn handle_message_scrollbar_drag(app: &mut App, row: u16) -> bool {
+    if !app.session_mgr.current().ui.message_scrollbar_dragging {
+        return false;
+    }
+
+    let Some(metrics) = app.session_mgr.current().ui.message_scrollbar_metrics else {
+        app.session_mgr.current_mut().ui.message_scrollbar_dragging = false;
+        return true;
+    };
+
+    let new_offset = message_scrollbar_offset_for_row(metrics, row);
+    set_message_scroll_offset(app, new_offset);
+    true
+}
+
+fn message_scrollbar_offset_for_row(metrics: MessageScrollbarMetrics, row: u16) -> usize {
+    let bar_inner_height = metrics.bar_area.height.saturating_sub(2);
+    if bar_inner_height == 0 || metrics.max_offset == 0 {
+        return 0;
+    }
+
+    let rel_y = row
+        .saturating_sub(metrics.bar_area.y.saturating_add(1))
+        .min(bar_inner_height);
+    ((metrics.max_offset as u128 * rel_y as u128) / bar_inner_height as u128)
+        .min(usize::MAX as u128) as usize
+}
+
+fn set_message_scroll_offset(app: &mut App, offset: usize) {
+    let ui = &mut app.session_mgr.current_mut().ui;
+    let max_scroll = ui.scrollbar_max_offset;
+    let min_scroll = ui.scrollbar_min_offset.min(max_scroll);
+    let offset = offset.clamp(min_scroll, max_scroll);
+    ui.scroll_offset = offset;
+    ui.scroll_follow = offset >= max_scroll;
+}
 
 /// Core event-handling logic (extracted from `next_event` to avoid duplicating
 /// the probe and normal paths).
@@ -545,6 +594,9 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                         return Ok(Some(Action::Redraw));
                     }
                 }
+                if handle_message_scrollbar_down(app, mouse.row, mouse.column) {
+                    return Ok(Some(Action::Redraw));
+                }
                 if let Some(area) = app.session_mgr.current_mut().ui.messages_area {
                     if mouse.row >= area.y
                         && mouse.row < area.y + area.height
@@ -604,6 +656,9 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                         return Ok(Some(Action::Redraw));
                     }
                 }
+                if handle_message_scrollbar_drag(app, mouse.row) {
+                    return Ok(Some(Action::Redraw));
+                }
                 // Panel selection drag
                 if app.session_mgr.current_mut().ui.panel_selection.dragging {
                     if let Some(area) = app.session_mgr.current_mut().ui.panel_area {
@@ -648,6 +703,7 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
             MouseEventKind::Up(MouseButton::Left) => {
                 // End panel scrollbar drag
                 app.session_mgr.current_mut().ui.panel_scrollbar_dragging = false;
+                app.session_mgr.current_mut().ui.message_scrollbar_dragging = false;
                 // Panel selection released
                 if app.session_mgr.current_mut().ui.panel_selection.dragging {
                     app.session_mgr.current_mut().ui.panel_selection.end_drag();
@@ -753,6 +809,7 @@ fn handle_oauth_prompt(app: &mut App, input: Input) {
 mod tests {
     use super::*;
     use ratatui::crossterm::event::KeyEvent;
+    use ratatui::layout::Rect;
 
     fn make_key(code: KeyCode) -> Event {
         Event::Key(KeyEvent::new(code, KeyModifiers::NONE))
@@ -771,6 +828,35 @@ mod tests {
         assert_eq!(
             text, "bu\nid",
             "模拟粘贴重建必须从第一个字符开始，不能等到 Enter 后才收集"
+        );
+    }
+
+    #[test]
+    fn test_message_scrollbar_offset_for_row_maps_track_to_range() {
+        let metrics = MessageScrollbarMetrics {
+            bar_area: Rect::new(79, 5, 1, 12),
+            max_offset: 100,
+            up_btn_area: Some(Rect::new(79, 5, 1, 1)),
+            down_btn_area: Some(Rect::new(79, 16, 1, 1)),
+        };
+
+        assert_eq!(message_scrollbar_offset_for_row(metrics, 6), 0);
+        assert_eq!(message_scrollbar_offset_for_row(metrics, 11), 50);
+        assert_eq!(message_scrollbar_offset_for_row(metrics, 16), 100);
+    }
+
+    #[test]
+    fn test_message_scrollbar_offset_for_row_handles_large_offsets() {
+        let metrics = MessageScrollbarMetrics {
+            bar_area: Rect::new(10, 0, 1, 22),
+            max_offset: usize::MAX - 10,
+            up_btn_area: None,
+            down_btn_area: None,
+        };
+
+        assert_eq!(
+            message_scrollbar_offset_for_row(metrics, 21),
+            usize::MAX - 10
         );
     }
 }

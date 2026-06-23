@@ -2,12 +2,14 @@ use ratatui::{
     layout::Rect,
     style::{Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Clear, Paragraph, Wrap},
+    widgets::{Clear, Paragraph, ScrollbarState, Wrap},
     Frame,
 };
 
+use peri_widgets::unified_vertical_scrollbar;
+
 use crate::{
-    app::App,
+    app::{App, MessageScrollbarMetrics},
     ui::{render_thread::RenderEvent, theme, welcome},
 };
 use peri_middlewares::prelude::TodoStatus;
@@ -28,14 +30,16 @@ pub(crate) fn render_messages(
     header_area: Rect,
     messages_area: Rect,
 ) {
-    // Welcome Card 或消息列表
     if app.session_mgr.current().messages.view_messages.is_empty() {
+        let ui = &mut app.session_mgr.current_mut().ui;
+        ui.messages_area = None;
+        ui.message_scrollbar_metrics = None;
+        ui.message_scrollbar_dragging = false;
         welcome::render_welcome(f, app, messages_area);
         return;
     }
 
     let inner = messages_area;
-    app.session_mgr.current_mut().ui.messages_area = Some(inner);
     let visible_height = inner.height;
 
     // 计算 loading spinner 行（Claude Code 风格：✻ verb (Xm Xs · ↓ X.Xk tokens)）
@@ -86,11 +90,31 @@ pub(crate) fn render_messages(
         None
     };
 
+    let spinner_extra: u16 = if spinner_line.is_some() {
+        spinner_extra_count(app)
+    } else {
+        0
+    };
+    let visual_total = {
+        let cache = app.session_mgr.current().messages.render_cache.read();
+        cache.total_lines.saturating_add(spinner_extra as usize)
+    };
+    let needs_scrollbar = visual_total > visible_height as usize && inner.width > 1;
+    let text_area = if needs_scrollbar {
+        Rect {
+            width: inner.width.saturating_sub(1),
+            ..inner
+        }
+    } else {
+        inner
+    };
+    app.session_mgr.current_mut().ui.messages_area = Some(text_area);
+
     // 渲染驱动宽度同步：用 last_resize_width 去抖——宽度未变时跳过重复发送，
     // 避免每秒 N 次 resize 事件导致渲染线程队列积压和 CPU 暴涨
     // （参见 spec/issues/2026-05-14-streaming-resize-cpu-spike）。
     {
-        let text_area_width = inner.width;
+        let text_area_width = text_area.width;
         let cache_width = app.session_mgr.current().messages.render_cache.read().width;
         let last_resize = app.session_mgr.current().messages.last_resize_width;
         if last_resize != Some(text_area_width)
@@ -108,31 +132,15 @@ pub(crate) fn render_messages(
     }
 
     // ── 从 RenderCache 读取并计算滚动参数 ──────────────────────────────────
-    let spinner_extra: u16 = if spinner_line.is_some() {
-        spinner_extra_count(app)
-    } else {
-        0
-    };
     let (min_scroll, max_scroll, offset) = {
         let mut cache = app.session_mgr.current().messages.render_cache.write();
 
-        let committed_lines = app
-            .session_mgr
-            .current()
-            .messages
-            .scrollback_committed_lines
-            .min(cache.lines.len());
-        let base_visual = committed_visual_start(
-            committed_lines,
-            cache.lines.len(),
-            cache.total_lines,
-            &cache.wrap_map,
-        );
-        let live_visual_rows = cache.total_lines.saturating_sub(base_visual);
-        let visual_total = live_visual_rows.saturating_add(spinner_extra as usize);
-        let min_scroll = base_visual;
-        let max_scroll = base_visual
-            .saturating_add(visual_total.saturating_sub(visible_height as usize))
+        // 全屏 alternate screen 模式：无原生 scrollback，所有内容都在 TUI 视口内，
+        // base_visual 恒为 0。
+        let visual_total = cache.total_lines.saturating_add(spinner_extra as usize);
+        let min_scroll = 0;
+        let max_scroll = visual_total
+            .saturating_sub(visible_height as usize)
             .max(min_scroll);
         let scroll_follow = app.session_mgr.current().ui.scroll_follow;
         let scroll_offset = app.session_mgr.current().ui.scroll_offset;
@@ -172,32 +180,88 @@ pub(crate) fn render_messages(
     // （ratatui 即使设了 scroll(offset)，仍会对 offset 之前的所有行做 grapheme 分割 + wrap 计算）
     let clip = viewport_clip(app, offset, visible_height, &spinner_line);
 
-    // 先用 Clear 清空整个 messages_area：insert_before 后 ratatui current buffer 未重置，
-    // Paragraph 不填满 area 时未覆盖 cell 会保留旧值，最终经 diff 输出到终端造成渲染残留。
-    // 清空后 Paragraph 只渲染有效行、剩余为空格，确保每帧 viewport 区域 buffer 正确。
+    // 先用 Clear 清空整个 messages_area：Paragraph 不填满 area 时未覆盖 cell 会保留旧值，
+    // 最终经 diff 输出到终端造成渲染残留。清空后 Paragraph 只渲染有效行、剩余为空格，
+    // 确保每帧 viewport 区域 buffer 正确。
     f.render_widget(Clear, inner);
     let paragraph = Paragraph::new(Text::from(clip.lines))
         .scroll((clip.local_offset, 0))
         .wrap(Wrap { trim: false });
-    f.render_widget(paragraph, inner);
+    f.render_widget(paragraph, text_area);
+
+    let metrics = render_message_scrollbar(f, inner, max_scroll, offset);
+    let ui = &mut app.session_mgr.current_mut().ui;
+    ui.message_scrollbar_metrics = metrics;
+    if metrics.is_none() {
+        ui.message_scrollbar_dragging = false;
+    }
 }
 
-fn committed_visual_start(
-    committed_lines: usize,
-    line_count: usize,
-    total_visual_rows: usize,
-    wrap_map: &[crate::ui::render_thread::WrappedLineInfo],
-) -> usize {
-    if committed_lines == 0 {
-        return 0;
+fn render_message_scrollbar(
+    f: &mut Frame,
+    area: Rect,
+    max_scroll: usize,
+    offset: usize,
+) -> Option<MessageScrollbarMetrics> {
+    if max_scroll == 0 || area.width == 0 || area.height == 0 {
+        return None;
     }
-    if committed_lines >= line_count {
-        return total_visual_rows;
-    }
-    wrap_map
-        .get(committed_lines)
-        .map(|info| info.visual_row_start)
-        .unwrap_or(total_visual_rows)
+
+    let bar_area = Rect {
+        x: area.right().saturating_sub(1),
+        y: area.y,
+        width: 1,
+        height: area.height,
+    };
+    let offset = offset.min(max_scroll);
+    let style = Style::default().fg(theme::MUTED);
+    let mut scrollbar_state = ScrollbarState::new(max_scroll).position(offset);
+    f.render_stateful_widget(
+        unified_vertical_scrollbar().style(style),
+        area,
+        &mut scrollbar_state,
+    );
+
+    let up_btn_area = if offset > 0 {
+        let btn = Rect {
+            x: bar_area.x,
+            y: bar_area.y,
+            width: 1,
+            height: 1,
+        };
+        let arrow = Paragraph::new(Text::from(Span::styled(
+            "▲",
+            style.add_modifier(Modifier::BOLD),
+        )));
+        f.render_widget(arrow, btn);
+        Some(btn)
+    } else {
+        None
+    };
+
+    let down_btn_area = if offset < max_scroll && bar_area.height > 1 {
+        let btn = Rect {
+            x: bar_area.x,
+            y: bar_area.bottom().saturating_sub(1),
+            width: 1,
+            height: 1,
+        };
+        let arrow = Paragraph::new(Text::from(Span::styled(
+            "▼",
+            style.add_modifier(Modifier::BOLD),
+        )));
+        f.render_widget(arrow, btn);
+        Some(btn)
+    } else {
+        None
+    };
+
+    Some(MessageScrollbarMetrics {
+        bar_area,
+        max_offset: max_scroll,
+        up_btn_area,
+        down_btn_area,
+    })
 }
 
 /// 基于视口裁剪提取可见行。

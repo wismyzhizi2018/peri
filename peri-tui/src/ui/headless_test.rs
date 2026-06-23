@@ -620,6 +620,40 @@ async fn test_sticky_header_shows_after_submit() {
 }
 
 #[tokio::test]
+async fn test_message_area_renders_scrollbar_metrics_when_overflowing() {
+    let (mut app, mut handle) = App::new_headless(80, 24).await;
+
+    for i in 0..40 {
+        app.session_mgr
+            .current_mut()
+            .messages
+            .view_messages
+            .push(MessageViewModel::user(format!("message line {}", i)));
+    }
+    let notified = handle.render_notify.notified();
+    app.render_rebuild();
+    notified.await;
+
+    handle
+        .terminal
+        .draw(|f| main_ui::render(f, &mut app))
+        .unwrap();
+
+    let ui = &app.session_mgr.current().ui;
+    let metrics = ui
+        .message_scrollbar_metrics
+        .expect("overflowing message area should render a message scrollbar");
+    let text_area = ui
+        .messages_area
+        .expect("message text area should be stored for mouse selection");
+
+    assert!(ui.scrollbar_max_offset > 0);
+    assert_eq!(metrics.max_offset, ui.scrollbar_max_offset);
+    assert_eq!(metrics.bar_area.x, text_area.right());
+    assert_eq!(metrics.bar_area.height, text_area.height);
+}
+
+#[tokio::test]
 async fn test_sticky_header_hidden_after_clear() {
     // /clear 后 sticky header 应消失
     let (mut app, mut handle) = App::new_headless(80, 24).await;
