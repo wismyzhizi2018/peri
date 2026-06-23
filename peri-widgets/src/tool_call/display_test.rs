@@ -5,7 +5,7 @@ use ratatui::style::Color;
 fn test_indicator_running_blinks() {
     let (ch, color) = format_indicator(ToolCallStatus::Running, 0);
     assert_eq!(ch, "●");
-    assert_eq!(color, Color::Rgb(255, 204, 0));
+    assert_eq!(color, Color::Rgb(153, 153, 153));
     let (ch, _) = format_indicator(ToolCallStatus::Running, 4);
     assert_eq!(ch, " ");
 }
