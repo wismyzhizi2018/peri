@@ -1,6 +1,6 @@
 # ConPTY 下鼠标滚轮滚动 textarea 而非消息区 — crossterm EnableMouseCapture 不发送 ANSI 序列
 
-**状态**：Open
+**状态**：Fixed
 **优先级**：高
 **创建日期**：2026-06-23
 
@@ -274,3 +274,14 @@ std::io::Write::flush(terminal.backend_mut())?;
 | 日期 | 从 | 到 | 操作人 | 说明 |
 |------|-----|-----|--------|------|
 | 2026-06-23 | — | Open | agent | 根因分析完成，源码级证据链 100% 确认 |
+| 2026-06-23 | Open | Fixed | agent | commit 82db370f：手动发送 ?1000h ?1006h |
+
+## 修复记录
+
+### 修复 #1（2026-06-23）
+
+- **操作人**：agent
+- **修复内容**：在 `EnableMouseCapture` 之后手动发送 `\x1b[?1000h\x1b[?1006h`，退出/挂起时发送 `\x1b[?1006l\x1b[?1000l` 清理
+- **涉及 commit**：`82db370f`
+- **涉及文件**：`peri-tui/src/main.rs`（终端初始化 + 退出）、`peri-tui/src/app/panel_memory.rs`（外部编辑器挂起 + 恢复）
+- **验证状态**：待用户运行时验证（cargo check 通过）
