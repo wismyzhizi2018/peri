@@ -1,10 +1,8 @@
----
-id: 2026-06-01-tool-output-truncation-bypass
-title: 工具输出截断机制被绕过（5月16日后仍有 17 条 >100KB 输出）
-status: open
-priority: high
-created: 2026-06-01
----
+# 工具输出截断机制被绕过（5 月 16 日后仍有 17 条 >100KB 输出）
+
+**状态**：Open
+**优先级**：高
+**创建日期**：2026-06-01
 
 ## 问题
 
