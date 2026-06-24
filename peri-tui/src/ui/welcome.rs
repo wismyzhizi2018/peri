@@ -70,12 +70,18 @@ pub(crate) fn render_welcome(f: &mut Frame, app: &App, area: Rect) {
         }
     }
 
-    // ── 副标题 ──────────────────────────────────────────────────────────
+    // ── 副标题 + 版本号 ──────────────────────────────────────────────────
     lines.push(Line::from(""));
-    lines.push(Line::from(Span::styled(
-        lc.tr("welcome-title"),
-        Style::default().fg(theme::MUTED),
-    )));
+    lines.push(Line::from(vec![
+        Span::styled(
+            lc.tr("welcome-title"),
+            Style::default().fg(theme::MUTED),
+        ),
+        Span::styled(
+            format!("  v{}", env!("CARGO_PKG_VERSION")),
+            Style::default().fg(theme::DIM),
+        ),
+    ]));
 
     // ── 分隔线 ──────────────────────────────────────────────────────────
     lines.push(Line::from(""));
