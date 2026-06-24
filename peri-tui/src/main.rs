@@ -447,13 +447,51 @@ fn run_tui(opts: TuiOptions) -> Result<()> {
     // 需要显式注册 handler 返回 TRUE，让 Ctrl+C 作为 KeyEvent 传递给应用层。
     #[cfg(target_os = "windows")]
     {
+        // ConPTY（Windows Terminal）下 Ctrl+C 不会作为 KEY_EVENT 进入应用输入流——
+        // ConPTY 在 pseudoconsole 层把 Ctrl+C 转成 CTRL_C_EVENT 信号，crossterm 读不
+        // 到按键，应用层的 Ctrl+C 退出/中断（handle_ctrl_c）永远无法触发。
+        // 处理方式：注册 ctrl-handler，收到信号时主动注入一对 Ctrl+C KeyDown/KeyUp
+        // 事件到 STD_INPUT，让 crossterm event::read 能读到；return 1 阻止默认终止。
         unsafe extern "system" fn ctrl_handler(ctrl_type: u32) -> i32 {
-            if ctrl_type == windows_sys::Win32::System::Console::CTRL_C_EVENT
-                || ctrl_type == windows_sys::Win32::System::Console::CTRL_BREAK_EVENT
-            {
-                return 1;
+            use windows_sys::Win32::System::Console::{
+                CTRL_BREAK_EVENT, CTRL_C_EVENT, GetStdHandle, WriteConsoleInputW, INPUT_RECORD,
+                INPUT_RECORD_0, KEY_EVENT, KEY_EVENT_RECORD, KEY_EVENT_RECORD_0,
+                LEFT_CTRL_PRESSED, STD_INPUT_HANDLE,
+            };
+
+            if ctrl_type != CTRL_C_EVENT && ctrl_type != CTRL_BREAK_EVENT {
+                return 0;
             }
-            0
+
+            /// 构造一个 Ctrl+C 的 INPUT_RECORD（bKeyDown 由参数控制）
+            unsafe fn make_ctrl_c(down: i32) -> INPUT_RECORD {
+                INPUT_RECORD {
+                    EventType: KEY_EVENT as u16,
+                    Event: INPUT_RECORD_0 {
+                        KeyEvent: KEY_EVENT_RECORD {
+                            bKeyDown: down,
+                            wRepeatCount: 1,
+                            wVirtualKeyCode: 0x43,  // VK_C
+                            wVirtualScanCode: 0x2E, // C 键扫描码
+                            uChar: KEY_EVENT_RECORD_0 { UnicodeChar: 0x03 }, // ^C
+                            dwControlKeyState: LEFT_CTRL_PRESSED,
+                        },
+                    },
+                }
+            }
+
+            unsafe {
+                let handle = GetStdHandle(STD_INPUT_HANDLE);
+                let records = [make_ctrl_c(1), make_ctrl_c(0)];
+                let mut written: u32 = 0;
+                WriteConsoleInputW(
+                    handle,
+                    records.as_ptr(),
+                    records.len() as u32,
+                    &mut written,
+                );
+            }
+            1
         }
         unsafe {
             windows_sys::Win32::System::Console::SetConsoleCtrlHandler(Some(ctrl_handler), 1);

@@ -247,3 +247,40 @@ pub(super) fn inject_at_mention_path(app: &mut App) {
         app.session_mgr.current_mut().ui.at_mention.close();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::panel_manager::PanelKind;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent};
+
+    #[tokio::test]
+    async fn test_ctrl_c_quits_from_open_panel_end_to_end() {
+        // 端到端验证完整链路：ModelPanel 打开时 Ctrl+C 双击应真正退出。
+        // 覆盖 handle_key_event 全 Stage 分发（bar_focus → shortcuts → panels 拦截
+        // → normal_keys → handle_ctrl_c），证明 Ctrl+C 能穿透面板到达退出逻辑。
+        let (mut app, _handle) = crate::app::App::new_headless(80, 24).await;
+        app.open_model_panel();
+        assert!(
+            app.session_mgr
+                .current()
+                .session_panels
+                .is_active(PanelKind::Model),
+            "前置条件：ModelPanel 应已打开"
+        );
+
+        let ctrl_c = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
+
+        // 第一次 Ctrl+C → 进入 quit-pending，不退出
+        let r1 = handle_key_event(&mut app, ctrl_c).unwrap();
+        assert!(
+            app.global_ui.quit_pending_since.is_some(),
+            "第一次 Ctrl+C 应进入 quit-pending"
+        );
+        assert!(!matches!(r1, Some(Action::Quit)), "第一次不应 Quit");
+
+        // 第二次 Ctrl+C（2 秒内）→ 真正退出
+        let r2 = handle_key_event(&mut app, ctrl_c).unwrap();
+        assert!(matches!(r2, Some(Action::Quit)), "第二次 Ctrl+C 应返回 Quit");
+    }
+}

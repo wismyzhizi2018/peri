@@ -535,18 +535,21 @@ fn render_third_row(f: &mut Frame, app: &App, area: Rect) {
         }
         None => {
             let lc = &app.services.lc;
-            let hints = if app.session_mgr.current().session_panels.is_any_open() {
+            // quit-pending 提示优先级最高：即使面板/详情模式打开，第一次 Ctrl+C 后
+            // 也必须显示「再按 Ctrl+C 退出」，否则用户在面板场景下看不到退出反馈。
+            // （详见 spec/archive-issues/2026-06-24-panel-swallow-ctrl-c.md）
+            let hints = if app.global_ui.quit_pending_since.is_some() {
+                vec![
+                    ("Ctrl+C".to_string(), lc.tr("key-close")),
+                    ("其他键".to_string(), lc.tr("key-cancel")),
+                ]
+            } else if app.session_mgr.current().session_panels.is_any_open() {
                 app.session_mgr
                     .current()
                     .session_panels
                     .status_bar_hints(lc)
             } else if app.global_panels.is_any_open() {
                 app.global_panels.status_bar_hints(lc)
-            } else if app.global_ui.quit_pending_since.is_some() {
-                vec![
-                    ("Ctrl+C".to_string(), lc.tr("key-close")),
-                    ("其他键".to_string(), lc.tr("key-cancel")),
-                ]
             } else if app.session_mgr.current().ui.detail_mode {
                 vec![
                     ("● Verbose".to_string(), String::new()),
