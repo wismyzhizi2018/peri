@@ -754,6 +754,50 @@ launch_agent 工具调用
 **架构影响:** define.rs + execute_bg.rs + execute_fork.rs 共 7 处 Ok("Error:") → Err()，统一了 SubAgent 工具链的错误返回方式
 **涉及文件:** peri-middlewares/src/subagent/tool/define.rs, peri-middlewares/src/subagent/tool/execute_bg.rs, peri-middlewares/src/subagent/tool/execute_fork.rs
 
+### issue_2026-06-14-hooks-permission-override-reason-dropped
+**摘要:** Hooks PermissionOverride 透传时 reason 字段被丢弃
+**状态:** Fixed
+**归档日期:** 2026-06-24
+**关键词:** hook_specific_to_action, PermissionOverride, reason 透传, hooks
+**问题本质:** `hook_specific_to_action` 中 `PermissionOverride` 分支硬编码 `reason: None`，丢弃 hook 返回的拒绝理由
+**通用模式:** `hook_specific_to_action` 必须透传所有 hook 返回字段，禁止 hardcode 默认值
+**技术决策:** 用 `pattern { field_name, .. }` 绑定然后透传；Hook 测试 JSON 用 `serde_json::json!` 宏构造
+**涉及文件:** peri-middlewares/src/hooks/output_parser.rs, peri-middlewares/src/hooks/middleware_test.rs
+**CLAUDE.md 链接:** false
+
+### issue_2026-06-13-upstream-security-audit-ssrf-ipv6
+**摘要:** 上游安全修复审计 — SSRF IPv6 漏洞待 pick
+**状态:** Fixed
+**归档日期:** 2026-06-24
+**关键词:** SSRF, IPv6, CIDR 匹配, 安全审计, ssrf_guard
+**问题本质:** `ssrf_guard.rs` 中 `"::/0"` CIDR 匹配整个 IPv6 地址空间，导致所有公网 IPv6 请求被误拦截
+**通用模式:** 安全规则的 CIDR 匹配需精确，移除过于宽泛的范围
+**技术决策:** 移除 `"::/0"`，保留 `fc00::/7`（ULA）+ `fe80::/10`（link-local），`::` 由 `is_unspecified()` 单独处理
+**涉及文件:** peri-middlewares/src/hooks/ssrf_guard.rs, peri-middlewares/src/hooks/ssrf_guard_test.rs
+**CLAUDE.md 链接:** false
+
+### issue_2026-06-13-deferred-tool-name-mismatch-cron-create
+**摘要:** Deferred tool 名称不一致导致 ExecuteExtraTool 找不到 CronCreate
+**状态:** Fixed
+**归档日期:** 2026-06-24
+**关键词:** deferred tool, 名称不一致, 模糊匹配, ExecuteExtraTool
+**问题本质:** 工具名在不同来源格式不一致（snake_case vs CamelCase），LLM 臆造名称时无法找到
+**通用模式:** ExecuteExtraTool 应支持三级模糊匹配：精确 → 大小写不敏感+规范化 → 首词前缀
+**技术决策:** `resolve_tool()` 函数实现三级回退匹配
+**涉及文件:** peri-middlewares/src/tool_search/execute_tool.rs, peri-middlewares/src/tool_search/tool_index.rs
+**CLAUDE.md 链接:** false
+
+### issue_2026-06-12-large-write-streaming-slow
+**摘要:** Write 工具超长内容流式输出时 LLM Provider 响应极慢
+**状态:** Fixed
+**归档日期:** 2026-06-24
+**关键词:** Write 工具, 超时, 流式输出, 分段写入, append
+**问题本质:** 超大 JSON（tool_use 的 `input` 对象包含完整 `content` 字段）流式生成导致 provider 侧性能劣化
+**通用模式:** Write 工具超时机制引导模型使用 `append=true` 分段写入
+**技术决策:** `tokio::time::timeout(Duration::from_secs(120), ...)` 包裹 invoke，超时返回错误提示
+**涉及文件:** peri-middlewares/src/tools/filesystem/write.rs
+**CLAUDE.md 链接:** false
+
 ---
 
 ## 相关 Feature

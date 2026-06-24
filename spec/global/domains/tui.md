@@ -1019,6 +1019,80 @@ submit_message(text)
 **架构影响:** 提取 `save_config_now()` 辅助函数作为统一保存入口，所有字段变更路径（键盘切换、失焦、鼠标点击）统一调用
 **涉及文件:** peri-tui/src/app/config_panel.rs, peri-tui/src/ui/main_ui/panels/config.rs, peri-tui/src/app/panel_config.rs
 
+### issue_2026-06-24-panel-swallow-ctrl-c
+**摘要:** 面板打开时 Ctrl+C 无法退出
+**状态:** Fixed
+**归档日期:** 2026-06-24
+**关键词:** 键盘事件分发链, EventResult, 面板拦截
+**问题本质:** 面板层无条件 `return Some(Action::Redraw)` 导致后续 Stage（包括 Ctrl+C）永远无法触发
+**通用模式:** 键盘事件分发链中，每个 Stage 必须检查 `EventResult`：`Consumed` → 返回；`NotConsumed` → 传递给下一 Stage
+**技术决策:** 面板、弹窗等 UI 层的 `dispatch_key` 返回值是分发链是否继续的唯一判据
+**涉及文件:** peri-tui/src/event/keyboard/panels.rs, peri-tui/src/event/keyboard.rs
+**CLAUDE.md 链接:** true
+
+### issue_2026-06-23-mouse-wheel-scrolls-textarea-not-messages
+**摘要:** ConPTY 下鼠标滚轮滚动 textarea 而非消息区
+**状态:** Fixed（v5）
+**归档日期:** 2026-06-24
+**关键词:** ConPTY, 鼠标滚轮, alternate scroll, crossterm
+**问题本质:** crossterm `EnableMouseCapture` 在 Windows+ConPTY 下不发送 ANSI `?1000h`，导致 WT 不知道 mouse tracking 已开启，滚轮被 alternate scroll 转为方向键
+**通用模式:** ConPTY 下滚轮事件不可靠，用 `?1007h`（alternate scroll）+ 键盘绑定交换绕过
+**技术决策:** `↑`/`↓` 绑定消息区滚动，`Ctrl+↑`/`Ctrl+↓` 绑定 textarea 光标；`force_conpty_mouse_notify()` toggle MOUSE bit 强制触发 WriteSGR1006
+**涉及文件:** peri-tui/src/conpty.rs, peri-tui/src/main.rs, peri-tui/src/event/keyboard/normal_keys.rs
+**CLAUDE.md 链接:** true
+
+### issue_2026-06-14-tui-scroll-overflow-u16-saturation
+**摘要:** 长对话滚动溢出 — 视觉行号 u16 饱和导致 follow-bottom 失效
+**状态:** Fixed
+**归档日期:** 2026-06-24
+**关键词:** u16 饱和, 视觉行号, follow-bottom, scroll_offset
+**问题本质:** 消息区视觉行号和滚动 offset 使用 `u16` 保存，累计超过 65535 后饱和，所有依赖行号的逻辑失效
+**通用模式:** 消息区视觉行号 / scroll offset 必须 `usize`，禁止 `u16`
+**技术决策:** `usize::MAX` + clamp 替代 `u16::MAX` 哨兵值；单行内偏移和面板内容滚动可保留 `u16`
+**涉及文件:** peri-tui/src/ui/render_thread.rs, peri-tui/src/app/ui_state.rs, peri-tui/src/ui/main_ui/message_area.rs
+**CLAUDE.md 链接:** true
+
+### issue_2026-06-13-word-diff-old-new-concatenated
+**摘要:** Word diff 渲染 old/new 值拼接在同一行
+**状态:** Fixed
+**归档日期:** 2026-06-24
+**关键词:** word diff, render_word_diff_spans, 段过滤
+**问题本质:** `render_word_diff_spans` 渲染了所有 segments（Added + Removed + Unchanged），未按行类型过滤
+**通用模式:** Remove 行只显示 Removed + Unchanged 段，Add 行只显示 Added + Unchanged 段
+**涉及文件:** peri-widgets/src/diff/renderer.rs
+**CLAUDE.md 链接:** false
+
+### issue_2026-06-13-shell-command-success-stderr-red
+**摘要:** Shell 命令成功执行时 stderr 输出显示红色误导用户
+**状态:** Fixed
+**归档日期:** 2026-06-24
+**关键词:** stderr, exit code, ERROR 样式, shell 命令
+**问题本质:** stderr 行无条件使用 `theme::ERROR` 红色，不考虑 exit code
+**通用模式:** exit code == 0 时 stderr 用 MUTED 色，仅失败时用 ERROR 红色
+**涉及文件:** peri-tui/src/ui/message_render.rs
+**CLAUDE.md 链接:** false
+
+### issue_2026-06-13-message-double-storage-40mb-waste
+**摘要:** 消息双重累积存储导致 118MB RSS 中 40-80MB 为冗余数据
+**状态:** Verified
+**归档日期:** 2026-06-24
+**关键词:** 双存储, ToolResult 放大, syntect, Arc<str>, 内存优化
+**问题本质:** 大 ToolResult 经 6 个存储点 deep clone 放大（5MB → +28MB RSS），syntect 首次加载 +7.83MB
+**通用模式:** 大字符串应用 `Arc<str>` 共享；syntect 应用 `SyntaxSetBuilder` 精简语言加载
+**技术决策:** `ContentBlock::ToolResult.text` 改 `Arc<str>` 让 6 个存储点共享同一份堆内存
+**涉及文件:** peri-tui/src/app/agent_ops/mod.rs, peri-tui/src/app/message_pipeline/mod.rs, peri-widgets/src/markdown/highlight.rs
+**CLAUDE.md 链接:** true
+
+### issue_2026-06-06-npm-peri-windows-bin-sh-not-found
+**摘要:** npm 全局安装 peri 后 Windows 上执行报 /bin/sh.exe not found
+**状态:** Fixed
+**归档日期:** 2026-06-24
+**关键词:** npm, Windows, /bin/sh, Node.js 脚本, 全局安装
+**问题本质:** npm `bin` 字段指向 shell 脚本时，Windows 上生成的全局 shim 尝试用 `/bin/sh` 执行
+**通用模式:** npm bin 脚本应为 Node.js 脚本（`#!/usr/bin/env node`），确保跨平台兼容
+**涉及文件:** package.json, bin/peri
+**CLAUDE.md 链接:** false
+
 ## 相关 Feature
 
 - → [agent.md#20260322_F001_agent-storage-refactor](./agent.md#20260322_F001_agent-storage-refactor) — SQLite 持久化，TUI 消息渲染依赖此存储

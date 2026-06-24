@@ -1450,8 +1450,105 @@
 ### 工具错误可见性
 - [Agent 工具 3.35% 错误率，93% 源于 subagent_type 参数缺失，Ok("Error:") 导致监控系统不可见](domains/agent.md#issue_2026-06-05-agent-tool-3-percent-error-rate-subagent-type-missing) — agent
 
+### 键盘事件分发链
+- [面板打开时 Ctrl+C 无法退出](domains/tui.md#issue_2026-06-24-panel-swallow-ctrl-c) — tui
+
+### EventResult
+- [面板打开时 Ctrl+C 无法退出](domains/tui.md#issue_2026-06-24-panel-swallow-ctrl-c) — tui
+
+### 面板拦截
+- [面板打开时 Ctrl+C 无法退出](domains/tui.md#issue_2026-06-24-panel-swallow-ctrl-c) — tui
+
+### ConPTY
+- [ConPTY 下鼠标滚轮滚动 textarea 而非消息区](domains/tui.md#issue_2026-06-23-mouse-wheel-scrolls-textarea-not-messages) — tui
+
+### 鼠标滚轮
+- [ConPTY 下鼠标滚轮滚动 textarea 而非消息区](domains/tui.md#issue_2026-06-23-mouse-wheel-scrolls-textarea-not-messages) — tui
+
+### alternate scroll
+- [ConPTY 下鼠标滚轮滚动 textarea 而非消息区](domains/tui.md#issue_2026-06-23-mouse-wheel-scrolls-textarea-not-messages) — tui
+
+### crossterm
+- [ConPTY 下鼠标滚轮滚动 textarea 而非消息区](domains/tui.md#issue_2026-06-23-mouse-wheel-scrolls-textarea-not-messages) — tui
+
+### u16 饱和
+- [长对话滚动溢出 — 视觉行号 u16 饱和导致 follow-bottom 失效](domains/tui.md#issue_2026-06-14-tui-scroll-overflow-u16-saturation) — tui
+
+### 视觉行号
+- [长对话滚动溢出 — 视觉行号 u16 饱和导致 follow-bottom 失效](domains/tui.md#issue_2026-06-14-tui-scroll-overflow-u16-saturation) — tui
+
+### follow-bottom
+- [长对话滚动溢出 — 视觉行号 u16 饱和导致 follow-bottom 失效](domains/tui.md#issue_2026-06-14-tui-scroll-overflow-u16-saturation) — tui
+
+### word diff
+- [Word diff 渲染 old/new 值拼接在同一行](domains/tui.md#issue_2026-06-13-word-diff-old-new-concatenated) — tui
+
+### render_word_diff_spans
+- [Word diff 渲染 old/new 值拼接在同一行](domains/tui.md#issue_2026-06-13-word-diff-old-new-concatenated) — tui
+
+### stderr
+- [Shell 命令成功执行时 stderr 输出显示红色误导用户](domains/tui.md#issue_2026-06-13-shell-command-success-stderr-red) — tui
+
+### exit code
+- [Shell 命令成功执行时 stderr 输出显示红色误导用户](domains/tui.md#issue_2026-06-13-shell-command-success-stderr-red) — tui
+
+### 双存储
+- [消息双重累积存储导致 118MB RSS 中 40-80MB 为冗余数据](domains/tui.md#issue_2026-06-13-message-double-storage-40mb-waste) — tui
+
+### ToolResult 放大
+- [消息双重累积存储导致 118MB RSS 中 40-80MB 为冗余数据](domains/tui.md#issue_2026-06-13-message-double-storage-40mb-waste) — tui
+
+### syntect
+- [消息双重累积存储导致 118MB RSS 中 40-80MB 为冗余数据](domains/tui.md#issue_2026-06-13-message-double-storage-40mb-waste) — tui
+
+### Arc<str>
+- [消息双重累积存储导致 118MB RSS 中 40-80MB 为冗余数据](domains/tui.md#issue_2026-06-13-message-double-storage-40mb-waste) — tui
+
+### 内存优化
+- [消息双重累积存储导致 118MB RSS 中 40-80MB 为冗余数据](domains/tui.md#issue_2026-06-13-message-double-storage-40mb-waste) — tui
+
+### npm
+- [npm 全局安装 peri 后 Windows 上执行报 /bin/sh.exe not found](domains/tui.md#issue_2026-06-06-npm-peri-windows-bin-sh-not-found) — tui
+
+### /bin/sh
+- [npm 全局安装 peri 后 Windows 上执行报 /bin/sh.exe not found](domains/tui.md#issue_2026-06-06-npm-peri-windows-bin-sh-not-found) — tui
+
+### hook_specific_to_action
+- [Hooks PermissionOverride 透传时 reason 字段被丢弃](domains/agent.md#issue_2026-06-14-hooks-permission-override-reason-dropped) — agent
+
+### PermissionOverride
+- [Hooks PermissionOverride 透传时 reason 字段被丢弃](domains/agent.md#issue_2026-06-14-hooks-permission-override-reason-dropped) — agent
+
+### reason 透传
+- [Hooks PermissionOverride 透传时 reason 字段被丢弃](domains/agent.md#issue_2026-06-14-hooks-permission-override-reason-dropped) — agent
+
+### SSRF
+- [上游安全修复审计 — SSRF IPv6 漏洞待 pick](domains/agent.md#issue_2026-06-13-upstream-security-audit-ssrf-ipv6) — agent
+
+### IPv6
+- [上游安全修复审计 — SSRF IPv6 漏洞待 pick](domains/agent.md#issue_2026-06-13-upstream-security-audit-ssrf-ipv6) — agent
+
+### CIDR 匹配
+- [上游安全修复审计 — SSRF IPv6 漏洞待 pick](domains/agent.md#issue_2026-06-13-upstream-security-audit-ssrf-ipv6) — agent
+
+### deferred tool
+- [Deferred tool 名称不一致导致 ExecuteExtraTool 找不到 CronCreate](domains/agent.md#issue_2026-06-13-deferred-tool-name-mismatch-cron-create) — agent
+
+### 模糊匹配
+- [Deferred tool 名称不一致导致 ExecuteExtraTool 找不到 CronCreate](domains/agent.md#issue_2026-06-13-deferred-tool-name-mismatch-cron-create) — agent
+
+### Write 工具
+- [Write 工具超长内容流式输出时 LLM Provider 响应极慢](domains/agent.md#issue_2026-06-12-large-write-streaming-slow) — agent
+
+### 分段写入
+- [Write 工具超长内容流式输出时 LLM Provider 响应极慢](domains/agent.md#issue_2026-06-12-large-write-streaming-slow) — agent
+
+### append
+- [Write 工具超长内容流式输出时 LLM Provider 响应极慢](domains/agent.md#issue_2026-06-12-large-write-streaming-slow) — agent
+
 ## 更新记录
 
+- 2026-06-24: 归档 11 个 issue（tui 7 + agent 4），新增 38 个关键词索引
 - 2026-06-03: 归档 3 个 issue（at-mention 搜索、rewind 消息丢失、多 session 分屏移除）
 - 2026-05-29: 归档 8 个 issue（agent 7 + plugin 1），新增 22 个关键词索引
 - 2026-05-27: 归档 16 个 issue（agent 4 + system-prompt 2 + compact 1 + tui 4 + mcp 1），新增 42 个关键词索引
