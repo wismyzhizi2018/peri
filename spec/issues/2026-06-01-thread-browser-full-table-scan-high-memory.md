@@ -1,11 +1,12 @@
-# Issue: ThreadBrowser 全量 SQLite 查询导致高内存占用
+# ThreadBrowser 全量 SQLite 查询导致高内存占用
 
-> 日期: 2026-06-01
-> 严重性: 🔴 极高
-> 状态: Fixed
-> 类型: performance / memory
-> 修复提交: `f92a0870` — perf: 修复内存占用问题 — 换 jemalloc、限 worker、history 面板按需加载
-> 效果: 显著降低内存峰值
+**状态**：Closed
+**优先级**：高
+**模块**：agent/tui
+**创建日期**：2026-06-01
+**关闭日期**：2026-06-24
+**修复提交**：`f92a0870` — perf: 修复内存占用问题 — 换 jemalloc、限 worker、history 面板按需加载
+**效果**：显著降低内存峰值
 
 ## 问题
 
@@ -35,3 +36,15 @@ const THREAD_META_COLUMNS: &str = "t.id, t.title, t.cwd, ... t.config, NULL as c
 | `peri-agent/src/thread/sqlite_store.rs` | `THREAD_META_COLUMNS` + `list_threads()` |
 | `peri-agent/src/thread/types.rs` | `ThreadMeta` 结构体 |
 | `peri-tui/src/app/thread_ops.rs` | `open_thread_browser()` |
+
+## 关闭原因
+
+修复 `f92a0870` 已合并超过 23 天，无回归报告。用户未明确验证但生产无反馈，按 issue 健康度整理流程转 Closed（替代长期悬挂的 Fixed 状态）。如复现请转 Reopen。
+
+## 状态变更记录
+
+| 日期 | 从 | 到 | 操作人 | 说明 |
+|------|-----|-----|--------|------|
+| 2026-06-01 | — | Open | agent | 创建 |
+| 2026-06-01 | Open | Fixed | agent | `f92a0870` 合并 |
+| 2026-06-24 | Fixed | Closed | agent | 长期无验证反馈，整理流程关闭 |
