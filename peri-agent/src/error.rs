@@ -54,6 +54,7 @@ impl AgentError {
                     || msg_lower.contains("dns")
                     || msg_lower.contains("rate limit")
                     || msg_lower.contains("overloaded")
+                    || msg_lower.contains("error sending request")
             }
             _ => false,
         }

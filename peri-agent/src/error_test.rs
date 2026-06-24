@@ -85,6 +85,14 @@ fn test_not_retryable_parse_error() {
 }
 
 #[test]
+fn test_retryable_error_sending_request() {
+    let err = AgentError::LlmError(
+        "error sending request for url (https://token-plan-sgp.xiaomimimo.com/anthropic/v1/messages)".into(),
+    );
+    assert!(err.is_retryable(), "reqwest 网络层错误应可重试");
+}
+
+#[test]
 fn test_not_retryable_other_errors() {
     let err = AgentError::ToolNotFound("x".into());
     assert!(!err.is_retryable());
