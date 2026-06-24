@@ -591,6 +591,122 @@
         assert!(first_text.contains("Hello"), "应包含原始内容");
     }
 
+    #[test]
+    fn test_parse_exit_code_非零退出码() {
+        assert_eq!(parse_exit_code("[Exit code: 1]"), Some(1));
+        assert_eq!(parse_exit_code("[Exit code: 42]"), Some(42));
+        assert_eq!(parse_exit_code("[Exit code: 127]"), Some(127));
+        assert_eq!(parse_exit_code("[Exit code: -1]"), Some(-1));
+    }
+
+    #[test]
+    fn test_parse_exit_code_零退出码() {
+        assert_eq!(parse_exit_code("[Exit code: 0]"), Some(0));
+    }
+
+    #[test]
+    fn test_parse_exit_code_空输出格式() {
+        assert_eq!(
+            parse_exit_code("[Command completed with exit code 1]"),
+            Some(1)
+        );
+        assert_eq!(
+            parse_exit_code("[Command completed with exit code 0]"),
+            Some(0)
+        );
+    }
+
+    #[test]
+    fn test_parse_exit_code_混合内容() {
+        let content = "hello world\n[stderr]\nsome error\n[Exit code: 1]";
+        assert_eq!(parse_exit_code(content), Some(1));
+    }
+
+    #[test]
+    fn test_parse_exit_code_无退出码() {
+        assert_eq!(parse_exit_code("just some output"), None);
+        assert_eq!(parse_exit_code(""), None);
+    }
+
+    #[test]
+    fn test_bash_toolblock_nonzero_exit_shows_failed() {
+        use crate::app::MessageViewModel;
+        // Bash 工具，is_error=false 但输出包含非零 exit code
+        let vm = MessageViewModel::ToolBlock {
+            tool_name: "Bash".to_string(),
+            tool_call_id: "tc_bash_fail".to_string(),
+            display_name: "Bash".to_string(),
+            args_display: Some("git add missing.txt".to_string()),
+            content: "[stderr]\nfatal: pathspec 'missing.txt' did not match any files\n[Exit code: 128]"
+                .to_string(),
+            is_error: false,
+            collapsed: true,
+            color: crate::ui::theme::BASH_BORDER,
+            diff_lines: None,
+            content_hash: 0,
+        };
+        let lines = render_view_model(&vm, Some(1), 80, false, 0);
+        let header = &lines[0];
+        // 指示器应为红色（Failed）
+        let indicator_color = header.spans.first().and_then(|s| s.style.fg);
+        assert_eq!(
+            indicator_color,
+            Some(crate::ui::theme::ERROR),
+            "非零 exit code 的 Bash 工具 ● 应为红色"
+        );
+    }
+
+    #[test]
+    fn test_bash_toolblock_zero_exit_stays_green() {
+        use crate::app::MessageViewModel;
+        let vm = MessageViewModel::ToolBlock {
+            tool_name: "Bash".to_string(),
+            tool_call_id: "tc_bash_ok".to_string(),
+            display_name: "Bash".to_string(),
+            args_display: Some("echo hello".to_string()),
+            content: "hello".to_string(),
+            is_error: false,
+            collapsed: true,
+            color: crate::ui::theme::BASH_BORDER,
+            diff_lines: None,
+            content_hash: 0,
+        };
+        let lines = render_view_model(&vm, Some(1), 80, false, 0);
+        let header = &lines[0];
+        let indicator_color = header.spans.first().and_then(|s| s.style.fg);
+        assert_eq!(
+            indicator_color,
+            Some(Color::Rgb(78, 186, 101)),
+            "零 exit code 的 Bash 工具 ● 应为绿色"
+        );
+    }
+
+    #[test]
+    fn test_non_bash_tool_不受exit_code影响() {
+        use crate::app::MessageViewModel;
+        // Read 工具内容碰巧包含 "[Exit code: 1]"，不应被误判
+        let vm = MessageViewModel::ToolBlock {
+            tool_name: "Read".to_string(),
+            tool_call_id: "tc_read".to_string(),
+            display_name: "Read".to_string(),
+            args_display: Some("file.txt".to_string()),
+            content: "some content with [Exit code: 1] in it".to_string(),
+            is_error: false,
+            collapsed: true,
+            color: crate::ui::theme::SAGE,
+            diff_lines: None,
+            content_hash: 0,
+        };
+        let lines = render_view_model(&vm, Some(1), 80, false, 0);
+        let header = &lines[0];
+        let indicator_color = header.spans.first().and_then(|s| s.style.fg);
+        assert_eq!(
+            indicator_color,
+            Some(Color::Rgb(78, 186, 101)),
+            "非 Bash 工具不应受 exit code 解析影响"
+        );
+    }
+
 use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},

@@ -67,7 +67,11 @@ fn build_diff_lines(name: &str, input: &serde_json::Value) -> Option<Vec<Line<'s
         }
         _ => None,
     }?;
-    let lines = peri_widgets::diff::render_diff(&diff_input, 80, &peri_widgets::DarkTheme);
+    let mut lines = peri_widgets::diff::render_diff(&diff_input, 80, &peri_widgets::DarkTheme);
+    // 去掉 diff 标题行（file_path），header 的 args_display 已经显示了文件路径
+    if !lines.is_empty() {
+        lines.remove(0);
+    }
     if lines.is_empty() {
         None
     } else {
