@@ -32,6 +32,22 @@ pub fn init_tracing(service_name: &str) -> TracingGuard {
                 .open(&path)
                 .expect("cannot open log file");
 
+            // Windows: 写入 UTF-8 BOM（文件为空时），避免 PowerShell Get-Content 乱码
+            #[cfg(target_os = "windows")]
+            {
+                let meta = std::fs::metadata(&path).unwrap_or_else(|_| {
+                    std::fs::metadata(&path).expect("cannot read log file metadata")
+                });
+                if meta.len() == 0 {
+                    use std::io::Write;
+                    let mut f = std::fs::OpenOptions::new()
+                        .append(true)
+                        .open(&path)
+                        .expect("cannot open log file for BOM");
+                    let _ = f.write_all(b"\xEF\xBB\xBF");
+                }
+            }
+
             if is_json {
                 let subscriber = Registry::default()
                     .with(filter)

@@ -104,6 +104,13 @@ pub(super) static SHORTCUT_BG_BAR: KeyBinding = KeyBinding {
     key: KeyCode::Char('b'),
 };
 
+pub(super) static SHORTCUT_COMMAND_PALETTE: KeyBinding = KeyBinding {
+    label: "Ctrl+P",
+    macos_char: None,
+    modifiers: KeyModifiers::CONTROL,
+    key: KeyCode::Char('p'),
+};
+
 /// Returns the platform-appropriate label for the model-cycling shortcut.
 pub fn cycle_model_label() -> &'static str {
     "Ctrl+T"

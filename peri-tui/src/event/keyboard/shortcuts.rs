@@ -1,10 +1,11 @@
 use ratatui::crossterm::event::KeyCode;
 
 use super::{
-    SHORTCUT_BG_BAR, SHORTCUT_CTRL_CYCLE_MODE, SHORTCUT_CTRL_CYCLE_PROVIDER, SHORTCUT_CYCLE_MODE,
-    SHORTCUT_CYCLE_PROVIDER,
+    SHORTCUT_BG_BAR, SHORTCUT_COMMAND_PALETTE, SHORTCUT_CTRL_CYCLE_MODE,
+    SHORTCUT_CTRL_CYCLE_PROVIDER, SHORTCUT_CYCLE_MODE, SHORTCUT_CYCLE_PROVIDER,
 };
 use crate::app::{App, MessageViewModel};
+use crate::app::panel_manager::PanelKind;
 
 use super::super::Action;
 
@@ -37,6 +38,24 @@ pub(super) fn handle_shortcuts(
     if SHORTCUT_BG_BAR.matches(key_event) {
         if !app.session_mgr.current_mut().background_agents.is_empty() {
             app.session_mgr.current_mut().ui.bg_bar_cursor = Some(0);
+        }
+        return Some(Action::Redraw);
+    }
+
+    // Ctrl+P: toggle 命令面板（Provider & Model 选择）
+    if SHORTCUT_COMMAND_PALETTE.matches(key_event) {
+        if app
+            .session_mgr
+            .current()
+            .session_panels
+            .is_active(PanelKind::CommandPalette)
+        {
+            app.session_mgr
+                .current_mut()
+                .session_panels
+                .close_if(PanelKind::CommandPalette);
+        } else {
+            app.open_command_palette();
         }
         return Some(Action::Redraw);
     }

@@ -5,6 +5,7 @@ pub mod hooks_panel;
 pub mod login_panel;
 pub mod mcp_panel;
 pub mod memory_panel;
+pub mod command_palette_panel;
 pub mod model_panel;
 pub mod panel_component;
 pub mod panel_list;
@@ -21,6 +22,7 @@ mod panel_config;
 mod panel_hooks;
 mod panel_login;
 mod panel_memory;
+mod panel_command_palette;
 mod panel_model;
 mod panel_ops;
 mod panel_status;
@@ -541,7 +543,7 @@ impl App {
             // 更新终端标题
             let _ = ratatui::crossterm::execute!(
                 std::io::stdout(),
-                ratatui::crossterm::terminal::SetTitle("✻ Peri Code — running")
+                ratatui::crossterm::terminal::SetTitle("✻ Peri Code — Running")
             );
         } else {
             s.spinner_state.set_mode(peri_widgets::SpinnerMode::Idle);
@@ -549,7 +551,7 @@ impl App {
             // 更新终端标题
             let _ = ratatui::crossterm::execute!(
                 std::io::stdout(),
-                ratatui::crossterm::terminal::SetTitle("✻ Peri Code — done")
+                ratatui::crossterm::terminal::SetTitle("✻ Peri Code — Done")
             );
         }
     }

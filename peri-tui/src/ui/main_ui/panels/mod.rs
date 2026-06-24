@@ -9,4 +9,5 @@ pub mod model;
 pub mod plugin;
 pub mod status;
 pub mod tasks;
+pub mod command_palette;
 pub mod thread_browser;
