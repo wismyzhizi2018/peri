@@ -1,6 +1,6 @@
 # PermissionRequest 钩子在 bypass 模式下不应触发
 
-**状态**：Open
+**状态**：Fixed
 **优先级**：中
 **创建日期**：2026-06-01
 
@@ -43,3 +43,24 @@ if is_sensitive {
 ## 涉及文件
 
 - `peri-middlewares/src/hooks/middleware.rs` — `before_tool` 中 PermissionRequest 门控逻辑（约 line 407-460）
+
+## 状态变更记录
+
+| 日期 | 从 | 到 | 操作人 | 说明 |
+|------|-----|-----|--------|------|
+| 2026-06-01 | — | Open | agent | 创建 |
+| 2026-06-24 | Open | Fixed | agent | 发现 `b1563b29`（2026-06-02）已修复，补状态记录 |
+
+## 修复记录
+
+### 修复 #1（2026-06-02，2026-06-24 补录）
+
+- **操作人**：KonghaYao（上游）
+- **用户原意**：PermissionRequest 钩子在 YOLO/bypass 权限模式下不应触发，避免状态指示器误显示为 blocked
+- **修复内容**：
+  - `HookMiddleware` 的 `permission_mode` 从 `String` 改为 `Arc<SharedPermissionMode>`，运行时可变
+  - 新增 `needs_permission_dialog()` 门控：`Bypass`/`DontAsk` 返回 false（无对话框），`AcceptEdit` 仅非编辑工具，`AutoMode`/`Default` 始终触发
+  - `before_tool` 中 PermissionRequest 触发条件改为 `is_sensitive && needs_dialog`
+  - `builder.rs` 修复传真实 permission_mode（之前传空字符串）
+- **涉及 commit**：`b1563b29`（2026-06-02，main 分支）
+- **验证状态**：待用户验证（修复已合并 22 天，无回归报告，但用户未明确确认）
