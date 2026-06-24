@@ -8,6 +8,32 @@ use super::{
     theme,
 };
 
+/// 从 Bash 工具输出中解析 exit code。
+///
+/// 匹配格式：`[Exit code: N]` 或 `[Command completed with exit code N]`
+/// 解析失败返回 None。
+fn parse_exit_code(content: &str) -> Option<i32> {
+    // 优先匹配非零退出码格式 "[Exit code: N]"
+    if let Some(pos) = content.rfind("[Exit code: ") {
+        let rest = &content[pos + "[Exit code: ".len()..];
+        if let Some(end) = rest.find(']') {
+            if let Ok(code) = rest[..end].trim().parse::<i32>() {
+                return Some(code);
+            }
+        }
+    }
+    // 兜底：空输出时格式为 "[Command completed with exit code N]"
+    if let Some(pos) = content.rfind("exit code ") {
+        let rest = &content[pos + "exit code ".len()..];
+        if let Some(end) = rest.find(']') {
+            if let Ok(code) = rest[..end].trim().parse::<i32>() {
+                return Some(code);
+            }
+        }
+    }
+    None
+}
+
 /// 将 markdown 渲染结果的所有 span 颜色压暗到 DIM 色板。
 ///
 /// 保留 syntect 语法高亮的色相，但统一降亮度，
@@ -616,7 +642,12 @@ pub fn render_view_model(
             let is_running = content.is_empty() && !*is_error;
 
             // 构建状态（仅用于 header/collapse 管理）
-            let status = if *is_error {
+            // Bash 工具：从输出中解析 exit code，非零则标记为 Failed
+            let bash_failed = tool_name == "Bash"
+                && !*is_error
+                && !is_running
+                && parse_exit_code(content).is_some_and(|c| c != 0);
+            let status = if *is_error || bash_failed {
                 peri_widgets::ToolCallStatus::Failed
             } else if is_running {
                 peri_widgets::ToolCallStatus::Running
@@ -636,7 +667,7 @@ pub fn render_view_model(
             let mut state = peri_widgets::ToolCallState::new(display_name.clone(), theme::TEXT);
             state.status = status.clone();
             state.collapsed = effective_collapsed;
-            state.is_error = *is_error;
+            state.is_error = *is_error || bash_failed;
             if let Some(args) = args_display {
                 state.args_summary = args.clone();
             }
