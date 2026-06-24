@@ -23,7 +23,7 @@ use peri_tui::{
     acp_client::AcpTuiClient,
     acp_server::{run_acp_server, AcpServerConfig},
     app::App,
-    event, ui,
+    conpty, event, ui,
 };
 
 #[cfg(not(target_os = "windows"))]
@@ -499,16 +499,12 @@ fn run_tui(opts: TuiOptions) -> Result<()> {
             EnableBracketedPaste,
             EnableFocusChange
         )?;
-        // ConPTY workaround: crossterm EnableMouseCapture 在 Windows 上
-        // is_ansi_code_supported()=false，走 WinAPI 只设 ConsoleMode，
-        // 不发送 ?1000h。Windows Terminal 前端不知道 mouse tracking 已开启，
-        // alternate scroll mode（默认 ON）将滚轮转为方向键。
-        // 手动发送 crossterm ANSI 路径的完整序列，确保拖拽/悬停/SGR 坐标都开启。
-        std::io::Write::write_all(
-            &mut stdout,
-            b"\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1015h\x1b[?1006h",
-        )?;
-        std::io::Write::flush(&mut stdout)?;
+        // ConPTY fix: crossterm EnableMouseCapture only calls SetConsoleMode (WinAPI).
+        // Since enable_raw_mode() already left ENABLE_MOUSE_INPUT ON, that call has no
+        // MOUSE-bit diff → ConPTY skips WriteSGR1006 → the frontend never enables mouse
+        // tracking. enable_mouse_tracking() toggles the MOUSE bit to force ConPTY's
+        // notify, with ANSI + ?1007h as defense-in-depth.
+        conpty::enable_mouse_tracking()?;
         // 设置终端标题
         let _ = execute!(stdout, SetTitle("✻ Peri Code"));
         let backend = CrosstermBackend::new(stdout);
@@ -518,6 +514,7 @@ fn run_tui(opts: TuiOptions) -> Result<()> {
         let result = run_app(&mut terminal, &opts, panic_notify_rx).await;
 
         // 恢复终端（不用 ? —— 恢复失败不应阻止 session ID 打印）
+        let _ = conpty::disable_mouse_tracking();
         if let Err(e) = execute!(
             terminal.backend_mut(),
             DisableMouseCapture,
@@ -526,11 +523,6 @@ fn run_tui(opts: TuiOptions) -> Result<()> {
         ) {
             tracing::warn!(error = %e, "Disable 鼠标/粘贴/焦点 失败");
         }
-        // ConPTY: 通知 Windows Terminal 关闭 mouse tracking
-        let _ = std::io::Write::write_all(
-            terminal.backend_mut(),
-            b"\x1b[?1006l\x1b[?1015l\x1b[?1003l\x1b[?1002l\x1b[?1000l",
-        );
         if let Err(e) = execute!(terminal.backend_mut(), LeaveAlternateScreen) {
             tracing::warn!(error = %e, "LeaveAlternateScreen 失败");
         }

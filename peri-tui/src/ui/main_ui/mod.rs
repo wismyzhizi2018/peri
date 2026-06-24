@@ -156,6 +156,12 @@ fn render_session_column(f: &mut Frame, app: &mut App, area: Rect) {
                 app.global_panels.put_active(state);
             }
         }
+    } else {
+        let ui = &mut app.session_mgr.current_mut().ui;
+        ui.panel_area = None;
+        ui.panel_scrollbar_metrics = None;
+        ui.panel_scrollbar_dragging = false;
+        ui.panel_selection.clear();
     }
 
     // 缓冲消息预览（loading 时在输入框上方显示待发送消息）

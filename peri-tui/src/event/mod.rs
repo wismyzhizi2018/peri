@@ -423,6 +423,7 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                             }
                         }
                         app.scroll_up();
+                        return Ok(Some(Action::Redraw));
                     }
                     MouseEventKind::ScrollDown => {
                         let panel_area = app.session_mgr.current_mut().ui.panel_area;
@@ -450,6 +451,7 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                             }
                         }
                         app.scroll_down();
+                        return Ok(Some(Action::Redraw));
                     }
                     _ => unreachable!(),
                 }
@@ -490,6 +492,10 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                         }
                     }
                 }
+                if handle_message_scrollbar_down(app, mouse.row, mouse.column) {
+                    return Ok(Some(Action::Redraw));
+                }
+
                 // Panel scrollbar: ▲/▼ buttons and bar click/drag
                 // Must be checked BEFORE dispatch_mouse so scrollbar clicks
                 // aren't consumed by panel content area handlers.
@@ -593,9 +599,6 @@ async fn handle_event(app: &mut App, ev: Event) -> Result<Option<Action>> {
                         // Don't process other-area selections
                         return Ok(Some(Action::Redraw));
                     }
-                }
-                if handle_message_scrollbar_down(app, mouse.row, mouse.column) {
-                    return Ok(Some(Action::Redraw));
                 }
                 if let Some(area) = app.session_mgr.current_mut().ui.messages_area {
                     if mouse.row >= area.y

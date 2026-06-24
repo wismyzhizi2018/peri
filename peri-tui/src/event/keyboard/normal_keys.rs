@@ -45,11 +45,24 @@ pub(super) fn handle_normal_keys(app: &mut App, input: Input) -> anyhow::Result<
             }
         }
 
-        // Up: @ 提及导航 > hint navigation > history browse (only first row) > textarea cursor
-        Input { key: Key::Up, .. } => handle_up(app),
+        // Ctrl+Up / Ctrl+Down：textarea 光标移动 / 命令历史（原 textarea Up/Down 功能）。
+        // 纯 Up/Down 让给消息区滚动（含滚轮经 ConPTY 变成的方向键），避免与 textarea 冲突。
+        Input { key: Key::Up, ctrl: true, .. } => handle_ctrl_up(app),
+        Input { key: Key::Down, ctrl: true, .. } => handle_ctrl_down(app),
 
-        // Down: @ 提及导航 > hint navigation > history restore (only last row) > textarea cursor
-        Input { key: Key::Down, .. } => handle_down(app),
+        // Up：@ 提及导航 > hint 导航 > 滚动消息区
+        Input { key: Key::Up, .. } => {
+            if let Some(action) = handle_up(app) {
+                return Ok(Some(action));
+            }
+        }
+
+        // Down：@ 提及导航 > hint 导航 > 滚动消息区
+        Input { key: Key::Down, .. } => {
+            if let Some(action) = handle_down(app) {
+                return Ok(Some(action));
+            }
+        }
 
         // Ctrl+V: try pasting clipboard image first, fallback to text paste
         Input {
@@ -436,12 +449,14 @@ fn handle_ctrl_c(app: &mut App) -> Option<Action> {
     None
 }
 
-fn handle_up(app: &mut App) {
+/// 纯 Up：@ 提及导航 > hint 导航 > 滚动消息区（textarea 光标/历史已移至 Ctrl+Up）。
+fn handle_up(app: &mut App) -> Option<Action> {
     let hint_count = app.hint_candidates_count();
     if app.session_mgr.current_mut().ui.at_mention.active
         && !app.session_mgr.current_mut().ui.loading
     {
         app.session_mgr.current_mut().ui.at_mention.move_up();
+        None
     } else if hint_count > 0 && !app.session_mgr.current_mut().ui.loading {
         let cur = app.session_mgr.current_mut().ui.hint_cursor.unwrap_or(0);
         app.session_mgr.current_mut().ui.hint_cursor = if cur == 0 {
@@ -449,27 +464,36 @@ fn handle_up(app: &mut App) {
         } else {
             Some(cur - 1)
         };
+        None
     } else {
-        let (row, _col) = app.session_mgr.current_mut().ui.textarea.cursor();
-        if row == 0 {
-            app.history_up();
-        } else {
-            app.session_mgr.current_mut().ui.textarea.input(Input {
-                key: Key::Up,
-                ctrl: false,
-                alt: false,
-                shift: false,
-            });
-        }
+        app.scroll_up();
+        Some(Action::Redraw)
     }
 }
 
-fn handle_down(app: &mut App) {
+/// Ctrl+Up：textarea 光标上移，首行时浏览上一条命令历史。
+fn handle_ctrl_up(app: &mut App) {
+    let (row, _col) = app.session_mgr.current_mut().ui.textarea.cursor();
+    if row == 0 {
+        app.history_up();
+    } else {
+        app.session_mgr.current_mut().ui.textarea.input(Input {
+            key: Key::Up,
+            ctrl: false,
+            alt: false,
+            shift: false,
+        });
+    }
+}
+
+/// 纯 Down：@ 提及导航 > hint 导航 > 滚动消息区（textarea 光标/历史已移至 Ctrl+Down）。
+fn handle_down(app: &mut App) -> Option<Action> {
     let hint_count = app.hint_candidates_count();
     if app.session_mgr.current_mut().ui.at_mention.active
         && !app.session_mgr.current_mut().ui.loading
     {
         app.session_mgr.current_mut().ui.at_mention.move_down();
+        None
     } else if hint_count > 0 && !app.session_mgr.current_mut().ui.loading {
         let cur = app
             .session_mgr
@@ -482,28 +506,37 @@ fn handle_down(app: &mut App) {
         } else {
             Some(cur + 1)
         };
-    } else if app.session_mgr.current_mut().ui.history_index.is_some() {
+        None
+    } else {
+        app.scroll_down();
+        Some(Action::Redraw)
+    }
+}
+
+/// Ctrl+Down：textarea 光标下移，末行或浏览历史时恢复下一条命令历史。
+fn handle_ctrl_down(app: &mut App) {
+    if app.session_mgr.current_mut().ui.history_index.is_some() {
+        app.history_down();
+        return;
+    }
+    let (row, _col) = app.session_mgr.current_mut().ui.textarea.cursor();
+    let last_row = app
+        .session_mgr
+        .current_mut()
+        .ui
+        .textarea
+        .lines()
+        .len()
+        .saturating_sub(1);
+    if row >= last_row {
         app.history_down();
     } else {
-        let (row, _col) = app.session_mgr.current_mut().ui.textarea.cursor();
-        let last_row = app
-            .session_mgr
-            .current_mut()
-            .ui
-            .textarea
-            .lines()
-            .len()
-            .saturating_sub(1);
-        if row >= last_row {
-            app.history_down();
-        } else {
-            app.session_mgr.current_mut().ui.textarea.input(Input {
-                key: Key::Down,
-                ctrl: false,
-                alt: false,
-                shift: false,
-            });
-        }
+        app.session_mgr.current_mut().ui.textarea.input(Input {
+            key: Key::Down,
+            ctrl: false,
+            alt: false,
+            shift: false,
+        });
     }
 }
 

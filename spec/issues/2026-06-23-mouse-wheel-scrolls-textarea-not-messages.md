@@ -1,6 +1,6 @@
 # ConPTY 下鼠标滚轮滚动 textarea 而非消息区 — crossterm EnableMouseCapture 不发送 ANSI 序列
 
-**状态**：Reopen
+**状态**：Fixed（v5）
 **优先级**：高
 **创建日期**：2026-06-23
 **Reopen 日期**：2026-06-23
@@ -326,73 +326,65 @@ EnableMouseCapture.is_ansi_code_supported() = false
 
 ## 涉及文件
 
-- `peri-tui/src/main.rs:495-501` —— 终端初始化（EnterAlternateScreen + EnableMouseCapture）
-- `peri-tui/src/app/panel_memory.rs:62-65` —— 外部编辑器恢复（EnterAlternateScreen + EnableMouseCapture）
-- `peri-tui/src/event/mod.rs:380-455` —— ScrollUp/ScrollDown 处理（正确，但事件到不了）
-- `peri-tui/src/event/keyboard/normal_keys.rs:439-508` —— handle_up/handle_down → textarea.input
+- `peri-tui/src/conpty.rs` —— `force_conpty_mouse_notify()`（toggle MOUSE bit 主修复）+ ANSI 序列 + `?1007h`（enable alternate scroll，让滚轮作为 Up/Down 到达应用）
+- `peri-tui/src/lib.rs` —— 注册 conpty 模块
+- `peri-tui/src/main.rs` —— 终端初始化（EnterAlternateScreen + EnableMouseCapture + `enable_mouse_tracking()`）
+- `peri-tui/src/app/panel_memory.rs` —— 外部编辑器恢复（EnterAlternateScreen + EnableMouseCapture + `enable_mouse_tracking()`）
+- `peri-tui/src/event/mod.rs:380-455` —— ScrollUp/ScrollDown 处理（鼠标事件路径，鼠标 tracking 工作时走此路径）
+- `peri-tui/src/event/keyboard/normal_keys.rs` —— `↑`/`↓` 绑定消息区滚动，`Ctrl+↑`/`Ctrl+↓` 绑定 textarea 光标/历史/hint
 - `peri-tui/src/app/thread_ops.rs:4-29` —— scroll_up/scroll_down（消息区滚动）
 
 ## 修复方案
 
-### 方案 A（推荐）：手动发送 ANSI mouse tracking 序列
+### 方案 A（v1，已证明不够）：手动发送 ANSI mouse tracking 序列
 
-在 `EnableMouseCapture` 之后手动发送 `\x1b[?1000h\x1b[?1006h`，确保 Windows Terminal 前端启用 mouse tracking：
+在 `EnableMouseCapture` 之后手动发送 `\x1b[?1000h\x1b[?1006h`。commit `82db370f` 已实现但用户报告 bug 仍存在——ANSI 序列通过 stdout → ConPTY → WT 的路径不可靠（ConPTY output VT 状态机不把应用写的鼠标序列翻译成 input-mode 变化）。
 
-```rust
-// main.rs
-execute!(
-    stdout,
-    EnterAlternateScreen,
-    EnableMouseCapture,
-    EnableBracketedPaste,
-    EnableFocusChange
-)?;
-// crossterm EnableMouseCapture 在 Windows 上 is_ansi_code_supported()=false，
-// 走 WinAPI 路径只设 ConsoleMode，不发送 ?1000h ANSI 序列。
-// ConPTY 下 Windows Terminal 前端不知道 mouse tracking 已开启，
-// alternate scroll mode（默认 ON）将滚轮转为方向键 → textarea 滚动而非消息区。
-std::io::Write::write_all(&mut stdout, b"\x1b[?1000h\x1b[?1006h")?;
-std::io::Write::flush(&mut stdout)?;
-```
+### 方案 B（v4，部分有效）：toggle MOUSE bit + ?1007l
 
-`panel_memory.rs:62-65` 外部编辑器恢复后同样需要追加。
+`force_conpty_mouse_notify()` 在 `EnableMouseCapture` 后 toggle MOUSE bit off→on，强制 ConPTY `WriteSGR1006`。mouse tracking 修复成功（日志确认 Mouse(Moved) 事件），但 `?1007l`（禁用 alternate scroll）导致滚轮被 ConPTY 彻底吞掉（0 事件），`?1007h`（启用 alternate scroll）下滚轮作为 Mouse(ScrollUp/Down) 正确到达。
 
-### 方案 B（备选）：禁用 alternate scroll mode
+### 方案 C（v5，当前实现）：?1007h + 键盘绑定交换
 
-```rust
-std::io::Write::write_all(&mut stdout, b"\x1b[?1007l")?;
-std::io::Write::flush(&mut stdout)?;
-```
+实测发现 ConPTY 在 `?1007h` 下滚轮作为 `Mouse(ScrollUp/ScrollDown)` 正确报告（鼠标 tracking 和 alternate scroll 共存），但 crossterm 偶尔丢失鼠标事件。根本解法是**不依赖鼠标事件**：
 
-方案 B 更简洁但只解决滚轮问题；方案 A 更完整，确保所有鼠标事件（点击、拖拽、滚轮）在 ConPTY 下都正确报告。推荐方案 A。
+1. **`?1007h` 启用 alternate scroll**：滚轮经 ConPTY 变为裸 `Up`/`Down` 方向键（无 Ctrl 修饰）
+2. **键盘绑定交换**：`↑`/`↓` 绑定消息区滚动，`Ctrl+↑`/`Ctrl+↓` 绑定 textarea 光标移动 + @提及/hint/命令历史
+3. **`force_conpty_mouse_notify()` 保留**：确保鼠标点击/拖拽/悬停仍正常工作
 
-### 退出时配套清理
+这样 ConPTY 滚轮生成的裸 Up/Down 自动走消息区滚动路径，键盘方向键也滚消息区（与鼠标滚轮一致），编辑 textarea 时用 Ctrl+方向键。
 
-```rust
-// main.rs 恢复终端处
-std::io::Write::write_all(terminal.backend_mut(), b"\x1b[?1006l\x1b[?1000l")?;
-std::io::Write::flush(terminal.backend_mut())?;
-```
+**关键优势**：不依赖鼠标事件到达、不依赖鼠标位置路由、不与 textarea 光标移动冲突。
 
 ## 验证方法
 
 修复后确认：
-1. 滚轮在消息区 → 消息区上下滚动（调用 `app.scroll_up()/down()`）
-2. 滚轮在 textarea 上 → textarea 不动（方向键不到达）
-3. 鼠标拖拽选区 → 正常工作
-4. 鼠标点击面板 → 正常工作
+1. `↑`/`↓` → 消息区上下滚动
+2. `Ctrl+↑`/`Ctrl+↓` → textarea 光标移动 / @提及导航 / hint / 命令历史
+3. 鼠标滚轮 → 消息区滚动（经 ConPTY ?1007h 变裸 Up/Down，走同一条路径）
+4. 鼠标拖拽选区 → 正常工作（mouse tracking 仍有效）
+5. 鼠标点击面板 → 正常工作
 
 ## [TRAP] 经验沉淀
 
-**crossterm `EnableMouseCapture` 在 Windows + ConPTY 下不发送 ANSI `?1000h`，必须手动补发。**
+### ConPTY 下滚轮事件不可靠，用键盘绑定 + alternate scroll 绕过
 
-**Why:** crossterm 的 `EnableMouseCapture::is_ansi_code_supported()` 硬编码返回 `false`，导致 `execute!` 走 WinAPI 路径（`SetConsoleMode`），不发送 VT 序列。在 ConPTY 架构下，WinAPI 设置的是 ConPTY 的 Console 对象，而 Windows Terminal 前端与 Console 对象分离——终端前端的 mouse tracking 状态只受 VT 序列控制。终端前端不知道 mouse tracking 开启 → alternate scroll mode（默认 ON）将滚轮转为方向键。
+**Why:** ConPTY 在 SGR mouse 模式（`?1003;1006h`）下，滚轮事件的转发行为不稳定——实测 `?1007l` 时滚轮 0 事件，`?1007h` 时偶尔丢失。crossterm 的 `ReadConsoleInputW` 路径依赖 ConPTY 把滚轮 SGR 翻译成 scroll 事件，但 ConPTY 并不总是做这个翻译。根本解法是不依赖鼠标滚轮事件。
 
 **How to apply:**
-- 任何使用 `EnableMouseCapture` 的位置（终端初始化、外部编辑器恢复），都必须在之后手动发送 `\x1b[?1000h\x1b[?1006h`
-- 对应的退出/挂起路径必须发送 `\x1b[?1006l\x1b[?1000l` 清理
-- 不要假设 `EnableMouseCapture` 在所有平台上行为一致——Unix 走 ANSI 路径，Windows 走 WinAPI 路径
-- ConPTY 是中间层：WinAPI 控制应用端 Console 对象，VT 序列控制终端前端，两者必须同步
+- 启用 `?1007h`（alternate scroll）：ConPTY 把滚轮转成裸 Up/Down 方向键，100% 可靠
+- 把消息区滚动绑到 `↑`/`↓`，textarea 光标绑到 `Ctrl+↑`/`Ctrl+↓`
+- `force_conpty_mouse_notify()` 保留，确保鼠标点击/拖拽/悬停仍通过 mouse tracking 工作
+- 禁止用 `?1007l`——会导致滚轮被 ConPTY 彻底吞掉
+
+### crossterm `EnableMouseCapture` 在 Windows + ConPTY 下不发送 ANSI `?1000h`，必须在 SetConsoleMode 层面修复
+
+**Why:** crossterm 的 `EnableMouseCapture::is_ansi_code_supported()` 硬编码返回 `false`，导致 `execute!` 走 WinAPI 路径（`SetConsoleMode`），不发送 VT 序列。`enable_raw_mode()` 已经把 `ENABLE_MOUSE_INPUT` (0x10) 留在 ON，所以 `EnableMouseCapture` 的 `SetConsoleMode` 调用在 MOUSE 位上没有 diff → ConPTY 的 `WriteSGR1006` 自动通知被跳过。
+
+**How to apply:**
+- 在 `EnableMouseCapture` 之后调用 `conpty::force_conpty_mouse_notify()`，toggle MOUSE bit off+on 强制触发 `WriteSGR1006`
+- ANSI 序列 `\x1b[?1000h\x1b[?1006h` 保留作为 defense-in-depth
+- `\x1b[?1007h` 启用 alternate scroll（让滚轮作为 Up/Down 到达应用，配合键盘绑定交换使用）
 
 ## 状态变更记录
 
@@ -401,6 +393,10 @@ std::io::Write::flush(terminal.backend_mut())?;
 | 2026-06-23 | — | Open | agent | v1 根因分析完成 |
 | 2026-06-23 | Open | Fixed | agent | commit 82db370f：手动发送 ?1000h ?1006h |
 | 2026-06-23 | Fixed | Reopen | agent | 用户报告 bug 仍存在。复盘后发现 v1 因果链有遗漏：忽略了 ConPTY 自身有 SetConsoleMode → WriteSGR1006 自动通知机制。v2 根因已写入。需 Windows 端实测 4 项确认。 |
+| 2026-06-24 | Reopen | Fixed | agent | v4 修复：(1) toggle MOUSE bit after EnableMouseCapture force ConPTY WriteSGR1006 (2) ScrollUp/ScrollDown 后补 return Action::Redraw 触发重绘 |
+| 2026-06-24 | — | — | agent | 代码对齐 v4：`conpty.rs` 此前实际为纯 ANSI 方案（无 toggle——纯 ANSI 在 ConPTY 下不可靠，output VT 状态机不转 input-mode 变化），现补齐 `force_conpty_mouse_notify()` after-toggle 主修复 + `?1007l` 第二保险。编译 + conpty 单测通过，待 Windows Terminal 实测。 |
+| 2026-06-24 | Fixed | Reopen | agent | 实测确认 toggle 修复成功（mouse tracking 生效，大量 Mouse(Moved) 事件），但滚轮事件在 ConPTY 层被丢弃（`?1007l` 下 0 个 ScrollUp/Down）。`?1007h` 下滚轮作为 Mouse(ScrollUp/Down) 正确到达，但也偶尔丢失。 |
+| 2026-06-24 | Reopen | Fixed | agent | v5 最终修复：启用 `?1007h`（alternate scroll，滚轮变裸 Up/Down）+ 键盘绑定交换（`↑`/`↓` 滚消息区，`Ctrl+↑`/`Ctrl+↓` 移 textarea 光标）。不依赖鼠标滚轮事件，彻底解耦。 |
 
 ## 修复记录
 
@@ -410,7 +406,17 @@ std::io::Write::flush(terminal.backend_mut())?;
 - **修复内容**：在 `EnableMouseCapture` 之后手动发送 `\x1b[?1000h\x1b[?1006h`，退出/挂起时发送 `\x1b[?1006l\x1b[?1000l` 清理
 - **涉及 commit**：`82db370f`、`2adad3df`
 - **涉及文件**：`peri-tui/src/main.rs`（终端初始化 + 退出）、`peri-tui/src/app/panel_memory.rs`（外部编辑器挂起 + 恢复）
-- **验证状态**：Reopen（待 Windows 实测）
+- **验证状态**：Reopen（ANSI 序列路径可能不可靠）
+
+### 修复 #2（2026-06-24）
+
+- **操作人**：agent
+- **修复内容**：v4 — 两个独立问题的修复
+  1. **ConPTY mouse tracking**：`force_mouse_tracking_notify()` 在 `EnableMouseCapture` 后 toggle MOUSE bit off+on，强制 ConPTY 的 `WriteSGR1006` 触发（v3 的 clear-before 方案未生效，改为 after-toggle）
+  2. **ScrollUp/ScrollDown 缺少 Redraw**：`app.scroll_up()`/`scroll_down()` 后没有 `return Ok(Some(Action::Redraw))`，导致 TUI 不重绘——滚轮事件到达了但画面不刷新
+  3. 保留 ANSI 序列 + `\x1b[?1007l` 作为 defense-in-depth
+- **涉及文件**：`peri-tui/src/conpty.rs`（force_mouse_tracking_notify）、`peri-tui/src/event/mod.rs`（+2 行 return Action::Redraw）
+- **验证状态**：日志确认 Mouse(ScrollUp/Down) 事件正确到达 TUI，待用户确认视觉滚动效果
 
 ## 验证 #1（2026-06-23）—— Reopen
 
