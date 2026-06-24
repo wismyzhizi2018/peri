@@ -10,11 +10,11 @@ use crate::tools::output_persist::persist_truncated_output;
 /// message 被空格拆成多个 pathspec。检测到此模式时，将 message 写入临时文件，
 /// 改写为 `git commit -F tempfile`，彻底绕开 cmd.exe 引号解析。
 ///
+/// 支持多个 `-m` 标志，按 git 语义以 `\n\n` 拼接。
 /// 返回 `(rewritten_command, Option<(temp_file_path, message_content)>)`，
 /// 调用方负责写入文件并执行后清理。
 #[cfg(windows)]
 fn rewrite_git_commit_for_windows(command: &str) -> (String, Option<(String, String)>) {
-    // 只处理简单的 `git commit -m "..."` 或 `git commit --message "..."` 模式
     // 不处理复杂的 chained 命令（&&、||、| 等），这些原样透传
     if command.contains("&&") || command.contains("||") || command.contains('|') {
         return (command.to_string(), None);
@@ -33,28 +33,44 @@ fn rewrite_git_commit_for_windows(command: &str) -> (String, Option<(String, Str
         return (command.to_string(), None);
     }
 
-    // 在 commit 之后的部分找 -m 或 --message
-    let after_commit = trimmed[pos + 6..].trim_start(); // "commit".len() = 6
+    let commit_prefix = &trimmed[..pos + 6]; // 到 "commit" 为止
+    let after_commit = trimmed[pos + 6..].trim_start();
 
-    // 尝试 -m 或 --message
-    let (_flag, flag_len) = if after_commit.starts_with("--message ") {
-        ("--message ", 10)
-    } else if after_commit.starts_with("-m ") {
-        ("-m ", 3)
-    } else if after_commit.starts_with("-m") && after_commit.len() == 2 {
-        // `-m` 是最后一个 token，没有 message
-        return (command.to_string(), None);
-    } else {
-        return (command.to_string(), None);
-    };
+    // 循环扫描所有 -m/--message 标志，提取消息并收集其余参数
+    let mut remaining = after_commit;
+    let mut messages: Vec<String> = Vec::new();
+    let mut other_args: Vec<&str> = Vec::new();
 
-    let rest = after_commit[flag_len..].trim_start();
+    while !remaining.is_empty() {
+        if remaining.starts_with("--message ") {
+            let rest = remaining[10..].trim_start();
+            if let (Some(msg), after) = extract_quoted_message(rest) {
+                messages.push(msg);
+                remaining = after.trim_start();
+                continue;
+            }
+        } else if remaining.starts_with("-m ") {
+            let rest = remaining[3..].trim_start();
+            if let (Some(msg), after) = extract_quoted_message(rest) {
+                messages.push(msg);
+                remaining = after.trim_start();
+                continue;
+            }
+        }
 
-    // 提取引号包裹的 message
-    let (message, remaining) = extract_quoted_message(rest);
-    let Some(msg) = message else {
+        // 不是 -m/--message，收集为其他参数（取到下一个空格）
+        let end = remaining.find(' ').unwrap_or(remaining.len());
+        other_args.push(&remaining[..end]);
+        remaining = remaining[end..].trim_start();
+    }
+
+    // 没找到任何 -m 消息，原样返回
+    if messages.is_empty() {
         return (command.to_string(), None);
-    };
+    }
+
+    // 拼接消息（git 语义：多个 -m 以双换行分隔）
+    let combined_msg = messages.join("\n\n");
 
     // 构造临时文件路径
     let temp_dir = std::env::temp_dir();
@@ -64,19 +80,15 @@ fn rewrite_git_commit_for_windows(command: &str) -> (String, Option<(String, Str
         .as_millis();
     let temp_path = temp_dir.join(format!("peri-commit-msg-{timestamp}.txt"));
 
-    // 重写命令：用 -F tempfile 替换 -m "..."
-    let commit_prefix = &trimmed[..pos + 6]; // 到 "commit" 为止
-    let remaining = remaining.trim();
-    let new_cmd = if remaining.is_empty() {
-        format!("{prefix}{commit_prefix} -F \"{}\"", temp_path.display())
-    } else {
-        format!(
-            "{prefix}{commit_prefix} -F \"{}\" {remaining}",
-            temp_path.display()
-        )
-    };
+    // 重写命令：保留其他参数，替换所有 -m 为 -F tempfile
+    // commit_prefix 已包含 "git commit"，不需要再拼 prefix
+    let mut new_cmd = format!("{commit_prefix} -F \"{}\"", temp_path.display());
+    for arg in &other_args {
+        new_cmd.push(' ');
+        new_cmd.push_str(arg);
+    }
 
-    (new_cmd, Some((temp_path.to_string_lossy().to_string(), msg)))
+    (new_cmd, Some((temp_path.to_string_lossy().to_string(), combined_msg)))
 }
 
 /// 从命令字符串中提取引号包裹的 message 内容。

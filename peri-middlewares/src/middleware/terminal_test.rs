@@ -379,4 +379,38 @@ mod windows_git_rewrite {
         assert!(info.is_none(), "管道命令不应重写");
         assert_eq!(cmd, input);
     }
+
+    #[test]
+    fn test_rewrite_multiple_m_flags() {
+        let (cmd, info) = rewrite_git_commit_for_windows(
+            r#"git commit -m "subject" -m "body paragraph""#,
+        );
+        assert!(cmd.contains("git commit -F"), "应改写为 -F: {cmd}");
+        assert!(!cmd.contains(" -m "), "不应残留 -m: {cmd}");
+        let (path, content) = info.unwrap();
+        assert!(path.ends_with(".txt"));
+        // git 语义：多个 -m 以双换行拼接
+        assert_eq!(content, "subject\n\nbody paragraph");
+    }
+
+    #[test]
+    fn test_rewrite_three_m_flags() {
+        let (cmd, info) = rewrite_git_commit_for_windows(
+            r#"git commit -m "first" -m "second" -m "third""#,
+        );
+        assert!(cmd.contains("-F"), "应改写为 -F: {cmd}");
+        assert_eq!(info.unwrap().1, "first\n\nsecond\n\nthird");
+    }
+
+    #[test]
+    fn test_rewrite_mixed_m_and_other_flags() {
+        let (cmd, info) = rewrite_git_commit_for_windows(
+            r#"git commit --no-verify -m "msg" --amend"#,
+        );
+        assert!(cmd.contains("-F"), "应改写为 -F: {cmd}");
+        assert!(cmd.contains("--no-verify"), "应保留 --no-verify: {cmd}");
+        assert!(cmd.contains("--amend"), "应保留 --amend: {cmd}");
+        assert!(!cmd.contains(" -m "), "不应残留 -m: {cmd}");
+        assert_eq!(info.unwrap().1, "msg");
+    }
 }
