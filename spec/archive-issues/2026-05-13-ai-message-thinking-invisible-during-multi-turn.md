@@ -1,6 +1,4 @@
 > 归档于 2026-05-16，原路径 spec/issues/2026-05-13-ai-message-thinking-invisible-during-multi-turn.md
-
-> 归档于 2026-05-14，原路径 spec/issues/2026-05-13-ai-message-thinking-invisible-during-multi-turn.md
 # 多轮对话中 AI message 和 thinking 在进行时不可见
 
 **状态**：Fixed

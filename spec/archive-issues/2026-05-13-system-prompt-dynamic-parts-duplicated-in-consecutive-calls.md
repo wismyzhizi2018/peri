@@ -1,6 +1,4 @@
 > 归档于 2026-05-16，原路径 spec/issues/2026-05-13-system-prompt-dynamic-parts-duplicated-in-consecutive-calls.md
-
-> 归档于 2026-05-14，原路径 spec/issues/2026-05-13-system-prompt-dynamic-parts-duplicated-in-consecutive-calls.md
 # System prompt 动态部分在连续 API 调用中被重复注入，导致 Prompt Cache 命中率骤降
 
 **状态**：Fixed

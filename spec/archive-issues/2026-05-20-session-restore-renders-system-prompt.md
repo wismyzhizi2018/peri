@@ -1,4 +1,4 @@
-> 归档于 2026-05-20，原路径 spec/issues/2026-05-20-session-restore-renders-system-prompt
+> 归档于 2026-05-20，原路径 spec/issues/2026-05-20-session-restore-renders-system-prompt.md
 
 # Session 恢复后 System Prompt 和 Compact Summary 被渲染为可见消息
 

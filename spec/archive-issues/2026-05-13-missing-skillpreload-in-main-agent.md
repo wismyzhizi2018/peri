@@ -1,6 +1,4 @@
 > 归档于 2026-05-16，原路径 spec/issues/2026-05-13-missing-skillpreload-in-main-agent.md
-
-> 归档于 2026-05-14，原路径 spec/issues/2026-05-13-missing-skillpreload-in-main-agent.md
 # 主 Agent 中间件链缺少 SkillPreloadMiddleware，/skill-name 预加载失效
 
 **状态**：Fixed

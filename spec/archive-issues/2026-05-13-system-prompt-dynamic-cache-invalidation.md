@@ -1,6 +1,4 @@
 > 归档于 2026-05-16，原路径 spec/issues/2026-05-13-system-prompt-dynamic-cache-invalidation.md
-
-> 归档于 2026-05-14，原路径 spec/issues/2026-05-13-system-prompt-dynamic-cache-invalidation.md
 # System prompt 动态内容导致 Anthropic prompt cache 频繁失效
 
 **状态**：Fixed
