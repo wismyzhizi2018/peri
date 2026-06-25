@@ -35,8 +35,14 @@ pub struct HookMiddleware {
     permission_mode: Arc<SharedPermissionMode>,
     current_model: String,
     once_fired: Arc<Mutex<HashSet<String>>>,
-    /// Whether this is the first message of a new session (triggers SessionStart).
-    is_session_start: bool,
+    /// SessionStart 钩子的 matcher 来源（None = 不触发）。
+    ///
+    /// 对齐 Claude Code 4 种 matcher：
+    /// - `startup`：新会话首次 prompt
+    /// - `resume`：恢复历史会话（`-c`/`-r`）后首次 prompt
+    /// - `clear`：`/clear` 后首次 prompt
+    /// - `compact`：compact 后首次 prompt
+    session_start_source: Option<String>,
     /// 判断工具是否需要用户审批。用于 PermissionRequest hook 门控。
     /// 默认使用 [`crate::hitl::default_requires_approval`]，
     /// 可通过 `with_requires_approval` 覆盖。
@@ -61,7 +67,7 @@ impl HookMiddleware {
             transcript_path,
             permission_mode,
             current_model,
-            false,
+            None,
         )
     }
 
@@ -74,7 +80,7 @@ impl HookMiddleware {
         transcript_path: impl Into<String>,
         permission_mode: Arc<SharedPermissionMode>,
         current_model: impl Into<String>,
-        is_session_start: bool,
+        session_start_source: Option<&str>,
     ) -> Self {
         let mut map: HashMap<HookEvent, Vec<RegisteredHook>> = HashMap::new();
         for hook in registered_hooks {
@@ -85,7 +91,7 @@ impl HookMiddleware {
         tracing::info!(
             total_hooks,
             event_count,
-            is_session_start,
+            session_start_source = ?session_start_source,
             "HookMiddleware created with registered hooks"
         );
         Self {
@@ -97,7 +103,7 @@ impl HookMiddleware {
             permission_mode,
             current_model: current_model.into(),
             once_fired: Arc::new(Mutex::new(HashSet::new())),
-            is_session_start,
+            session_start_source: session_start_source.map(|s| s.to_string()),
             requires_approval: crate::hitl::default_requires_approval,
         }
     }
@@ -319,13 +325,14 @@ impl<S: State> Middleware<S> for HookMiddleware {
             .map(|m| m.content())
             .unwrap_or_default();
 
-        // SessionStart: only when is_session_start is true (first message of a new session)
-        if self.is_session_start {
+        // SessionStart: 仅在 session_start_source 为 Some 时触发。
+        // source 取值对齐 Claude Code matcher：startup / resume / clear / compact。
+        if let Some(source) = &self.session_start_source {
             let input = HookInput::session_start(
                 &self.session_id,
                 &self.transcript_path,
                 &self.cwd,
-                "startup",
+                source,
                 &self.current_model,
             );
             let action = self
@@ -528,6 +535,79 @@ impl<S: State> Middleware<S> for HookMiddleware {
         let _action = self
             .fire_event(event, &input, Some(&tool_call.name), Some(&tool_call.input))
             .await;
+
+        Ok(())
+    }
+
+    /// 批量工具完成后触发 PostToolBatch 钩子（issue #2）
+    ///
+    /// 在 `dispatch_tools` 将所有 tool_result 写入 state 后调用。
+    /// HookInput 携带批次的工具名列表和结果摘要，通过 tool_output 字段以 JSON 数组传递。
+    async fn after_tools_batch(
+        &self,
+        _state: &mut S,
+        results: &[(ToolCall, ToolResult)],
+    ) -> AgentResult<()> {
+        // 无结果时跳过（理论上 dispatch_tools 不会以空批次调用，但防御性检查）
+        if results.is_empty() {
+            return Ok(());
+        }
+
+        let permission_mode_str = format!("{:?}", self.permission_mode.load());
+        // 批次摘要：[{tool_name, is_error}, ...]
+        let batch_summary: Vec<serde_json::Value> = results
+            .iter()
+            .map(|(call, result)| {
+                serde_json::json!({
+                    "tool_name": call.name,
+                    "tool_call_id": call.id,
+                    "is_error": result.is_error,
+                })
+            })
+            .collect();
+
+        let input = HookInput {
+            session_id: self.session_id.clone(),
+            transcript_path: self.transcript_path.clone(),
+            cwd: self.cwd.clone(),
+            permission_mode: Some(permission_mode_str),
+            agent_id: None,
+            agent_type: None,
+            hook_event_name: HookEvent::PostToolBatch,
+            tool_name: None,
+            tool_input: None,
+            tool_use_id: None,
+            tool_output: Some(serde_json::Value::Array(batch_summary)),
+            prompt: None,
+            source: None,
+            model: Some(self.current_model.clone()),
+            subagent_name: None,
+            subagent_result: None,
+            message_count: None,
+        };
+
+        let action = self
+            .fire_event(HookEvent::PostToolBatch, &input, None, None)
+            .await;
+
+        match &action {
+            HookAction::Block { reason } => {
+                return Err(AgentError::ToolRejected {
+                    tool: "PostToolBatch".to_string(),
+                    reason: reason.clone(),
+                });
+            }
+            HookAction::PreventContinuation { stop_reason } => {
+                let reason = stop_reason
+                    .clone()
+                    .unwrap_or_else(|| "PostToolBatch hook prevented continuation".to_string());
+                return Err(AgentError::ToolRejected {
+                    tool: "PostToolBatch".to_string(),
+                    reason,
+                });
+            }
+            _ => {}
+        }
 
         Ok(())
     }

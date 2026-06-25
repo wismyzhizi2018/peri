@@ -169,6 +169,18 @@ pub(crate) async fn dispatch_tools<L: ReactLLM, S: State>(
         agent.emit(AgentEvent::MessageAdded(tool_msg_clone));
     }
 
+    // 触发 PostToolBatch 钩子（所有 tool_result 写入 state 后、返回前）。
+    //
+    // 注意：Cancel/deferred_error 路径也调用，保证钩子能观察到完整批次。
+    // 钩子返回 Block 时转 MiddlewareError（与 after_tool 错误路径一致）。
+    if let Err(e) = agent.chain.run_after_tools_batch(state, &results).await {
+        let _ = agent.chain.run_on_error(state, &e).await;
+        // 不覆盖已有的 deferred_error，PostToolBatch 错误作为补充信息记录
+        if deferred_error.is_none() {
+            return Err(e);
+        }
+    }
+
     // 写入完成后再返回错误
     if was_cancelled {
         tracing::warn!("[DEADLOCK] dispatch_tools: returning Interrupted (was_cancelled)");

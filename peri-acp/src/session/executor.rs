@@ -494,7 +494,15 @@ pub async fn execute_prompt(
             plugin_skill_dirs: plugin_skill_dirs.clone(),
             plugin_agent_dirs: plugin_agent_dirs.clone(),
             hook_groups: hook_groups.clone(),
-            hook_session_start: is_empty_history,
+            // SessionStart 钩子 matcher 来源。
+            // 当前仅区分 startup（空 history）vs None（非首次 prompt）。
+            // resume/clear/compact matcher 需要 TUI/stdio 调用方通过额外信号传递，
+            // 暂未实现（issue #3 SessionEnd reason 的对应 Phase 3 残留）。
+            hook_session_start_source: if is_empty_history {
+                Some("startup".to_string())
+            } else {
+                None
+            },
             mcp_pool: mcp_pool.clone(),
             channel_state: channel_state.clone(),
             tool_search_index: tool_search_index.clone(),

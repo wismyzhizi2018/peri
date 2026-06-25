@@ -74,7 +74,8 @@ pub struct AcpAgentConfig {
     pub plugin_skill_dirs: Vec<std::path::PathBuf>,
     pub plugin_agent_dirs: Vec<std::path::PathBuf>,
     pub hook_groups: Vec<Vec<RegisteredHook>>,
-    pub hook_session_start: bool,
+    /// SessionStart 钩子 matcher 来源（None = 不触发，Some = startup/resume/clear/compact）。
+    pub hook_session_start_source: Option<String>,
     pub mcp_pool: Option<Arc<peri_middlewares::mcp::McpClientPool>>,
     /// Channel 共享状态（None = 不启用 channel 功能，不使用 MultiplexBroker）
     pub channel_state: Option<Arc<ChannelState>>,
@@ -147,7 +148,7 @@ pub fn build_agent(
         plugin_skill_dirs,
         plugin_agent_dirs,
         hook_groups,
-        hook_session_start,
+        hook_session_start_source,
         mcp_pool,
         channel_state,
         tool_search_index,
@@ -455,7 +456,8 @@ pub fn build_agent(
                 "",
                 permission_mode.clone(),
                 provider_name.clone(),
-                hook_session_start && i == 0,
+                // 仅第一个 hook group 持有 SessionStart 触发权
+                hook_session_start_source.as_deref().filter(|_| i == 0),
             );
             executor = executor.add_middleware(Box::new(mw));
         }
