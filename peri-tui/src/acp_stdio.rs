@@ -601,6 +601,41 @@ pub async fn run_acp_stdio(cwd: String) -> anyhow::Result<()> {
                         agent_client_protocol_schema::SessionConfigOptionValue::ValueId { value } => {
                             let v = value.0.as_ref();
                             match config_id {
+                                "provider_id" => {
+                                    {
+                                        let cfg = ctx.peri_config.read();
+                                        if !v.is_empty()
+                                            && !cfg.config.providers.iter().any(|p| p.id == v)
+                                        {
+                                            return Err(agent_client_protocol::Error::invalid_request()
+                                                .data(format!("provider_id '{v}' not found")));
+                                        }
+                                    }
+                                    {
+                                        let mut cfg = ctx.peri_config.write();
+                                        cfg.config.active_provider_id = v.to_string();
+                                    }
+                                    let new_provider = {
+                                        let cfg = ctx.peri_config.read();
+                                        peri_tui::app::agent::LlmProvider::from_config(&cfg)
+                                    };
+                                    if let Some(new_provider) = new_provider {
+                                        tracing::info!(provider_id = %v, model = %new_provider.model_name(), "Provider changed via configOption");
+                                        *ctx.provider.write() = new_provider;
+                                    } else {
+                                        tracing::warn!(
+                                            provider_id = %v,
+                                            "provider_id configOption did not produce a runtime provider"
+                                        );
+                                    }
+                                    {
+                                        let sid = req.session_id.0.to_string();
+                                        let mut sessions = ctx.sessions.write();
+                                        if let Some(s) = sessions.get_mut(&sid) {
+                                            s.agent_pool.invalidate();
+                                        }
+                                    }
+                                }
                                 "mode" => {
                                     let mode = parse_permission_mode(v);
                                     ctx.permission_mode.store(mode);

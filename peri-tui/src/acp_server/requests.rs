@@ -169,15 +169,38 @@ pub(crate) async fn handle_request(
             let value = params.get("value").and_then(|v| v.as_str()).unwrap_or("");
             match config_id {
                 "provider_id" => {
-                    let mut c = cfg.peri_config.write();
-                    c.config.active_provider_id = value.to_string();
-                    drop(c);
-                    persist_config(cfg);
+                    {
+                        let c = cfg.peri_config.read();
+                        if !value.is_empty() && !c.config.providers.iter().any(|p| p.id == value) {
+                            return Err(AcpError::new(
+                                -32602,
+                                format!("provider_id '{value}' not found"),
+                            ));
+                        }
+                    }
+                    {
+                        let mut c = cfg.peri_config.write();
+                        c.config.active_provider_id = value.to_string();
+                    }
+                    let new_provider = {
+                        let c = cfg.peri_config.read();
+                        LlmProvider::from_config(&c)
+                    };
+                    if let Some(new_provider) = new_provider {
+                        info!(provider_id = %value, model = %new_provider.model_name(), "Provider changed via configOption");
+                        *cfg.provider.write() = new_provider;
+                    } else {
+                        tracing::warn!(
+                            provider_id = %value,
+                            "provider_id configOption did not produce a runtime provider"
+                        );
+                    }
                     info!(provider_id = %value, "Provider ID changed via configOption (persisted)");
                     // Provider switch → invalidate cached LLM instances
                     if let Some(s) = sessions.get_mut(session_id) {
                         s.agent_pool.invalidate();
                     }
+                    persist_config(cfg);
                 }
                 "mode" => {
                     let mode = parse_permission_mode(value);
