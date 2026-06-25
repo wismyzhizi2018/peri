@@ -1,6 +1,9 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc,
+    },
 };
 
 use async_trait::async_trait;
@@ -47,7 +50,16 @@ pub struct HookMiddleware {
     /// 默认使用 [`crate::hitl::default_requires_approval`]，
     /// 可通过 `with_requires_approval` 覆盖。
     requires_approval: fn(&str) -> bool,
+    /// Stop 钩子连续 block 计数器（session 共享）。
+    ///
+    /// 对齐 Claude Code：Stop 钩子返回 `block` 时将 reason 作为反馈注入并继续 agent，
+    /// 最多连续 8 次。计数器由 executor 创建并在每个 prompt 开始时重置，
+    /// 通过 `Arc` 在多个 hook group 实例间共享。
+    stop_block_count: Arc<AtomicU32>,
 }
+
+/// Stop 钩子连续 block 上限（对齐 Claude Code）。
+const MAX_STOP_BLOCKS: u32 = 8;
 
 impl HookMiddleware {
     pub fn new(
@@ -105,7 +117,17 @@ impl HookMiddleware {
             once_fired: Arc::new(Mutex::new(HashSet::new())),
             session_start_source: session_start_source.map(|s| s.to_string()),
             requires_approval: crate::hitl::default_requires_approval,
+            stop_block_count: Arc::new(AtomicU32::new(0)),
         }
+    }
+
+    /// 设置 Stop 钩子连续 block 计数器（session 共享）。
+    ///
+    /// 多个 hook group 实例需共享同一计数器，由 executor 创建并传入。
+    /// 不调用则每个 HookMiddleware 实例独立计数（仅适用于单 group 测试场景）。
+    pub fn with_stop_block_count(mut self, counter: Arc<AtomicU32>) -> Self {
+        self.stop_block_count = counter;
+        self
     }
 
     // -----------------------------------------------------------------------
@@ -639,13 +661,47 @@ impl<S: State> Middleware<S> for HookMiddleware {
             message_count: None,
         };
 
-        let _action = self.fire_event(HookEvent::Stop, &input, None, None).await;
+        let action = self.fire_event(HookEvent::Stop, &input, None, None).await;
+
+        // 处理 Stop 钩子的 Block 动作（对齐 Claude Code 语义）
+        // Block + reason 且连续次数 < MAX_STOP_BLOCKS：将 reason 作为 continue_feedback
+        // 返回给 executor，由 executor 注入为新 user 消息并重新调用 execute()
+        let new_output = match action {
+            HookAction::Block { reason } => {
+                let count = self.stop_block_count.fetch_add(1, Ordering::SeqCst);
+                if count < MAX_STOP_BLOCKS {
+                    tracing::info!(
+                        block_count = count + 1,
+                        max = MAX_STOP_BLOCKS,
+                        reason = %reason,
+                        "Stop hook blocked, agent will continue with feedback"
+                    );
+                    AgentOutput {
+                        continue_feedback: Some(reason),
+                        ..output.clone()
+                    }
+                } else {
+                    tracing::warn!(
+                        block_count = count + 1,
+                        max = MAX_STOP_BLOCKS,
+                        "Stop hook block limit reached, ignoring block and stopping"
+                    );
+                    self.stop_block_count.store(0, Ordering::SeqCst);
+                    output.clone()
+                }
+            }
+            _ => {
+                // Allow / PreventContinuation / 其它：重置计数器，正常结束
+                self.stop_block_count.store(0, Ordering::SeqCst);
+                output.clone()
+            }
+        };
 
         // Fire Notification (agent done, waiting for user input)
         self.fire_event(HookEvent::Notification, &input, None, None)
             .await;
 
-        Ok(output.clone())
+        Ok(new_output)
     }
 
     async fn on_error(

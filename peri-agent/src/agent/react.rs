@@ -53,6 +53,14 @@ pub struct AgentOutput {
     /// 目前仅正常完成时为 None，未来可扩展更多 reason。
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_reason: Option<String>,
+    /// Stop hook 返回 Block 时携带的反馈理由。
+    ///
+    /// 语义对齐 Claude Code：Stop 钩子 `decision: block` + `reason` 时，
+    /// 将 reason 作为新的 user 消息注入并继续 agent 循环（最多连续 8 次）。
+    /// 调用方（executor）检查此字段决定是否再次调用 `execute()`。
+    /// None = 正常结束；Some(reason) = 注入 reason 后继续。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub continue_feedback: Option<String>,
 }
 
 impl AgentOutput {
@@ -62,6 +70,7 @@ impl AgentOutput {
             steps,
             tool_calls: Vec::new(),
             stop_reason: None,
+            continue_feedback: None,
         }
     }
 }

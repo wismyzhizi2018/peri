@@ -987,3 +987,151 @@ async fn test_after_tools_batch_block_returns_error() {
         "PostToolBatch Block 应转为 AgentError::ToolRejected"
     );
 }
+
+// ===== Phase 4: Stop 钩子 block-continue 测试 =====
+
+/// Stop 钩子返回 Block + reason 时，after_agent 应将 reason 写入 continue_feedback，
+/// 并递增 stop_block_count 计数器
+#[cfg(unix)]
+#[tokio::test]
+async fn test_after_agent_stop_block_sets_continue_feedback() {
+    let hook: HookType = serde_json::from_value(serde_json::json!({
+        "type": "command",
+        "command": "echo '{\"decision\":\"block\",\"reason\":\"还需要检查测试\"}'",
+        "async": false
+    }))
+    .unwrap();
+
+    let registered = make_registered(HookEvent::Stop, hook);
+    let mw = make_middleware(vec![registered]);
+
+    let output = AgentOutput::new("完成", 1);
+    let result = mw
+        .after_agent(
+            &mut peri_agent::agent::state::AgentState::new("/test"),
+            &output,
+        )
+        .await
+        .expect("after_agent 不应返回错误");
+
+    assert_eq!(
+        result.continue_feedback.as_deref(),
+        Some("还需要检查测试"),
+        "Block + reason 应将 reason 写入 continue_feedback"
+    );
+    assert_eq!(
+        mw.stop_block_count.load(std::sync::atomic::Ordering::SeqCst),
+        1,
+        "首次 Block 后计数器应为 1"
+    );
+}
+
+/// Stop 钩子返回 Allow（默认）时，continue_feedback 应为 None，计数器重置为 0
+#[cfg(unix)]
+#[tokio::test]
+async fn test_after_agent_stop_allow_resets_count() {
+    let counter = Arc::new(AtomicU32::new(3)); // 模拟之前已 block 3 次
+    let hook: HookType = serde_json::from_value(serde_json::json!({
+        "type": "command",
+        "command": "echo '{\"decision\":\"allow\"}'", // 显式 allow
+        "async": false
+    }))
+    .unwrap();
+
+    let registered = make_registered(HookEvent::Stop, hook);
+    let mw = make_middleware(vec![registered]).with_stop_block_count(counter.clone());
+
+    let output = AgentOutput::new("完成", 1);
+    let result = mw
+        .after_agent(
+            &mut peri_agent::agent::state::AgentState::new("/test"),
+            &output,
+        )
+        .await
+        .expect("after_agent 不应返回错误");
+
+    assert!(
+        result.continue_feedback.is_none(),
+        "Allow 时 continue_feedback 必须为 None"
+    );
+    assert_eq!(
+        counter.load(std::sync::atomic::Ordering::SeqCst),
+        0,
+        "Allow 应重置计数器"
+    );
+}
+
+/// 连续 Block 达 8 次上限后，第 9 次 Block 应被忽略，continue_feedback 为 None，计数器重置
+#[cfg(unix)]
+#[tokio::test]
+async fn test_after_agent_stop_block_limit_caps_at_8() {
+    let counter = Arc::new(AtomicU32::new(8)); // 已达上限
+    let hook: HookType = serde_json::from_value(serde_json::json!({
+        "type": "command",
+        "command": "echo '{\"decision\":\"block\",\"reason\":\"继续\"}'",
+        "async": false
+    }))
+    .unwrap();
+
+    let registered = make_registered(HookEvent::Stop, hook);
+    let mw = make_middleware(vec![registered]).with_stop_block_count(counter.clone());
+
+    let output = AgentOutput::new("完成", 1);
+    let result = mw
+        .after_agent(
+            &mut peri_agent::agent::state::AgentState::new("/test"),
+            &output,
+        )
+        .await
+        .expect("after_agent 不应返回错误");
+
+    assert!(
+        result.continue_feedback.is_none(),
+        "达到上限后 Block 应被忽略，continue_feedback 为 None"
+    );
+    assert_eq!(
+        counter.load(std::sync::atomic::Ordering::SeqCst),
+        0,
+        "上限后应重置计数器，允许下一轮 prompt 重新计数"
+    );
+}
+
+/// 计数器在多个 HookMiddleware 实例间通过 Arc 共享
+#[cfg(unix)]
+#[tokio::test]
+async fn test_stop_block_counter_shared_across_middleware_instances() {
+    let shared_counter = Arc::new(AtomicU32::new(0));
+
+    let hook: HookType = serde_json::from_value(serde_json::json!({
+        "type": "command",
+        "command": "echo '{\"decision\":\"block\",\"reason\":\"r\"}'",
+        "async": false
+    }))
+    .unwrap();
+
+    // 模拟两个 hook group，各自创建 HookMiddleware 实例但共享计数器
+    let mw1 = make_middleware(vec![make_registered(HookEvent::Stop, hook.clone())])
+        .with_stop_block_count(Arc::clone(&shared_counter));
+    let mw2 = make_middleware(vec![make_registered(HookEvent::Stop, hook)])
+        .with_stop_block_count(Arc::clone(&shared_counter));
+
+    let output = AgentOutput::new("done", 1);
+    let _ = mw1
+        .after_agent(
+            &mut peri_agent::agent::state::AgentState::new("/test"),
+            &output,
+        )
+        .await;
+    let _ = mw2
+        .after_agent(
+            &mut peri_agent::agent::state::AgentState::new("/test"),
+            &output,
+        )
+        .await;
+
+    assert_eq!(
+        shared_counter.load(std::sync::atomic::Ordering::SeqCst),
+        2,
+        "两个 HookMiddleware 实例应共享同一计数器，累计 2 次 Block"
+    );
+}
