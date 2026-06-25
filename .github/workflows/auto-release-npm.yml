@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
 
     steps:
       - name: Checkout repository
@@ -62,3 +63,12 @@ jobs:
         run: |
           git tag "npm-v${{ steps.version.outputs.version }}"
           git push origin "npm-v${{ steps.version.outputs.version }}"
+
+      # GITHUB_TOKEN 创建的 tag 不会触发其他 workflow（防递归），
+      # 需要显式 dispatch release-npm workflow
+      - name: Trigger release-npm workflow
+        if: steps.version.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run release-npm.yml -f version="${{ steps.version.outputs.version }}"
