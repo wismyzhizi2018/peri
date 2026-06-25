@@ -93,6 +93,36 @@ fn test_retryable_error_sending_request() {
 }
 
 #[test]
+fn test_retryable_error_decoding_response_body() {
+    let err = AgentError::LlmError("流式读取失败: error decoding response body".into());
+    assert!(err.is_retryable(), "流式传输解码错误应可重试");
+}
+
+#[test]
+fn test_retryable_connection_closed() {
+    let err = AgentError::LlmError("connection closed before message completed".into());
+    assert!(err.is_retryable(), "连接中途关闭应可重试");
+}
+
+#[test]
+fn test_retryable_incomplete_body() {
+    let err = AgentError::LlmError("incomplete body".into());
+    assert!(err.is_retryable(), "响应体截断应可重试");
+}
+
+#[test]
+fn test_retryable_request_or_response_body() {
+    let err = AgentError::LlmError("request or response body error: channel closed".into());
+    assert!(err.is_retryable(), "reqwest body 错误应可重试");
+}
+
+#[test]
+fn test_retryable_read_response_body_failed() {
+    let err = AgentError::LlmError("读取响应体失败: error decoding response body".into());
+    assert!(err.is_retryable(), "读取响应体失败含可重试关键词应可重试");
+}
+
+#[test]
 fn test_not_retryable_other_errors() {
     let err = AgentError::ToolNotFound("x".into());
     assert!(!err.is_retryable());
