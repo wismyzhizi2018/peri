@@ -82,6 +82,21 @@ pub trait Middleware<S: State>: Send + Sync {
         Ok(())
     }
 
+    /// 批量工具调用后处理（一批并行工具全部完成后、下次模型请求前）
+    ///
+    /// 默认实现为 no-op（不循环 after_tool，后者已在每个工具完成时单独触发）。
+    /// 需要批量聚合处理的中间件（如 hooks 系统的 PostToolBatch 事件）应覆盖此方法。
+    ///
+    /// `results` 是本批所有工具调用的结果（包含 tool_call 和 result）。
+    async fn after_tools_batch(
+        &self,
+        state: &mut S,
+        results: &[(ToolCall, ToolResult)],
+    ) -> AgentResult<()> {
+        let _ = (state, results);
+        Ok(())
+    }
+
     /// LLM 调用前调用（在每轮 ReAct 循环的 call_llm 之前）
     ///
     /// 可用于上下文压缩、token 预算检查等预处理操作。

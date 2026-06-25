@@ -10,6 +10,12 @@ pub enum HookEvent {
     PreToolUse,
     PostToolUse,
     PostToolUseFailure,
+    /// 一批并行工具调用全部完成后触发（每个 batch 一次）。
+    ///
+    /// 对齐 Claude Code：当 LLM 在一次响应中返回多个工具调用时，
+    /// 这些工具并行执行完毕、所有 PostToolUse/PostToolUseFailure 触发完毕后，
+    /// 再触发一次 PostToolBatch。可 block（停止 agentic 循环）。
+    PostToolBatch,
     PermissionRequest,
     UserPromptSubmit,
     SessionStart,
@@ -35,6 +41,7 @@ impl Serialize for HookEvent {
             HookEvent::PreToolUse => serializer.serialize_str("PreToolUse"),
             HookEvent::PostToolUse => serializer.serialize_str("PostToolUse"),
             HookEvent::PostToolUseFailure => serializer.serialize_str("PostToolUseFailure"),
+            HookEvent::PostToolBatch => serializer.serialize_str("PostToolBatch"),
             HookEvent::PermissionRequest => serializer.serialize_str("PermissionRequest"),
             HookEvent::UserPromptSubmit => serializer.serialize_str("UserPromptSubmit"),
             HookEvent::SessionStart => serializer.serialize_str("SessionStart"),
@@ -61,6 +68,7 @@ impl<'de> Deserialize<'de> for HookEvent {
             "PreToolUse" => HookEvent::PreToolUse,
             "PostToolUse" => HookEvent::PostToolUse,
             "PostToolUseFailure" => HookEvent::PostToolUseFailure,
+            "PostToolBatch" => HookEvent::PostToolBatch,
             "PermissionRequest" => HookEvent::PermissionRequest,
             "UserPromptSubmit" => HookEvent::UserPromptSubmit,
             "SessionStart" => HookEvent::SessionStart,

@@ -308,7 +308,7 @@ async fn test_before_agent_session_start_controlled_by_flag() {
 
     let registered = make_registered(HookEvent::SessionStart, hook);
 
-    // is_session_start=true → SessionStart fires → blocks
+    // session_start_source=Some → SessionStart fires → blocks
     let mw = HookMiddleware::with_session_start(
         vec![registered.clone()],
         make_llm_factory(),
@@ -317,14 +317,14 @@ async fn test_before_agent_session_start_controlled_by_flag() {
         "/test/transcript.json",
         SharedPermissionMode::new(PermissionMode::Bypass),
         "opus",
-        true,
+        Some("startup"),
     );
     let mut state = peri_agent::agent::state::AgentState::new("/test");
     state.add_message(BaseMessage::human("first"));
     let result = mw.before_agent(&mut state).await;
     assert!(result.is_err());
 
-    // is_session_start=false → SessionStart skipped → ok
+    // session_start_source=None → SessionStart skipped → ok
     let mw2 = HookMiddleware::with_session_start(
         vec![registered],
         make_llm_factory(),
@@ -333,12 +333,59 @@ async fn test_before_agent_session_start_controlled_by_flag() {
         "/test/transcript.json",
         SharedPermissionMode::new(PermissionMode::Bypass),
         "opus",
-        false,
+        None,
     );
     let mut state2 = peri_agent::agent::state::AgentState::new("/test");
     state2.add_message(BaseMessage::human("second"));
     let result = mw2.before_agent(&mut state2).await;
     assert!(result.is_ok());
+}
+
+/// SessionStart 钩子应通过 stdin JSON 收到正确的 source matcher（issue #4）
+///
+/// 验证 `with_session_start(Some("clear"))` 时，钩子 stdin JSON 的 source 字段为 "clear"
+/// 而非硬编码的 "startup"。其他 matcher（resume/compact）同理。
+#[cfg(unix)]
+#[tokio::test]
+async fn test_session_start_passes_source_matcher_to_hook() {
+    let marker_path = "/tmp/peri_sessionstart_source_marker";
+    let _ = std::fs::remove_file(marker_path);
+
+    // Hook 从 stdin JSON 提取 source 字段写入 marker 文件
+    let hook: HookType = serde_json::from_value(serde_json::json!({
+        "type": "command",
+        "command": format!(
+            "python3 -c \"import json,sys; d=json.load(sys.stdin); open('{}','w').write(d.get('source',''))\" 2>/dev/null",
+            marker_path
+        ),
+        "async": false
+    }))
+    .unwrap();
+
+    let registered = make_registered(HookEvent::SessionStart, hook);
+    // 传 Some("clear") 模拟 /clear 后首次 prompt
+    let mw = HookMiddleware::with_session_start(
+        vec![registered],
+        make_llm_factory(),
+        "/test-cwd",
+        "test-session",
+        "/test/transcript.json",
+        SharedPermissionMode::new(PermissionMode::Bypass),
+        "opus",
+        Some("clear"),
+    );
+
+    let mut state = peri_agent::agent::state::AgentState::new("/test");
+    state.add_message(BaseMessage::human("after clear"));
+    let _ = mw.before_agent(&mut state).await;
+
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    let content = std::fs::read_to_string(marker_path).unwrap_or_default();
+    assert_eq!(
+        content, "clear",
+        "SessionStart source 应为 clear（透传 matcher 到钩子 stdin）"
+    );
+    let _ = std::fs::remove_file(marker_path);
 }
 
 #[cfg(unix)]
@@ -823,5 +870,268 @@ async fn test_on_error_stop_failure_skipped_for_tool_rejected() {
     assert!(
         !std::path::Path::new(marker_path).exists(),
         "ToolRejected 不应触发 StopFailure（HITL/hook 拒绝，非 API 错误）"
+    );
+}
+
+// === PostToolBatch 事件测试（issue #2）===
+
+/// PostToolBatch 钩子应在 after_tools_batch 时触发一次
+#[cfg(unix)]
+#[tokio::test]
+async fn test_after_tools_batch_fires_post_tool_batch_hook() {
+    let marker_path = "/tmp/peri_posttoolbatch_marker";
+    let _ = std::fs::remove_file(marker_path);
+
+    let hook: HookType = serde_json::from_value(serde_json::json!({
+        "type": "command",
+        "command": format!("echo fired > {}", marker_path),
+        "async": false
+    }))
+    .unwrap();
+
+    let registered = make_registered(HookEvent::PostToolBatch, hook);
+    let mw = make_middleware(vec![registered]);
+
+    // 构造 2 个工具的批次结果
+    let results = vec![
+        (
+            ToolCall::new("c1", "Read", serde_json::json!({"path": "/tmp/a"})),
+            ToolResult {
+                tool_call_id: "c1".to_string(),
+                tool_name: "Read".to_string(),
+                output: "ok".to_string(),
+                is_error: false,
+            },
+        ),
+        (
+            ToolCall::new("c2", "Write", serde_json::json!({"path": "/tmp/b"})),
+            ToolResult {
+                tool_call_id: "c2".to_string(),
+                tool_name: "Write".to_string(),
+                output: "ok".to_string(),
+                is_error: false,
+            },
+        ),
+    ];
+
+    let _ = mw
+        .after_tools_batch(&mut peri_agent::agent::state::AgentState::new("/test"), &results)
+        .await;
+
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    assert!(
+        std::path::Path::new(marker_path).exists(),
+        "PostToolBatch 应在 after_tools_batch 时触发"
+    );
+    let _ = std::fs::remove_file(marker_path);
+}
+
+/// 空批次不应触发 PostToolBatch（防御性检查）
+#[cfg(unix)]
+#[tokio::test]
+async fn test_after_tools_batch_skipped_for_empty_batch() {
+    let marker_path = "/tmp/peri_posttoolbatch_empty_marker";
+    let _ = std::fs::remove_file(marker_path);
+
+    let hook: HookType = serde_json::from_value(serde_json::json!({
+        "type": "command",
+        "command": format!("echo fired > {}", marker_path),
+        "async": false
+    }))
+    .unwrap();
+
+    let registered = make_registered(HookEvent::PostToolBatch, hook);
+    let mw = make_middleware(vec![registered]);
+
+    let results: Vec<(ToolCall, ToolResult)> = vec![];
+    let _ = mw
+        .after_tools_batch(&mut peri_agent::agent::state::AgentState::new("/test"), &results)
+        .await;
+
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    assert!(
+        !std::path::Path::new(marker_path).exists(),
+        "空批次不应触发 PostToolBatch"
+    );
+}
+
+/// PostToolBatch 钩子的 Block action 应转为 ToolRejected 错误
+#[cfg(unix)]
+#[tokio::test]
+async fn test_after_tools_batch_block_returns_error() {
+    let hook: HookType = serde_json::from_value(serde_json::json!({
+        "type": "command",
+        "command": "exit 2"
+    }))
+    .unwrap();
+
+    let registered = make_registered(HookEvent::PostToolBatch, hook);
+    let mw = make_middleware(vec![registered]);
+
+    let results = vec![(
+        ToolCall::new("c1", "Read", serde_json::json!({"path": "/tmp/a"})),
+        ToolResult {
+            tool_call_id: "c1".to_string(),
+            tool_name: "Read".to_string(),
+            output: "ok".to_string(),
+            is_error: false,
+        },
+    )];
+
+    let result = mw
+        .after_tools_batch(&mut peri_agent::agent::state::AgentState::new("/test"), &results)
+        .await;
+
+    assert!(
+        result.is_err(),
+        "PostToolBatch Block 应转为 AgentError::ToolRejected"
+    );
+}
+
+// ===== Phase 4: Stop 钩子 block-continue 测试 =====
+
+/// Stop 钩子返回 Block + reason 时，after_agent 应将 reason 写入 continue_feedback，
+/// 并递增 stop_block_count 计数器
+#[cfg(unix)]
+#[tokio::test]
+async fn test_after_agent_stop_block_sets_continue_feedback() {
+    let hook: HookType = serde_json::from_value(serde_json::json!({
+        "type": "command",
+        "command": "echo '{\"decision\":\"block\",\"reason\":\"还需要检查测试\"}'",
+        "async": false
+    }))
+    .unwrap();
+
+    let registered = make_registered(HookEvent::Stop, hook);
+    let mw = make_middleware(vec![registered]);
+
+    let output = AgentOutput::new("完成", 1);
+    let result = mw
+        .after_agent(
+            &mut peri_agent::agent::state::AgentState::new("/test"),
+            &output,
+        )
+        .await
+        .expect("after_agent 不应返回错误");
+
+    assert_eq!(
+        result.continue_feedback.as_deref(),
+        Some("还需要检查测试"),
+        "Block + reason 应将 reason 写入 continue_feedback"
+    );
+    assert_eq!(
+        mw.stop_block_count.load(std::sync::atomic::Ordering::SeqCst),
+        1,
+        "首次 Block 后计数器应为 1"
+    );
+}
+
+/// Stop 钩子返回 Allow（默认）时，continue_feedback 应为 None，计数器重置为 0
+#[cfg(unix)]
+#[tokio::test]
+async fn test_after_agent_stop_allow_resets_count() {
+    let counter = Arc::new(AtomicU32::new(3)); // 模拟之前已 block 3 次
+    let hook: HookType = serde_json::from_value(serde_json::json!({
+        "type": "command",
+        "command": "echo '{\"decision\":\"allow\"}'", // 显式 allow
+        "async": false
+    }))
+    .unwrap();
+
+    let registered = make_registered(HookEvent::Stop, hook);
+    let mw = make_middleware(vec![registered]).with_stop_block_count(counter.clone());
+
+    let output = AgentOutput::new("完成", 1);
+    let result = mw
+        .after_agent(
+            &mut peri_agent::agent::state::AgentState::new("/test"),
+            &output,
+        )
+        .await
+        .expect("after_agent 不应返回错误");
+
+    assert!(
+        result.continue_feedback.is_none(),
+        "Allow 时 continue_feedback 必须为 None"
+    );
+    assert_eq!(
+        counter.load(std::sync::atomic::Ordering::SeqCst),
+        0,
+        "Allow 应重置计数器"
+    );
+}
+
+/// 连续 Block 达 8 次上限后，第 9 次 Block 应被忽略，continue_feedback 为 None，计数器重置
+#[cfg(unix)]
+#[tokio::test]
+async fn test_after_agent_stop_block_limit_caps_at_8() {
+    let counter = Arc::new(AtomicU32::new(8)); // 已达上限
+    let hook: HookType = serde_json::from_value(serde_json::json!({
+        "type": "command",
+        "command": "echo '{\"decision\":\"block\",\"reason\":\"继续\"}'",
+        "async": false
+    }))
+    .unwrap();
+
+    let registered = make_registered(HookEvent::Stop, hook);
+    let mw = make_middleware(vec![registered]).with_stop_block_count(counter.clone());
+
+    let output = AgentOutput::new("完成", 1);
+    let result = mw
+        .after_agent(
+            &mut peri_agent::agent::state::AgentState::new("/test"),
+            &output,
+        )
+        .await
+        .expect("after_agent 不应返回错误");
+
+    assert!(
+        result.continue_feedback.is_none(),
+        "达到上限后 Block 应被忽略，continue_feedback 为 None"
+    );
+    assert_eq!(
+        counter.load(std::sync::atomic::Ordering::SeqCst),
+        0,
+        "上限后应重置计数器，允许下一轮 prompt 重新计数"
+    );
+}
+
+/// 计数器在多个 HookMiddleware 实例间通过 Arc 共享
+#[cfg(unix)]
+#[tokio::test]
+async fn test_stop_block_counter_shared_across_middleware_instances() {
+    let shared_counter = Arc::new(AtomicU32::new(0));
+
+    let hook: HookType = serde_json::from_value(serde_json::json!({
+        "type": "command",
+        "command": "echo '{\"decision\":\"block\",\"reason\":\"r\"}'",
+        "async": false
+    }))
+    .unwrap();
+
+    // 模拟两个 hook group，各自创建 HookMiddleware 实例但共享计数器
+    let mw1 = make_middleware(vec![make_registered(HookEvent::Stop, hook.clone())])
+        .with_stop_block_count(Arc::clone(&shared_counter));
+    let mw2 = make_middleware(vec![make_registered(HookEvent::Stop, hook)])
+        .with_stop_block_count(Arc::clone(&shared_counter));
+
+    let output = AgentOutput::new("done", 1);
+    let _ = mw1
+        .after_agent(
+            &mut peri_agent::agent::state::AgentState::new("/test"),
+            &output,
+        )
+        .await;
+    let _ = mw2
+        .after_agent(
+            &mut peri_agent::agent::state::AgentState::new("/test"),
+            &output,
+        )
+        .await;
+
+    assert_eq!(
+        shared_counter.load(std::sync::atomic::Ordering::SeqCst),
+        2,
+        "两个 HookMiddleware 实例应共享同一计数器，累计 2 次 Block"
     );
 }

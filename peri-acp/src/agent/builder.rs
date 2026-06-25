@@ -74,7 +74,12 @@ pub struct AcpAgentConfig {
     pub plugin_skill_dirs: Vec<std::path::PathBuf>,
     pub plugin_agent_dirs: Vec<std::path::PathBuf>,
     pub hook_groups: Vec<Vec<RegisteredHook>>,
-    pub hook_session_start: bool,
+    /// SessionStart 钩子 matcher 来源（None = 不触发，Some = startup/resume/clear/compact）。
+    pub hook_session_start_source: Option<String>,
+    /// Stop 钩子连续 block 计数器（session 共享，executor 在每个 prompt 开始时重置）。
+    /// 对齐 Claude Code：Stop 钩子返回 Block 时将 reason 作为反馈注入并继续 agent，
+    /// 最多连续 8 次。
+    pub hook_stop_block_count: Arc<std::sync::atomic::AtomicU32>,
     pub mcp_pool: Option<Arc<peri_middlewares::mcp::McpClientPool>>,
     /// Channel 共享状态（None = 不启用 channel 功能，不使用 MultiplexBroker）
     pub channel_state: Option<Arc<ChannelState>>,
@@ -147,7 +152,8 @@ pub fn build_agent(
         plugin_skill_dirs,
         plugin_agent_dirs,
         hook_groups,
-        hook_session_start,
+        hook_session_start_source,
+        hook_stop_block_count,
         mcp_pool,
         channel_state,
         tool_search_index,
@@ -455,8 +461,10 @@ pub fn build_agent(
                 "",
                 permission_mode.clone(),
                 provider_name.clone(),
-                hook_session_start && i == 0,
-            );
+                // 仅第一个 hook group 持有 SessionStart 触发权
+                hook_session_start_source.as_deref().filter(|_| i == 0),
+            )
+            .with_stop_block_count(Arc::clone(&hook_stop_block_count));
             executor = executor.add_middleware(Box::new(mw));
         }
     }

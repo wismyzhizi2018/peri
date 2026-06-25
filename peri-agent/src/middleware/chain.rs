@@ -121,6 +121,21 @@ impl<S: State> MiddlewareChain<S> {
         Ok(())
     }
 
+    /// 顺序执行 after_tools_batch 钩子（一批并行工具全部完成后）
+    ///
+    /// 在 `dispatch_tools` 将所有 tool_result 写入 state 后调用。
+    /// 遇错即停——后续中间件不执行，错误向上传播。
+    pub async fn run_after_tools_batch(
+        &self,
+        state: &mut S,
+        results: &[(ToolCall, ToolResult)],
+    ) -> AgentResult<()> {
+        for middleware in &self.middlewares {
+            middleware.after_tools_batch(state, results).await?;
+        }
+        Ok(())
+    }
+
     /// 顺序执行 before_model 钩子
     ///
     /// 在每个 ReAct step 的 LLM 调用前执行。

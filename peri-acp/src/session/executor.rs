@@ -473,6 +473,12 @@ pub async fn execute_prompt(
         }) as crate::agent::builder::DeregisterRuntimeFn
     });
 
+    // Stop 钩子连续 block 计数器（对齐 Claude Code：最多 8 次）
+    // 每个 prompt 开始时创建新计数器；HookMiddleware 通过 Arc 共享，
+    // after_agent 检测到 Block 时递增并设置 continue_feedback，
+    // 下方 execute 循环消费 continue_feedback 决定是否再次调用 execute()
+    let stop_block_count = Arc::new(std::sync::atomic::AtomicU32::new(0));
+
     let (agent_output, new_cache) = builder::build_agent(
         AcpAgentConfig {
             provider: provider.clone(),
@@ -494,7 +500,16 @@ pub async fn execute_prompt(
             plugin_skill_dirs: plugin_skill_dirs.clone(),
             plugin_agent_dirs: plugin_agent_dirs.clone(),
             hook_groups: hook_groups.clone(),
-            hook_session_start: is_empty_history,
+            // SessionStart 钩子 matcher 来源。
+            // 当前仅区分 startup（空 history）vs None（非首次 prompt）。
+            // resume/clear/compact matcher 需要 TUI/stdio 调用方通过额外信号传递，
+            // 暂未实现（issue #3 SessionEnd reason 的对应 Phase 3 残留）。
+            hook_session_start_source: if is_empty_history {
+                Some("startup".to_string())
+            } else {
+                None
+            },
+            hook_stop_block_count: Arc::clone(&stop_block_count),
             mcp_pool: mcp_pool.clone(),
             channel_state: channel_state.clone(),
             tool_search_index: tool_search_index.clone(),
@@ -578,12 +593,38 @@ pub async fn execute_prompt(
         }
     });
 
-    // Execute agent
+    // Execute agent (loop supports Stop hook block-continue, 对齐 Claude Code)
+    //
+    // HookMiddleware.after_agent 在 Stop 钩子返回 Block{reason} 且连续次数 < 8 时
+    // 将 reason 放入 output.continue_feedback。此处消费此字段：将 reason 作为
+    // 新 user 消息内容注入并再次调用 execute()。计数器由 middleware 维护，
+    // 达到 8 次上限后 middleware 自动重置并停止设置 continue_feedback。
     let mut agent_state = AgentState::with_messages(cwd.to_string(), history);
-    let result = agent_output
-        .executor
-        .execute(agent_input.clone(), &mut agent_state, Some(cancel.clone()))
-        .await;
+    let mut current_input = agent_input.clone();
+    let result: Result<peri_agent::agent::react::AgentOutput, AgentError> = loop {
+        let exec_result = agent_output
+            .executor
+            .execute(current_input.clone(), &mut agent_state, Some(cancel.clone()))
+            .await;
+        match exec_result {
+            Ok(output) => {
+                if let Some(reason) = output.continue_feedback.clone() {
+                    tracing::info!(
+                        session_id = %session_id,
+                        feedback = %reason,
+                        "Stop hook blocked, re-invoking agent with feedback"
+                    );
+                    current_input = peri_agent::agent::react::AgentInput {
+                        content: MessageContent::text(reason),
+                        params: std::collections::HashMap::new(),
+                    };
+                    continue;
+                }
+                break Ok(output);
+            }
+            Err(e) => break Err(e),
+        }
+    };
     drop(agent_output.executor);
 
     let ok = result.is_ok();
