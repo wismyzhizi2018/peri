@@ -83,8 +83,9 @@ fn rewrite_git_commit_for_windows(command: &str) -> (String, Option<(String, Str
     // 重写命令：保留其他参数，替换所有 -m 为 -F tempfile
     // commit_prefix 已包含 "git commit"，不需要再拼 prefix
     // Windows路径需要转换反斜杠为正斜杠，避免cmd.exe解析错误
+    // 注意：不加引号！cmd /C 对嵌套引号会保留字面引号导致文件找不到
     let temp_path_str = temp_path.to_string_lossy().replace('\\', "/");
-    let mut new_cmd = format!("{commit_prefix} -F \"{temp_path_str}\"");
+    let mut new_cmd = format!("{commit_prefix} -F {temp_path_str}");
     for arg in &other_args {
         new_cmd.push(' ');
         new_cmd.push_str(arg);
