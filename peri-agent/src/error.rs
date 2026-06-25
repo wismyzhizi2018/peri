@@ -55,6 +55,10 @@ impl AgentError {
                     || msg_lower.contains("rate limit")
                     || msg_lower.contains("overloaded")
                     || msg_lower.contains("error sending request")
+                    || msg_lower.contains("error decoding")
+                    || msg_lower.contains("connection closed")
+                    || msg_lower.contains("incomplete body")
+                    || msg_lower.contains("request or response body")
             }
             _ => false,
         }
