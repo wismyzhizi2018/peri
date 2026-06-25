@@ -97,6 +97,11 @@ impl SpinnerState {
         self.raw_tick
     }
 
+    /// 返回当前 spinner frame 字符，用于终端标题动画
+    pub fn title_frame(&self) -> char {
+        animation::tick_to_frame(self.tick)
+    }
+
     pub fn verb(&self) -> &str {
         &self.verb
     }

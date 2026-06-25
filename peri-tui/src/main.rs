@@ -848,10 +848,25 @@ async fn run_app(
     /// 仅在 loading=true 且无用户事件的 poll 超时路径生效，
     /// 用户交互（键盘/鼠标/resize）始终立即渲染。
     const TARGET_FRAME_INTERVAL: Duration = Duration::from_millis(33);
+    /// 终端标题刷新间隔（~200ms，避免 stdout 写入过频）
+    const TITLE_REFRESH_INTERVAL: Duration = Duration::from_millis(200);
+    let mut last_title_refresh = Instant::now();
 
     'event_loop: loop {
         // 推进 Spinner 动画帧
         app.session_mgr.current_mut().spinner_state.advance_tick();
+        // 刷新终端标题（跟随 spinner frame 动画）
+        if last_title_refresh.elapsed() >= TITLE_REFRESH_INTERVAL {
+            let frame = app.session_mgr.current_mut().spinner_state.title_frame();
+            let mode = app.session_mgr.current_mut().spinner_state.mode().clone();
+            if mode != peri_widgets::SpinnerMode::Idle {
+                let _ = ratatui::crossterm::execute!(
+                    std::io::stdout(),
+                    ratatui::crossterm::terminal::SetTitle(format!("{} Peri Code — Running", frame))
+                );
+            }
+            last_title_refresh = Instant::now();
+        }
         // 推进光标闪烁（返回 true 表示可见性切换，需要重绘）
         let cursor_blinked = app.session_mgr.current_mut().ui.advance_cursor_tick();
         // 轮询 agent 结果

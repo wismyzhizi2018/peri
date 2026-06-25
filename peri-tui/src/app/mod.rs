@@ -551,7 +551,7 @@ impl App {
             // 更新终端标题
             let _ = ratatui::crossterm::execute!(
                 std::io::stdout(),
-                ratatui::crossterm::terminal::SetTitle("✻ Peri Code — Done")
+                ratatui::crossterm::terminal::SetTitle("✴ Peri Code — Done")
             );
         }
     }
