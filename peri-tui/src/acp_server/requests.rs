@@ -168,6 +168,17 @@ pub(crate) async fn handle_request(
             let session_id = extract_session_id(params, "");
             let value = params.get("value").and_then(|v| v.as_str()).unwrap_or("");
             match config_id {
+                "provider_id" => {
+                    let mut c = cfg.peri_config.write();
+                    c.config.active_provider_id = value.to_string();
+                    drop(c);
+                    persist_config(cfg);
+                    info!(provider_id = %value, "Provider ID changed via configOption (persisted)");
+                    // Provider switch → invalidate cached LLM instances
+                    if let Some(s) = sessions.get_mut(session_id) {
+                        s.agent_pool.invalidate();
+                    }
+                }
                 "mode" => {
                     let mode = parse_permission_mode(value);
                     cfg.permission_mode.store(mode);

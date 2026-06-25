@@ -319,8 +319,30 @@ pub(super) async fn do_invoke_streaming(
         request_id: stream_request_id.clone(),
     });
 
+    // 从 base_url 推断 provider 信息（用于调试）
+    let provider_hint = adapter
+        .base_url
+        .as_ref()
+        .and_then(|url| {
+            if url.contains("xiaomimimo.com") {
+                Some("mimo")
+            } else if url.contains("bigmodel.cn") {
+                Some("Zhipu")
+            } else if url.contains("anthropic.com") || url.is_empty() {
+                Some("official")
+            } else {
+                // 从 URL 中提取域名作为 provider 标识
+                url.split("://")
+                    .nth(1)
+                    .and_then(|s| s.split('/').next())
+                    .map(|host| if host.contains(".") { "custom" } else { host })
+            }
+        })
+        .unwrap_or("official");
+
     tracing::info!(
-        provider = "anthropic",
+        provider = %provider_hint,
+        provider_url = %adapter.base_url.as_deref().unwrap_or("official"),
         model = %adapter.model,
         elapsed_ms = start.elapsed().as_millis() as u64,
         msg_count,
