@@ -3192,6 +3192,7 @@ dependencies = [
  "chrono",
  "croner",
  "dirs-next",
+ "encoding_rs",
  "filetime",
  "flate2",
  "glob",
