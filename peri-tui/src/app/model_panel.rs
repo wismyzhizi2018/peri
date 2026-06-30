@@ -183,6 +183,31 @@ impl ModelPanel {
     /// 将面板状态写入 PeriConfig（alias + thinking + max_tokens + 1M context）
     pub fn apply_to_config(&self, cfg: &mut PeriConfig) {
         cfg.config.active_alias = self.active_tab.to_key().to_string();
+
+        // 智能切换 provider：如果当前 provider 的该 alias 为空，则切换到第一个非空的 provider
+        let alias = self.active_tab.to_key();
+        let current_provider = cfg
+            .config
+            .providers
+            .iter()
+            .find(|p| p.id == cfg.config.active_provider_id);
+
+        // 检查当前 provider 是否有效支持该 alias
+        let current_valid = current_provider
+            .and_then(|p| p.models.get_model(alias))
+            .map_or(false, |m| !m.is_empty());
+
+        if !current_valid {
+            // 当前 provider 不支持该 alias，切换到第一个支持的 provider
+            if let Some(provider) = cfg.config.providers.iter().find(|p| {
+                p.models
+                    .get_model(alias)
+                    .map_or(false, |m| !m.is_empty())
+            }) {
+                cfg.config.active_provider_id = provider.id.clone();
+            }
+        }
+
         let t = cfg.config.thinking.get_or_insert_with(|| ThinkingConfig {
             enabled: true,
             budget_tokens: 8000,
@@ -414,9 +439,16 @@ impl ModelPanel {
                 .as_ref()
                 .map(|c| c.config.active_alias.clone())
                 .unwrap_or_default();
+            let provider_id = ctx
+                .services
+                .peri_config
+                .as_ref()
+                .map(|c| c.config.active_provider_id.clone())
+                .unwrap_or_default();
             let effort = panel.buf_thinking_effort.clone();
             let context_1m_val = panel.buf_context_1m.to_string();
             tokio::spawn(async move {
+                let _ = acp.set_config_option("provider_id", &provider_id).await;
                 let _ = acp.set_config_option("model", &alias).await;
                 let _ = acp.set_config_option("thinking_effort", &effort).await;
                 let _ = acp.set_config_option("context_1m", &context_1m_val).await;

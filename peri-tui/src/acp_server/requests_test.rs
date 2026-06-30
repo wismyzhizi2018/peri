@@ -149,6 +149,83 @@ async fn test_update_config_切换provider后cfg_provider更新() {
     );
 }
 
+#[tokio::test]
+async fn test_set_config_option_provider_id_updates_runtime_provider() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let provider_a = make_provider_config("a", "openai", "sk-openai-test", "gpt-4o");
+    let provider_b = make_provider_config("b", "anthropic", "sk-ant-test", "claude-sonnet-4-6");
+
+    let mut peri_config = PeriConfig::default();
+    peri_config.config.active_provider_id = "a".to_string();
+    peri_config.config.active_alias = "sonnet".to_string();
+    peri_config.config.providers = vec![provider_a, provider_b];
+
+    let initial_provider = LlmProvider::from_config(&peri_config).unwrap();
+    let cfg = make_server_config(peri_config, initial_provider, &tmp);
+    let mut sessions = HashMap::new();
+    let transport = MockTransport;
+
+    let params = json!({
+        "sessionId": "test-session",
+        "configId": "provider_id",
+        "value": "b",
+    });
+
+    let result = handle_request(
+        "session/set_config_option",
+        &params,
+        &cfg,
+        &mut sessions,
+        &transport,
+    )
+    .await
+    .unwrap();
+
+    assert!(result.get("configOptions").is_some());
+    assert_eq!(cfg.peri_config.read().config.active_provider_id, "b");
+    let provider = cfg.provider.read();
+    assert!(
+        matches!(&*provider, LlmProvider::Anthropic { model, .. } if model == "claude-sonnet-4-6"),
+        "provider_id config option should refresh runtime provider, got display={} model={}",
+        provider.display_name(),
+        provider.model_name(),
+    );
+}
+
+#[tokio::test]
+async fn test_set_config_option_provider_id_rejects_unknown_provider() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let provider_a = make_provider_config("a", "openai", "sk-openai-test", "gpt-4o");
+
+    let mut peri_config = PeriConfig::default();
+    peri_config.config.active_provider_id = "a".to_string();
+    peri_config.config.active_alias = "sonnet".to_string();
+    peri_config.config.providers = vec![provider_a];
+
+    let initial_provider = LlmProvider::from_config(&peri_config).unwrap();
+    let cfg = make_server_config(peri_config, initial_provider, &tmp);
+    let mut sessions = HashMap::new();
+    let transport = MockTransport;
+
+    let params = json!({
+        "sessionId": "test-session",
+        "configId": "provider_id",
+        "value": "missing",
+    });
+
+    let result = handle_request(
+        "session/set_config_option",
+        &params,
+        &cfg,
+        &mut sessions,
+        &transport,
+    )
+    .await;
+
+    assert!(result.is_err(), "unknown provider_id should be rejected");
+    assert_eq!(cfg.peri_config.read().config.active_provider_id, "a");
+}
+
 /// 验证 session/update_config 空 providers 时返回错误
 #[tokio::test]
 async fn test_update_config_空providers返回错误() {

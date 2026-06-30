@@ -130,6 +130,26 @@ pub fn build_config_options(
         .category(SessionConfigOptionCategory::Mode),
     );
 
+    // ── Provider (category: model) ──
+    let active_provider_id = peri_config.config.active_provider_id.clone();
+    let providers = &peri_config.config.providers;
+    let mut provider_options = Vec::new();
+    for prov in providers {
+        provider_options.push(SessionConfigSelectOption::new(
+            SessionConfigValueId::new(prov.id.clone()),
+            prov.display_name().to_string(),
+        ));
+    }
+    options.push(
+        SessionConfigOption::select(
+            SessionConfigId::new("provider_id"),
+            "Provider",
+            SessionConfigValueId::new(active_provider_id),
+            SessionConfigSelectOptions::Ungrouped(provider_options),
+        )
+        .category(SessionConfigOptionCategory::Model),
+    );
+
     // ── Model (category: model) ──
     let active_alias = peri_config.config.active_alias.clone();
     let active_provider = peri_config.config.providers.iter().find(|prov| {
